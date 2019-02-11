@@ -19,6 +19,6 @@ module.exports = ({}) => {
     return {path: join(homedir(), 'Library', 'Application Support', 'Lnd')};
 
   default:
-    return {path: join(homedir(), 'lnd')};
+    return {path: join(homedir(), '.lnd')};
   }
 };
