@@ -1,5 +1,8 @@
 {
   "author": "Alex Bosworth",
+  "bin": {
+    "bos": "./bos"
+  },
   "bugs": {
     "url": "https://github.com/alexbosworth/balanceofsatoshis/issues"
   },
