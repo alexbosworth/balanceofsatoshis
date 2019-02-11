@@ -9,7 +9,7 @@
   "dependencies": {
     "async": "2.6.1",
     "caporal": "1.1.0",
-    "ln-service": "34.2.0"
+    "ln-service": "34.2.1"
   },
   "description": "Lightning balance CLI",
   "license": "MIT",
@@ -19,5 +19,5 @@
     "type": "git",
     "url": "https://github.com/alexbosworth/balanceofsatoshis.git"
   },
-  "version": "1.0.2"
+  "version": "1.0.3"
 }
