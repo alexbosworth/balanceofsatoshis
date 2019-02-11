@@ -1,0 +1,20 @@
+{
+  "author": "Alex Bosworth",
+  "bugs": {
+    "url": "https://github.com/alexbosworth/balanceofsatoshis/issues"
+  },
+  "dependencies": {
+    "async": "2.6.1",
+    "caporal": "1.1.0",
+    "ln-service": "file:/Users/alex/repos/ln-service"
+  },
+  "description": "Lightning balance CLI",
+  "license": "MIT",
+  "main": "index.js",
+  "name": "balanceofsatoshis",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexbosworth/balanceofsatoshis.git"
+  },
+  "version": "1.0.0"
+}
