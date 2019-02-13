@@ -7,9 +7,19 @@ const {version} = require('./package');
 prog
   .version(version)
   .command('balance', 'Get total tokens')
+  .option('--above <tokens>', 'Return tokens above watermark', prog.INT)
+  .option('--below <tokens>', 'Return tokens below watermark', prog.INT)
+  .option('--offchain', 'List only off-chain tokens')
+  .option('--onchain', 'List only on-chain tokens')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
-      return getBalance({}, (err, res) => {
+      return getBalance({
+        above: options.above || undefined,
+        below: options.below || undefined,
+        is_offchain_only: !!options.offchain,
+        is_onchain_only: !!options.onchain,
+      },
+      (err, res) => {
         if (!!err) {
           return reject(err);
         }

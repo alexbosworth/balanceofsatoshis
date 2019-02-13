@@ -8,17 +8,24 @@ const {lndCredentials} = require('./../lnd');
 const {returnResult} = require('./../async');
 
 const credentials = lndCredentials({});
+const {max} = Math;
+const noTokens = 0;
 
 /** Get the existing balance
 
-  {}
+  {
+    [above]: <Tokens Above Tokens Number>
+    [below]: <Tokens Below Tokens Number>
+    [is_offchain_only]: <Get Only Channels Tokens Bool>
+    [is_onchain_only]: <Get Only Chain Tokens Bool>
+  }
 
   @returns via cbk
   {
     balance: <Tokens Number>
   }
 */
-module.exports = ({}, cbk) => {
+module.exports = (args, cbk) => {
   return asyncAuto({
     // Lnd
     lnd: cbk => {
@@ -46,13 +53,27 @@ module.exports = ({}, cbk) => {
       ({getChainBalance, getChannelBalance, getPending}, cbk) =>
     {
       const balances = [
-        getChainBalance.chain_balance,
-        getChannelBalance.channel_balance,
-        getChannelBalance.pending_balance,
-        getPending.pending_chain_balance,
+        !!args.is_offchain_only ? noTokens : getChainBalance.chain_balance,
+        !!args.is_onchain_only ? noTokens : getChannelBalance.channel_balance,
+        !!args.is_onchain_only ? noTokens : getChannelBalance.pending_balance,
+        !!args.is_offchain_only ? noTokens : getPending.pending_chain_balance,
       ];
 
-      return cbk(null, {balance: balances.reduce((sum, n) => n + sum, 0)});
+      const total = balances.reduce((sum, n) => n + sum, noTokens);
+
+      if (!!args.above) {
+        const above = total > args.above ? total - args.above : noTokens;
+
+        return cbk(null, {balance: above});
+      }
+
+      if (!!args.below) {
+        const below = total < args.below ? args.below - total : noTokens;
+
+        return cbk(null, {balance: below});
+      }
+
+      return cbk(null, {balance: total});
     }],
   },
   returnResult({of: 'balance'}, cbk));
