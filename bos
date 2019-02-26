@@ -2,11 +2,16 @@
 const prog = require('caporal');
 
 const {getBalance} = require('./funds');
+const {getLiquidity} = require('./funds');
+const {returnCount} = require('./responses');
 const {version} = require('./package');
 
 prog
   .version(version)
+
+  // Get local balance information
   .command('balance', 'Get total tokens')
+  .argument('[node]', 'Node name')
   .option('--above <tokens>', 'Return tokens above watermark', prog.INT)
   .option('--below <tokens>', 'Return tokens below watermark', prog.INT)
   .option('--offchain', 'List only off-chain tokens')
@@ -18,19 +23,26 @@ prog
         below: options.below || undefined,
         is_offchain_only: !!options.offchain,
         is_onchain_only: !!options.onchain,
+        node: args.node,
       },
-      (err, res) => {
-        if (!!err) {
-          return reject(err);
-        }
+      returnCount({logger, reject, resolve}));
+    });
+  })
 
-        const {balance} = res;
-
-        logger.info(`${balance}`);
-
-        return resolve();
-      });
+  // Get inbound liquidity information. Liquidity is available off-chain capital
+  .command('inbound-liquidity', 'Get inbound liquidity')
+  .argument('[node]', 'Node name')
+  .option('--above <tokens>', 'Return liquidity amount above watermark')
+  .option('--below <tokens>', 'Return liquidity amount above watermark')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getLiquidity({
+        above: options.above || undefined,
+        below: options.below || undefined,
+        node: args.node,
+      },
+      returnCount({logger, reject, resolve}));
     });
   });
- 
+
 prog.parse(process.argv);

@@ -4,10 +4,10 @@ const {getChannelBalance} = require('ln-service');
 const {getPendingChainBalance} = require('ln-service');
 const {lightningDaemon} = require('ln-service');
 
+const {balanceFromTokens} = require('./../balances');
 const {lndCredentials} = require('./../lnd');
 const {returnResult} = require('./../async');
 
-const credentials = lndCredentials({});
 const {max} = Math;
 const noTokens = 0;
 
@@ -18,6 +18,7 @@ const noTokens = 0;
     [below]: <Tokens Below Tokens Number>
     [is_offchain_only]: <Get Only Channels Tokens Bool>
     [is_onchain_only]: <Get Only Chain Tokens Bool>
+    [node]: <Node Name String>
   }
 
   @returns via cbk
@@ -27,14 +28,17 @@ const noTokens = 0;
 */
 module.exports = (args, cbk) => {
   return asyncAuto({
+    // Credentials
+    credentials: cbk => lndCredentials({node: args.node}, cbk),
+
     // Lnd
-    lnd: cbk => {
+    lnd: ['credentials', ({credentials}, cbk) => {
       return cbk(null, lightningDaemon({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
       }));
-    },
+    }],
 
     // Get the chain balance
     getChainBalance: ['lnd', ({lnd}, cbk) => getChainBalance({lnd}, cbk)],
@@ -59,21 +63,17 @@ module.exports = (args, cbk) => {
         !!args.is_offchain_only ? noTokens : getPending.pending_chain_balance,
       ];
 
-      const total = balances.reduce((sum, n) => n + sum, noTokens);
+      try {
+        const balance = balanceFromTokens({
+          above: args.above,
+          below: args.below,
+          tokens: balances,
+        });
 
-      if (!!args.above) {
-        const above = total > args.above ? total - args.above : noTokens;
-
-        return cbk(null, {balance: above});
+        return cbk(null, {balance});
+      } catch (err) {
+        return cbk([500, 'FailedToCalculateBalanceTotal', err]);
       }
-
-      if (!!args.below) {
-        const below = total < args.below ? args.below - total : noTokens;
-
-        return cbk(null, {balance: below});
-      }
-
-      return cbk(null, {balance: total});
     }],
   },
   returnResult({of: 'balance'}, cbk));

@@ -12,6 +12,9 @@
     "ln-service": "34.2.1"
   },
   "description": "Lightning balance CLI",
+  "devDependencies": {
+    "tap": "12.5.3"
+  },
   "license": "MIT",
   "main": "index.js",
   "name": "balanceofsatoshis",
@@ -19,5 +22,8 @@
     "type": "git",
     "url": "https://github.com/alexbosworth/balanceofsatoshis.git"
   },
-  "version": "1.1.0"
+  "scripts": {
+    "test": "tap test/balances/*.js"
+  },
+  "version": "1.2.0"
 }
