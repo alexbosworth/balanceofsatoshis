@@ -3,13 +3,30 @@
 Commands for working with Lightning balances.
 
 ```
+bos --help
+
+// Outputs the commands available
+
 bos balance
 
 // Outputs the full balance of the node, including pending, off-chain, on-chain
 
+bos forwards
+
+// Outputs a summarized version of peers forwarded towards
+
 bos inbound-liquidity
 
 // Outputs the sum total of remote channel liquidity
+
+bos outbound-liqudity
+
+// Outputs the sum total of local channel liquidity
+
+bos probe [paymentrequest]
+
+// Outputs the results of testing if a payment request can be paid
+
 ```
 
 ## Nodes Directory

@@ -2,8 +2,11 @@
 const prog = require('caporal');
 
 const {getBalance} = require('./funds');
+const {getForwards} = require('./network');
 const {getLiquidity} = require('./funds');
+const {probeDestination} = require('./network');
 const {returnCount} = require('./responses');
+const {returnObject} = require('./responses');
 const {version} = require('./package');
 
 prog
@@ -29,19 +32,66 @@ prog
     });
   })
 
-  // Get inbound liquidity information. Liquidity is available off-chain capital
+  // Get forwards
+  .command('forwards', 'Get forwards')
+  .argument('[node]', 'Node name')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getForwards({
+        node: args.node,
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Get inbound liquidity information: available inbound off-chain tokens
   .command('inbound-liquidity', 'Get inbound liquidity')
   .argument('[node]', 'Node name')
   .option('--above <tokens>', 'Return liquidity amount above watermark')
   .option('--below <tokens>', 'Return liquidity amount above watermark')
+  .option('--top', 'Top percentile inbound liquidity in an individual channel')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getLiquidity({
         above: options.above || undefined,
         below: options.below || undefined,
+        is_top: options.top || undefined,
         node: args.node,
       },
       returnCount({logger, reject, resolve}));
+    });
+  })
+
+  // Get outbound liquidity information: available outbound off-chain tokens
+  .command('outbound-liquidity', 'Get outbound liquidity')
+  .argument('[node]', 'Node name')
+  .option('--above <tokens>', 'Return liquidity amount above watermark')
+  .option('--below <tokens>', 'Return liquidity amount above watermark')
+  .option('--top', 'Top percentile inbound liquidity in an individual channel')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getLiquidity({
+        above: options.above || undefined,
+        below: options.below || undefined,
+        is_outbound: true,
+        is_top: options.top || undefined,
+        node: args.node,
+      },
+      returnCount({logger, reject, resolve}));
+    });
+  })
+
+  // Determine if a payment request is sendable
+  .command('probe', 'Check if a payment request is sendable')
+  .argument('<request>', 'Payment Request')
+  .argument('[node]', 'Node name')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return probeDestination({
+        node: args.node,
+        request: args.request,
+      },
+      returnObject({logger, reject, resolve}));
     });
   });
 
