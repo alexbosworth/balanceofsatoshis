@@ -27,6 +27,10 @@ bos probe [paymentrequest]
 
 // Outputs the results of testing if a payment request can be paid
 
+bos unlock /path/to/password/file
+
+// Outputs wallet unlock result
+
 ```
 
 ## Nodes Directory

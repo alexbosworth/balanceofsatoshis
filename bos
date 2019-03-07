@@ -7,6 +7,7 @@ const {getLiquidity} = require('./funds');
 const {probeDestination} = require('./network');
 const {returnCount} = require('./responses');
 const {returnObject} = require('./responses');
+const {unlockWallet} = require('./wallets');
 const {version} = require('./package');
 
 prog
@@ -90,6 +91,20 @@ prog
       return probeDestination({
         node: args.node,
         request: args.request,
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Unlock wallet
+  .command('unlock', 'Unlock wallet if locked')
+  .argument('<path_to_password_file>', 'Path to password file')
+  .argument('[node]', 'Node name')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return unlockWallet({
+        node: args.node,
+        path_to_password_file: args.pathToPasswordFile,
       },
       returnObject({logger, reject, resolve}));
     });
