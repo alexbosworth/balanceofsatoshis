@@ -3,6 +3,8 @@
 Commands for working with Lightning balances.
 
 ```
+npm install -g balanceofsatoshis
+
 bos --help
 
 // Outputs the commands available
@@ -30,7 +32,6 @@ bos probe [paymentrequest]
 bos unlock /path/to/password/file
 
 // Outputs wallet unlock result
-
 ```
 
 ## Nodes Directory

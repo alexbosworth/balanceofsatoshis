@@ -7,6 +7,7 @@ const {getLiquidity} = require('./funds');
 const {probeDestination} = require('./network');
 const {returnCount} = require('./responses');
 const {returnObject} = require('./responses');
+const {hiddenPay} = require('./network');
 const {unlockWallet} = require('./wallets');
 const {version} = require('./package');
 
@@ -36,9 +37,11 @@ prog
   // Get forwards
   .command('forwards', 'Get forwards')
   .argument('[node]', 'Node name')
+  .option('--days <days>', 'Number of past days to look at forwards over')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getForwards({
+        days: options.days,
         node: args.node,
       },
       returnObject({logger, reject, resolve}));
@@ -89,6 +92,20 @@ prog
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return probeDestination({
+        node: args.node,
+        request: args.request,
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Pay an invoice using only Tor node or unadvertised IP hops
+  .command('hiddenpay', 'Pay an invoice over only Tor or unadvertised IP hops')
+  .argument('<request>', 'Payment Request')
+  .argument('[node]', 'Node name')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return hiddenPay({
         node: args.node,
         request: args.request,
       },

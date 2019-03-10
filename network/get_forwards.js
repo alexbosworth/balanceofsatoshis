@@ -16,12 +16,15 @@ const byLastForwardAt = (a, b) => parse(a.last_forward_at) < parse(b.last_forwar
 const limit = 99999;
 const {max} = Math;
 const {min} = Math;
+const msPerDay = 1000 * 60 * 60 * 24;
 const {now} = Date;
+const numDays = 1;
 const {parse} = Date;
 
 /** Get recent forwarding activity
 
   {
+    [days]: <Days Number>
     [node]: <Node Name String>
   }
 
@@ -29,16 +32,15 @@ const {parse} = Date;
   {
     peers: [{
       alias: <Peer Alias String>
-      blocks_since_last_close: <Blocks Since Last Closed Channel Number>
+      [blocks_since_last_close]: <Blocks Since Last Closed Channel Number>
       forward_fees: <Forward Fees Number>
-      inbound_liquidity: <Inbound Liquidity Tokens Number>
       last_forward_at: <Last Forward At ISO 8601 Date String>
       outbound_liquidity: <Outbound Liquidity Tokens Number>
       public_key: <Public Key String>
     }]
   }
 */
-module.exports = ({node}, cbk) => {
+module.exports = ({days, node}, cbk) => {
   return asyncAuto({
     // Credentials
     credentials: cbk => lndCredentials({node}, cbk),
@@ -60,7 +62,7 @@ module.exports = ({node}, cbk) => {
 
     // Get forwards
     getForwards: ['lnd', ({lnd}, cbk) => {
-      const after = new Date(now() - 1000 * 60 * 60 * 24 * 30).toISOString();
+      const after = new Date(now() - (days || numDays)*msPerDay).toISOString();
       const before = new Date().toISOString();
 
       return getForwards({after, before, lnd, limit}, cbk);
@@ -150,7 +152,6 @@ module.exports = ({node}, cbk) => {
           alias: node.alias,
           blocks_since_last_close: !closes.length ? undefined : lastClose,
           forward_fees: forwards.reduce((sum, n) => sum + n.fee, 0),
-          inbound_liquidity: remote,
           last_forward_at: new Date(max(...forwardTimes)).toISOString(),
           outbound_liquidity: local,
           public_key: node.public_key,
