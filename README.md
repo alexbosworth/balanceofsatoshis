@@ -17,6 +17,10 @@ bos forwards
 
 // Outputs a summarized version of peers forwarded towards
 
+bos hiddenpay "paymentrequest"
+
+// Attempts to pay a payment request using only hidden ip or Tor node hops
+
 bos inbound-liquidity
 
 // Outputs the sum total of remote channel liquidity
