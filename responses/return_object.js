@@ -17,7 +17,11 @@ module.exports = ({logger, reject, resolve}) => {
       return reject(err);
     }
 
-    logger.info(res);
+    if (typeof res === 'number') {
+      logger.info(`${res}`);
+    } else {
+      logger.info(res);
+    }
 
     return resolve();
   };

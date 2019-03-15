@@ -4,10 +4,12 @@ const prog = require('caporal');
 const {getBalance} = require('./funds');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./funds');
+const {getUtxos} = require('./funds');
+const {hiddenPay} = require('./network');
 const {probeDestination} = require('./network');
 const {returnCount} = require('./responses');
 const {returnObject} = require('./responses');
-const {hiddenPay} = require('./network');
+const {splitUtxos} = require('./funds');
 const {unlockWallet} = require('./wallets');
 const {version} = require('./package');
 
@@ -34,10 +36,30 @@ prog
     });
   })
 
+  // Fan out utxos
+  .command('fanout', 'Fan out utxos')
+  .argument('<size>', 'UTXO minimum size', prog.INT)
+  .argument('<count>', 'Desired number of total utxos', prog.INT)
+  .argument('[node]', 'Node name')
+  .option('--dryrun', 'Execute a fan-out dry run')
+  .option('--feerate <feerate>', 'Feerate in per vbyte rate', prog.INT)
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return splitUtxos({
+        count: args.count,
+        is_dry_run: !!options.dryrun,
+        node: args.node,
+        size: args.size,
+        tokens_per_vbyte: options.feerate,
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
   // Get forwards
   .command('forwards', 'Get forwards')
   .argument('[node]', 'Node name')
-  .option('--days <days>', 'Number of past days to look at forwards over')
+  .option('--days <days>', 'Number of past days to evaluate', prog.INT)
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getForwards({
@@ -65,8 +87,8 @@ prog
   // Get inbound liquidity information: available inbound off-chain tokens
   .command('inbound-liquidity', 'Get inbound liquidity')
   .argument('[node]', 'Node name')
-  .option('--above <tokens>', 'Return liquidity amount above watermark')
-  .option('--below <tokens>', 'Return liquidity amount above watermark')
+  .option('--above <tokens>', 'Return amount above watermark', prog.INT)
+  .option('--below <tokens>', 'Return amount above watermark', prog.INT)
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -83,8 +105,8 @@ prog
   // Get outbound liquidity information: available outbound off-chain tokens
   .command('outbound-liquidity', 'Get outbound liquidity')
   .argument('[node]', 'Node name')
-  .option('--above <tokens>', 'Return liquidity amount above watermark')
-  .option('--below <tokens>', 'Return liquidity amount above watermark')
+  .option('--above <tokens>', 'Return amount above watermark', prog.INT)
+  .option('--below <tokens>', 'Return amount above watermark', prog.INT)
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -122,6 +144,24 @@ prog
       return unlockWallet({
         node: args.node,
         path_to_password_file: args.pathToPasswordFile,
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Get utxos
+  .command('utxos', 'Get a list of utxos')
+  .argument('[node]', 'Node name')
+  .option('--confirmed', 'Return only confirmed utxos')
+  .option('--count', 'Return the count of utxos')
+  .option('--size', 'Utxos of size greater than or equal to specified amount')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getUtxos({
+        is_confirmed: !!options.confirmed,
+        is_count: !!options.count,
+        min_tokens: options.size || undefined,
+        node: args.node,
       },
       returnObject({logger, reject, resolve}));
     });

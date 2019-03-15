@@ -13,6 +13,10 @@ bos balance
 
 // Outputs the full balance of the node, including pending, off-chain, on-chain
 
+bos fanout "amount" "count"
+
+// Creates utxo fan-out with on-chain funds
+
 bos forwards
 
 // Outputs a summarized version of peers forwarded towards
@@ -25,7 +29,7 @@ bos inbound-liquidity
 
 // Outputs the sum total of remote channel liquidity
 
-bos outbound-liqudity
+bos outbound-liquidity
 
 // Outputs the sum total of local channel liquidity
 
