@@ -9,12 +9,12 @@
   "dependencies": {
     "async": "2.6.2",
     "caporal": "1.1.0",
-    "ln-service": "34.5.0",
+    "ln-service": "34.6.0",
     "stats-lite": "2.2.0"
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
-    "tap": "12.6.0"
+    "tap": "12.6.1"
   },
   "license": "MIT",
   "main": "index.js",
@@ -26,5 +26,5 @@
   "scripts": {
     "test": "tap test/balances/*.js"
   },
-  "version": "1.6.0"
+  "version": "1.6.1"
 }

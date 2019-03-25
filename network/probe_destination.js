@@ -7,6 +7,7 @@ const {probe} = require('ln-service');
 const {lndCredentials} = require('./../lnd');
 const {returnResult} = require('./../async');
 
+const defaultTokens = 10;
 const {now} = Date;
 
 /** Determine if a payment request can be paid by probing it
@@ -47,7 +48,7 @@ module.exports = ({node, request}, cbk) => {
       return getRoutes({
         lnd,
         destination: decodeRequest.destination,
-        tokens: decodeRequest.tokens,
+        tokens: decodeRequest.tokens || defaultTokens,
       },
       cbk);
     }],
