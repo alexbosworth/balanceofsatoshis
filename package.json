@@ -8,8 +8,11 @@
   },
   "dependencies": {
     "async": "2.6.2",
+    "bitcoin-ops": "1.4.1",
+    "bitcoinjs-lib": "4.0.3",
     "caporal": "1.1.0",
-    "ln-service": "34.6.0",
+    "ln-service": "34.7.1",
+    "request": "2.88.0",
     "stats-lite": "2.2.0"
   },
   "description": "Lightning balance CLI",
@@ -26,5 +29,5 @@
   "scripts": {
     "test": "tap test/balances/*.js"
   },
-  "version": "1.6.1"
+  "version": "1.7.0"
 }

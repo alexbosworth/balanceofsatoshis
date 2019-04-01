@@ -21,6 +21,7 @@ const newArrayOfSize = n => Array.from(Array(n));
 
   {
     count: <Count of UTXOs Number>
+    [is_confirmed]: <Only Consider Confirmed Utxos Bool>
     [is_dry_run]: <Do Not Execute Split Bool>
     [node]: <Node String>
     size: <UTXO Minimum Tokens Number>
@@ -61,7 +62,13 @@ module.exports = (args, cbk) => {
     outputCount: ['getUtxos', ({getUtxos}, cbk) => {
       const {utxos} = getUtxos;
 
-      const existing = utxos.filter(({tokens}) => tokens >= args.size);
+      const existing = utxos.filter(utxo => {
+        if (!!args.is_confirmed && !utxo.confirmation_count) {
+          return false;
+        }
+
+        return utxo.tokens >= args.size;
+      });
 
       if (existing.length > args.count) {
         return cbk(null, [].length);

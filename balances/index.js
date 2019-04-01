@@ -1,3 +1,4 @@
-const balanceFromTokens = require('./balance_from_tokens');
+const getLiquidity = require('./get_liquidity');
+const getBalance = require('./get_balance');
 
-module.exports = {balanceFromTokens};
+module.exports = {getBalance, getLiquidity};

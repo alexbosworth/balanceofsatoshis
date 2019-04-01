@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 const prog = require('caporal');
 
-const {getBalance} = require('./funds');
+const {getBalance} = require('./balances');
+const {getChannelCloses} = require('./chain');
 const {getForwards} = require('./network');
-const {getLiquidity} = require('./funds');
-const {getUtxos} = require('./funds');
+const {getLiquidity} = require('./balances');
+const {getUtxos} = require('./chain');
 const {hiddenPay} = require('./network');
 const {probeDestination} = require('./network');
 const {returnCount} = require('./responses');
 const {returnObject} = require('./responses');
-const {splitUtxos} = require('./funds');
+const {splitUtxos} = require('./chain');
 const {unlockWallet} = require('./wallets');
 const {version} = require('./package');
 
@@ -36,17 +37,33 @@ prog
     });
   })
 
+  // Determine the outcomes of channel closings
+  .command('closed', 'Get the status of a channel closings')
+  .argument('[node]', 'Node name')
+  .option('--limit', 'Limit of closings to get', prog.INT)
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getChannelCloses({
+        limit: options.limit,
+        node: args.node,
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
   // Fan out utxos
   .command('fanout', 'Fan out utxos')
   .argument('<size>', 'UTXO minimum size', prog.INT)
   .argument('<count>', 'Desired number of total utxos', prog.INT)
   .argument('[node]', 'Node name')
+  .option('--confirmed', 'Only consider confirmed existing utxos')
   .option('--dryrun', 'Execute a fan-out dry run')
   .option('--feerate <feerate>', 'Feerate in per vbyte rate', prog.INT)
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return splitUtxos({
         count: args.count,
+        is_confirmed: !!option.confirmed,
         is_dry_run: !!options.dryrun,
         node: args.node,
         size: args.size,

@@ -3,7 +3,7 @@ const {getChannels} = require('ln-service');
 const {lightningDaemon} = require('ln-service');
 const {percentile} = require('stats-lite');
 
-const {balanceFromTokens} = require('./../balances');
+const balanceFromTokens = require('./balance_from_tokens');
 const {lndCredentials} = require('./../lnd');
 const {returnResult} = require('./../async');
 
