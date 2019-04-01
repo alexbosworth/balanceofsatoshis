@@ -11,7 +11,7 @@
     "bitcoin-ops": "1.4.1",
     "bitcoinjs-lib": "4.0.3",
     "caporal": "1.1.0",
-    "ln-service": "34.7.1",
+    "ln-service": "34.7.2",
     "request": "2.88.0",
     "stats-lite": "2.2.0"
   },
@@ -29,5 +29,5 @@
   "scripts": {
     "test": "tap test/balances/*.js"
   },
-  "version": "1.7.0"
+  "version": "1.7.1"
 }
