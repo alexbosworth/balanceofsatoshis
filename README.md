@@ -26,28 +26,28 @@ bos --help
 ### Example commands
 
 ```sh
-// Outputs the full balance of the node, including pending, off-chain, on-chain
+# Outputs the full balance of the node, including pending, off-chain, on-chain
 bos balance
 
-// Creates utxo fan-out with on-chain funds
+# Creates utxo fan-out with on-chain funds
 bos fanout "amount" "count"
 
-// Outputs a summarized version of peers forwarded towards
+# Outputs a summarized version of peers forwarded towards
 bos forwards
 
-// Attempts to pay a payment request using only hidden ip or Tor node hops
+# Attempts to pay a payment request using only hidden ip or Tor node hops
 bos hiddenpay "paymentrequest"
 
-// Outputs the sum total of remote channel liquidity
+# Outputs the sum total of remote channel liquidity
 bos inbound-liquidity
 
-// Outputs the sum total of local channel liquidity
+# Outputs the sum total of local channel liquidity
 bos outbound-liquidity
 
-// Outputs the results of testing if a payment request can be paid
+# Outputs the results of testing if a payment request can be paid
 bos probe [paymentrequest]
 
-// Outputs wallet unlock result
+# Outputs wallet unlock result
 bos unlock /path/to/password/file
 
 ```
