@@ -52,6 +52,9 @@ bos probe [paymentrequest]
 
 # Outputs wallet unlock result
 bos unlock /path/to/password/file
+
+## Output available utxos
+bos utxos
 ```
 
 ## Nodes Directory
