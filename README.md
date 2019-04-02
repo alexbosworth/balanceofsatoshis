@@ -2,67 +2,97 @@
 
 Commands for working with Lightning balances.
 
-```
+## Install 
+
+```shell
 npm install -g balanceofsatoshis
+```
 
+Verify it's installed
+
+```sh
+bos --version
+1.7.1
+``` 
+
+## Usage
+
+To see a list of available options and flags run: 
+ 
+```shell
 bos --help
+```
 
-// Outputs the commands available
+### Example commands
 
+```sh
+// Outputs the full balance of the node, including pending, off-chain, on-chain
 bos balance
 
-// Outputs the full balance of the node, including pending, off-chain, on-chain
-
+// Creates utxo fan-out with on-chain funds
 bos fanout "amount" "count"
 
-// Creates utxo fan-out with on-chain funds
-
+// Outputs a summarized version of peers forwarded towards
 bos forwards
 
-// Outputs a summarized version of peers forwarded towards
-
+// Attempts to pay a payment request using only hidden ip or Tor node hops
 bos hiddenpay "paymentrequest"
 
-// Attempts to pay a payment request using only hidden ip or Tor node hops
-
+// Outputs the sum total of remote channel liquidity
 bos inbound-liquidity
 
-// Outputs the sum total of remote channel liquidity
-
+// Outputs the sum total of local channel liquidity
 bos outbound-liquidity
 
-// Outputs the sum total of local channel liquidity
-
+// Outputs the results of testing if a payment request can be paid
 bos probe [paymentrequest]
 
-// Outputs the results of testing if a payment request can be paid
-
+// Outputs wallet unlock result
 bos unlock /path/to/password/file
 
-// Outputs wallet unlock result
 ```
 
 ## Nodes Directory
 
-To add nodes, create a directory at ~/.bos to hold node credentials
+By default `bos` tries to locate `tls.cert` and `admin.macaroon` in the default `lnd` location on the local machine (`~/.lnd/` on Linux, and `~/Library/Application Support/Lnd/` on MacOS). 
 
-Create individual node credentials by creating folders with their alias, then
-edit a `credentials.json` file inside of the folder, like
-`~/.bos/mynode/credentials.json`. The contents of this file should contain the
-`base64 filename` output for the `tls.cert`, `.macaroon` file, and the ip and
-port of the node GRPC.
+To use `bos` with external nodes (or nodes with custom configuration), two things need to be done: 
 
-Example:
+1. Create directory `~/.bos/`, and add node credentials in a format of: 
 
-```
-~/.bos/mynode/credentials.json
-```
+    `~/.bos/YOUR_NODE_NAME/credentials.json`
+    
+1. Each file should have the following format:
 
-```json
-{
-  "cert": "base64 tls.cert value",
-  "macaroon": "base64 .macaroon value",
-  "socket": "host:ip"
-}
+    ```json
+    {
+      "cert": "base64 tls.cert value",
+      "macaroon": "base64 .macaroon value",
+      "socket": "host:ip"
+    }
+    ```
+    
+    > **Note:** `cert` and (admin) `macaroon` should have base64-encoded, and newline-stripped content of the files. To get the strings in appropriate format you can run, ex:
+    >
+    >```bash
+    ># For `cert` 
+    >base64 ~/.lnd/tls.cert | tr -d '\n'
+    >
+    ># For `macaroon`
+    >base64 ~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon | tr -d '\n'
+    >```
+    >
+    > **Note_2:** `socket` should contain `host:ip` pointing to `lnd`'s gRPC interface, `localhost:10009` by convention.  
+ 
+### Using saved nodes
+ 
+To run commands on nodes specified this way, you need to suffix commands with their name, ex:
+ 
+```bash
+bos balance YOUR_NODE_NAME
+
+# or
+
+bos forwards YOUR_NODE_NAME
 ```
 
