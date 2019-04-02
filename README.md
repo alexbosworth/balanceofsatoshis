@@ -12,7 +12,7 @@ Verify it's installed
 
 ```sh
 bos --version
-1.7.1
+// 1.7.1
 ``` 
 
 ## Usage
@@ -28,6 +28,9 @@ bos --help
 ```sh
 # Outputs the full balance of the node, including pending, off-chain, on-chain
 bos balance
+
+# Output the on-chain spend resolutions of closed channels
+bos closed
 
 # Creates utxo fan-out with on-chain funds
 bos fanout "amount" "count"
@@ -49,7 +52,6 @@ bos probe [paymentrequest]
 
 # Outputs wallet unlock result
 bos unlock /path/to/password/file
-
 ```
 
 ## Nodes Directory
