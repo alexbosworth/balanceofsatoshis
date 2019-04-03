@@ -12,7 +12,7 @@ Verify it's installed
 
 ```sh
 bos --version
-// 1.7.1
+// 1.8.0
 ``` 
 
 ## Usage
