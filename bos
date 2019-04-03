@@ -2,7 +2,9 @@
 const prog = require('caporal');
 
 const {getBalance} = require('./balances');
+const {getChainFees} = require('./chain');
 const {getChannelCloses} = require('./chain');
+const {getExchangeRates} = require('./fiat');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
 const {getUtxos} = require('./chain');
@@ -34,6 +36,21 @@ prog
         node: args.node,
       },
       returnCount({logger, reject, resolve}));
+    });
+  })
+
+  // Get the current chain fee rates
+  .command('chainfees', 'Get the current chain fee estimates')
+  .argument('[node]')
+  .option('--blocks <depth>', 'Blocks confirm target depth to estimate to')
+  .option('--file <path>', 'Write the output to a JSON file at desired path')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getChainFees({
+        blocks: options.blocks,
+        node: args.node,
+      },
+      returnObject({logger, reject, resolve, file: options.file}))
     });
   })
 
@@ -135,6 +152,19 @@ prog
         node: args.node,
       },
       returnCount({logger, reject, resolve}));
+    });
+  })
+
+  // Get the current fiat exchange price
+  .command('price', 'Get the price')
+  .argument('[symbols...]', 'Desired fiat tickers')
+  .option('--file <path>', 'Write the output to a JSON file at desired path')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getExchangeRates({
+        symbols: args.symbols.map(n => n.toUpperCase()),
+      },
+      returnObject({logger, reject, resolve, file: options.file}))
     });
   })
 
