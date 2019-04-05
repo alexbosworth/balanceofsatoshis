@@ -5,9 +5,12 @@ const {lightningDaemon} = require('ln-service');
 const {lndCredentials} = require('./../lnd');
 const {returnResult} = require('./../async');
 
+const noTokens = 0;
+
 /** Get UTXOs
 
   {
+    [count_below]: <Return Only Count, And Below Number>
     [is_count]: <Return Only Count Bool>
     [is_confirmed]: <Return Only Confirmed Utxos Bool>
     [min_tokens]: <Return Utxos of Value Above Tokens Size Number>
@@ -59,6 +62,14 @@ module.exports = (args, cbk) => {
 
         return true;
       });
+
+      if (!!args.count_below) {
+        const below = args.count_below;
+
+        const total = utxos.length < below ? below - utxos.length : noTokens;
+
+        return cbk(null, total);
+      }
 
       if (!!args.is_count) {
         return cbk(null, utxos.length);

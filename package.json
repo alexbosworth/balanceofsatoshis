@@ -9,7 +9,7 @@
   "dependencies": {
     "async": "2.6.2",
     "bitcoin-ops": "1.4.1",
-    "bitcoinjs-lib": "4.0.3",
+    "bitcoinjs-lib": "5.0.0",
     "caporal": "1.1.0",
     "ln-service": "34.7.2",
     "request": "2.88.0",
@@ -29,5 +29,5 @@
   "scripts": {
     "test": "tap test/balances/*.js"
   },
-  "version": "1.8.1"
+  "version": "1.8.2"
 }

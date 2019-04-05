@@ -8,11 +8,11 @@ Commands for working with Lightning balances.
 npm install -g balanceofsatoshis
 ```
 
-Verify it's installed
+Verify it's installed:
 
 ```sh
 bos --version
-// 1.8.0
+// current installed version
 ``` 
 
 ## Usage

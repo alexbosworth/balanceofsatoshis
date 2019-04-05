@@ -201,10 +201,12 @@ prog
   .argument('[node]', 'Node name')
   .option('--confirmed', 'Return only confirmed utxos')
   .option('--count', 'Return the count of utxos')
+  .option('--count_below <below>', 'Return only count below number', prog.INT)
   .option('--size', 'Utxos of size greater than or equal to specified amount')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getUtxos({
+        count_below: options.countBelow,
         is_confirmed: !!options.confirmed,
         is_count: !!options.count,
         min_tokens: options.size || undefined,
