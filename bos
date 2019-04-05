@@ -80,7 +80,7 @@ prog
     return new Promise((resolve, reject) => {
       return splitUtxos({
         count: args.count,
-        is_confirmed: !!option.confirmed,
+        is_confirmed: !!options.confirmed,
         is_dry_run: !!options.dryrun,
         node: args.node,
         size: args.size,
