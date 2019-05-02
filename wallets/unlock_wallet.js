@@ -9,6 +9,7 @@ const {lndCredentials} = require('./../lnd');
 const {returnResult} = require('./../async');
 
 const message = 'message';
+const walletUnlockerService = 'WalletUnlocker';
 
 /** Unlock wallet if locked
 
@@ -74,7 +75,7 @@ module.exports = (args, cbk) => {
 
       const lnd = lightningDaemon({
         cert: credentials.cert,
-        service: 'WalletUnlocker',
+        service: walletUnlockerService,
         socket: credentials.socket,
       });
 

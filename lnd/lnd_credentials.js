@@ -3,6 +3,8 @@ const {homedir} = require('os');
 const {readFile} = require('fs');
 
 const asyncAuto = require('async/auto');
+const asyncDetectSeries = require('async/detectSeries');
+const {flatten} = require('lodash');
 
 const lndDirectory = require('./lnd_directory');
 const {returnResult} = require('./../async');
@@ -10,10 +12,12 @@ const {returnResult} = require('./../async');
 const base64 = 'base64';
 const certPath = ['tls.cert'];
 const credsFile = 'credentials.json';
+const defaults = [['bitcoin', 'litecoin'], ['mainnet', 'testnet']];
 const home = '.bos';
-const macPath = ['data', 'chain', 'bitcoin', 'mainnet', 'admin.macaroon'];
+const macName = 'admin.macaroon';
 const {parse} = JSON;
 const {path} = lndDirectory({});
+const pathToMac = ['data', 'chain'];
 const socket = 'localhost:10009';
 
 /** Lnd credentials
@@ -52,7 +56,19 @@ module.exports = ({node}, cbk) => {
         return cbk();
       }
 
-      return readFile(join(...[path].concat(macPath)), (err, macaroon) => {
+      const [chains, nets] = defaults;
+
+      const all = chains.map(chain => nets.map(network => ({chain, network})));
+
+      // Find the default macaroon
+      return asyncDetectSeries(flatten(all), ({chain, network}, cbk) => {
+        const macPath = [].concat(pathToMac).concat([chain, network, macName]);
+
+        return readFile(join(...[path].concat(macPath)), (_, macaroon) => {
+          return cbk(null, macaroon);
+        });
+      },
+      (err, macaroon) => {
         if (!!err || !macaroon) {
           return cbk([503, 'FailedToGetCertFileData', err]);
         }
