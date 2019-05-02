@@ -12,7 +12,7 @@
     "bitcoinjs-lib": "5.0.3",
     "bolt03": "1.1.0",
     "caporal": "1.1.0",
-    "ln-service": "36.3.0",
+    "ln-service": "36.3.1",
     "request": "2.88.0",
     "stats-lite": "2.2.0"
   },
@@ -30,5 +30,5 @@
   "scripts": {
     "test": "tap test/balances/*.js"
   },
-  "version": "1.8.5"
+  "version": "1.8.6"
 }
