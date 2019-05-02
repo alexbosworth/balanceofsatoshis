@@ -1,4 +1,11 @@
-const getLiquidity = require('./get_liquidity');
+const accountingCategories = require('./accounting_categories');
+const getAccountingReport = require('./get_accounting_report');
 const getBalance = require('./get_balance');
+const getLiquidity = require('./get_liquidity');
 
-module.exports = {getBalance, getLiquidity};
+module.exports = {
+  accountingCategories,
+  getAccountingReport,
+  getBalance,
+  getLiquidity,
+};

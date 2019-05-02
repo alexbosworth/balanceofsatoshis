@@ -14,7 +14,8 @@
     "caporal": "1.1.0",
     "ln-service": "36.3.1",
     "request": "2.88.0",
-    "stats-lite": "2.2.0"
+    "stats-lite": "2.2.0",
+    "table": "5.2.3"
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
@@ -30,5 +31,5 @@
   "scripts": {
     "test": "tap test/balances/*.js"
   },
-  "version": "1.8.6"
+  "version": "1.9.0"
 }
