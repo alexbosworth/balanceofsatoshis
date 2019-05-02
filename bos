@@ -57,7 +57,7 @@ prog
   // Determine the outcomes of channel closings
   .command('closed', 'Get the status of a channel closings')
   .argument('[node]', 'Node name')
-  .option('--limit', 'Limit of closings to get', prog.INT)
+  .option('--limit [limit]', 'Limit of closings to get', prog.INT)
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getChannelCloses({

@@ -1,6 +1,5 @@
+const {channelResolution} = require('bolt03');
 const {Transaction} = require('bitcoinjs-lib');
-
-const channelResolution = require('./channel_resolution');
 
 /** Resolution type
 

@@ -7,7 +7,7 @@ const {resolutionType} = require('./../bolt03');
 const {returnResult} = require('./../async');
 
 const closeSpendsDelayMs = 1000;
-const getTxDelayMs = 1000;
+const getTxDelayMs = 2000;
 
 /** Get channel resolution
 
