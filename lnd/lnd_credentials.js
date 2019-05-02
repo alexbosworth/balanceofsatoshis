@@ -70,10 +70,20 @@ module.exports = ({node}, cbk) => {
       },
       (err, macaroon) => {
         if (!!err || !macaroon) {
-          return cbk([503, 'FailedToGetCertFileData', err]);
+          return cbk([503, 'FailedToGetMacFileData', err]);
         }
 
-        return cbk(null, macaroon.toString(base64));
+        const {chain, network} = macaroon;
+
+        const macPath = [].concat(pathToMac).concat([chain, network, macName]);
+
+        return readFile(join(...[path].concat(macPath)), (err, macaroon) => {
+          if (!!err) {
+            return cbk([503, 'FailedToGetMacaroonData', err]);
+          }
+
+          return cbk(null, macaroon.toString(base64));
+        });
       });
     },
 
