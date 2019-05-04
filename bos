@@ -12,8 +12,9 @@ const {getLiquidity} = require('./balances');
 const {getUtxos} = require('./chain');
 const {hiddenPay} = require('./network');
 const {probeDestination} = require('./network');
-const {returnCount} = require('./responses');
+const {returnNumber} = require('./responses');
 const {returnObject} = require('./responses');
+const {sendGift} = require('./network');
 const {splitUtxos} = require('./chain');
 const {unlockWallet} = require('./wallets');
 const {version} = require('./package');
@@ -56,7 +57,7 @@ prog
         is_onchain_only: !!options.onchain,
         node: args.node,
       },
-      returnCount({logger, reject, resolve}));
+      returnNumber({logger, reject, resolve, number: 'balance'}));
     });
   })
 
@@ -125,6 +126,22 @@ prog
     });
   })
 
+  // Give a peer some tokens
+  .command('gift', 'Give a direct peer some free funds off-chain')
+  .argument('<target>', 'Peer to give funds to')
+  .argument('<amount>', 'Tokens to give', prog.INT)
+  .argument('[node]', 'Source node to use')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return sendGift({
+        node: args.node,
+        to: args.target,
+        tokens: args.amount,
+      },
+      returnNumber({logger, reject, resolve, number: 'gave_tokens'}));
+    });
+  })
+
   // Pay an invoice using only Tor nodes or unadvertised IP hops
   .command('hiddenpay', 'Pay an invoice over only Tor or unadvertised IP hops')
   .argument('<request>', 'Payment Request')
@@ -153,7 +170,7 @@ prog
         is_top: options.top || undefined,
         node: args.node,
       },
-      returnCount({logger, reject, resolve}));
+      returnNumber({logger, reject, resolve, number: 'balance'}));
     });
   })
 
@@ -172,7 +189,7 @@ prog
         is_top: options.top || undefined,
         node: args.node,
       },
-      returnCount({logger, reject, resolve}));
+      returnNumber({logger, reject, resolve, number: 'balance'}));
     });
   })
 

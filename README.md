@@ -1,6 +1,6 @@
 # Balance of Satoshis
 
-Commands for working with Lightning balances.
+Commands for working with lnd balances.
 
 ## Install 
 
@@ -10,7 +10,7 @@ npm install -g balanceofsatoshis
 
 Verify it's installed:
 
-```sh
+```shell
 bos --version
 // current installed version
 ``` 
@@ -20,48 +20,69 @@ bos --version
 To see a list of available options and flags run: 
  
 ```shell
-bos --help
+bos help
+
+// Or get individual help with a command
+bos help commandName
 ```
 
-### Example commands
+### Example Commands
 
-```sh
-# Outputs the full balance of the node, including pending, off-chain, on-chain
+```shell
+// See an accounting formatted list of various types of transactions
+bos accounting "category"
+
+// See total balance, including pending funds, excluding future commit fees
 bos balance
+// 1337
 
-# Output the on-chain spend resolutions of closed channels
+// See the current fee estimates for various confirmation targets
+bos chainfees
+
+// See details on how closed channels resolved on-chain
 bos closed
 
-# Creates utxo fan-out with on-chain funds
+// Create a utxo fan-out with on-chain funds
 bos fanout "amount" "count"
 
-# Outputs a summarized version of peers forwarded towards
+// Output a summarized version of peers forwarded towards
 bos forwards
 
-# Attempts to pay a payment request using only hidden ip or Tor node hops
+// Send a gift of some tokens to a directly connected peer
+bos gift "pubkey" "amount"
+
+// Attempt to pay a payment request using only hidden ip or Tor node hops
 bos hiddenpay "paymentrequest"
 
-# Outputs the sum total of remote channel liquidity
+// Output the sum total of remote channel liquidity
 bos inbound-liquidity
 
-# Outputs the sum total of local channel liquidity
+// Outputs the sum total of local channel liquidity
 bos outbound-liquidity
 
-# Outputs the results of testing if a payment request can be paid
-bos probe [paymentrequest]
+// Output the price of BTC
+bos price
 
-# Outputs wallet unlock result
-bos unlock /path/to/password/file
+// Output the results of testing if a payment request can be paid
+bos probe "paymentrequest"
 
-## Output available utxos
+// Unlock the wallet if it is locked
+bos unlock "path_to_password_file"
+
+// Show unspent coin outputs
 bos utxos
 ```
 
-## Nodes Directory
+## Saved Nodes Directory
 
-By default `bos` tries to locate `tls.cert` and `admin.macaroon` in the default `lnd` location on the local machine (`~/.lnd/` on Linux, and `~/Library/Application Support/Lnd/` on MacOS). 
+By default `bos` tries to locate `tls.cert` and `admin.macaroon` in the default
+`lnd` location on the local machine (`~/.lnd/` on Linux, and
+`~/Library/Application Support/Lnd/` on MacOS). 
 
-To use `bos` with external nodes (or nodes with custom configuration), two things need to be done: 
+It will check first for a mainnet macaroon, then a testnet macaroon.
+
+To use `bos` with external nodes (or nodes with custom configuration), two
+things need to be done: 
 
 1. Create directory `~/.bos/`, and add node credentials in a format of: 
 
@@ -76,7 +97,7 @@ To use `bos` with external nodes (or nodes with custom configuration), two thing
       "socket": "host:ip"
     }
     ```
-    
+
     > **Note:** `cert` and (admin) `macaroon` should have base64-encoded, and newline-stripped content of the files. To get the strings in appropriate format you can run, ex:
     >
     >```bash
@@ -89,15 +110,12 @@ To use `bos` with external nodes (or nodes with custom configuration), two thing
     >
     > **Note_2:** `socket` should contain `host:ip` pointing to `lnd`'s gRPC interface, `localhost:10009` by convention.  
  
-### Using saved nodes
+### Using Saved Nodes
  
-To run commands on nodes specified this way, you need to suffix commands with their name, ex:
+To run commands on nodes specified this way, you need to suffix commands with
+their name, ex:
  
-```bash
+```shell
 bos balance YOUR_NODE_NAME
-
-# or
-
 bos forwards YOUR_NODE_NAME
 ```
-

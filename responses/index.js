@@ -1,4 +1,4 @@
-const returnCount = require('./return_count');
+const returnNumber = require('./return_number');
 const returnObject = require('./return_object');
 
-module.exports = {returnCount, returnObject};
+module.exports = {returnNumber, returnObject};
