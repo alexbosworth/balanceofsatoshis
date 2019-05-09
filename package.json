@@ -15,7 +15,7 @@
     "ln-service": "36.4.0",
     "request": "2.88.0",
     "stats-lite": "2.2.0",
-    "table": "5.2.3"
+    "table": "5.3.2"
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
@@ -31,5 +31,5 @@
   "scripts": {
     "test": "tap test/balances/*.js"
   },
-  "version": "1.11.0"
+  "version": "1.11.1"
 }

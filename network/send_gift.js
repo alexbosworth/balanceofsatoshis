@@ -80,12 +80,18 @@ module.exports = ({node, to, tokens}, cbk) => {
         return cbk([400, 'ExpectedChannelWithAvailableFundsToGift']);
       }
 
-      const [channel] = hasTokens
+      const hasRemoteBalance = hasTokens
         .filter(n => n.remote_balance > floor(n.capacity * reserveRatio));
 
-      if (!channel) {
+      if (!hasRemoteBalance.length) {
         return cbk([400, 'ExpectedChannelWithSufficientRemoteReserveBalance']);
       }
+
+      hasRemoteBalance.sort((a, b) => {
+        return a.local_balance > b.local_balance ? -1 : 1;
+      });
+
+      const [channel] = hasRemoteBalance;
 
       return cbk(null, channel.id);
     }],
