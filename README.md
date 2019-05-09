@@ -32,6 +32,9 @@ bos help commandName
 // See an accounting formatted list of various types of transactions
 bos accounting "category"
 
+// Set autopilot on or off. With heuristic externalscore, set guided autopilot
+bos autopilot "on"
+
 // See total balance, including pending funds, excluding future commit fees
 bos balance
 // 1337

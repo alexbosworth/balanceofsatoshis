@@ -15,9 +15,12 @@ const {probeDestination} = require('./network');
 const {returnNumber} = require('./responses');
 const {returnObject} = require('./responses');
 const {sendGift} = require('./network');
+const {setAutopilot} = require('./network');
 const {splitUtxos} = require('./chain');
 const {unlockWallet} = require('./wallets');
 const {version} = require('./package');
+
+const flatten = arr => [].concat(...arr);
 
 prog
   .version(version)
@@ -38,6 +41,28 @@ prog
         node: args.node,
       },
       returnObject({logger, reject, resolve, table}));
+    });
+  })
+
+  // Direct autopilot to mirror one or more nodes on the network
+  .command('autopilot', 'Direct autopilot')
+  .argument('<status>', 'Status of autopilot', ['off', 'on'])
+  .argument('[node]', 'Node name')
+  .help('Autopilot status is either on or off')
+  .help('Mirroring and urls require --autopilot.heuristic=externalscore:1')
+  .option('--dryrun', 'Show scoring without changing autopilot settings')
+  .option('--mirror <pubkey>', 'Mirror channels of node', prog.REPEATABLE)
+  .option('--url <url>', 'Follow nodes from a scoring URL', prog.REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return setAutopilot({
+        is_dryrun: !!options.dryrun,
+        is_enabled: args.status === 'on',
+        mirrors: flatten([options.mirror].filter(n => !!n)),
+        node: args.node || undefined,
+        urls: flatten([options.url].filter(n => !!n)),
+      },
+      returnObject({logger, reject, resolve}));
     });
   })
 

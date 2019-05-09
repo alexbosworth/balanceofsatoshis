@@ -23,7 +23,9 @@ const border = getBorderCharacters('norc');
 module.exports = ({file, logger, reject, resolve, table}) => {
   return (err, res) => {
     if (!!err) {
-      return reject(err);
+      logger.error(err);
+
+      return reject();
     }
 
     if (!!file) {
