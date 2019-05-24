@@ -1,10 +1,10 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
 const request = require('request');
+const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {resolutionType} = require('./../bolt03');
-const {returnResult} = require('./../async');
 
 const closeSpendsDelayMs = 1000;
 const getTxDelayMs = 2000;

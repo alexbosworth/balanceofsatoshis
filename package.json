@@ -7,19 +7,20 @@
     "url": "https://github.com/alexbosworth/balanceofsatoshis/issues"
   },
   "dependencies": {
-    "async": "2.6.2",
+    "async": "3.0.0",
+    "asyncjs-util": "1.0.0",
     "bitcoin-ops": "1.4.1",
-    "bitcoinjs-lib": "5.0.3",
+    "bitcoinjs-lib": "5.0.4",
     "bolt03": "1.1.0",
     "caporal": "1.2.0",
-    "ln-service": "37.0.1",
+    "ln-service": "38.0.0",
     "request": "2.88.0",
     "stats-lite": "2.2.0",
-    "table": "5.3.3"
+    "table": "5.4.0"
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
-    "tap": "14.0.0"
+    "tap": "14.1.10"
   },
   "keywords": [
     "cli",
@@ -35,7 +36,7 @@
     "url": "https://github.com/alexbosworth/balanceofsatoshis.git"
   },
   "scripts": {
-    "test": "tap test/balances/*.js"
+    "test": "tap test/balances/*.js test/bolt03/*.js"
   },
-  "version": "1.11.3"
+  "version": "1.11.4"
 }

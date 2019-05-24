@@ -1,11 +1,11 @@
 const asyncAuto = require('async/auto');
+const {authenticatedLndGrpc} = require('ln-service');
 const {decodePaymentRequest} = require('ln-service');
 const {getRoutes} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
 const {probe} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const defaultTokens = 10;
 const {now} = Date;
@@ -31,11 +31,11 @@ module.exports = ({node, request}, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Decode payment request

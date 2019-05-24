@@ -1,9 +1,10 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
 const request = require('request');
+const {returnResult} = require('asyncjs-util');
 const {subscribeToChainSpend} = require('ln-service');
 const {take} = require('lodash');
 const {Transaction} = require('bitcoinjs-lib');
@@ -12,7 +13,6 @@ const {channelResolution} = require('./../bolt03');
 const getChannelResolution = require('./get_channel_resolution');
 const {lndCredentials} = require('./../lnd');
 const {resolutionType} = require('./../bolt03');
-const {returnResult} = require('./../async');
 
 const defaultLimit = 20;
 
@@ -50,11 +50,11 @@ module.exports = (args, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Get closed channels

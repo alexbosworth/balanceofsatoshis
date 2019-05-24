@@ -1,11 +1,11 @@
 const asyncAuto = require('async/auto');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getChannels} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
 const {percentile} = require('stats-lite');
+const {returnResult} = require('asyncjs-util');
 
 const balanceFromTokens = require('./balance_from_tokens');
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const {round} = Math;
 const topPercentile = 0.9;
@@ -32,11 +32,11 @@ module.exports = (args, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Get the channels

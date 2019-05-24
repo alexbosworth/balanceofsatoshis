@@ -1,13 +1,13 @@
 const asyncAuto = require('async/auto');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getChainBalance} = require('ln-service');
 const {getChannelBalance} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getPendingChainBalance} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 
 const balanceFromTokens = require('./balance_from_tokens');
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const {max} = Math;
 const noTokens = 0;
@@ -34,11 +34,11 @@ module.exports = (args, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Get the chain balance

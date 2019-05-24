@@ -1,12 +1,12 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
 const request = require('request');
+const {returnResult} = require('asyncjs-util');
 const {setAutopilot} = require('ln-service');
 
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const average = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
 const flatten = arr => [].concat(...arr);
@@ -123,23 +123,13 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
-    // Autopilot RPC lnd
-    autopilotLnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
-        cert: credentials.cert,
-        macaroon: credentials.macaroon,
-        service: 'Autopilot',
-        socket: credentials.socket,
-      }));
-    }],
-
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Get the mirror nodes
@@ -228,19 +218,15 @@ module.exports = (args, cbk) => {
     }],
 
     // Set autopilot
-    setAutopilot: [
-      'autopilotLnd',
-      'candidateNodes',
-      ({autopilotLnd, candidateNodes}, cbk) =>
-    {
+    setAutopilot: ['lnd', 'candidateNodes', ({lnd, candidateNodes}, cbk) => {
       if (!!args.is_dryrun) {
         return cbk();
       }
 
       return setAutopilot({
+        lnd,
         candidateNodes: !candidateNodes.length ? undefined : candidateNodes,
         is_enabled: args.is_enabled,
-        lnd: autopilotLnd,
       },
       cbk);
     }],

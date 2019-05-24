@@ -1,10 +1,10 @@
 const asyncAuto = require('async/auto');
 const asyncTimesSeries = require('async/timesSeries');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const bytesPerKb = 1e3;
 const {ceil} = Math;
@@ -13,6 +13,8 @@ const minFeeRate = 1;
 const start = 2;
 
 /** Get chain fees
+
+  Requires that the lnd is built with walletrpc
 
   {
     [blocks]: <Block Count Number>
@@ -33,12 +35,11 @@ module.exports = ({blocks, node}, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
-        service: 'WalletKit',
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Get the fees

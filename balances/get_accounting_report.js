@@ -1,10 +1,10 @@
 const asyncAuto = require('async/auto');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getAccountingReport} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 
 const categories = require('./accounting_categories');
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const defaultCurrency = 'BTC';
 const defaultFiat = 'USD';
@@ -40,11 +40,11 @@ module.exports = (args, cbk) => {
 
     // Lnd
     lnd: ['credentials', 'validate', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Get accounting info

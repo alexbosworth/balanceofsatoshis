@@ -1,16 +1,16 @@
 const asyncAuto = require('async/auto');
+const {authenticatedLndGrpc} = require('ln-service');
 const {calculatePaths} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
 const {parsePaymentRequest} = require('ln-service');
 const {pay} = require('ln-service');
 const {probe} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 const {routeFromHops} = require('ln-service');
 
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 /** Pay an invoice using only non-public IP node channels
 
@@ -33,11 +33,11 @@ module.exports = ({node, request}, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Decode payment request

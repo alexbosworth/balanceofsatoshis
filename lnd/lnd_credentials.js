@@ -5,9 +5,9 @@ const {readFile} = require('fs');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
 const {flatten} = require('lodash');
+const {returnResult} = require('asyncjs-util');
 
 const lndDirectory = require('./lnd_directory');
-const {returnResult} = require('./../async');
 
 const base64 = 'base64';
 const certPath = ['tls.cert'];

@@ -1,14 +1,14 @@
 const asyncAuto = require('async/auto');
+const {authenticatedLndGrpc} = require('ln-service');
 const {createInvoice} = require('ln-service');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
 const {routeFromChannels} = require('ln-service');
 const {pay} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const {floor} = Math;
 const {isArray} = Array;
@@ -52,7 +52,7 @@ module.exports = ({node, to, tokens}, cbk) => {
     lnd: ['credentials', 'validate', ({credentials}, cbk) => {
       const {cert, macaroon, socket} = credentials;
 
-      return cbk(null, lightningDaemon({cert, macaroon, socket}));
+      return cbk(null, authenticatedLndGrpc({cert, macaroon, socket}).lnd);
     }],
 
     // Get channels

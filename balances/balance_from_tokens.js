@@ -1,3 +1,4 @@
+const {isArray} = Array;
 const noTokens = 0;
 
 /** Get balance from tokens
@@ -15,7 +16,7 @@ const noTokens = 0;
   <Balance Number>
 */
 module.exports = args => {
-  if (!Array.isArray(args.tokens)) {
+  if (!isArray(args.tokens)) {
     throw new Error('ExpectedTokensToCalculateBalance');
   }
 

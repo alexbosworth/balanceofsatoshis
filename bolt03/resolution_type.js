@@ -1,6 +1,8 @@
 const {channelResolution} = require('bolt03');
 const {Transaction} = require('bitcoinjs-lib');
 
+const {fromHex} = Transaction;
+
 /** Resolution type
 
   {
@@ -14,7 +16,7 @@ const {Transaction} = require('bitcoinjs-lib');
   }
 */
 module.exports = ({transaction, vin}) => {
-  const tx = Transaction.fromHex(transaction);
+  const tx = fromHex(transaction);
 
   const witness = tx.ins[vin].witness.map(n => n.toString('hex'));
 

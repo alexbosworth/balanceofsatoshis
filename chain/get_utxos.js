@@ -1,9 +1,9 @@
 const asyncAuto = require('async/auto');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getUtxos} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const noTokens = 0;
 
@@ -37,11 +37,11 @@ module.exports = (args, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Get UTXOs

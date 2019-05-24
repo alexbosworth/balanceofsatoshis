@@ -1,15 +1,15 @@
 const {readFile} = require('fs');
 
 const asyncAuto = require('async/auto');
-const {lightningDaemon} = require('ln-service');
+const {authenticatedLndGrpc} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 const {signMessage} = require('ln-service');
+const {unauthenticatedLndGrpc} = require('ln-service');
 const {unlockWallet} = require('ln-service');
 
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const message = 'message';
-const walletUnlockerService = 'WalletUnlocker';
 
 /** Unlock wallet if locked
 
@@ -30,11 +30,11 @@ module.exports = (args, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Check if locked
@@ -73,9 +73,8 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      const lnd = lightningDaemon({
+      const {lnd} = unauthenticatedLndGrpc({
         cert: credentials.cert,
-        service: walletUnlockerService,
         socket: credentials.socket,
       });
 

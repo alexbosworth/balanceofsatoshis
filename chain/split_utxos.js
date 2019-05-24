@@ -1,12 +1,12 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
+const {authenticatedLndGrpc} = require('ln-service');
 const {createChainAddress} = require('ln-service');
 const {getUtxos} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 const {sendToChainAddresses} = require('ln-service');
 
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const consumedUtxoCount = 1;
 const decBase = 10;
@@ -48,11 +48,11 @@ module.exports = (args, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Get all the current confirmed UTXOs

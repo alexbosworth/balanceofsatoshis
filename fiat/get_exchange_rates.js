@@ -4,8 +4,7 @@ const {readFile} = require('fs');
 
 const asyncAuto = require('async/auto');
 const request = require('request');
-
-const {returnResult} = require('./../async');
+const {returnResult} = require('asyncjs-util');
 
 const apiKeyFile = 'bitcoinaverage_api_key';
 const cents = 100;

@@ -1,16 +1,16 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getForwards} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
-const {lightningDaemon} = require('ln-service');
+const {returnResult} = require('asyncjs-util');
 const {uniq} = require('lodash');
 
 const {lndCredentials} = require('./../lnd');
-const {returnResult} = require('./../async');
 
 const byLastForwardAt = (a, b) => parse(a.last_forward_at) < parse(b.last_forward_at) ? -1 : 1;
 const limit = 99999;
@@ -47,11 +47,11 @@ module.exports = ({days, node}, cbk) => {
 
     // Lnd
     lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, lightningDaemon({
+      return cbk(null, authenticatedLndGrpc({
         cert: credentials.cert,
         macaroon: credentials.macaroon,
         socket: credentials.socket,
-      }));
+      }).lnd);
     }],
 
     // Get channels
