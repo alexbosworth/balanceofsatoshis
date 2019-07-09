@@ -14,6 +14,7 @@
     "bolt03": "1.1.0",
     "caporal": "1.2.0",
     "cbor": "4.1.5",
+    "goldengate": "0.0.1",
     "ln-service": "40.2.0",
     "moment": "2.24.0",
     "request": "2.88.0",
@@ -40,5 +41,5 @@
   "scripts": {
     "test": "tap test/balances/*.js test/bolt03/*.js"
   },
-  "version": "1.11.6"
+  "version": "1.11.7"
 }
