@@ -1,0 +1,18 @@
+{
+  "estimatedSweepVbytes": 153,
+  "feeRateDenominator": 1000000,
+  "fuzzBlocks": 5,
+  "maxCltvExpiration": 2016,
+  "maxExecutionFeeTokens": 100,
+  "maxFeeMultiplier": 1000,
+  "maxFeeRate": 0.01,
+  "maxPathfindingMs": 600000,
+  "maxRouteFailProbability": 1000000,
+  "maxRoutingFeeDenominator": 100,
+  "minCltvDelta": 16,
+  "minConfs": 1,
+  "minSweepConfs": 1,
+  "minutesPerBlock": 10,
+  "requiredBufferBlocks": 36,
+  "sweepProgressLogDelayMs": 2000
+}

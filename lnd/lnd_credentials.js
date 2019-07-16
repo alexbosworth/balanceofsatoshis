@@ -26,7 +26,7 @@ const socket = 'localhost:10009';
     [node]: <Node Name String> // Defaults to default local mainnet node creds
   }
 
-  @returns
+  @returns via cbk or Promise
   {
     cert: <Cert String>
     macaroon: <Macaroon String>
@@ -34,114 +34,116 @@ const socket = 'localhost:10009';
   }
 */
 module.exports = ({node}, cbk) => {
-  return asyncAuto({
-    // Get the default cert
-    getCert: cbk => {
-      if (!!node) {
-        return cbk();
-      }
-
-      return readFile(join(...[path].concat(certPath)), (err, cert) => {
-        if (!!err || !cert) {
-          return cbk([503, 'FailedToGetCertFileData', err]);
+  return new Promise((resolve, reject) => {
+    return asyncAuto({
+      // Get the default cert
+      getCert: cbk => {
+        if (!!node) {
+          return cbk();
         }
 
-        return cbk(null, cert.toString(base64));
-      });
-    },
-
-    // Get the default macaroon
-    getMacaroon: cbk => {
-      if (!!node) {
-        return cbk();
-      }
-
-      const [chains, nets] = defaults;
-
-      const all = chains.map(chain => nets.map(network => ({chain, network})));
-
-      // Find the default macaroon
-      return asyncDetectSeries(flatten(all), ({chain, network}, cbk) => {
-        const macPath = [].concat(pathToMac).concat([chain, network, macName]);
-
-        return readFile(join(...[path].concat(macPath)), (_, macaroon) => {
-          return cbk(null, macaroon);
-        });
-      },
-      (err, macaroon) => {
-        if (!!err || !macaroon) {
-          return cbk([503, 'FailedToGetMacFileData', err]);
-        }
-
-        const {chain, network} = macaroon;
-
-        const macPath = [].concat(pathToMac).concat([chain, network, macName]);
-
-        return readFile(join(...[path].concat(macPath)), (err, macaroon) => {
-          if (!!err) {
-            return cbk([503, 'FailedToGetMacaroonData', err]);
+        return readFile(join(...[path].concat(certPath)), (err, cert) => {
+          if (!!err || !cert) {
+            return cbk([503, 'FailedToGetCertFileData', err]);
           }
 
-          return cbk(null, macaroon.toString(base64));
+          return cbk(null, cert.toString(base64));
         });
-      });
+      },
+
+      // Get the default macaroon
+      getMacaroon: cbk => {
+        if (!!node) {
+          return cbk();
+        }
+
+        const [chains, nets] = defaults;
+
+        const all = chains.map(chain => nets.map(network => ({chain, network})));
+
+        // Find the default macaroon
+        return asyncDetectSeries(flatten(all), ({chain, network}, cbk) => {
+          const macPath = [].concat(pathToMac).concat([chain, network, macName]);
+
+          return readFile(join(...[path].concat(macPath)), (_, macaroon) => {
+            return cbk(null, macaroon);
+          });
+        },
+        (err, macaroon) => {
+          if (!!err || !macaroon) {
+            return cbk([503, 'FailedToGetMacFileData', err]);
+          }
+
+          const {chain, network} = macaroon;
+
+          const macPath = [].concat(pathToMac).concat([chain, network, macName]);
+
+          return readFile(join(...[path].concat(macPath)), (err, macaroon) => {
+            if (!!err) {
+              return cbk([503, 'FailedToGetMacaroonData', err]);
+            }
+
+            return cbk(null, macaroon.toString(base64));
+          });
+        });
+      },
+
+      // Get the node credentials, if applicable
+      getNodeCredentials: cbk => {
+        if (!node) {
+          return cbk();
+        }
+
+        const path = [homedir(), home, node, credsFile];
+
+        return readFile(join(...path), (err, creds) => {
+          if (!!err) {
+            return cbk([503, 'FailedToGetNodeCredentials', err]);
+          }
+
+          try {
+            parse(creds);
+          } catch (err) {
+            return cbk([503, 'FailedToParseNodeCredentials', err]);
+          }
+
+          const {cert, macaroon, socket} = parse(creds);
+
+          if (!cert) {
+            return cbk([503, 'FailedToFindCertInCredentials']);
+          }
+
+          if (!macaroon) {
+            return cbk([503, 'FailedToFindMacaroonInCredentials']);
+          }
+
+          if (!socket) {
+            return cbk([503, 'FailedToFindSocketInCredentials']);
+          }
+
+          return cbk(null, {cert, macaroon, socket});
+        });
+      },
+
+      // Credentials to use
+      credentials: [
+        'getCert',
+        'getMacaroon',
+        'getNodeCredentials',
+        ({getCert, getMacaroon, getNodeCredentials}) =>
+      {
+        // Exit early with the default credentials when no node is specified
+        if (!node) {
+          return cbk(null, {socket, cert: getCert, macaroon: getMacaroon});
+        }
+
+        return cbk(null, {
+          cert: getNodeCredentials.cert,
+          macaroon: getNodeCredentials.macaroon,
+          socket: getNodeCredentials.socket,
+        });
+      }],
     },
-
-    // Get the node credentials, if applicable
-    getNodeCredentials: cbk => {
-      if (!node) {
-        return cbk();
-      }
-
-      const path = [homedir(), home, node, credsFile];
-
-      return readFile(join(...path), (err, creds) => {
-        if (!!err) {
-          return cbk([503, 'FailedToGetNodeCredentials', err]);
-        }
-
-        try {
-          parse(creds);
-        } catch (err) {
-          return cbk([503, 'FailedToParseNodeCredentials', err]);
-        }
-
-        const {cert, macaroon, socket} = parse(creds);
-
-        if (!cert) {
-          return cbk([503, 'FailedToFindCertInCredentials']);
-        }
-
-        if (!macaroon) {
-          return cbk([503, 'FailedToFindMacaroonInCredentials']);
-        }
-
-        if (!socket) {
-          return cbk([503, 'FailedToFindSocketInCredentials']);
-        }
-
-        return cbk(null, {cert, macaroon, socket});
-      });
-    },
-
-    // Credentials to use
-    credentials: [
-      'getCert',
-      'getMacaroon',
-      'getNodeCredentials',
-      ({getCert, getMacaroon, getNodeCredentials}) =>
-    {
-      // Exit early with the default credentials when no node is specified
-      if (!node) {
-        return cbk(null, {socket, cert: getCert, macaroon: getMacaroon});
-      }
-
-      return cbk(null, {
-        cert: getNodeCredentials.cert,
-        macaroon: getNodeCredentials.macaroon,
-        socket: getNodeCredentials.socket,
-      });
-    }],
-  },
-  returnResult({of: 'credentials'}, cbk))
+    returnResult({reject, resolve, of: 'credentials'}, cbk));
+  });
 };

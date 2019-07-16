@@ -1,18 +1,19 @@
 const asyncAuto = require('async/auto');
-const {authenticatedLndGrpc} = require('ln-service');
 const {decodePaymentRequest} = require('ln-service');
-const {getRoutes} = require('ln-service');
-const {probe} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
+const {subscribeToProbe} = require('ln-service');
 
-const {lndCredentials} = require('./../lnd');
+const {authenticatedLnd} = require('./../lnd');
 
 const defaultTokens = 10;
+const {isArray} = Array;
 const {now} = Date;
+const maxProbability = 1e6;
 
 /** Determine if a payment request can be paid by probing it
 
   {
+    logger: <Winston Logger Object>
     [node]: <Node Name String>
     request: <Payment Request String>
   }
@@ -24,72 +25,65 @@ const {now} = Date;
     }
   }
 */
-module.exports = ({node, request}, cbk) => {
+module.exports = ({logger, node, request}, cbk) => {
   return asyncAuto({
-    // Credentials
-    credentials: cbk => lndCredentials({node}, cbk),
-
     // Lnd
-    lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, authenticatedLndGrpc({
-        cert: credentials.cert,
-        macaroon: credentials.macaroon,
-        socket: credentials.socket,
-      }).lnd);
-    }],
+    getLnd: cbk => authenticatedLnd({node}, cbk),
 
     // Decode payment request
-    decodeRequest: ['lnd', ({lnd}, cbk) => {
-      return decodePaymentRequest({lnd, request}, cbk);
+    decodeRequest: ['getLnd', ({getLnd}, cbk) => {
+      return decodePaymentRequest({request, lnd: getLnd.lnd}, cbk);
     }],
-
-    // Find routes to destination
-    findRoutes: ['decodeRequest', 'lnd', ({decodeRequest, lnd}, cbk) => {
-      return getRoutes({
-        lnd,
-        destination: decodeRequest.destination,
-        tokens: decodeRequest.tokens || defaultTokens,
-      },
-      cbk);
-    }],
-
-    // Start timer
-    start: ['findRoutes', ({}, cbk) => cbk(null, now())],
 
     // Probe towards destination
-    checkRequest: [
-      'decodeRequest',
-      'lnd',
-      'findRoutes',
-      ({decodeRequest, findRoutes, lnd}, cbk) =>
-    {
-      const {routes} = findRoutes;
+    probe: ['decodeRequest', 'getLnd', ({decodeRequest, getLnd}, cbk) => {
+      const start = now();
 
-      return probe({lnd, routes, tokens: decodeRequest.tokens}, cbk);
-    }],
+      const attemptedPaths = [];
+      let success;
 
-    // Payable?
-    payable: ['checkRequest', 'start', ({checkRequest, start}, cbk) => {
-      const {successes} = checkRequest;
+      const sub = subscribeToProbe({
+        cltv_delta: decodeRequest.cltv_delta,
+        destination: decodeRequest.destination,
+        ignore_probability_below: maxProbability,
+        lnd: getLnd.lnd,
+        routes: decodeRequest.routes,
+        tokens: decodeRequest.tokens || defaultTokens,
+      });
 
-      if (!Array.isArray(successes)) {
-        return cbk(null, {});
-      }
+      sub.on('end', () => {
+        const latencyMs = now() - start;
 
-      const latencyMs = now() - start;
-      const {route} = checkRequest;
+        if (!success) {
+          return cbk(null, {attempted_paths: attemptedPaths.length});
+        }
 
-      const failed = checkRequest.temporary_failures.map(n => n.channel);
+        return cbk(null, {
+          fee: success.fee,
+          latency_ms: latencyMs,
+          success: success.hops.map(n => n.channel),
+        });
+      });
 
-      if (!route) {
-        return cbk(null, {failure: {failed_forwards: failed}});
-      }
+      sub.on('error', err => logger.error(err));
 
-      const {fee} = route;
-      const hops = route.hops.map(({channel}) => channel);
+      sub.on('routing_failure', failure => {
+        logger.info({
+          failure: failure.reason,
+          hops: failure.route.hops.map(n => n.channel),
+        });
+      });
 
-      return cbk(null, {success: {fee, hops, latency_ms: latencyMs}});
+      sub.on('probe_success', ({route}) => success = route);
+
+      sub.on('probing', ({route}) => {
+        attemptedPaths.push(route);
+
+        return logger.info({attempting: route.hops.map(n => n.channel)});
+      });
+
+      return;
     }],
   },
-  returnResult({of: 'payable'}, cbk));
+  returnResult({of: 'probe'}, cbk));
 };

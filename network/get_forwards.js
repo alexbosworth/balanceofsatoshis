@@ -12,7 +12,7 @@ const {uniq} = require('lodash');
 
 const {lndCredentials} = require('./../lnd');
 
-const byLastForwardAt = (a, b) => parse(a.last_forward_at) < parse(b.last_forward_at) ? -1 : 1;
+const lastTime = times => !times.length ? null : new Date(max(...times));
 const limit = 99999;
 const {max} = Math;
 const {min} = Math;
@@ -20,6 +20,7 @@ const msPerDay = 1000 * 60 * 60 * 24;
 const {now} = Date;
 const numDays = 1;
 const {parse} = Date;
+const tokensAsBigTokens = tokens => (tokens / 1e8).toFixed(8);
 
 /** Get recent forwarding activity
 
@@ -74,6 +75,19 @@ module.exports = ({days, node}, cbk) => {
     // Get pending channels
     getPending: ['lnd', ({lnd}, cbk) => getPendingChannels({lnd}, cbk)],
 
+    // Forwards from peers
+    sendingFromPeers: [
+      'getChannels',
+      'getForwards',
+      ({getChannels, getForwards}, cbk) =>
+    {
+      const forwardingChannels = getChannels.channels.filter(({id}) => {
+        return !!getForwards.forwards.find(n => n.incoming_channel === id);
+      });
+
+      return cbk(null, forwardingChannels.map(n => n.partner_public_key));
+    }],
+
     // Forwards to peers
     sendingToPeers: [
       'getChannels',
@@ -88,8 +102,15 @@ module.exports = ({days, node}, cbk) => {
     }],
 
     // Node metadata
-    nodes: ['lnd', 'sendingToPeers', ({lnd, sendingToPeers}, cbk) => {
-      return asyncMap(uniq(sendingToPeers), (publicKey, cbk) => {
+    nodes: [
+      'lnd',
+      'sendingFromPeers',
+      'sendingToPeers',
+      ({lnd, sendingFromPeers, sendingToPeers}, cbk) =>
+    {
+      const nodes = uniq([].concat(sendingFromPeers).concat(sendingToPeers));
+
+      return asyncMap(nodes, (publicKey, cbk) => {
         return getNode({lnd, public_key: publicKey}, (err, node) => {
           if (!!err) {
             return cbk(err);
@@ -100,8 +121,6 @@ module.exports = ({days, node}, cbk) => {
       },
       cbk);
     }],
-
-    // Closed channels
     closedChans: ['getClosed', 'getHeight', ({getClosed, getHeight}, cbk) => {
       const currentHeight = getHeight.current_block_height;
 
@@ -134,7 +153,12 @@ module.exports = ({days, node}, cbk) => {
           return !!channels.find(({id}) => n.outgoing_channel === id);
         });
 
+        const sources = getForwards.forwards.filter(n => {
+          return !!channels.find(({id}) => n.incoming_channel === id);
+        });
+
         const forwardTimes = forwards.map(n => parse(n.created_at));
+        const inboundTimes = sources.map(n => parse(n.created_at));
 
         const pending = getPending.pending_channels
           .filter(n => n.is_opening)
@@ -148,19 +172,30 @@ module.exports = ({days, node}, cbk) => {
 
         const lastClose = min(...closes.map(n => n.blocks_since_close));
 
+        const lastOut = lastTime(forwardTimes);
+        const lastIn = lastTime(inboundTimes);
+
         return {
           alias: node.alias,
           blocks_since_last_close: !closes.length ? undefined : lastClose,
-          forward_fees: forwards.reduce((sum, n) => sum + n.fee, 0),
-          last_forward_at: new Date(max(...forwardTimes)).toISOString(),
-          outbound_liquidity: local,
+          earned_inbound_fees: sources.reduce((sum, n) => sum + n.fee, 0),
+          earned_outbound_fees: forwards.reduce((sum, n) => sum + n.fee, 0),
+          last_inbound_at: !lastIn ? undefined : lastIn.toISOString(),
+          last_outbound_at: !lastOut ? undefined : lastOut.toISOString(),
+          liquidity_inbound: tokensAsBigTokens(remote),
+          liquidity_outbound: tokensAsBigTokens(local),
           public_key: node.public_key,
         };
       });
 
-      peers.sort(byLastForwardAt);
+      peers.sort((a, b) => {
+        const [lastA] = [a.last_outbound_at, a.last_inbound_at].sort();
+        const [lastB] = [b.last_outbound_at, b.last_inbound_at].sort();
 
-      return cbk(null, peers);
+        return lastA < lastB ? -1 : 1;
+      });
+
+      return cbk(null, {peers});
     }],
   },
   returnResult({of: 'forwards'}, cbk));

@@ -8,6 +8,7 @@ const border = getBorderCharacters('norc');
 /** Return an object result to a logger in a promise
 
   {
+    [exit]: <Final Exit Function>
     [file]: <Write Result to JSON At Path String>
     logger: {
       info: <Info Function>
@@ -20,7 +21,7 @@ const border = getBorderCharacters('norc');
   @returns
   <Standard Callback Function> (err, res) => {}
 */
-module.exports = ({file, logger, reject, resolve, table}) => {
+module.exports = ({exit, file, logger, reject, resolve, table}) => {
   return (err, res) => {
     if (!!err) {
       logger.error(err);
@@ -49,6 +50,10 @@ module.exports = ({file, logger, reject, resolve, table}) => {
       logger.info(`${res}`);
     } else {
       logger.info(res);
+    }
+
+    if (!!exit) {
+      exit();
     }
 
     return resolve();

@@ -225,7 +225,7 @@ module.exports = (args, cbk) => {
 
       return setAutopilot({
         lnd,
-        candidateNodes: !candidateNodes.length ? undefined : candidateNodes,
+        candidate_nodes: !candidateNodes.length ? undefined : candidateNodes,
         is_enabled: args.is_enabled,
       },
       cbk);

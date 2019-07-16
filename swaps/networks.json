@@ -1,0 +1,18 @@
+{
+  "chains": {
+    "btc": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+    "btcregtest": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+    "btctestnet": "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943",
+    "ltcmainnet": "12a765e31ffd4059bada1e25190f6e98c99d9714d334efa41a195a7e7e04bfe2",
+    "ltcregtest": "530827f38f93b43ed12af0b3ad25a288dc02ed74d6d7857862df51fc56c416f9",
+    "ltctestnet": "4966625a4b2851d9fdee139e56211a0d88575f59ed816ff5e6a63deb4e3e29a0"
+  },
+  "currencySymbols": {
+    "btc": "BTC",
+    "btctestnet": "tBTC"
+  },
+  "swappable": {
+    "btc": true,
+    "btctestnet": true
+  }
+}

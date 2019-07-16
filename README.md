@@ -54,9 +54,6 @@ bos forwards
 // Send a gift of some tokens to a directly connected peer
 bos gift "pubkey" "amount"
 
-// Attempt to pay a payment request using only hidden ip or Tor node hops
-bos hiddenpay "paymentrequest"
-
 // Output the sum total of remote channel liquidity
 bos inbound-liquidity
 
@@ -119,6 +116,21 @@ To run commands on nodes specified this way, you need to suffix commands with
 their name, ex:
  
 ```shell
-bos balance YOUR_NODE_NAME
-bos forwards YOUR_NODE_NAME
+bos balance --node=SAVED_NODE_NAME
+bos forwards --node=SAVED_NODE_NAME
+```
+
+## Docker Usage
+
+Potentially this can be used with Docker with a simple docker file
+
+```
+FROM node:latest
+RUN npm install balanceofsatoshis
+ENTRYPOINT [ "/node_modules/balanceofsatoshis/bos" ]
+```
+
+```
+    #! /usr/bin/env bash
+    docker run -it --rm -v=$HOME/.bos:/root/.bos bos:latest ${@:1}
 ```
