@@ -2,6 +2,7 @@
 const {exit} = process;
 
 const prog = require('caporal');
+const {rateProviders} = require('ln-accounting');
 
 const {accountingCategories} = require('./balances');
 const {findRecord} = require('./lnd');
@@ -32,8 +33,10 @@ prog
   .command('accounting', 'Get an accounting rundown')
   .argument('<category>', 'Report category', Object.keys(accountingCategories))
   .help(`Categories: ${Object.keys(accountingCategories).join(', ')}`)
+  .help(`Rate providers: ${rateProviders.join(', ')}`)
   .option('--csv', 'Output a CSV')
   .option('--node <node_name>', 'Get details from named node')
+  .option('--rate_provider <rate_provider>', 'Rate provider', rateProviders)
   .action((args, options, logger) => {
     const table = !!options.csv ? null : 'rows';
 
@@ -42,6 +45,7 @@ prog
         category: args.category,
         is_csv: !!options.csv,
         node: options.node,
+        rate_provider: options.rateProvider,
       },
       returnObject({logger, reject, resolve, table}));
     });

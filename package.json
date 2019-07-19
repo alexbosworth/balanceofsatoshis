@@ -8,22 +8,23 @@
   },
   "dependencies": {
     "async": "3.1.0",
-    "asyncjs-util": "1.1.0",
+    "asyncjs-util": "1.1.1",
     "bitcoin-ops": "1.4.1",
-    "bitcoinjs-lib": "5.0.5",
-    "bolt03": "1.1.0",
-    "bolt07": "1.4.1",
+    "bitcoinjs-lib": "5.1.1",
+    "bolt03": "1.1.2",
+    "bolt07": "1.4.2",
     "caporal": "1.2.0",
-    "goldengate": "1.0.0",
-    "ln-service": "40.4.2",
+    "goldengate": "1.0.3",
+    "ln-accounting": "3.0.1",
+    "ln-service": "40.4.4",
     "moment": "2.24.0",
     "request": "2.88.0",
     "stats-lite": "2.2.0",
-    "table": "5.4.1"
+    "table": "5.4.4"
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
-    "tap": "14.4.1"
+    "tap": "14.4.2"
   },
   "keywords": [
     "cli",
@@ -41,5 +42,5 @@
   "scripts": {
     "test": "tap test/balances/*.js test/bolt03/*.js"
   },
-  "version": "2.0.0"
+  "version": "2.0.1"
 }

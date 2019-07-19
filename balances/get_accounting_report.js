@@ -1,6 +1,6 @@
 const asyncAuto = require('async/auto');
 const {authenticatedLndGrpc} = require('ln-service');
-const {getAccountingReport} = require('ln-service');
+const {getAccountingReport} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
 
 const categories = require('./accounting_categories');
@@ -17,6 +17,7 @@ const defaultFiat = 'USD';
     [fiat]: <Fiat Type String>
     [is_csv]: <Return CSV Output Bool>
     [node]: <Node Name String>
+    [rate_provider]: <Rate Provider String>
   }
 
   @returns via cbk
@@ -54,6 +55,7 @@ module.exports = (args, cbk) => {
         category: categories[args.category],
         currency: args.currency || defaultCurrency,
         fiat: args.fiat || defaultFiat,
+        rate_provider: args.rate_provider || undefined,
       },
       cbk);
     }],

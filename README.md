@@ -48,6 +48,9 @@ bos closed
 // Create a utxo fan-out with on-chain funds
 bos fanout "amount" "count"
 
+// Query the node to find something like a payment, channel or node
+bos find "query"
+
 // Output a summarized version of peers forwarded towards
 bos forwards
 
@@ -56,6 +59,9 @@ bos gift "pubkey" "amount"
 
 // Output the sum total of remote channel liquidity
 bos inbound-liquidity
+
+// Increase inbound liquidity to the node
+bos increase-inbound-liquidity
 
 // Outputs the sum total of local channel liquidity
 bos outbound-liquidity
