@@ -25,6 +25,7 @@ const noTokens = 0;
   @returns via cbk
   {
     balance: <Tokens Number>
+    channel_balance: <Channel Balance Minus Commit Fees Tokens Number>
   }
 */
 module.exports = (args, cbk) => {
@@ -80,7 +81,10 @@ module.exports = (args, cbk) => {
           tokens: balances,
         });
 
-        return cbk(null, {balance});
+        return cbk(null, {
+          balance,
+          channel_balance: getChannelBalance.channel_balance-futureCommitFees,
+        });
       } catch (err) {
         return cbk([500, 'FailedToCalculateBalanceTotal', err]);
       }

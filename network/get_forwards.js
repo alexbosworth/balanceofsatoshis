@@ -34,9 +34,12 @@ const tokensAsBigTokens = tokens => (tokens / 1e8).toFixed(8);
     peers: [{
       alias: <Peer Alias String>
       [blocks_since_last_close]: <Blocks Since Last Closed Channel Number>
-      forward_fees: <Forward Fees Number>
-      last_forward_at: <Last Forward At ISO 8601 Date String>
-      outbound_liquidity: <Outbound Liquidity Tokens Number>
+      earned_inbound_fees: <Earned Inbound Fee Tokens Number>
+      earned_outbound_fees: <Earned Outbound Fee Tokens Number>
+      last_inbound_at: <Last Inbound Forward At ISO 8601 Date String>
+      last_outbound_at: <Last Forward At ISO 8601 Date String>
+      liquidity_inbound: <Inbound LIquidity Big Tokens String>
+      outbound_liquidity: <Outbound Liquidity Big Tokens String>
       public_key: <Public Key String>
     }]
   }

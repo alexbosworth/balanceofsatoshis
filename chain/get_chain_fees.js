@@ -1,14 +1,15 @@
 const asyncAuto = require('async/auto');
 const asyncTimesSeries = require('async/timesSeries');
-const {authenticatedLndGrpc} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
+const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const {lndCredentials} = require('./../lnd');
+const {authenticatedLnd} = require('./../lnd');
 
 const bytesPerKb = 1e3;
 const {ceil} = Math;
 const defaultBlockCount = 144;
+const iteration = 1;
 const minFeeRate = 1;
 const start = 2;
 
@@ -23,6 +24,7 @@ const start = 2;
 
   @returns via cbk
   {
+    current_block_hash: <Chain Tip Best Block Hash Hex String>
     fee_by_block_target: {
       $number: <Kvbyte Fee Rate Number>
     }
@@ -30,30 +32,29 @@ const start = 2;
 */
 module.exports = ({blocks, node}, cbk) => {
   return asyncAuto({
-    // Credentials
-    credentials: cbk => lndCredentials({node}, cbk),
+    // Authenticated lnd
+    getLnd: cbk => authenticatedLnd({node}, cbk),
 
-    // Lnd
-    lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, authenticatedLndGrpc({
-        cert: credentials.cert,
-        macaroon: credentials.macaroon,
-        socket: credentials.socket,
-      }).lnd);
+    // Get wallet info
+    getInfo: ['getLnd', ({getLnd}, cbk) => {
+      return getWalletInfo({lnd: getLnd.lnd}, cbk);
     }],
 
     // Get the fees
-    getFees: ['lnd', ({lnd}, cbk) => {
-      return asyncTimesSeries((blocks || defaultBlockCount) - 1, (i, cbk) => {
+    getFees: ['getLnd', ({getLnd}, cbk) => {
+      const blockCount = blocks || defaultBlockCount;
+
+      return asyncTimesSeries(blockCount - iteration, (i, cbk) => {
         return getChainFeeRate({
-          lnd,
           confirmation_target: start + i,
+          lnd: getLnd.lnd,
         },
         (err, res) => {
           if (!!err) {
             return cbk(err);
           }
 
+          // Exit with error when there is an invalid fee rate response
           if (!res.tokens_per_vbyte || res.tokens_per_vbyte < minFeeRate) {
             return cbk([503, 'UnexpectedChainFeeRateInGetFeesResponse']);
           }
@@ -65,7 +66,7 @@ module.exports = ({blocks, node}, cbk) => {
     }],
 
     // Collapse chain fees into steps
-    chainFees: ['getFees', ({getFees}, cbk) => {
+    chainFees: ['getFees', 'getInfo', ({getFees, getInfo}, cbk) => {
       let cursor = {};
       const feeByBlockTarget = {};
 
@@ -81,7 +82,10 @@ module.exports = ({blocks, node}, cbk) => {
           return feeByBlockTarget[fee.target+''] = ceil(fee.rate * bytesPerKb);
         });
 
-      return cbk(null, {fee_by_block_target: feeByBlockTarget});
+      return cbk(null, {
+        current_block_hash: getInfo.current_block_hash,
+        fee_by_block_target: feeByBlockTarget,
+      });
     }],
   },
   returnResult({of :'chainFees'}, cbk));

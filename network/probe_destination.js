@@ -47,6 +47,7 @@ module.exports = ({logger, node, request}, cbk) => {
         destination: decodeRequest.destination,
         ignore_probability_below: maxProbability,
         lnd: getLnd.lnd,
+        path_timeout_ms: 1000 * 60 * 3,
         routes: decodeRequest.routes,
         tokens: decodeRequest.tokens || defaultTokens,
       });

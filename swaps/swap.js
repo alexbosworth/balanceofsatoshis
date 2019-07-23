@@ -32,8 +32,8 @@ const {swapAddress} = require('goldengate');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {authenticatedLnd} = require('./../lnd');
-const {chains} = require('./networks');
-const {currencySymbols} = require('./networks');
+const {chains} = require('./../network/networks');
+const {currencySymbols} = require('./../network/networks');
 const {estimatedSweepVbytes} = require('./constants');
 const {feeRateDenominator} = require('./constants');
 const {fuzzBlocks} = require('./constants');
@@ -49,7 +49,7 @@ const {minConfs} = require('./constants');
 const {minSweepConfs} = require('./constants');
 const {minutesPerBlock} = require('./constants');
 const {requiredBufferBlocks} = require('./constants');
-const {swappable} = require('./networks');
+const {swappable} = require('./../network/networks');
 const {sweepProgressLogDelayMs} = require('./constants');
 
 const {floor} = Math;

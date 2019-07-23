@@ -72,6 +72,9 @@ bos price
 // Output the results of testing if a payment request can be paid
 bos probe "paymentrequest"
 
+// Get a general report of the node activity
+bos report
+
 // Unlock the wallet if it is locked
 bos unlock "path_to_password_file"
 

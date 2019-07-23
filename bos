@@ -13,6 +13,7 @@ const {getChannelCloses} = require('./chain');
 const {getExchangeRates} = require('./fiat');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
+const {getReport} = require('./wallets');
 const {getUtxos} = require('./chain');
 const {probeDestination} = require('./network');
 const {returnNumber} = require('./responses');
@@ -288,6 +289,28 @@ prog
         request: args.request,
       },
       returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // See a general report about the node
+  .command('report', 'Report about the node')
+  .option('--node <node_name>', 'Node to get report for')
+  .option('--styled', 'Add unicode styling to report')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getReport({
+        node: options.node,
+        style: !!options.styled ? 'styled' : undefined,
+      },
+      (err, res) => {
+        if (!!err) {
+          return reject(err);
+        }
+
+        logger.info(res);
+
+        return resolve()
+      });
     });
   })
 
