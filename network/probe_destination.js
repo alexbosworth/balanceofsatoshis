@@ -8,7 +8,6 @@ const {authenticatedLnd} = require('./../lnd');
 const defaultTokens = 10;
 const {isArray} = Array;
 const {now} = Date;
-const maxProbability = 1e6;
 
 /** Determine if a payment request can be paid by probing it
 
@@ -45,7 +44,6 @@ module.exports = ({logger, node, request}, cbk) => {
       const sub = subscribeToProbe({
         cltv_delta: decodeRequest.cltv_delta,
         destination: decodeRequest.destination,
-        ignore_probability_below: maxProbability,
         lnd: getLnd.lnd,
         path_timeout_ms: 1000 * 60 * 3,
         routes: decodeRequest.routes,

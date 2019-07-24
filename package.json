@@ -17,7 +17,7 @@
     "goldengate": "1.0.3",
     "html2unicode": "1.1.1",
     "ln-accounting": "3.0.1",
-    "ln-service": "41.0.0",
+    "ln-service": "41.0.1",
     "moment": "2.24.0",
     "request": "2.88.0",
     "stats-lite": "2.2.0",
@@ -43,5 +43,5 @@
   "scripts": {
     "test": "tap test/balances/*.js test/bolt03/*.js"
   },
-  "version": "2.0.4"
+  "version": "2.0.5"
 }
