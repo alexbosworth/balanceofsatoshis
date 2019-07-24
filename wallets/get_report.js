@@ -86,7 +86,13 @@ module.exports = ({node, style}, cbk) => {
         lnd: getLnd.lnd,
         confirmation_target: defaultConfTarget,
       },
-      cbk);
+      (err, res) => {
+        if (!!err) {
+          return cbk();
+        }
+
+        return cbk(null, res);
+      });
     }],
 
     // Get network graph
@@ -177,13 +183,14 @@ module.exports = ({node, style}, cbk) => {
           subtitle: `${lightningFunds}%`,
           title: 'Funds on Lightning',
         },
-        {
+      ];
+
+      if (!!getChainFee) {
+        report.push({
           subtitle: `${getChainFee.tokens_per_vbyte} sat/vbyte`,
           title: 'Confirmation Fee:',
-        },
-        {},
-        {title: 'Recent Activity:'},
-      ];
+        });
+      }
 
       getChannels.channels.slice().reverse()
         .filter(({id}) => {
@@ -379,6 +386,11 @@ module.exports = ({node, style}, cbk) => {
 
         return activity.push({elements, date: last});
       });
+
+      if (!!activity.length) {
+        report.push({});
+        report.push({title: 'Recent Activity:'});
+      }
 
       activity.sort((a, b) => a.date > b.date ? -1 : 1);
 
