@@ -13,7 +13,7 @@
     "bitcoinjs-lib": "5.1.1",
     "bolt03": "1.1.2",
     "bolt07": "1.4.2",
-    "caporal": "1.2.0",
+    "caporal": "https://github.com/alexbosworth/caporal.js#83eb5fb86ebf6567e9b972e95ecc28b3f4834d1a",
     "goldengate": "1.0.3",
     "html2unicode": "1.1.1",
     "ln-accounting": "3.0.1",
@@ -43,5 +43,5 @@
   "scripts": {
     "test": "tap test/balances/*.js test/bolt03/*.js"
   },
-  "version": "2.0.2"
+  "version": "2.0.3"
 }

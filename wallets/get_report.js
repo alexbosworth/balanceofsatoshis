@@ -56,7 +56,13 @@ module.exports = ({node, style}, cbk) => {
 
     // Get autopilot status
     getAutopilot: ['getLnd', ({getLnd}, cbk) => {
-      return getAutopilot({lnd: getLnd.lnd}, cbk);
+      return getAutopilot({lnd: getLnd.lnd}, (err, res) => {
+        if (!!err) {
+          return cbk(null, {});
+        }
+
+        return cbk(null, res);
+      });
     }],
 
     // Get backups
