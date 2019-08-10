@@ -3,16 +3,12 @@ const asyncMapSeries = require('async/mapSeries');
 const {authenticatedLndGrpc} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
-const request = require('request');
 const {returnResult} = require('asyncjs-util');
-const {subscribeToChainSpend} = require('ln-service');
 const {take} = require('lodash');
-const {Transaction} = require('bitcoinjs-lib');
 
-const {channelResolution} = require('./../bolt03');
+const {authenticatedLnd} = require('./../lnd');
 const getChannelResolution = require('./get_channel_resolution');
-const {lndCredentials} = require('./../lnd');
-const {resolutionType} = require('./../bolt03');
+const {getNetwork} = require('./../network');
 
 const defaultLimit = 20;
 
@@ -45,17 +41,11 @@ const defaultLimit = 20;
 */
 module.exports = (args, cbk) => {
   return asyncAuto({
-    // Credentials
-    credentials: cbk => lndCredentials({node: args.node}, cbk),
+    // Get lnd
+    getLnd: cbk => authenticatedLnd({node: args.node}, cbk),
 
     // Lnd
-    lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, authenticatedLndGrpc({
-        cert: credentials.cert,
-        macaroon: credentials.macaroon,
-        socket: credentials.socket,
-      }).lnd);
-    }],
+    lnd: ['getLnd', ({getLnd}, cbk) => cbk(null, getLnd.lnd)],
 
     // Get closed channels
     getClosed: ['lnd', ({lnd}, cbk) => getClosedChannels({lnd}, cbk)],
@@ -63,12 +53,15 @@ module.exports = (args, cbk) => {
     // Get the current height
     getHeight: ['lnd', ({lnd}, cbk) => getWalletInfo({lnd}, cbk)],
 
+    // Get the network
+    getNetwork: ['lnd', ({lnd}, cbk) => getNetwork({lnd}, cbk)],
+
     // Get spends
     getSpends: [
-      'credentials',
       'getClosed',
       'getHeight',
-      ({credentials, getClosed, getHeight}, cbk) =>
+      'getNetwork',
+      ({getClosed, getHeight, getNetwork}, cbk) =>
     {
       const closedChannels = getClosed.channels
         .reverse()
@@ -80,6 +73,7 @@ module.exports = (args, cbk) => {
         return getChannelResolution({
           close_transaction_id: channel.close_transaction_id,
           is_cooperative_close: channel.is_cooperative_close,
+          network: getNetwork.network,
         },
         (err, res) => {
           if (!!err) {

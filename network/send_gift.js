@@ -13,8 +13,8 @@ const {lndCredentials} = require('./../lnd');
 const {floor} = Math;
 const {isArray} = Array;
 const minFeeRate = 0;
-const minReceivableMtokens = 1000n;
-const mtokPerTok = 1000n;
+const minReceivableMtokens = BigInt(1000);
+const mtokPerTok = BigInt(1000);
 const reserveRatio = 0.01;
 
 /** Send a gift of some tokens to a peer.

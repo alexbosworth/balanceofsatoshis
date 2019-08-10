@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const {exit} = process;
+const {writeFile} = require('fs');
 
 const prog = require('caporal');
 const {rateProviders} = require('ln-accounting');
@@ -13,31 +13,39 @@ const {getChannelCloses} = require('./chain');
 const {getExchangeRates} = require('./fiat');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
+const {getPeers} = require('./network');
 const {getReport} = require('./wallets');
 const {getUtxos} = require('./chain');
 const {probeDestination} = require('./network');
 const {returnNumber} = require('./responses');
 const {returnObject} = require('./responses');
+const {returnOutput} = require('./responses');
 const {sendGift} = require('./network');
 const {setAutopilot} = require('./network');
 const {splitUtxos} = require('./chain');
-const {swap} = require('./swaps');
+const {swapIn} = require('./swaps');
+const {swapOut} = require('./swaps');
 const {unlockWallet} = require('./wallets');
 const {version} = require('./package');
 
+const {exit} = process;
 const flatten = arr => [].concat(...arr);
+const {INT} = prog;
+const {isArray} = Array;
+const {keys} = Object;
+const {REPEATABLE} = prog;
 
 prog
   .version(version)
 
   // Get accounting information
   .command('accounting', 'Get an accounting rundown')
-  .argument('<category>', 'Report category', Object.keys(accountingCategories))
-  .help(`Categories: ${Object.keys(accountingCategories).join(', ')}`)
+  .argument('<category>', 'Report category', keys(accountingCategories))
+  .help(`Categories: ${keys(accountingCategories).join(', ')}`)
   .help(`Rate providers: ${rateProviders.join(', ')}`)
   .option('--csv', 'Output a CSV')
   .option('--node <node_name>', 'Get details from named node')
-  .option('--rate_provider <rate_provider>', 'Rate provider', rateProviders)
+  .option('--rate-provider <rate_provider>', 'Rate provider', rateProviders)
   .action((args, options, logger) => {
     const table = !!options.csv ? null : 'rows';
 
@@ -58,9 +66,9 @@ prog
   .help('Autopilot status is either on or off')
   .help('Mirroring and urls require lnd --autopilot.heuristic=externalscore:1')
   .option('--dryrun', 'Show scoring without changing autopilot settings')
-  .option('--mirror <pubkey>', 'Mirror channels of node', prog.REPEATABLE)
+  .option('--mirror <pubkey>', 'Mirror channels of node', REPEATABLE)
   .option('--node <node_name>', 'Set autopilot on named node')
-  .option('--url <url>', 'Follow nodes from a scoring URL', prog.REPEATABLE)
+  .option('--url <url>', 'Follow nodes from a scoring URL', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return setAutopilot({
@@ -77,8 +85,8 @@ prog
   // Get local balance information
   .command('balance', 'Get total tokens')
   .help('Sums balances on-chain, in channels, and pending, minus commit fees')
-  .option('--above <tokens>', 'Return tokens above watermark', prog.INT)
-  .option('--below <tokens>', 'Return tokens below watermark', prog.INT)
+  .option('--above <tokens>', 'Return tokens above watermark', INT)
+  .option('--below <tokens>', 'Return tokens below watermark', INT)
   .option('--node <node_name>', 'Node to get balance for')
   .option('--offchain', 'List only off-chain tokens')
   .option('--onchain', 'List only on-chain tokens')
@@ -95,6 +103,29 @@ prog
     });
   })
 
+  // Create on-chain submarine swap
+  .command('chain-receive', 'Receive funds on-chain via submarine swap')
+  .argument('[amount]', 'Amount to receive', INT, 1e6)
+  .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
+  .option('--node <node_name>', 'Node to receive funds on')
+  .option('--recovery <refund_recovery>', 'Attempt refund of swap')
+  .option('--refund-address <refund_address>', 'Refund address for swap')
+  .option('--test-refund', 'Reduce refund timeout height to test refund')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return swapIn({
+        logger,
+        is_refund_test: options.testRefund,
+        max_fee: options.maxFee,
+        node: options.node,
+        recovery: options.recovery,
+        refund_address: options.refundAddress,
+        tokens: args.amount,
+      },
+      returnObject({exit, logger, reject, resolve}));
+    });
+  })
+
   // Get the current chain fee rates
   .command('chainfees', 'Get the current chain fee estimates')
   .help('Lookup chain fee estimates at various confirm targets')
@@ -107,14 +138,20 @@ prog
         blocks: options.blocks,
         node: options.node,
       },
-      returnObject({logger, reject, resolve, file: options.file}))
+      returnObject({
+        logger,
+        reject,
+        resolve,
+        file: options.file,
+        write: writeFile,
+      }));
     });
   })
 
   // Determine the outcomes of channel closings
   .command('closed', 'Get the status of a channel closings')
   .help('Channel closes with chain-transaction derived resolution details')
-  .option('--limit [limit]', 'Limit of closings to get', prog.INT, 20)
+  .option('--limit [limit]', 'Limit of closings to get', INT, 20)
   .option('--node <node_name>', 'Get channel closes from saved node')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -128,12 +165,12 @@ prog
 
   // Fan out utxos
   .command('fanout', 'Fan out utxos')
-  .argument('<size>', 'UTXO minimum size', prog.INT)
-  .argument('<count>', 'Desired number of total utxos', prog.INT)
+  .argument('<size>', 'UTXO minimum size', INT)
+  .argument('<count>', 'Desired number of total utxos', INT)
   .help('Make a bunch of utxos by making a tx with a bunch of outputs')
   .option('--confirmed', 'Only consider confirmed existing utxos')
   .option('--dryrun', 'Execute a fan-out dry run')
-  .option('--feerate <feerate>', 'Feerate in per vbyte rate', prog.INT)
+  .option('--feerate <feerate>', 'Feerate in per vbyte rate', INT)
   .option('--node <node_name>', 'Node to do fan out for')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -167,7 +204,7 @@ prog
   // Get forwards
   .command('forwards', 'Get forwards')
   .help('Peers where routing has taken place from inbound and outbound sides')
-  .option('--days <days>', 'Number of past days to evaluate', prog.INT)
+  .option('--days <days>', 'Number of past days to evaluate', INT)
   .option('--node <node_name>', 'Node to get forwards for')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -183,7 +220,7 @@ prog
   .command('gift', 'Give a direct peer some free funds off-chain')
   .help('Send some funds to a connected peer')
   .argument('<target>', 'Peer to give funds to')
-  .argument('<amount>', 'Tokens to give', prog.INT)
+  .argument('<amount>', 'Tokens to give', INT)
   .option('--node <node_name>', 'Source node to use to pay gift')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -198,17 +235,19 @@ prog
 
   // Get inbound liquidity information: available inbound off-chain tokens
   .command('inbound-liquidity', 'Get inbound liquidity size')
-  .option('--above <tokens>', 'Return amount above watermark', prog.INT)
-  .option('--below <tokens>', 'Return amount above watermark', prog.INT)
+  .option('--above <tokens>', 'Return amount above watermark', INT)
+  .option('--below <tokens>', 'Return amount above watermark', INT)
   .option('--node <node_name>', 'Node to get inbound liquidity')
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
+  .option('--with', 'Liquidity with a specific node')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getLiquidity({
         above: options.above || undefined,
         below: options.below || undefined,
         is_top: options.top || undefined,
-        node: options.node,
+        node: options.node || undefined,
+        with: options.with || undefined,
       },
       returnNumber({logger, reject, resolve, number: 'balance'}));
     });
@@ -216,22 +255,25 @@ prog
 
   // Increase inbound liquidity
   .command('increase-inbound-liquidity', 'Increase node inbound liquidity')
+  .help('Spend down a channel to get inbound. Fee is an estimate, may be more')
   .option('--address <out_address>', 'Out chain address to send funds out to')
-  .option('--amount <amount>', 'Amount to increase liquidity', prog.INT, 5e5)
-  .option('--confs <confs>', 'Confs to consider reorg safe', prog.INT, 1)
+  .option('--amount <amount>', 'Amount to increase liquidity', INT, 5e5)
+  .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
   .option('--dryrun', 'Only show cost estimate for increase')
-  .option('--max-hours <max_hours>', 'Maximum hours to wait', prog.INT, 24)
+  .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 3000)
+  .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 24)
   .option('--node <node_name>', 'Increase inbound liquidity on saved node')
   .option('--recovery <recovery>', 'Recover in-progress swap')
   .option('--show-raw-recovery', 'Show raw recovery transactions')
   .option('--with <peer>', 'Public key of peer to increase liquidity from')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
-      return swap({
+      return swapOut({
         logger,
         confs: options.confs,
         is_raw_recovery_shown: options.showRawRecovery || undefined,
         is_dry_run: options.dryrun || false,
+        max_fee: options.maxFee,
         max_wait_blocks: Math.ceil((options.maxHours) * 60 / 10),
         node: options.node || undefined,
         out_address: options.address || undefined,
@@ -246,10 +288,11 @@ prog
 
   // Get outbound liquidity information: available outbound off-chain tokens
   .command('outbound-liquidity', 'Get outbound liquidity size')
-  .option('--above <tokens>', 'Return amount above watermark', prog.INT)
-  .option('--below <tokens>', 'Return amount above watermark', prog.INT)
+  .option('--above <tokens>', 'Return amount above watermark', INT)
+  .option('--below <tokens>', 'Return amount above watermark', INT)
   .option('--node <node_name>', 'Node to get outbound liquidity amount')
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
+  .option('--with', 'Liquidity with a specific node')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getLiquidity({
@@ -257,9 +300,48 @@ prog
         below: options.below || undefined,
         is_outbound: true,
         is_top: options.top || undefined,
-        node: options.node,
+        node: options.node || undefined,
+        with: options.with || undefined,
       },
       returnNumber({logger, reject, resolve, number: 'balance'}));
+    });
+  })
+
+  // Pay a payment request, probing first
+  .command('pay', 'Pay a payment request, probing first')
+  .argument('<request>', 'Payment Request')
+  .option('--max-fee <max_fee>', 'Maximum fee to pay', INT, 1337)
+  .option('--node <node_name>', 'Node to use to pay payment request')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return probeDestination({
+        logger,
+        is_real_payment: true,
+        max_fee: options.maxFee,
+        node: options.node,
+        request: args.request,
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Get a list of channel-connected peers
+  .command('peers', 'Get a list of channel-connected peers')
+  .option('--active', 'Only active peer channels')
+  .option('--inbound-below <amount>', 'Inbound liquidity below amount')
+  .option('--node <node_name>', 'Node to get peers for')
+  .option('--outbound-below <amount>', 'Outbound liquidity below amount', INT)
+  .option('--public', 'Only peers with public channels')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getPeers({
+        inbound_liquidity_below: options.inboundBelow,
+        is_active: !!options.active,
+        is_public: !!options.public,
+        node: options.node,
+        outbound_liquidity_below: options.outboundBelow,
+      },
+      returnObject({logger, reject, resolve}));
     });
   })
 
@@ -272,7 +354,13 @@ prog
       return getExchangeRates({
         symbols: args.symbols.map(n => n.toUpperCase()),
       },
-      returnObject({logger, reject, resolve, file: options.file}))
+      returnObject({
+        logger,
+        reject,
+        resolve,
+        file: options.file,
+        write: writeFile,
+      }));
     });
   })
 
@@ -302,15 +390,7 @@ prog
         node: options.node,
         style: !!options.styled ? 'styled' : undefined,
       },
-      (err, res) => {
-        if (!!err) {
-          return reject(err);
-        }
-
-        logger.info(res);
-
-        return resolve()
-      });
+      returnOutput({logger, reject, resolve}));
     });
   })
 
@@ -333,7 +413,7 @@ prog
   .command('utxos', 'Get a list of utxos')
   .option('--confirmed', 'Return only confirmed utxos')
   .option('--count', 'Return the count of utxos')
-  .option('--count_below <below>', 'Return only count below number', prog.INT)
+  .option('--count-below <below>', 'Return only count below number', INT)
   .option('--node <node_name>', 'Node to get utxos for')
   .option('--size', 'Utxos of size greater than or equal to specified amount')
   .action((args, options, logger) => {

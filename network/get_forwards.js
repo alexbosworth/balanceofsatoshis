@@ -124,6 +124,7 @@ module.exports = ({days, node}, cbk) => {
       },
       cbk);
     }],
+
     closedChans: ['getClosed', 'getHeight', ({getClosed, getHeight}, cbk) => {
       const currentHeight = getHeight.current_block_height;
 

@@ -18,6 +18,7 @@ const topPercentile = 0.9;
     [is_outbound]: <Return Outbound Liquidity Bool>
     [is_top]: <Return Top Liquidity Bool>
     [node]: <Node Name String>
+    [with]: <Liquidity With Specific Node Public Key Hex String>
   }
 
   @returns via cbk
@@ -44,7 +45,9 @@ module.exports = (args, cbk) => {
 
     // List of tokens to sum
     tokens: ['getChannels', ({getChannels}, cbk) => {
-      const activeChannels = getChannels.channels.filter(n => !!n.is_active);
+      const activeChannels = getChannels.channels
+        .filter(n => !!n.is_active)
+        .filter(n => !args.with || n.partner_public_key === args.with);
 
       const balanceType = !!args.is_outbound ? 'local' : 'remote';
 

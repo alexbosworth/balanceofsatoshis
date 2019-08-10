@@ -1,3 +1,4 @@
-const swap = require('./swap');
+const swapIn = require('./swap_in');
+const swapOut = require('./swap_out');
 
-module.exports = {swap};
+module.exports = {swapIn, swapOut};

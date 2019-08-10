@@ -1,14 +1,15 @@
 const {createHash} = require('crypto');
 
+const {addressForScript} = require('goldengate');
 const asyncAuto = require('async/auto');
 const asyncTimesSeries = require('async/timesSeries');
 const {attemptSweep} = require('goldengate');
 const {checkQuote} = require('goldengate');
 const {checkSwapTiming} = require('goldengate');
 const {createChainAddress} = require('ln-service');
-const {createSwap} = require('goldengate');
-const {decodeLightningLabsRecovery} = require('goldengate');
-const {encodeLightningLabsRecovery} = require('goldengate');
+const {createSwapOut} = require('goldengate');
+const {decodeSwapRecovery} = require('goldengate');
+const {encodeSwapRecovery} = require('goldengate');
 const {decodePaymentRequest} = require('ln-service');
 const {findDeposit} = require('goldengate');
 const {getChainFeeRate} = require('ln-service');
@@ -16,7 +17,7 @@ const {getChannels} = require('ln-service');
 const {getHeight} = require('goldengate');
 const {getNode} = require('ln-service');
 const {getPayment} = require('ln-service');
-const {getSwapQuote} = require('goldengate');
+const {getSwapOutQuote} = require('goldengate');
 const {getWalletInfo} = require('ln-service');
 const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
@@ -28,7 +29,6 @@ const {subscribeToBlocks} = require('ln-service');
 const {subscribeToPastPayment} = require('ln-service');
 const {subscribeToPayViaRequest} = require('ln-service');
 const {subscribeToProbe} = require('ln-service');
-const {swapAddress} = require('goldengate');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {authenticatedLnd} = require('./../lnd');
@@ -52,11 +52,12 @@ const {requiredBufferBlocks} = require('./constants');
 const {swappable} = require('./../network/networks');
 const {sweepProgressLogDelayMs} = require('./constants');
 
+const {ceil} = Math;
 const {floor} = Math;
 const {keys} = Object;
 const {max} = Math;
 const {min} = Math;
-const mtokPerTok = 1000n;
+const mtokPerTok = BigInt(1000);
 const numberFromBig = big => parseInt(big.toString(), 10);
 const reversedBytes = hex => Buffer.from(hex, 'hex').reverse().toString('hex');
 const {round} = Math;
@@ -67,10 +68,10 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 
   {
     confs: <Confirmations to Wait for Deposit Number>
-    [continuation]: <Continue Swap With Continuation Hex String>
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
     [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
     logger: <Winston Logger Object>
+    [max_fee]: <Maximum Fee Tokens Number>
     [max_wait_blocks]: <Maximum Wait Blocks Number>
     [node]: <Node Name String>
     [out_address]: <Out Address String>
@@ -91,7 +92,7 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      return decodeLightningLabsRecovery({recovery: args.recovery}, cbk);
+      return decodeSwapRecovery({recovery: args.recovery}, cbk);
     },
 
     // Check arguments
@@ -228,13 +229,28 @@ module.exports = (args, cbk) => {
       }
     }],
 
+    // Recover address
+    recoverAddress: ['network', 'recover', ({network, recover}, cbk) => {
+      if (!args.recovery) {
+        return cbk();
+      }
+
+      try {
+        const {address} = addressForScript({network, script: recover.script});
+
+        return cbk(null, address);
+      } catch (err) {
+        return cbk([400, 'FailedToDeriveSwapAddress', {err}]);
+      }
+    }],
+
     // Get the quote for swaps
     getQuote: ['service', ({service}, cbk) => {
       if (!!args.recovery) {
         return cbk();
       }
 
-      return getSwapQuote({service}, cbk);
+      return getSwapOutQuote({service}, cbk);
     }],
 
     // Check quote
@@ -274,8 +290,8 @@ module.exports = (args, cbk) => {
       args.logger.info({
         estimated_time: {
           start_at: moment().calendar(),
-          earliest_completion: fastestSwapTime.calendar(),
-          forfeit_funds_deadline_at: swapTimeout.calendar(),
+          earliest_completion: fastestSwapTime.fromNow(),
+          forfeit_funds_deadline_at: swapTimeout.fromNow(),
         },
       });
 
@@ -287,13 +303,14 @@ module.exports = (args, cbk) => {
       'checkQuote',
       'network',
       'recover',
+      'recoverAddress',
       'service',
-      ({network, recover, service}, cbk) =>
+      ({network, recover, recoverAddress, service}, cbk) =>
     {
       if (!!args.recovery) {
         return cbk(null, {
-          address: swapAddress({network, script: recover.script}).address,
-          private_key: recover.private_key,
+          address: recoverAddress,
+          private_key: recover.claim_private_key,
           script: recover.script,
           secret: recover.secret,
           start_height: recover.start_height,
@@ -303,7 +320,7 @@ module.exports = (args, cbk) => {
 
       const tokens = args.tokens;
 
-      return createSwap({network, service, tokens}, cbk);
+      return createSwapOut({network, service, tokens}, cbk);
     }],
 
     // Decode swap execution request
@@ -344,10 +361,10 @@ module.exports = (args, cbk) => {
       }
 
       try {
-        const {recovery} = encodeLightningLabsRecovery({
+        const {recovery} = encodeSwapRecovery({
+          claim_private_key: initiateSwap.private_key,
           execution_id: decodeExecutionRequest.id,
-          private_key: initiateSwap.private_key,
-          script: initiateSwap.script,
+          refund_public_key: initiateSwap.service_public_key,
           secret: initiateSwap.secret,
           start_height: getHeight,
           sweep_address: createAddress.address,
@@ -607,7 +624,11 @@ module.exports = (args, cbk) => {
 
         const sweepFee = res.tokens_per_vbyte * estimatedSweepVbytes;
 
-        const allFees = getQuote.base_fee + bipFee + sweepFee + routingFees;
+        const allFees = ceil(getQuote.base_fee+bipFee+sweepFee+routingFees);
+
+        if (!!args.max_fee && allFees > args.max_fee) {
+          return cbk([400, 'MaxFeeTooLowToExecuteSwap', {needed: allFees}]);
+        }
 
         args.logger.info({
           inbound_liquidity_increase: increase,
@@ -764,7 +785,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        args.logger.info({swap_deposit_confirming: res.transaction_id});
+        args.logger.info({swap_tx_confirming: res.transaction_id});
 
         return cbk();
       });
@@ -855,7 +876,7 @@ module.exports = (args, cbk) => {
     {
       return cbk(null, {
         private_key: initiateSwap.private_key,
-        redeem: initiateSwap.script,
+        script: initiateSwap.script,
         secret: initiateSwap.secret,
         timeout: initiateSwap.timeout,
         transaction_id: findDeposit.transaction_id,
@@ -906,12 +927,12 @@ module.exports = (args, cbk) => {
           max_fee_multiplier: maxFeeMultiplier,
           min_fee_rate: minFeeRate,
           private_key: claim.private_key,
-          redeem_script: claim.redeem,
           secret: claim.secret,
           start_height: initiateSwap.start_height || getHeight,
           sweep_address: createAddress.address,
           transaction_id: claim.transaction_id,
           transaction_vout: claim.transaction_vout,
+          witness_script: claim.script,
         },
         (err, res) => {
           if (!!err) {
@@ -959,6 +980,8 @@ module.exports = (args, cbk) => {
         return cbk([503, 'FailedToReceiveSwapFundingConfirmationInTime']);
       }
 
+      args.logger.info({swap_deposit_confirmed: claim.transaction_id});
+
       const blocksSubscription = subscribeToBlocks({lnd: getLnd.lnd});
       const tokens = !recover ? args.tokens : recover.tokens;
 
@@ -977,12 +1000,12 @@ module.exports = (args, cbk) => {
           lnd: getLnd.lnd,
           max_fee_multiplier: maxFeeMultiplier,
           private_key: claim.private_key,
-          redeem_script: claim.redeem,
           secret: claim.secret,
           start_height: getHeight,
           sweep_address: createAddress.address,
           transaction_id: claim.transaction_id,
           transaction_vout: claim.transaction_vout,
+          witness_script: claim.script,
         },
         (err, res) => {
           return setTimeout(() => {

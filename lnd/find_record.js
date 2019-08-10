@@ -3,10 +3,12 @@ const {chanFormat} = require('bolt07');
 const {getChannel} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
 const {getPayment} = require('ln-service');
+const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const authenticatedLnd = require('./authenticated_lnd');
 
+const asBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const standardIdHexLength = Buffer.alloc(32).toString('hex').length;
 
 /** Get record
@@ -46,13 +48,33 @@ module.exports = ({node, query}, cbk) => {
 
     // Records
     records: ['getGraph', 'getPayment', ({getGraph, getPayment}, cbk) => {
-      const nodes = getGraph.nodes.filter(node => {
-        if (node.alias.toLowerCase().includes(query.toLowerCase())) {
-          return true;
-        }
+      const nodes = getGraph.nodes
+        .filter(node => {
+          if (node.alias.toLowerCase().includes(query.toLowerCase())) {
+            return true;
+          }
 
-        return node.public_key === query;e
-      });
+          return node.public_key === query;
+        })
+        .map(node => {
+          return {
+            alias: node.alias,
+            capacity: asBigUnit(getGraph.channels.reduce(
+              (sum, {capacity, policies}) => {
+                if (!policies.find(n => n.public_key === node.public_key)) {
+                  return sum;
+                }
+
+                return sum + capacity;
+              },
+              0
+            )),
+            public_key: node.public_key,
+            updated: moment(node.updated_at).fromNow(),
+            urls: node.sockets.map(socket => `${node.public_key}@${socket}`),
+          }
+        })
+        .filter(node => node.capacity !== asBigUnit(0));
 
       const channels = getGraph.channels
         .filter(channel => {

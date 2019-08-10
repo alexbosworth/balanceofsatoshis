@@ -1,10 +1,11 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
 const request = require('request');
+const {resolutionType} = require('bolt03');
 const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
 
-const {resolutionType} = require('./../bolt03');
+const {endpoints} = require('./blockstream');
 
 const closeSpendsDelayMs = 1000;
 const getTxDelayMs = 2000;
@@ -14,6 +15,7 @@ const getTxDelayMs = 2000;
   {
     close_transaction_id: <Close Transaction Id String>
     [is_cooperative_close]: <Channel Is Cooperatively Closed Bool>
+    network: <Network Name String>
   }
 
   @returns via cbk
@@ -32,6 +34,10 @@ module.exports = (args, cbk) => {
         return cbk([400, 'ExpectedCloseTransactionIdToGetChanResolution']);
       }
 
+      if (!args.network) {
+        return cbk([400, 'ExpectedNodeNetworkNameToGetChannelResolution']);
+      }
+
       return cbk();
     },
 
@@ -44,7 +50,7 @@ module.exports = (args, cbk) => {
       const id = args.close_transaction_id;
 
       return request({
-        url: `https://blockstream.info/api/tx/${id}/hex`
+        url: `${endpoints[args.network]}tx/${id}/hex`
       },
       (err, r, txHex) => {
         if (!!err) {
@@ -73,7 +79,7 @@ module.exports = (args, cbk) => {
 
       return request({
         json: true,
-        url: `https://blockstream.info/api/tx/${closeTxId}/outspends`,
+        url: `${endpoints[args.network]}tx/${closeTxId}/outspends`,
       },
       (err, r, outspends) => {
         if (!!err) {
@@ -124,7 +130,7 @@ module.exports = (args, cbk) => {
         }
 
         return request({
-          url: `https://blockstream.info/api/tx/${txid}/hex`
+          url: `${endpoints[args.network]}tx/${txid}/hex`
         },
         (err, r, txHex) => {
           if (!!err) {

@@ -29,56 +29,68 @@ bos help commandName
 ### Example Commands
 
 ```shell
-// See an accounting formatted list of various types of transactions
+# See an accounting formatted list of various types of transactions
 bos accounting "category"
 
-// Set autopilot on or off. With heuristic externalscore, set guided autopilot
+# Set autopilot on or off. With heuristic externalscore, set guided autopilot
 bos autopilot "on"
 
-// See total balance, including pending funds, excluding future commit fees
+# See total balance, including pending funds, excluding future commit fees
 bos balance
-// 1337
+# 1337
 
-// See the current fee estimates for various confirmation targets
+# See the current fee estimates confirmation targets
 bos chainfees
 
-// See details on how closed channels resolved on-chain
+# Receive funds via swap on-chain
+bos chain-receive "amount"
+
+# See details on how closed channels resolved on-chain
 bos closed
 
-// Create a utxo fan-out with on-chain funds
+# Create a utxo fan-out with on-chain funds
 bos fanout "amount" "count"
 
-// Query the node to find something like a payment, channel or node
+# Query the node to find something like a payment, channel or node
 bos find "query"
 
-// Output a summarized version of peers forwarded towards
+# Output a summarized version of peers forwarded towards
 bos forwards
 
-// Send a gift of some tokens to a directly connected peer
+# Send a gift of some tokens to a directly connected peer
 bos gift "pubkey" "amount"
 
-// Output the sum total of remote channel liquidity
+# See help about a command
+bos help "command"
+
+# Output the sum total of remote channel liquidity
 bos inbound-liquidity
 
-// Increase inbound liquidity to the node
+# Increase inbound liquidity to the node
 bos increase-inbound-liquidity
 
-// Outputs the sum total of local channel liquidity
+# Outputs the sum total of local channel liquidity
 bos outbound-liquidity
 
-// Output the price of BTC
+# Pay a payment request, probing first
+bos pay "payment_request"
+
+# Show channel-connected peers
+bos peers
+
+# Output the price of BTC
 bos price
 
-// Output the results of testing if a payment request can be paid
-bos probe "paymentrequest"
+# Output the results of testing if a payment request can be paid
+bos probe "payment_request"
 
-// Get a general report of the node activity
+# Get a general report of the node activity
 bos report
 
-// Unlock the wallet if it is locked
+# Unlock the wallet if it is locked
 bos unlock "path_to_password_file"
 
-// Show unspent coin outputs
+# Show unspent coin outputs
 bos utxos
 ```
 
@@ -127,6 +139,24 @@ their name, ex:
 ```shell
 bos balance --node=SAVED_NODE_NAME
 bos forwards --node=SAVED_NODE_NAME
+```
+
+## Linux Fu
+
+Some commands are designed to return outputs that can be piped or used in other CLI programs.
+
+### Summarize Numbers
+
+```shell
+expr $(bos balance --node=savedNode1) + $(bos balance --node=savedNode1)
+# outputs the combined balance of both nodes
+```
+
+### Send Alerts
+
+```shell
+bos inbound-liquidity --below=1000000 | sendnotification SNS "AWS_SNS_ID" "WARNING inbound-liquidity deficit: %s sats" --nonzero --subject="Low inbound liquidity warning: node1"
+# sends email if the inbound liquidity drops below a 1,000,000 sats
 ```
 
 ## Docker Usage

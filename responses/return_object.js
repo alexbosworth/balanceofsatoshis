@@ -7,6 +7,8 @@ const border = getBorderCharacters('norc');
 
 /** Return an object result to a logger in a promise
 
+  A write method is required if file is passed
+
   {
     [exit]: <Final Exit Function>
     [file]: <Write Result to JSON At Path String>
@@ -16,21 +18,22 @@ const border = getBorderCharacters('norc');
     reject: <Reject Function>
     resolve: <Resolve Function>
     [table]: <Show as Table From Result Attribute String>
+    [write]: (path, data, (err) => {})
   }
 
   @returns
   <Standard Callback Function> (err, res) => {}
 */
-module.exports = ({exit, file, logger, reject, resolve, table}) => {
+module.exports = ({exit, file, logger, reject, resolve, table, write}) => {
   return (err, res) => {
     if (!!err) {
-      logger.error(err);
+      logger.error({err});
 
       return reject();
     }
 
     if (!!file) {
-      return writeJsonFile({file, json: res}, err => {
+      return writeJsonFile({file, write, json: res}, err => {
         if (!!err) {
           return reject(err);
         }
