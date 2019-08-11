@@ -684,9 +684,14 @@ module.exports = (args, cbk) => {
 
       args.logger.info({paying_funding_request: decodeFundingRequest.id});
 
+      const maxFee = min(
+        round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),
+        args.max_fee || Infinity
+      );
+
       return payViaPaymentRequest({
         lnd: getLnd.lnd,
-        max_fee: round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),
+        max_fee: maxFee,
         outgoing_channel: channel.id,
         pathfinding_timeout: maxPathfindingMs,
         request: initiateSwap.swap_fund_request,

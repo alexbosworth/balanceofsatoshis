@@ -1,5 +1,9 @@
 # Versions
 
+## Version 3.1.0
+
+- `market`: added to show market price history
+
 ## Version 3.0.0
 
 - `chain-receive`: added to create address to receive on-chain funds via submarine swap

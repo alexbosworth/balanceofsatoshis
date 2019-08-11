@@ -69,6 +69,9 @@ bos inbound-liquidity
 # Increase inbound liquidity to the node
 bos increase-inbound-liquidity
 
+# See market price history
+bos market
+
 # Outputs the sum total of local channel liquidity
 bos outbound-liquidity
 

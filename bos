@@ -5,6 +5,7 @@ const prog = require('caporal');
 const {rateProviders} = require('ln-accounting');
 
 const {accountingCategories} = require('./balances');
+const {exchanges} = require('./fiat');
 const {findRecord} = require('./lnd');
 const {getAccountingReport} = require('./balances');
 const {getBalance} = require('./balances');
@@ -14,9 +15,12 @@ const {getExchangeRates} = require('./fiat');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
 const {getPeers} = require('./network');
+const {getPriceChart} = require('./fiat');
 const {getReport} = require('./wallets');
 const {getUtxos} = require('./chain');
+const marketPairs = require('./fiat').pairs;
 const {probeDestination} = require('./network');
+const {returnChart} = require('./responses');
 const {returnNumber} = require('./responses');
 const {returnObject} = require('./responses');
 const {returnOutput} = require('./responses');
@@ -361,6 +365,27 @@ prog
         file: options.file,
         write: writeFile,
       }));
+    });
+  })
+
+  // Get the history of prices
+  .command('market', 'Get the history of prices on a market')
+  .help('A chart of historic prices. Note: SuredBits price history has a fee!')
+  .help(`Pairs: ${Array.from(new Set(marketPairs.map(n => n.toUpperCase())))}`)
+  .help(`Markets: ${Array.from(new Set(exchanges.map(n => n.toLowerCase())))}`)
+  .argument('[pair]', 'Market pair', marketPairs, 'BTCUSD')
+  .argument('[exchange]', 'Exchange', exchanges, 'kraken')
+  .option('--max-fee <max_fee>', 'Maximum amount to pay for data', INT, 5)
+  .option('--node <node_name>', 'Node to use to pay for price data')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getPriceChart({
+        exchange: args.exchange.toLowerCase(),
+        fee: options.maxFee,
+        node: options.node,
+        pair: args.pair.toLowerCase(),
+      },
+      returnChart({logger, reject, resolve, data: 'prices'}));
     });
   })
 

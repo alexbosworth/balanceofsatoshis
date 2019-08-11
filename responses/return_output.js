@@ -11,7 +11,7 @@
   @returns
   <Standard Callback Function> (err, res) => {}
 */
-module.exports = ({logger, number, reject, resolve}) => {
+module.exports = ({logger, reject, resolve}) => {
   return (err, res) => {
     if (!!err) {
       return reject(err);
