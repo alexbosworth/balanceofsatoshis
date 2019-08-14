@@ -29,6 +29,9 @@
   "devDependencies": {
     "tap": "14.6.1"
   },
+  "engines": {
+    "node": ">=10.4.0"
+  },
   "keywords": [
     "cli",
     "lightning",
