@@ -4,6 +4,8 @@ Commands for working with lnd balances.
 
 ## Install 
 
+Requires Node v10.4.0+
+
 ```shell
 npm install -g balanceofsatoshis
 ```
