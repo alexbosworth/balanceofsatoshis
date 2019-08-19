@@ -1,6 +1,10 @@
 const asyncAuto = require('async/auto');
+const asyncMapSeries = require('async/mapSeries');
 const {decodePaymentRequest} = require('ln-service');
+const {getChannels} = require('ln-service');
+const {getNode} = require('ln-service');
 const {getRoutes} = require('ln-service');
+const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToProbe} = require('ln-service');
@@ -9,16 +13,21 @@ const {authenticatedLnd} = require('./../lnd');
 
 const defaultTokens = 10;
 const {isArray} = Array;
+const maxCltvDelta = 144 * 30;
 const {now} = Date;
 
-/** Determine if a payment request can be paid by probing it
+/** Determine if a destination can be paid by probing it
 
   {
+    [destination]: <Destination Public Key Hex String>
+    [in_through]: <Pay In Through Public Key Hex String>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [node]: <Node Name String>
+    [out_through]: <Out through peer with Public Key Hex String>
     request: <Payment Request String>
+    [tokens]: <Tokens Number>
   }
 
   @returns via cbk
@@ -33,8 +42,17 @@ module.exports = (args, cbk) => {
     // Lnd
     getLnd: cbk => authenticatedLnd({node: args.node}, cbk),
 
-    // Decode payment request
-    decodeRequest: ['getLnd', ({getLnd}, cbk) => {
+    // Get height
+    getHeight: ['getLnd', ({getLnd}, cbk) => {
+      return getWalletInfo({lnd: getLnd.lnd}, cbk);
+    }],
+
+    // Destination to pay
+    to: ['getLnd', ({getLnd}, cbk) => {
+      if (!!args.destination) {
+        return cbk(null, {destination: args.destination, routes: []});
+      }
+
       return decodePaymentRequest({
         lnd: getLnd.lnd,
         request: args.request,
@@ -42,15 +60,113 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
-    // Check that there is a potential path
-    checkPath: ['decodeRequest', 'getLnd', ({decodeRequest, getLnd}, cbk) => {
-      return getRoutes({
-        destination: decodeRequest.destination,
-        fee: args.max_fee,
-        is_adjusted_for_past_failures: true,
+    // Get channels to determine an outgoing channel id restriction
+    getChannels: ['getLnd', ({getLnd}, cbk) => {
+      // Exit early when there is no need to add an outgoing channel id
+      if (!args.out_through) {
+        return cbk();
+      }
+
+      return getChannels({is_active: true, lnd: getLnd.lnd}, cbk);
+    }],
+
+    // Get inbound path if an inbound restriction is specified
+    getInboundPath: ['getLnd', 'to', ({getLnd, to}, cbk) => {
+      if (!args.in_through) {
+        return cbk();
+      }
+
+      const inThrough = args.in_through;
+
+      return getNode({
         lnd: getLnd.lnd,
-        timeout: decodeRequest.cltv_delta,
-        tokens: decodeRequest.tokens || defaultTokens,
+        public_key: to.destination,
+      },
+      (err, res) => {
+        if (!!err) {
+          return cbk(err);
+        }
+
+        const connectingChannels = (res.channels || [])
+          .filter(n => !!n.policies.find(n => n.public_key === inThrough));
+
+        if (!connectingChannels.length) {
+          return cbk([400, 'NoConnectingChannelToPayIn']);
+        }
+
+        const [channel] = connectingChannels
+          .filter(n => n.capacity > args.tokens || to.tokens || defaultTokens);
+
+        if (!channel) {
+          return cbk([400, 'NoSufficientCapacityConnectingChannelToPayIn']);
+        }
+
+        const policy = channel.policies.find(n => n.public_key !== inThrough);
+
+        const path = [
+          {
+            public_key: inThrough,
+          },
+          {
+            base_fee_mtokens: policy.base_fee_mtokens,
+            channel: channel.id,
+            channel_capacity: channel.capacity,
+            cltv_delta: policy.cltv_delta,
+            fee_rate: policy.fee_rate,
+            public_key: to.destination,
+          },
+        ];
+
+        return cbk(null, [path]);
+      });
+    }],
+
+    // Outgoing channel id
+    outgoingChannelId: ['getChannels', 'to', ({getChannels, to}, cbk) => {
+      if (!getChannels) {
+        return cbk();
+      }
+
+      const {channels} = getChannels;
+      const outPeer = args.out_through;
+      const tokens = args.tokens || to.tokens || defaultTokens;
+
+      const withPeer = channels.filter(n => n.partner_public_key == outPeer);
+
+      if (!withPeer.length) {
+        return cbk([404, 'NoActiveChannelWithChosenPeer']);
+      }
+
+      const withBalance = withPeer
+        .filter(n => tokens < n.local_balance - (n.local_reserve || 0));
+
+      if (!withBalance.length) {
+        return cbk([404, 'NoChannelWithSufficientBalance']);
+      }
+
+      const [channel] = withBalance
+        .sort((a, b) => a.local_balance < b.local_balance ? -1 : 1);
+
+      return cbk(null, channel.id);
+    }],
+
+    // Check that there is a potential path
+    checkPath: [
+      'getInboundPath',
+      'getLnd',
+      'outgoingChannelId',
+      'to',
+      ({getInboundPath, getLnd, outgoingChannelId, to}, cbk) =>
+    {
+      return getRoutes({
+        cltv_delta: to.cltv_delta,
+        destination: to.destination,
+        is_adjusted_for_past_failures: true,
+        is_strict_hints: !!getInboundPath,
+        lnd: getLnd.lnd,
+        outgoing_channel: outgoingChannelId,
+        routes: getInboundPath || to.routes,
+        tokens: args.tokens || to.tokens || defaultTokens,
       },
       (err, res) => {
         if (!!err) {
@@ -66,19 +182,28 @@ module.exports = (args, cbk) => {
     }],
 
     // Probe towards destination
-    probe: ['decodeRequest', 'getLnd', ({decodeRequest, getLnd}, cbk) => {
-      const start = now();
-
+    probe: [
+      'getHeight',
+      'getInboundPath',
+      'getLnd',
+      'outgoingChannelId',
+      'to',
+      ({getHeight, getInboundPath, getLnd, outgoingChannelId, to}, cbk) =>
+    {
       const attemptedPaths = [];
       let success;
+      const start = now();
 
       const sub = subscribeToProbe({
-        cltv_delta: decodeRequest.cltv_delta,
-        destination: decodeRequest.destination,
+        cltv_delta: to.cltv_delta,
+        destination: to.destination,
+        is_strict_hints: !!getInboundPath,
         lnd: getLnd.lnd,
+        max_timeout_height: getHeight.current_block_height + maxCltvDelta,
+        outgoing_channel: outgoingChannelId,
         path_timeout_ms: 1000 * 30,
-        routes: decodeRequest.routes,
-        tokens: decodeRequest.tokens || defaultTokens,
+        routes: getInboundPath || to.routes,
+        tokens: args.tokens || to.tokens || defaultTokens,
       });
 
       sub.on('end', () => {
@@ -88,13 +213,17 @@ module.exports = (args, cbk) => {
           return cbk(null, {attempted_paths: attemptedPaths.length});
         }
 
+        if (!!args.max_fee && success.fee > args.max_fee) {
+          return cbk([400, 'MaxFeeLimitTooLow', {needed_fee: success.fee}]);
+        }
+
         return cbk(null, {latency_ms: latencyMs, route: success});
       });
 
       sub.on('error', err => args.logger.error(err));
 
       sub.on('routing_failure', failure => {
-        args.logger.info({
+        return args.logger.info({
           failure: `${failure.reason} at ${failure.public_key}`,
         });
       });
@@ -104,8 +233,23 @@ module.exports = (args, cbk) => {
       sub.on('probing', ({route}) => {
         attemptedPaths.push(route);
 
-        return args.logger.info({
-          checking: route.hops.map(n => `${n.channel} ${n.public_key}`)
+        return asyncMapSeries(route.hops, (hop, cbk) => {
+          return getNode({
+            lnd: getLnd.lnd,
+            public_key: hop.public_key,
+          },
+          (err, node) => {
+            const alias = (!!err || !node || !node.alias) ? '' : node.alias;
+
+            return cbk(null, `${hop.channel} ${alias} ${hop.public_key}`);
+          });
+        },
+        (err, checking) => {
+          if (!!err) {
+            return args.logger.error(err);
+          }
+
+          return args.logger.info({checking});
         });
       });
 
@@ -113,12 +257,7 @@ module.exports = (args, cbk) => {
     }],
 
     // If there is a successful route, pay it
-    pay: [
-      'decodeRequest',
-      'getLnd',
-      'probe',
-      ({decodeRequest, getLnd, probe}, cbk) =>
-    {
+    pay: ['getLnd', 'probe', 'to', ({getLnd, probe, to}, cbk) => {
       if (!args.is_real_payment) {
         return cbk();
       }
@@ -132,7 +271,7 @@ module.exports = (args, cbk) => {
       }
 
       return payViaRoutes({
-        id: decodeRequest.id,
+        id: to.id,
         lnd: getLnd.lnd,
         routes: [probe.route],
       },
@@ -151,6 +290,7 @@ module.exports = (args, cbk) => {
         latency_ms: !route ? undefined : probe.latency_ms,
         paid: !pay ? undefined : pay.tokens,
         preimage: !pay ? undefined : pay.secret,
+        probed: !!pay ? undefined : route.tokens,
         success: !route ? undefined : route.hops.map(({channel}) => channel),
       });
     }],

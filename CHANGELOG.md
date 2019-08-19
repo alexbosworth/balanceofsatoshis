@@ -1,5 +1,12 @@
 # Versions
 
+## Version 3.2.0
+
+- `chainfees` fix issue where a bad response from the rate provider would not be detected
+- `pay`: added --in and --out to specify in and out routing peers for payments
+- `probe`: added --in and --out to specify in and out routing peers for probe
+- `probe`: changed arguments to allow probing a public key and amount in addition to a payreq
+
 ## Version 3.1.0
 
 - `market`: added to show market price history

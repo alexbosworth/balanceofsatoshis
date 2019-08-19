@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const {decodePaymentRequest} = require('ln-service');
+const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
 const {payViaPaymentRequest} = require('ln-service');
 const request = require('request');
@@ -15,6 +16,7 @@ const base64ToHex = base64 => Buffer.from(base64, 'base64').toString('hex');
 const daysCount = 80;
 const defaultMaxFee = 5;
 const {isArray} = Array;
+const maxCltvDelta = 144 * 30;
 const {parse} = JSON;
 const pathfindingTimeoutMs = 1000 * 60 * 5;
 const titleCase = str => `${str.charAt(0).toUpperCase()}${str.slice(1)}`;
@@ -114,12 +116,18 @@ module.exports = ({exchange, fee, node, pair}, cbk) => {
         cbk);
       }],
 
+      // Get height
+      getHeight: ['decodedRequest', 'getLnd', ({getLnd}, cbk) => {
+        return getWalletInfo({lnd: getLnd.lnd}, cbk);
+      }],
+
       // Purchase preimage needed to decrypt price data
       payInvoice: [
         'decodedRequest',
+        'getHeight',
         'getLnd',
         'getPrices',
-        ({decodedRequest, getLnd, getPrices}, cbk) =>
+        ({decodedRequest, getHeight, getLnd, getPrices}, cbk) =>
       {
         const {tokens} = decodedRequest.tokens;
 
@@ -131,6 +139,7 @@ module.exports = ({exchange, fee, node, pair}, cbk) => {
         return payViaPaymentRequest({
           lnd: getLnd.lnd,
           max_fee: (fee || defaultMaxFee) - tokens,
+          max_timeout_height: getHeight.current_block_height + maxCltvDelta,
           pathfinding_timeout: pathfindingTimeoutMs,
           request: getPrices.request,
         },

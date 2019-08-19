@@ -311,18 +311,43 @@ prog
     });
   })
 
+  // Get the history of prices
+  .command('market', 'Get the history of prices on a market')
+  .help('A chart of historic prices. Note: SuredBits price history has a fee!')
+  .help(`Pairs: ${Array.from(new Set(marketPairs.map(n => n.toUpperCase())))}`)
+  .help(`Markets: ${Array.from(new Set(exchanges.map(n => n.toLowerCase())))}`)
+  .argument('[pair]', 'Market pair', marketPairs, 'BTCUSD')
+  .argument('[exchange]', 'Exchange', exchanges, 'kraken')
+  .option('--max-fee <max_fee>', 'Maximum amount to pay for data', INT, 5)
+  .option('--node <node_name>', 'Node to use to pay for price data')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getPriceChart({
+        exchange: args.exchange.toLowerCase(),
+        fee: options.maxFee,
+        node: options.node,
+        pair: args.pair.toLowerCase(),
+      },
+      returnChart({logger, reject, resolve, data: 'prices'}));
+    });
+  })
+
   // Pay a payment request, probing first
   .command('pay', 'Pay a payment request, probing first')
   .argument('<request>', 'Payment Request')
+  .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT, 1337)
   .option('--node <node_name>', 'Node to use to pay payment request')
+  .option('--out <public_key>', 'Make first hop through specific peer')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return probeDestination({
         logger,
+        in_through: options.in,
         is_real_payment: true,
         max_fee: options.maxFee,
         node: options.node,
+        out_through: options.out,
         request: args.request,
       },
       returnObject({logger, reject, resolve}));
@@ -368,38 +393,24 @@ prog
     });
   })
 
-  // Get the history of prices
-  .command('market', 'Get the history of prices on a market')
-  .help('A chart of historic prices. Note: SuredBits price history has a fee!')
-  .help(`Pairs: ${Array.from(new Set(marketPairs.map(n => n.toUpperCase())))}`)
-  .help(`Markets: ${Array.from(new Set(exchanges.map(n => n.toLowerCase())))}`)
-  .argument('[pair]', 'Market pair', marketPairs, 'BTCUSD')
-  .argument('[exchange]', 'Exchange', exchanges, 'kraken')
-  .option('--max-fee <max_fee>', 'Maximum amount to pay for data', INT, 5)
-  .option('--node <node_name>', 'Node to use to pay for price data')
-  .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getPriceChart({
-        exchange: args.exchange.toLowerCase(),
-        fee: options.maxFee,
-        node: options.node,
-        pair: args.pair.toLowerCase(),
-      },
-      returnChart({logger, reject, resolve, data: 'prices'}));
-    });
-  })
-
   // Determine if a payment request is sendable
   .command('probe', 'Check if a payment request is sendable')
   .help('Simulate paying a payment request without actually paying it')
-  .argument('<request>', 'Payment Request')
+  .argument('<to>', 'Payment request or node public key')
+  .argument('[amount]', 'Amount to probe, default: request amount', INT)
+  .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--node <node_name>', 'Node to use for payment request check')
+  .option('--out <public_key>', 'Make first hop through specific peer')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return probeDestination({
         logger,
-        node: options.node,
-        request: args.request,
+        destination: args.to.length === 66 ? args.to : undefined,
+        in_through: options.in || undefined,
+        node: options.node || undefined,
+        out_through: options.out || undefined,
+        request: args.to.length !== 66 ? args.to : undefined,
+        tokens: args.amount || undefined,
       },
       returnObject({logger, reject, resolve}));
     });

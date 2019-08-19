@@ -56,6 +56,7 @@ const {ceil} = Math;
 const {floor} = Math;
 const {keys} = Object;
 const {max} = Math;
+const maxCltvDelta = 144 * 30;
 const {min} = Math;
 const mtokPerTok = BigInt(1000);
 const numberFromBig = big => parseInt(big.toString(), 10);
@@ -484,7 +485,8 @@ module.exports = (args, cbk) => {
       'currency',
       'decodeFundingRequest',
       'getLnd',
-      ({currency, decodeFundingRequest, getLnd}, cbk) =>
+      'getStartHeight',
+      ({currency, decodeFundingRequest, getLnd, getStartHeight}, cbk) =>
     {
       if (!!args.recovery) {
         return cbk();
@@ -501,6 +503,7 @@ module.exports = (args, cbk) => {
         ignore_probability_below: maxRouteFailProbability,
         lnd: getLnd.lnd,
         max_fee: round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),
+        max_timeout_height: getStartHeight + maxCltvDelta,
         path_timeout_ms: maxPathfindingMs,
         routes: decodeFundingRequest.routes,
         tokens: decodeFundingRequest.tokens,
@@ -692,10 +695,10 @@ module.exports = (args, cbk) => {
       return payViaPaymentRequest({
         lnd: getLnd.lnd,
         max_fee: maxFee,
+        max_timeout_height: getStartHeight + maxCltvExpiration,
         outgoing_channel: channel.id,
         pathfinding_timeout: maxPathfindingMs,
         request: initiateSwap.swap_fund_request,
-        timeout_height: getStartHeight + maxCltvExpiration,
       },
       cbk);
     }],
@@ -731,10 +734,10 @@ module.exports = (args, cbk) => {
       const sub = subscribeToPayViaRequest({
         lnd: getLnd.lnd,
         max_fee: maxExecutionFeeTokens,
+        max_timeout_height: getStartHeight + maxCltvExpiration,
         outgoing_channel: channel.id || undefined,
         pathfinding_timeout: maxPathfindingMs,
         request: initiateSwap.swap_execute_request,
-        timeout_height: getStartHeight + maxCltvExpiration,
       });
 
       const finished = (err, res) => {

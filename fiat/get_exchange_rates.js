@@ -3,11 +3,12 @@ const {homedir} = require('os');
 const {readFile} = require('fs');
 
 const asyncAuto = require('async/auto');
-const request = require('request');
+const defaultRequest = require('request');
 const {returnResult} = require('asyncjs-util');
 
 const apiKeyFile = 'bitcoinaverage_api_key';
 const cents = 100;
+const contains = (arr, element) => arr.indexOf(element) !== -1;
 const defaultFiat = 'USD';
 const {floor} = Math;
 const from = 'BTC';
@@ -23,10 +24,12 @@ const url = 'https://apiv2.bitcoinaverage.com/indices/global/ticker/short';
   Add an API key to ~/.bos/bitcoinaverage_api_key if hitting frequently
 
   {
-    symbols: [<Fiat Symbol String>]
+    [read]: <Read File Function> path, (err, file) => {}
+    [request]: <Request Function> {url}, (err, {statusCode}, body) => {}
+    symbols: [<Fiat Symbol String>] // empty defaults to USD
   }
 
-  @returns via cbk
+  @returns via cbk or Promise
   {
     tickers: [{
       date: <Rate Updated At ISO 8601 Date String>
@@ -35,75 +38,88 @@ const url = 'https://apiv2.bitcoinaverage.com/indices/global/ticker/short';
     }]
   }
 */
-module.exports = ({symbols}, cbk) => {
-  return asyncAuto({
-    // Check arguments
-    validate: cbk => {
-      if (!isArray(symbols)) {
-        return cbk([400, 'ExpectedArrayOfDestinationSymbolsForExchangeRates']);
-      }
-
-      const unknownSymbol = symbols.find(symbol => !known.find(n => n === symbol));
-
-      if (!!unknownSymbol) {
-        return cbk([400, 'UnexpectedUnknownFiatSymbol', unknownSymbol]);
-      }
-
-      return cbk();
-    },
-
-    // Get credentials
-    getCredentials: ['validate', ({}, cbk) => {
-      return readFile(join(...[homedir(), home, apiKeyFile]), (err, key) => {
-        // Exit early when there are no credentials
-        if (!!err) {
-          return cbk(null, undefined);
+module.exports = ({read, request, symbols}, cbk) => {
+  return new Promise((resolve, reject) => {
+    return asyncAuto({
+      // Check arguments
+      validate: cbk => {
+        if (!isArray(symbols)) {
+          return cbk([400, 'ExpectedArrayOfFiatSymbolsForExchangeRates']);
         }
 
-        return cbk(null, key.toString('utf8'));
-      });
-    }],
+        const unknown = symbols.find(symbol => !known.find(n => n === symbol));
 
-    // Get tickers
-    getTickers: ['getCredentials', ({getCredentials}, cbk) => {
-      const toFiat = !symbols.length ? [defaultFiat] : symbols;
+        if (!!unknown) {
+          return cbk([400, 'UnexpectedUnknownFiatSymbol', {unknown}]);
+        }
 
-      return request({
-        url,
-        headers: {'X-ba-key': getCredentials},
-        json: true,
-        qs: {crypto: [from].join(separator), fiat: toFiat.join(separator)},
+        return cbk();
       },
-      (err, r, res) => {
-        if (!!err) {
-          return cbk([503, 'UnexpectedErrorGettingExchangeRates', err]);
-        }
 
-        if (!r || !r.statusCode || !res) {
-          return cbk([503, 'UnexpectedResponseFromExchangeRateProvider']);
-        }
+      // Get credentials
+      getCredentials: ['validate', ({}, cbk) => {
+        const reader = read || readFile;
 
-        const tickers = toFiat.sort().map(to => {
-          const rates = res[`${from}${to}`];
-
-          if (!rates || !rates.last || !rates.timestamp) {
-            return null;
+        return reader(join(...[homedir(), home, apiKeyFile]), (err, key) => {
+          // Exit early when there are no credentials
+          if (!!err || !key) {
+            return cbk(null, undefined);
           }
 
-          return {
-            date: new Date(rates.timestamp * msPerSec).toISOString(),
-            rate: floor(rates.last * cents),
-            ticker: to,
-          };
+          return cbk(null, key.toString('utf8'));
         });
+      }],
 
-        if (!!tickers.find(n => !n)) {
-          return cbk([503, 'MissingTickerDataForResponse']);
-        }
+      // Get tickers
+      getTickers: ['getCredentials', ({getCredentials}, cbk) => {
+        const requestMethod = request || defaultRequest;
+        const toFiat = !symbols.length ? [defaultFiat] : symbols;
 
-        return cbk(null, {tickers});
-      });
-    }],
-  },
-  returnResult({of: 'getTickers'}, cbk));
+        return requestMethod({
+          url,
+          headers: {'X-ba-key': getCredentials},
+          json: true,
+          qs: {crypto: [from].join(separator), fiat: toFiat.join(separator)},
+        },
+        (err, r, res) => {
+          if (!!err) {
+            return cbk([503, 'UnexpectedErrorGettingExchangeRates', {err}]);
+          }
+
+          if (!r) {
+            return cbk([503, 'UnexpectedResponseFromExchangeRateProvider']);
+          }
+
+          if (r.statusCode !== 200) {
+            return cbk([503, 'UnexpectedStatusCodeFromExchangeRateProvider']);
+          }
+
+          if (!res) {
+            return cbk([503, 'ExpectedNonEmptyResponseFromRateProvider']);
+          }
+
+          const tickers = toFiat.sort().map(to => {
+            const rates = res[`${from}${to}`];
+
+            if (!rates || !rates.last || !rates.timestamp) {
+              return null;
+            }
+
+            return {
+              date: new Date(rates.timestamp * msPerSec).toISOString(),
+              rate: floor(rates.last * cents),
+              ticker: to,
+            };
+          });
+
+          if (contains(tickers, null)) {
+            return cbk([503, 'MissingTickerDataForResponse']);
+          }
+
+          return cbk(null, {tickers});
+        });
+      }],
+    },
+    returnResult({reject, resolve, of: 'getTickers'}, cbk));
+  });
 };
