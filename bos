@@ -398,6 +398,7 @@ prog
   .help('Simulate paying a payment request without actually paying it')
   .argument('<to>', 'Payment request or node public key')
   .argument('[amount]', 'Amount to probe, default: request amount', INT)
+  .option('--find-max', 'Find the maximum routeable amount')
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <public_key>', 'Make first hop through specific peer')
@@ -406,6 +407,7 @@ prog
       return probeDestination({
         logger,
         destination: args.to.length === 66 ? args.to : undefined,
+        find_max: !!options.findMax ? 1e7 : undefined,
         in_through: options.in || undefined,
         node: options.node || undefined,
         out_through: options.out || undefined,

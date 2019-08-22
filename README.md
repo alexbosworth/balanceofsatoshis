@@ -86,8 +86,8 @@ bos peers
 # Output the price of BTC
 bos price
 
-# Output the results of testing if a payment request can be paid
-bos probe "payment_request"
+# Test if funds can be sent to a destination
+bos probe "payment_request/public_key"
 
 # Get a general report of the node activity
 bos report

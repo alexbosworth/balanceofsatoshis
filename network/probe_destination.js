@@ -6,11 +6,14 @@ const {getNode} = require('ln-service');
 const {getRoutes} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
+const {probeForRoute} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToProbe} = require('ln-service');
 
 const {authenticatedLnd} = require('./../lnd');
+const getMaximum = require('./get_maximum');
 
+const defaultCltvDelta = 144;
 const defaultTokens = 10;
 const {isArray} = Array;
 const maxCltvDelta = 144 * 30;
@@ -20,6 +23,7 @@ const {now} = Date;
 
   {
     [destination]: <Destination Public Key Hex String>
+    [find_max]: <Find Maximum Payable Below Tokens Number>
     [in_through]: <Pay In Through Public Key Hex String>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
     logger: <Winston Logger Object>
@@ -195,7 +199,7 @@ module.exports = (args, cbk) => {
       const start = now();
 
       const sub = subscribeToProbe({
-        cltv_delta: to.cltv_delta,
+        cltv_delta: to.cltv_delta || defaultCltvDelta,
         destination: to.destination,
         is_strict_hints: !!getInboundPath,
         lnd: getLnd.lnd,
@@ -222,9 +226,9 @@ module.exports = (args, cbk) => {
 
       sub.on('error', err => args.logger.error(err));
 
-      sub.on('routing_failure', failure => {
+      sub.on('routing_failure', fail => {
         return args.logger.info({
-          failure: `${failure.reason} at ${failure.public_key}`,
+          failure: `${fail.reason} at ${fail.channel || fail.public_key}`,
         });
       });
 
@@ -256,6 +260,50 @@ module.exports = (args, cbk) => {
       return;
     }],
 
+    // Get maximum value
+    getMax: [
+      'getHeight',
+      'getInboundPath',
+      'getLnd',
+      'outgoingChannelId',
+      'probe',
+      'to',
+      ({getHeight, getInboundPath, getLnd, outgoingChannelId, probe, to}, cbk) =>
+    {
+      if (!args.find_max || !probe.route) {
+        return cbk();
+      }
+
+      return getMaximum({
+        accuracy: 1000,
+        from: defaultTokens,
+        to: args.find_max + Math.round(Math.random() * 1000),
+      },
+      ({cursor}, cbk) => {
+        args.logger.info({attempting: cursor});
+
+        return probeForRoute({
+          cltv_delta: to.cltv_delta,
+          destination: to.destination,
+          is_strict_hints: !!getInboundPath,
+          lnd: getLnd.lnd,
+          max_timeout_height: getHeight.current_block_height + maxCltvDelta,
+          outgoing_channel: outgoingChannelId,
+          path_timeout_ms: 1000 * 30,
+          routes: getInboundPath || to.routes,
+          tokens: cursor,
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, !!res.route);
+        });
+      },
+      cbk);
+    }],
+
     // If there is a successful route, pay it
     pay: ['getLnd', 'probe', 'to', ({getLnd, probe, to}, cbk) => {
       if (!args.is_real_payment) {
@@ -278,7 +326,8 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
-    outcome: ['pay', 'probe', ({pay, probe}, cbk) => {
+    // Outcome of probes and payment
+    outcome: ['getMax', 'pay', 'probe', ({getMax, pay, probe}, cbk) => {
       if (!probe.route) {
         return cbk(null, {attempted_paths: probe.attempted_paths});
       }
@@ -288,9 +337,10 @@ module.exports = (args, cbk) => {
       return cbk(null, {
         fee: !route ? undefined : route.fee,
         latency_ms: !route ? undefined : probe.latency_ms,
+        maximum_payable: !getMax ? undefined : getMax.maximum,
         paid: !pay ? undefined : pay.tokens,
         preimage: !pay ? undefined : pay.secret,
-        probed: !!pay ? undefined : route.tokens,
+        probed: !!pay ? undefined : route.tokens - route.fee,
         success: !route ? undefined : route.hops.map(({channel}) => channel),
       });
     }],

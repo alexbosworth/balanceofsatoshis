@@ -19,7 +19,7 @@
     "goldengate": "2.0.0",
     "html2unicode": "1.1.1",
     "ln-accounting": "3.0.2",
-    "ln-service": "42.0.1",
+    "ln-service": "43.1.0",
     "moment": "2.24.0",
     "request": "2.88.0",
     "stats-lite": "2.2.0",
@@ -46,7 +46,7 @@
     "url": "https://github.com/alexbosworth/balanceofsatoshis.git"
   },
   "scripts": {
-    "test": "tap test/balances/*.js test/fiat/*.js test/responses/*.js"
+    "test": "tap test/balances/*.js test/fiat/*.js test/network/*.js test/responses/*.js"
   },
-  "version": "3.2.0"
+  "version": "3.3.0"
 }

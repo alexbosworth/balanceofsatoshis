@@ -1,5 +1,9 @@
 # Versions
 
+## Version 3.3.0
+
+- `probe`: add --find-max to try and find the max sendable
+
 ## Version 3.2.0
 
 - `chainfees` fix issue where a bad response from the rate provider would not be detected
