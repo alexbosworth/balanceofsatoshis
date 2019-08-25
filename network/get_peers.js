@@ -6,6 +6,7 @@ const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');
 
+const defaultSort = 'public_key';
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
 const uniq = arr => Array.from(new Set(arr));
 
@@ -17,6 +18,7 @@ const uniq = arr => Array.from(new Set(arr));
     [is_public]: <Public Channels Only Bool>
     [node]: <Node Name String>
     [outbound_liquidity_below]: <Outbound Liquidity Below Tokens Number>
+    [sort_by]: <Sort Results By Attribute String>
   }
 
   @returns via cbk or Promise
@@ -50,12 +52,20 @@ module.exports = (args, cbk) => {
         const maxOutbound = args.outbound_liquidity_below;
         const peerKeys = getChannels.channels.map(n => n.partner_public_key);
 
+        const sortBy = (arr, attr) => arr.slice().sort((a,b) => {
+          return (a[attr] > b[attr]) ? 1 : ((b[attr] > a[attr]) ? -1 : 0);
+        });
+
         const peers = await asyncMap(uniq(peerKeys), async publicKey => {
           const channels = getChannels.channels.filter(channel => {
             return channel.partner_public_key === publicKey;
           });
 
-          const node = await getNode({lnd: getLnd.lnd, public_key: publicKey});
+          const node = await getNode({
+            is_omitting_channels: true,
+            lnd: getLnd.lnd,
+            public_key: publicKey,
+          });
 
           return {
             alias: node.alias,
@@ -65,7 +75,7 @@ module.exports = (args, cbk) => {
           };
         });
 
-        return peers
+        return sortBy(peers, args.sort_by || defaultSort)
           .filter(n => !maxInbound || n.inbound_liquidity < maxInbound)
           .filter(n => !maxOutbound || n.outbound_liquidity < maxOutbound)
           .map(n => ({

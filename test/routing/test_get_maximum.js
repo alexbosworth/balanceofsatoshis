@@ -1,6 +1,6 @@
 const {test} = require('tap');
 
-const getMaximum = require('./../../network/get_maximum');
+const getMaximum = require('./../../routing/get_maximum');
 
 const space = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 

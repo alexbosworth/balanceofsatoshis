@@ -114,7 +114,12 @@ module.exports = ({days, node}, cbk) => {
       const nodes = uniq([].concat(sendingFromPeers).concat(sendingToPeers));
 
       return asyncMap(nodes, (publicKey, cbk) => {
-        return getNode({lnd, public_key: publicKey}, (err, node) => {
+        return getNode({
+          lnd,
+          is_omitting_channels: true,
+          public_key: publicKey
+        },
+        (err, node) => {
           if (!!err) {
             return cbk(err);
           }

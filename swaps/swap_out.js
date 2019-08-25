@@ -163,6 +163,7 @@ module.exports = (args, cbk) => {
       });
 
       return getNode({
+        is_omitting_channels: true,
         lnd: getLnd.lnd,
         public_key: channel.partner_public_key,
       },
@@ -559,6 +560,7 @@ module.exports = (args, cbk) => {
       const [firstHop] = findRouteForFunding.hops;
 
       return getNode({
+        is_omitting_channels: true,
         lnd: getLnd.lnd,
         public_key: firstHop.public_key,
       },

@@ -1,5 +1,9 @@
 # Versions
 
+## Version 3.4.0
+
+- `peers`: add --sort to sort returned peers by an attribute
+
 ## Version 3.3.0
 
 - `probe`: add --find-max to try and find the max sendable

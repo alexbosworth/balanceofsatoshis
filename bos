@@ -361,6 +361,7 @@ prog
   .option('--node <node_name>', 'Node to get peers for')
   .option('--outbound-below <amount>', 'Outbound liquidity below amount', INT)
   .option('--public', 'Only peers with public channels')
+  .option('--sort', 'Sort results by peer attribute')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getPeers({
@@ -369,6 +370,7 @@ prog
         is_public: !!options.public,
         node: options.node,
         outbound_liquidity_below: options.outboundBelow,
+        sort_by: options.sort,
       },
       returnObject({logger, reject, resolve}));
     });
@@ -398,7 +400,7 @@ prog
   .help('Simulate paying a payment request without actually paying it')
   .argument('<to>', 'Payment request or node public key')
   .argument('[amount]', 'Amount to probe, default: request amount', INT)
-  .option('--find-max', 'Find the maximum routeable amount')
+  .option('--find-max', 'Find the maximum routeable amount on success route')
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <public_key>', 'Make first hop through specific peer')

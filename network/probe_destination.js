@@ -1,17 +1,15 @@
 const asyncAuto = require('async/auto');
-const asyncMapSeries = require('async/mapSeries');
 const {decodePaymentRequest} = require('ln-service');
 const {getChannels} = require('ln-service');
-const {getNode} = require('ln-service');
 const {getRoutes} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
-const {probeForRoute} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
-const {subscribeToProbe} = require('ln-service');
 
 const {authenticatedLnd} = require('./../lnd');
-const getMaximum = require('./get_maximum');
+const executeProbe = require('./execute_probe');
+const {findMaxRoutable} = require('./../routing');
+const {getInboundPath} = require('./../routing');
 
 const defaultCltvDelta = 144;
 const defaultTokens = 10;
@@ -23,7 +21,7 @@ const {now} = Date;
 
   {
     [destination]: <Destination Public Key Hex String>
-    [find_max]: <Find Maximum Payable Below Tokens Number>
+    [find_max]: <Find Maximum Payable On Probed Route Below Tokens Number>
     [in_through]: <Pay In Through Public Key Hex String>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
     logger: <Winston Logger Object>
@@ -74,54 +72,29 @@ module.exports = (args, cbk) => {
       return getChannels({is_active: true, lnd: getLnd.lnd}, cbk);
     }],
 
+    // Tokens
+    tokens: ['to', ({to}, cbk) => {
+      return cbk(null, args.tokens || to.tokens || defaultTokens);
+    }],
+
     // Get inbound path if an inbound restriction is specified
-    getInboundPath: ['getLnd', 'to', ({getLnd, to}, cbk) => {
+    getInboundPath: ['getLnd', 'to', 'tokens', ({getLnd, to, tokens}, cbk) => {
       if (!args.in_through) {
         return cbk();
       }
 
-      const inThrough = args.in_through;
-
-      return getNode({
+      return getInboundPath({
+        tokens,
+        destination: to.destination,
         lnd: getLnd.lnd,
-        public_key: to.destination,
+        through: args.in_through,
       },
       (err, res) => {
         if (!!err) {
           return cbk(err);
         }
 
-        const connectingChannels = (res.channels || [])
-          .filter(n => !!n.policies.find(n => n.public_key === inThrough));
-
-        if (!connectingChannels.length) {
-          return cbk([400, 'NoConnectingChannelToPayIn']);
-        }
-
-        const [channel] = connectingChannels
-          .filter(n => n.capacity > args.tokens || to.tokens || defaultTokens);
-
-        if (!channel) {
-          return cbk([400, 'NoSufficientCapacityConnectingChannelToPayIn']);
-        }
-
-        const policy = channel.policies.find(n => n.public_key !== inThrough);
-
-        const path = [
-          {
-            public_key: inThrough,
-          },
-          {
-            base_fee_mtokens: policy.base_fee_mtokens,
-            channel: channel.id,
-            channel_capacity: channel.capacity,
-            cltv_delta: policy.cltv_delta,
-            fee_rate: policy.fee_rate,
-            public_key: to.destination,
-          },
-        ];
-
-        return cbk(null, [path]);
+        return cbk(null, [res.path]);
       });
     }],
 
@@ -160,9 +133,11 @@ module.exports = (args, cbk) => {
       'getLnd',
       'outgoingChannelId',
       'to',
-      ({getInboundPath, getLnd, outgoingChannelId, to}, cbk) =>
+      'tokens',
+      ({getInboundPath, getLnd, outgoingChannelId, to, tokens}, cbk) =>
     {
       return getRoutes({
+        tokens,
         cltv_delta: to.cltv_delta,
         destination: to.destination,
         is_adjusted_for_past_failures: true,
@@ -170,7 +145,6 @@ module.exports = (args, cbk) => {
         lnd: getLnd.lnd,
         outgoing_channel: outgoingChannelId,
         routes: getInboundPath || to.routes,
-        tokens: args.tokens || to.tokens || defaultTokens,
       },
       (err, res) => {
         if (!!err) {
@@ -194,112 +168,33 @@ module.exports = (args, cbk) => {
       'to',
       ({getHeight, getInboundPath, getLnd, outgoingChannelId, to}, cbk) =>
     {
-      const attemptedPaths = [];
-      let success;
-      const start = now();
-
-      const sub = subscribeToProbe({
+      return executeProbe({
         cltv_delta: to.cltv_delta || defaultCltvDelta,
         destination: to.destination,
         is_strict_hints: !!getInboundPath,
         lnd: getLnd.lnd,
+        logger: args.logger,
+        max_fee: args.max_fee,
         max_timeout_height: getHeight.current_block_height + maxCltvDelta,
         outgoing_channel: outgoingChannelId,
-        path_timeout_ms: 1000 * 30,
         routes: getInboundPath || to.routes,
         tokens: args.tokens || to.tokens || defaultTokens,
-      });
-
-      sub.on('end', () => {
-        const latencyMs = now() - start;
-
-        if (!success) {
-          return cbk(null, {attempted_paths: attemptedPaths.length});
-        }
-
-        if (!!args.max_fee && success.fee > args.max_fee) {
-          return cbk([400, 'MaxFeeLimitTooLow', {needed_fee: success.fee}]);
-        }
-
-        return cbk(null, {latency_ms: latencyMs, route: success});
-      });
-
-      sub.on('error', err => args.logger.error(err));
-
-      sub.on('routing_failure', fail => {
-        return args.logger.info({
-          failure: `${fail.reason} at ${fail.channel || fail.public_key}`,
-        });
-      });
-
-      sub.on('probe_success', ({route}) => success = route);
-
-      sub.on('probing', ({route}) => {
-        attemptedPaths.push(route);
-
-        return asyncMapSeries(route.hops, (hop, cbk) => {
-          return getNode({
-            lnd: getLnd.lnd,
-            public_key: hop.public_key,
-          },
-          (err, node) => {
-            const alias = (!!err || !node || !node.alias) ? '' : node.alias;
-
-            return cbk(null, `${hop.channel} ${alias} ${hop.public_key}`);
-          });
-        },
-        (err, checking) => {
-          if (!!err) {
-            return args.logger.error(err);
-          }
-
-          return args.logger.info({checking});
-        });
-      });
-
-      return;
+      },
+      cbk);
     }],
 
-    // Get maximum value
-    getMax: [
-      'getHeight',
-      'getInboundPath',
-      'getLnd',
-      'outgoingChannelId',
-      'probe',
-      'to',
-      ({getHeight, getInboundPath, getLnd, outgoingChannelId, probe, to}, cbk) =>
-    {
+    // Get maximum value of the successful route
+    getMax: ['getLnd', 'probe', 'to', ({getLnd, probe, to}, cbk) => {
       if (!args.find_max || !probe.route) {
         return cbk();
       }
 
-      return getMaximum({
-        accuracy: 1000,
-        from: defaultTokens,
-        to: args.find_max + Math.round(Math.random() * 1000),
-      },
-      ({cursor}, cbk) => {
-        args.logger.info({attempting: cursor});
-
-        return probeForRoute({
-          cltv_delta: to.cltv_delta,
-          destination: to.destination,
-          is_strict_hints: !!getInboundPath,
-          lnd: getLnd.lnd,
-          max_timeout_height: getHeight.current_block_height + maxCltvDelta,
-          outgoing_channel: outgoingChannelId,
-          path_timeout_ms: 1000 * 30,
-          routes: getInboundPath || to.routes,
-          tokens: cursor,
-        },
-        (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          return cbk(null, !!res.route);
-        });
+      return findMaxRoutable({
+        cltv: to.cltv_delta || defaultCltvDelta,
+        hops: probe.route.hops,
+        lnd: getLnd.lnd,
+        logger: args.logger,
+        max: args.find_max,
       },
       cbk);
     }],
@@ -337,7 +232,7 @@ module.exports = (args, cbk) => {
       return cbk(null, {
         fee: !route ? undefined : route.fee,
         latency_ms: !route ? undefined : probe.latency_ms,
-        maximum_payable: !getMax ? undefined : getMax.maximum,
+        route_maximum: !getMax ? undefined : getMax.maximum,
         paid: !pay ? undefined : pay.tokens,
         preimage: !pay ? undefined : pay.secret,
         probed: !!pay ? undefined : route.tokens - route.fee,
