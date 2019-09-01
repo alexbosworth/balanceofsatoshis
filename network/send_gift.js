@@ -1,17 +1,18 @@
 const asyncAuto = require('async/auto');
-const {authenticatedLndGrpc} = require('ln-service');
 const {createInvoice} = require('ln-service');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
+const {payViaRoutes} = require('ln-service');
 const {routeFromChannels} = require('ln-service');
-const {pay} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const {lndCredentials} = require('./../lnd');
+const {authenticatedLnd} = require('./../lnd');
+const {channelForGift} = require('./../routing');
+const {giftRoute} = require('./../routing');
+const {sortBy} = require('./../arrays');
 
 const {floor} = Math;
-const {isArray} = Array;
 const minFeeRate = 0;
 const minReceivableMtokens = BigInt(1000);
 const mtokPerTok = BigInt(1000);
@@ -33,7 +34,7 @@ const reserveRatio = 0.01;
 module.exports = ({node, to, tokens}, cbk) => {
   return asyncAuto({
     // Credentials
-    credentials: cbk => lndCredentials({node}, cbk),
+    getLnd: cbk => authenticatedLnd({node}, cbk),
 
     // Check arguments
     validate: cbk => {
@@ -49,51 +50,37 @@ module.exports = ({node, to, tokens}, cbk) => {
     },
 
     // Lnd
-    lnd: ['credentials', 'validate', ({credentials}, cbk) => {
-      const {cert, macaroon, socket} = credentials;
-
-      return cbk(null, authenticatedLndGrpc({cert, macaroon, socket}).lnd);
-    }],
+    lnd: ['getLnd', ({getLnd}, cbk) => cbk(null, getLnd.lnd)],
 
     // Get channels
     getChannels: ['lnd', ({lnd}, cbk) => getChannels({lnd}, cbk)],
 
     // Peer channel
     peerChannel: ['getChannels', ({getChannels}, cbk) => {
-      const {channels} = getChannels;
+      try {
+        const {channels} = getChannels;
 
-      const withPeer = channels.filter(n => n.partner_public_key === to);
+        return cbk(null, channelForGift({channels, to, tokens}).id);
+      } catch (err) {
+        const {message} = err;
 
-      if (!withPeer.length) {
-        return cbk([400, 'ExpectedDirectChannelWithPeerToGiftTo']);
+        switch (message) {
+        case 'NoActiveChannelWithSpecifiedPeer':
+          return cbk([400, 'SendingGiftRequiresActiveChannelWithPeer']);
+
+        case 'NoActiveChannelWithSufficientLocalBalance':
+          return cbk([400, 'SendingGiftRequiresChannelWithSufficientBalance']);
+
+        case 'NoActiveChannelWithSufficientRemoteBalance':
+          return cbk([400, 'SendingGiftRequiresChannelWithSomeRemoteBalance']);
+
+        case 'NoDirectChannelWithSpecifiedPeer':
+          return cbk([400, 'SendingGiftRequiresDirectChannelWithPeer']);
+
+        default:
+          return cbk([500, 'UnexpectedErrorDeterminingChannelForGift', {err}]);
+        }
       }
-
-      const active = withPeer.filter(n => !!n.is_active);
-
-      if (!active.length) {
-        return cbk([400, 'ExpectedActiveChannelWithPeerToGiftTo']);
-      }
-
-      const hasTokens = active.filter(n => n.local_balance > tokens);
-
-      if (!hasTokens.length) {
-        return cbk([400, 'ExpectedChannelWithAvailableFundsToGift']);
-      }
-
-      const hasRemoteBalance = hasTokens
-        .filter(n => n.remote_balance > floor(n.capacity * reserveRatio));
-
-      if (!hasRemoteBalance.length) {
-        return cbk([400, 'ExpectedChannelWithSufficientRemoteReserveBalance']);
-      }
-
-      hasRemoteBalance.sort((a, b) => {
-        return a.local_balance > b.local_balance ? -1 : 1;
-      });
-
-      const [channel] = hasRemoteBalance;
-
-      return cbk(null, channel.id);
     }],
 
     // Get channel policy info
@@ -118,66 +105,60 @@ module.exports = ({node, to, tokens}, cbk) => {
       'getWallet',
       ({createInvoice, getChannel, getWallet}, cbk) =>
     {
-      const channel = getChannel;
-      const destination = getWallet.public_key;
-      const height = getWallet.current_block_height;
-      const invoice = createInvoice;
-      const mtokens = minReceivableMtokens.toString();
-      const mtokensToGive = BigInt(tokens) * mtokPerTok;
-
-      const peerPolicy = channel.policies.find(n => n.public_key === to);
-
-      peerPolicy.base_fee_mtokens = mtokensToGive.toString();
-      peerPolicy.fee_rate = minFeeRate;
-
-      const channels = [channel, channel];
-
       try {
-        const {route} = routeFromChannels({
-          channels,
-          destination,
-          height,
-          mtokens,
+        const {route} = giftRoute({
+          tokens,
+          channel: getChannel,
+          destination: getWallet.public_key,
+          height: getWallet.current_block_height,
         });
 
         return cbk(null, route);
       } catch (err) {
-        return cbk([500, 'FailedToConstructGiftRoute', err]);
+        const {message} = err;
+
+        switch (message) {
+        case 'GiftAmountTooLowToSend':
+        case 'OwnPolicyTooLowToCompleteForward':
+        case 'PeerPolicyTooLowToCompleteForward':
+          return cbk([400, 'AmountTooLowToCompleteGiftSend']);
+
+        default:
+          return cbk([500, 'FailedToConstructGiftRoute', {err}]);
+        }
       }
     }],
 
-    // Pay
+    // Send the gift
     pay: [
       'createInvoice',
       'lnd',
       'route',
       ({createInvoice, lnd, route}, cbk) =>
     {
-      const path = {id: createInvoice.id, routes: [route]};
+      const {id} = createInvoice;
 
-      return pay({lnd, path}, (err, res) => {
-        if (!err) {
-          return cbk(null, {fee: res.fee});
+      return payViaRoutes({id, lnd, routes: [route]}, (err, res) => {
+        if (!!err) {
+          const [errCode, errMessage] = err;
+
+          console.log("ERR", err);
+
+          switch (errMessage) {
+          case 'RejectedUnacceptableFee':
+            return cbk([400, 'GiftTokensAmountTooLowToSend']);
+
+          default:
+            return cbk([503, 'UnexpectedErrorSendingGiftTokens', {err}]);
+          }
         }
 
-        if (!isArray(err)) {
-          return cbk([503, 'UnexpectedErrorSendingTokens', err]);
-        }
-
-        const [errCode, errMessage] = err;
-
-        switch (errMessage) {
-        case 'RejectedUnacceptableFee':
-          return cbk([400, 'GiftTokensAmountTooLowToSend']);
-
-        default:
-          return cbk([503, 'UnexpectedErrorSendingGiftTokens', errMessage]);
-        }
+        return cbk(null, {gave_tokens: res.fee});
       });
     }],
 
     // Done paying
-    paid: ['pay', ({pay}, cbk) => cbk(null, {gave_tokens: pay.fee})],
+    paid: ['pay', ({pay}, cbk) => cbk(null, {gave_tokens: pay.gave_tokens})],
   },
   returnResult({of: 'paid'}, cbk));
 };

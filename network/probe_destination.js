@@ -10,12 +10,16 @@ const {authenticatedLnd} = require('./../lnd');
 const executeProbe = require('./execute_probe');
 const {findMaxRoutable} = require('./../routing');
 const {getInboundPath} = require('./../routing');
+const {sortBy} = require('./../arrays');
 
+const cltvBuffer = 3;
 const defaultCltvDelta = 144;
 const defaultTokens = 10;
+const {floor} = Math;
 const {isArray} = Array;
 const maxCltvDelta = 144 * 30;
 const {now} = Date;
+const reserveRatio = 0.01;
 
 /** Determine if a destination can be paid by probing it
 
@@ -111,18 +115,22 @@ module.exports = (args, cbk) => {
       const withPeer = channels.filter(n => n.partner_public_key == outPeer);
 
       if (!withPeer.length) {
-        return cbk([404, 'NoActiveChannelWithChosenPeer']);
+        return cbk([404, 'NoActiveChannelWithOutgoingPeer']);
       }
 
-      const withBalance = withPeer
-        .filter(n => tokens < n.local_balance - (n.local_reserve || 0));
+      const withBalance = withPeer.filter(n => {
+        const reserve = n.local_reserve || floor(n.capacity * reserveRatio);
+
+        return n.local_balance - tokens > reserve + n.commit_transaction_fee;
+      });
 
       if (!withBalance.length) {
         return cbk([404, 'NoChannelWithSufficientBalance']);
       }
 
-      const [channel] = withBalance
-        .sort((a, b) => a.local_balance < b.local_balance ? -1 : 1);
+      const attribute = 'local_balance';
+
+      const [channel] = sortBy({attribute, array: withBalance}).sorted;
 
       return cbk(null, channel.id);
     }],
@@ -169,7 +177,7 @@ module.exports = (args, cbk) => {
       ({getHeight, getInboundPath, getLnd, outgoingChannelId, to}, cbk) =>
     {
       return executeProbe({
-        cltv_delta: to.cltv_delta || defaultCltvDelta,
+        cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
         destination: to.destination,
         is_strict_hints: !!getInboundPath,
         lnd: getLnd.lnd,
@@ -212,6 +220,8 @@ module.exports = (args, cbk) => {
       if (args.max_fee !== undefined && probe.route.fee > args.max_fee) {
         return cbk([400, 'MaxFeeTooLow', {required_fee: probe.route.fee}]);
       }
+
+      args.logger.info({paying: probe.route.hops.map(({channel}) => channel)});
 
       return payViaRoutes({
         id: to.id,

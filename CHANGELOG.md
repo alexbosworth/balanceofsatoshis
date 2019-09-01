@@ -1,6 +1,6 @@
 # Versions
 
-## Version 3.4.0
+## Version 3.4.1
 
 - `peers`: add --sort to sort returned peers by an attribute
 

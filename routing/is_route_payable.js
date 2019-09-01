@@ -66,7 +66,7 @@ module.exports = ({channels, cltv, lnd, tokens}, cbk) => {
       route: ['getHeight', ({getHeight}, cbk) => {
         const {route} = routeFromChannels({
           channels,
-          cltv,
+          cltv_delta: cltv,
           height: getHeight.current_block_height,
           mtokens: mtokensFromTokens(tokens),
         });

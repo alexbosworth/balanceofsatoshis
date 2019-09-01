@@ -59,11 +59,15 @@ module.exports = ({node}, cbk) => {
 
         const [chains, nets] = defaults;
 
-        const all = chains.map(chain => nets.map(network => ({chain, network})));
+        const all = chains.map(chain => {
+          return nets.map(network => ({chain, network}))
+        });
 
         // Find the default macaroon
         return asyncDetectSeries(flatten(all), ({chain, network}, cbk) => {
-          const macPath = [].concat(pathToMac).concat([chain, network, macName]);
+          const macPath = []
+            .concat(pathToMac)
+            .concat([chain, network, macName]);
 
           return readFile(join(...[path].concat(macPath)), (_, macaroon) => {
             return cbk(null, macaroon);
@@ -76,11 +80,13 @@ module.exports = ({node}, cbk) => {
 
           const {chain, network} = macaroon;
 
-          const macPath = [].concat(pathToMac).concat([chain, network, macName]);
+          const macPath = []
+            .concat(pathToMac)
+            .concat([chain, network, macName]);
 
           return readFile(join(...[path].concat(macPath)), (err, macaroon) => {
             if (!!err) {
-              return cbk([503, 'FailedToGetMacaroonData', err]);
+              return cbk([503, 'FailedToGetMacaroonData', {err}]);
             }
 
             return cbk(null, macaroon.toString(base64));

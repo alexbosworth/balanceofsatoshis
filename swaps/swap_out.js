@@ -122,6 +122,24 @@ module.exports = (args, cbk) => {
       return authenticatedLnd({node: args.node}, cbk);
     }],
 
+    // Create a sweep address
+    createAddress: ['getLnd', 'recover', ({getLnd, recover}, cbk) => {
+      if (!!recover && recover.sweep_address) {
+        return cbk(null, {address: recover.sweep_address});
+      }
+
+      if (!!args.out_address) {
+        return cbk(null, {address: args.out_address});
+      }
+
+      return createChainAddress({
+        format: 'p2wpkh',
+        is_unused: true,
+        lnd: getLnd.lnd,
+      },
+      cbk);
+    }],
+
     // Get channels
     getChannels: ['getLnd', ({getLnd}, cbk) => {
       return getChannels({lnd: getLnd.lnd, is_active: true}, cbk);
@@ -130,6 +148,11 @@ module.exports = (args, cbk) => {
     // Get wallet info
     getWalletInfo: ['getLnd', ({getLnd}, cbk) => {
       return getWalletInfo({lnd: getLnd.lnd}, cbk);
+    }],
+
+    // Get the current block height
+    getHeight: ['getWalletInfo', ({getWalletInfo}, cbk) => {
+      return cbk(null, getWalletInfo.current_block_height);
     }],
 
     // Figure out which channel to use when swapping
@@ -853,29 +876,6 @@ module.exports = (args, cbk) => {
       }
 
       return cbk();
-    }],
-
-    // Get the current block height
-    getHeight: ['getWalletInfo', ({getWalletInfo}, cbk) => {
-      return cbk(null, getWalletInfo.current_block_height);
-    }],
-
-    // Create a sweep address
-    createAddress: ['getLnd', 'recover', ({getLnd, recover}, cbk) => {
-      if (!!recover && recover.sweep_address) {
-        return cbk(null, {address: recover.sweep_address});
-      }
-
-      if (!!args.out_address) {
-        return cbk(null, {address: args.out_address});
-      }
-
-      return createChainAddress({
-        format: 'p2wpkh',
-        is_unused: true,
-        lnd: getLnd.lnd,
-      },
-      cbk);
     }],
 
     // Claim details

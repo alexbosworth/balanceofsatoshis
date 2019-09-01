@@ -44,7 +44,11 @@ module.exports = ({encrypted, secret}) => {
 
   const ciphertext = Hex.parse(trim(hex, hex.length - zeroIndex(hex)));
 
-  const clear = decrypt({ciphertext}, key, {iv, padding, mode: mode.CFB});
+  try {
+    const clear = decrypt({ciphertext}, key, {iv, padding, mode: mode.CFB});
 
-  return {payload: clear.toString(enc.Utf8)};
+    return {payload: clear.toString(enc.Utf8)};
+  } catch (err) {
+    throw new Error('FailedToDecryptCipherTextWithSecretKey');
+  }
 };
