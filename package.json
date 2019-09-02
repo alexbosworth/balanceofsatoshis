@@ -48,5 +48,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/encryption/*.js test/fiat/*.js test/network/*.js test/responses/*.js test/routing/*.js"
   },
-  "version": "3.5.0"
+  "version": "3.5.1"
 }

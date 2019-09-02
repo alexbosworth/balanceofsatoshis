@@ -89,6 +89,9 @@ bos price
 # Test if funds can be sent to a destination
 bos probe "payment_request/public_key"
 
+# Rebalance funds between peers
+bos rebalance
+
 # Get a general report of the node activity
 bos report
 
