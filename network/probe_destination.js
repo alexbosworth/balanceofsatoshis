@@ -14,6 +14,7 @@ const {sortBy} = require('./../arrays');
 
 const cltvBuffer = 3;
 const defaultCltvDelta = 144;
+const defaultMaxFee = 1337;
 const defaultTokens = 10;
 const {floor} = Math;
 const {isArray} = Array;
@@ -32,7 +33,7 @@ const reserveRatio = 0.01;
     [max_fee]: <Maximum Fee Tokens Number>
     [node]: <Node Name String>
     [out_through]: <Out through peer with Public Key Hex String>
-    request: <Payment Request String>
+    [request]: <Payment Request String>
     [tokens]: <Tokens Number>
   }
 
@@ -40,6 +41,9 @@ const reserveRatio = 0.01;
   {
     [fee]: <Fee Tokens To Destination Number>
     [latency_ms]: <Latency Milliseconds Number>
+    [route_maximum]: <Maximum Sendable Tokens On Successful Probe Path Number>
+    [paid]: <Paid Tokens Number>
+    [preimage]: <Payment HTLC Preimage Hex String>
     [success]: [<Standard Format Channel Id String>]
   }
 */
@@ -59,6 +63,10 @@ module.exports = (args, cbk) => {
         return cbk(null, {destination: args.destination, routes: []});
       }
 
+      if (!args.request) {
+        return cbk([400, 'PayRequestOrDestinationRequiredToInitiateProbe']);
+      }
+
       return decodePaymentRequest({
         lnd: getLnd.lnd,
         request: args.request,
@@ -73,7 +81,7 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      return getChannels({is_active: true, lnd: getLnd.lnd}, cbk);
+      return getChannels({lnd: getLnd.lnd}, cbk);
     }],
 
     // Tokens
@@ -112,7 +120,9 @@ module.exports = (args, cbk) => {
       const outPeer = args.out_through;
       const tokens = args.tokens || to.tokens || defaultTokens;
 
-      const withPeer = channels.filter(n => n.partner_public_key == outPeer);
+      const withPeer = channels
+        .filter(n => !!n.is_active)
+        .filter(n => n.partner_public_key === outPeer);
 
       if (!withPeer.length) {
         return cbk([404, 'NoActiveChannelWithOutgoingPeer']);

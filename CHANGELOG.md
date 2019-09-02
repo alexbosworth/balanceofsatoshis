@@ -1,5 +1,9 @@
 # Versions
 
+## Version 3.5.0
+
+- `rebalance`: added to off-chain rebalance liquidity between peers
+
 ## Version 3.4.1
 
 - `peers`: add --sort to sort returned peers by an attribute

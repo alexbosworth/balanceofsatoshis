@@ -155,12 +155,12 @@ module.exports = (args, cbk) => {
               return cbk(null, `${hop.channel} ${alias} ${hop.public_key}`);
             });
           },
-          (err, checking) => {
+          (err, evaluating) => {
             if (!!err) {
               return args.logger.error(err);
             }
 
-            return args.logger.info({checking, fee: route.fee});
+            return args.logger.info({evaluating, potential_fee: route.fee});
           });
         });
 

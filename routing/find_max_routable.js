@@ -89,7 +89,7 @@ module.exports = ({cltv, hops, lnd, logger, max}, cbk) => {
         return getMaximum({accuracy, from, to: to(max)}, ({cursor}, cbk) => {
           const tokens = cursor;
 
-          logger.info({attempting: cursor});
+          logger.info({evaluating_amount: cursor});
 
           return isRoutePayable({channels, cltv, lnd, tokens}, (err, res) => {
             if (!!err) {

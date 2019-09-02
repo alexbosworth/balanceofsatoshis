@@ -20,6 +20,7 @@ const {getReport} = require('./wallets');
 const {getUtxos} = require('./chain');
 const marketPairs = require('./fiat').pairs;
 const {probeDestination} = require('./network');
+const {rebalance} = require('./swaps');
 const {returnChart} = require('./responses');
 const {returnNumber} = require('./responses');
 const {returnObject} = require('./responses');
@@ -415,6 +416,28 @@ prog
         out_through: options.out || undefined,
         request: args.to.length !== 66 ? args.to : undefined,
         tokens: args.amount || undefined,
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Rebalance between peers
+  .command('rebalance', 'Rebalance funds between peers')
+  .help('Change the liquidity profile of two peers')
+  .option('--in <public_key>', 'Route through specific peer of destination')
+  .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)
+  .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
+  .option('--node <node_name>', 'Node to use for payment request check')
+  .option('--out <public_key>', 'Make first hop through specific peer')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return rebalance({
+        logger,
+        in_through: options.in || undefined,
+        max_fee: options.maxFee,
+        max_fee_rate: options.maxFeeRate,
+        node: options.node || undefined,
+        out_through: options.out || undefined,
       },
       returnObject({logger, reject, resolve}));
     });
