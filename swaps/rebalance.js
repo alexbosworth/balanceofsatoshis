@@ -25,7 +25,7 @@ const minTokens = 0;
 const mtokensPerToken = BigInt(1e3);
 const rateDivisor = 1e6;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
-const topOf = arr => arr.slice(0, Math.ceil(arr.length / 10));
+const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
 
 /** Rebalance funds between peers
 
