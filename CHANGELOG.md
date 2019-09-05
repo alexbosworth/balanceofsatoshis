@@ -1,6 +1,10 @@
 # Versions
 
-## Version 3.5.1
+## Version 3.6.0
+
+- Add update notifier to notify of new versions
+
+## Version 3.5.2
 
 - `rebalance`: added to off-chain rebalance liquidity between peers
 

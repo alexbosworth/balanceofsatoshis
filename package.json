@@ -23,7 +23,8 @@
     "moment": "2.24.0",
     "request": "2.88.0",
     "stats-lite": "2.2.0",
-    "table": "5.4.6"
+    "table": "5.4.6",
+    "update-notifier": "3.0.1"
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
@@ -48,5 +49,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/encryption/*.js test/fiat/*.js test/network/*.js test/responses/*.js test/routing/*.js"
   },
-  "version": "3.5.2"
+  "version": "3.6.0"
 }
