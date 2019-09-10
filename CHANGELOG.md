@@ -1,5 +1,10 @@
 # Versions
 
+## Version 3.7.0
+
+- `liquidity-cost`: command added to check the cost of swap liquidity
+- `peers`: added `--offline` restriction flag
+
 ## Version 3.6.0
 
 - Add update notifier to notify of new versions

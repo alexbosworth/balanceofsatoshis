@@ -17,11 +17,16 @@ const tests = [
 tests.forEach(({args, description, error, expected}) => {
   return test(description, ({end, equal, throws}) => {
     if (!!error) {
-      return returnNumber({reject: err => {
-        equal(err, error, 'Error as expected');
+      let err;
 
-        return end();
-      }})(error);
+      return returnNumber({
+        logger: {error: n => err = n},
+        reject: () => {
+          equal(err, error, 'Error as expected');
+
+          return end();
+        },
+      })(error);
     }
 
     let number;

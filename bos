@@ -17,6 +17,8 @@ const {getLiquidity} = require('./balances');
 const {getPeers} = require('./network');
 const {getPriceChart} = require('./fiat');
 const {getReport} = require('./wallets');
+const {getSwapCost} = require('./swaps');
+const {getSwapService} = require('./swaps');
 const {getUtxos} = require('./chain');
 const marketPairs = require('./fiat').pairs;
 const {probeDestination} = require('./network');
@@ -30,6 +32,7 @@ const {setAutopilot} = require('./network');
 const {splitUtxos} = require('./chain');
 const {swapIn} = require('./swaps');
 const {swapOut} = require('./swaps');
+const {swapTypes} = require('./swaps');
 const {unlockWallet} = require('./wallets');
 const {version} = require('./package');
 
@@ -291,6 +294,25 @@ prog
     });
   })
 
+  // Get the price for liquidity
+  .command('liquidity-cost', 'Get the price of liquidity')
+  .argument('<type>', 'Liquidity direction', swapTypes)
+  .argument('<amount>', 'Amount of liquidity to get quote for', INT)
+  .option('--above <tokens>', 'Return amount above watermark', INT)
+  .option('--no-color', 'Mute all colors')
+  .option('--node <node_name>', 'Node to get liquidity cost')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      return getSwapCost({
+        above: options.above,
+        service: (await getSwapService({node: options.node})).service,
+        tokens: args.amount,
+        type: args.type,
+      },
+      returnNumber({logger, reject, resolve, number: 'cost'}));
+    });
+  })
+
   // Get outbound liquidity information: available outbound off-chain tokens
   .command('outbound-liquidity', 'Get outbound liquidity size')
   .option('--above <tokens>', 'Return amount above watermark', INT)
@@ -360,6 +382,7 @@ prog
   .option('--active', 'Only active peer channels')
   .option('--inbound-below <amount>', 'Inbound liquidity below amount')
   .option('--node <node_name>', 'Node to get peers for')
+  .option('--offline', 'Only offline peer channels')
   .option('--outbound-below <amount>', 'Outbound liquidity below amount', INT)
   .option('--public', 'Only peers with public channels')
   .option('--sort', 'Sort results by peer attribute')
@@ -368,6 +391,7 @@ prog
       return getPeers({
         inbound_liquidity_below: options.inboundBelow,
         is_active: !!options.active,
+        is_offline: !!options.offline,
         is_public: !!options.public,
         node: options.node,
         outbound_liquidity_below: options.outboundBelow,

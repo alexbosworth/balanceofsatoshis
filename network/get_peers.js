@@ -16,6 +16,7 @@ const uniq = arr => Array.from(new Set(arr));
   {
     [inbound_liquidity_below]: <Inbound Liquidity Below Tokens Number>
     [is_active]: <Active Channels Only Bool>
+    [is_offline]: <Offline Channels Only Bool>
     [is_public]: <Public Channels Only Bool>
     [node]: <Node Name String>
     [outbound_liquidity_below]: <Outbound Liquidity Below Tokens Number>
@@ -42,6 +43,7 @@ module.exports = (args, cbk) => {
       getChannels: ['getLnd', async ({getLnd}) => {
         return await getChannels({
           is_active: args.is_active,
+          is_offline: args.is_offline,
           is_public: args.is_public,
           lnd: getLnd.lnd,
         });

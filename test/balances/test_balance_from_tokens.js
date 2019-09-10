@@ -1,6 +1,6 @@
 const {test} = require('tap');
 
-const balanceFromTokens = require('./../../balances/balance_from_tokens');
+const {balanceFromTokens} = require('./../../balances');
 
 const tests = [
   // No tokens

@@ -14,7 +14,9 @@
 module.exports = ({logger, reject, resolve}) => {
   return (err, res) => {
     if (!!err) {
-      return reject(err);
+      logger.error(err);
+
+      return reject();
     }
 
     logger.info(res);

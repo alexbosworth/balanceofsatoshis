@@ -397,7 +397,7 @@ module.exports = (args, cbk) => {
           tokens: args.tokens,
         });
 
-        args.logger.info({restart_with_recovery: recovery.toString('hex')});
+        args.logger.info({restart_recovery_secret: recovery.toString('hex')});
       } catch (err) {
         return cbk([500, 'UnexpectedErrorGeneratingRecoveryState', {err}]);
       }

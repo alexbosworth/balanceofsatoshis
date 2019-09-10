@@ -71,6 +71,9 @@ bos inbound-liquidity
 # Increase inbound liquidity to the node
 bos increase-inbound-liquidity
 
+# Show liquidity adjustment costs
+bos liquidity-cost "inbound" "amount"
+
 # See market price history
 bos market
 
@@ -163,7 +166,7 @@ expr $(bos balance --node=savedNode1) + $(bos balance --node=savedNode1)
 ### Send Alerts
 
 ```shell
-bos inbound-liquidity --below=1000000 | sendnotification SNS "AWS_SNS_ID" "WARNING inbound-liquidity deficit: %s sats" --nonzero --subject="Low inbound liquidity warning: node1"
+bos inbound-liquidity --below=1000000 2>&1 | sendnotification SNS "AWS_SNS_ID" "WARNING inbound-liquidity deficit: %s sats" --nonzero --subject="Low inbound liquidity warning: node1"
 # sends email if the inbound liquidity drops below a 1,000,000 sats
 ```
 

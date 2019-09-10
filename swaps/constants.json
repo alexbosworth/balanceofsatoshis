@@ -14,5 +14,6 @@
   "minSweepConfs": 1,
   "minutesPerBlock": 10,
   "requiredBufferBlocks": 36,
+  "swapTypes": ["inbound", "outbound"],
   "sweepProgressLogDelayMs": 2000
 }
