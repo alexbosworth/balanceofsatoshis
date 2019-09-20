@@ -1,5 +1,11 @@
 # Versions
 
+## Version 4.0.0
+
+### Breaking Changes
+
+- Support for LND version `v0.7.0` and below is ended
+
 ## Version 3.7.0
 
 - `liquidity-cost`: command added to check the cost of swap liquidity
