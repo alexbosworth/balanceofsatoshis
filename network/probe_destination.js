@@ -27,8 +27,12 @@ const reserveRatio = 0.01;
   {
     [destination]: <Destination Public Key Hex String>
     [find_max]: <Find Maximum Payable On Probed Route Below Tokens Number>
+    [ignore]: [{
+      from_public_key: <Avoid Node With Public Key Hex String>
+    }]
     [in_through]: <Pay In Through Public Key Hex String>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
+    [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [node]: <Node Name String>
@@ -158,6 +162,7 @@ module.exports = (args, cbk) => {
         tokens,
         cltv_delta: to.cltv_delta,
         destination: to.destination,
+        ignore: args.ignore,
         is_adjusted_for_past_failures: true,
         is_strict_hints: !!getInboundPath,
         lnd: getLnd.lnd,
@@ -189,7 +194,9 @@ module.exports = (args, cbk) => {
       return executeProbe({
         cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
         destination: to.destination,
+        ignore: args.ignore,
         is_strict_hints: !!getInboundPath,
+        is_strict_max_fee: args.is_strict_max_fee,
         lnd: getLnd.lnd,
         logger: args.logger,
         max_fee: args.max_fee,

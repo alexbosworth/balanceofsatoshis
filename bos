@@ -20,6 +20,7 @@ const {getReport} = require('./wallets');
 const {getSwapCost} = require('./swaps');
 const {getSwapService} = require('./swaps');
 const {getUtxos} = require('./chain');
+const {ignoreFromAvoid} = require('./routing');
 const marketPairs = require('./fiat').pairs;
 const {probeDestination} = require('./network');
 const {rebalance} = require('./swaps');
@@ -358,6 +359,7 @@ prog
   // Pay a payment request, probing first
   .command('pay', 'Pay a payment request, probing first')
   .argument('<request>', 'Payment Request')
+  .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT, 1337)
   .option('--node <node_name>', 'Node to use to pay payment request')
@@ -366,6 +368,7 @@ prog
     return new Promise((resolve, reject) => {
       return probeDestination({
         logger,
+        ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
         in_through: options.in,
         is_real_payment: true,
         max_fee: options.maxFee,
@@ -425,6 +428,7 @@ prog
   .help('Simulate paying a payment request without actually paying it')
   .argument('<to>', 'Payment request or node public key')
   .argument('[amount]', 'Amount to probe, default: request amount', INT)
+  .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--find-max', 'Find the maximum routeable amount on success route')
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--node <node_name>', 'Node to use for payment request check')
@@ -435,6 +439,7 @@ prog
         logger,
         destination: args.to.length === 66 ? args.to : undefined,
         find_max: !!options.findMax ? 1e7 : undefined,
+        ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
         in_through: options.in || undefined,
         node: options.node || undefined,
         out_through: options.out || undefined,
@@ -448,6 +453,7 @@ prog
   // Rebalance between peers
   .command('rebalance', 'Rebalance funds between peers')
   .help('Change the liquidity profile of two peers')
+  .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
@@ -457,6 +463,7 @@ prog
     return new Promise((resolve, reject) => {
       return rebalance({
         logger,
+        avoid: flatten([options.avoid].filter(n => !!n)),
         in_through: options.in || undefined,
         max_fee: options.maxFee,
         max_fee_rate: options.maxFeeRate,

@@ -35,8 +35,10 @@ const {authenticatedLnd} = require('./../lnd');
 const {chains} = require('./../network/networks');
 const {currencySymbols} = require('./../network/networks');
 const {estimatedSweepVbytes} = require('./constants');
+const {executeProbe} = require('./../network');
 const {feeRateDenominator} = require('./constants');
 const {fuzzBlocks} = require('./constants');
+const {getNetwork} = require('./../network');
 const {maxCltvExpiration} = require('./constants');
 const {maxExecutionFeeTokens} = require('./constants');
 const {maxFeeMultiplier} = require('./constants');
@@ -53,14 +55,12 @@ const {swappable} = require('./../network/networks');
 const {sweepProgressLogDelayMs} = require('./constants');
 
 const {ceil} = Math;
+const cltvBuffer = 3;
 const {floor} = Math;
-const {keys} = Object;
 const {max} = Math;
 const maxCltvDelta = 144 * 30;
 const {min} = Math;
 const mtokPerTok = BigInt(1000);
-const numberFromBig = big => parseInt(big.toString(), 10);
-const reversedBytes = hex => Buffer.from(hex, 'hex').reverse().toString('hex');
 const {round} = Math;
 const sha256 = n => createHash('sha256').update(Buffer.from(n, 'hex'));
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
@@ -145,6 +145,11 @@ module.exports = (args, cbk) => {
       return getChannels({lnd: getLnd.lnd, is_active: true}, cbk);
     }],
 
+    // Get network
+    getNetwork: ['getLnd', ({getLnd}, cbk) => {
+      return getNetwork({lnd: getLnd.lnd}, cbk);
+    }],
+
     // Get wallet info
     getWalletInfo: ['getLnd', ({getLnd}, cbk) => {
       return getWalletInfo({lnd: getLnd.lnd}, cbk);
@@ -166,10 +171,11 @@ module.exports = (args, cbk) => {
           return false;
         }
 
+        // Without a peer specified, a channel from any peer is ok
         return !args.peer ? true : channel.partner_public_key === args.peer;
       });
 
-      // There was no channel found
+      // There was no channel found to use for the swap
       if (!channel) {
         return cbk([400, 'InsufficientOutboundLiquidityToConvertToInbound']);
       }
@@ -210,6 +216,7 @@ module.exports = (args, cbk) => {
       'recover',
       ({getWalletInfo, recover}, cbk) =>
     {
+      // Exit early when recovering from an in-progress swap
       if (!!recover) {
         return cbk(null, recover.start_height);
       }
@@ -218,26 +225,8 @@ module.exports = (args, cbk) => {
     }],
 
     // Network for swap
-    network: ['getWalletInfo', ({getWalletInfo}, cbk) => {
-      const [chain, otherChain] = getWalletInfo.chains;
-
-      if (!!otherChain) {
-        return cbk([400, 'CannotDetermineSwapChainFromNode']);
-      }
-
-      const network = keys(chains).find(network => {
-        return chain === reversedBytes(chains[network]);
-      });
-
-      if (!network) {
-        return cbk([400, 'UnknownChainForSwap']);
-      }
-
-      if (!swappable[network]) {
-        return cbk([400, 'UnsupportedNetworkForSwapExecution']);
-      }
-
-      return cbk(null, network);
+    network: ['getNetwork', ({getNetwork}, cbk) => {
+      return cbk(null, getNetwork.network);
     }],
 
     // Currency of swap
@@ -256,6 +245,7 @@ module.exports = (args, cbk) => {
 
     // Recover address
     recoverAddress: ['network', 'recover', ({network, recover}, cbk) => {
+      // Derive recovery address for an in-progress swap
       if (!args.recovery) {
         return cbk();
       }
@@ -278,7 +268,7 @@ module.exports = (args, cbk) => {
       return getSwapOutQuote({service}, cbk);
     }],
 
-    // Check quote
+    // Check quote to validate parameters of the swap
     checkQuote: ['getQuote', ({getQuote}, cbk) => {
       if (!!args.recovery) {
         return cbk();
@@ -332,6 +322,7 @@ module.exports = (args, cbk) => {
       'service',
       ({network, recover, recoverAddress, service}, cbk) =>
     {
+      // Exit early when the swap is already initiated
       if (!!args.recovery) {
         return cbk(null, {
           address: recoverAddress,
@@ -343,9 +334,7 @@ module.exports = (args, cbk) => {
         });
       }
 
-      const tokens = args.tokens;
-
-      return createSwapOut({network, service, tokens}, cbk);
+      return createSwapOut({network, service, tokens: args.tokens}, cbk);
     }],
 
     // Decode swap execution request
@@ -385,6 +374,7 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
+      // Output a recovery blob that can be used to restart the swap
       try {
         const {recovery} = encodeSwapRecovery({
           claim_private_key: initiateSwap.private_key,
@@ -434,7 +424,7 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
-    // Check payment requests
+    // Check that the payment requests match the validated quote
     checkRequestAmounts: [
       'decodeExecutionRequest',
       'decodeFundingRequest',
@@ -464,99 +454,85 @@ module.exports = (args, cbk) => {
 
     // Probe for execution
     findRouteForExecution: [
+      'channel',
       'decodeExecutionRequest',
       'getLnd',
-      ({decodeExecutionRequest, getLnd}, cbk) =>
+      'getStartHeight',
+      ({channel, decodeExecutionRequest, getLnd, getStartHeight}, cbk) =>
     {
       // Exit early when there is a swap recovery
       if (!!args.recovery) {
         return cbk();
       }
 
-      // Exit early, probing out of a specific channel is not supported
-      if (!!args.peer) {
-        return cbk(null, {});
-      }
-
-      const sub = subscribeToProbe({
-        cltv_delta: decodeExecutionRequest.cltv_delta,
+      return executeProbe({
+        cltv_delta: decodeExecutionRequest.cltv_delta + cltvBuffer,
         destination: decodeExecutionRequest.destination,
-        ignore_probability_below: maxRouteFailProbability,
         lnd: getLnd.lnd,
+        logger: args.logger,
         max_fee: maxExecutionFeeTokens,
-        path_timeout_ms: maxPathfindingMs,
+        max_timeout_height: getStartHeight + maxCltvDelta,
+        outgoing_channel: channel.id,
         routes: decodeExecutionRequest.routes,
         tokens: decodeExecutionRequest.tokens,
+      },
+      (err, res) => {
+        if (!!err) {
+          return cbk([503, 'UnexpectedErrorFindingRouteForExecution', {err}]);
+        }
+
+        if (!res.route) {
+          return cbk([503, 'FailedToFindAPathToPaySwapExecutionFee']);
+        }
+
+        return cbk(null, res.route);
       });
-
-      const finished = (err, route) => {
-        sub.removeAllListeners();
-
-        return cbk(err, route);
-      };
-
-      sub.once('end', () => finished([503, 'FailedToFindRouteToExecuteSwap']));
-
-      sub.once('error', err => finished(err));
-
-      sub.once('probe_success', ({route}) => finished(null, route));
-
-      return;
     }],
 
     // Probe for funding
     findRouteForFunding: [
+      'channel',
       'currency',
       'decodeFundingRequest',
       'getLnd',
       'getStartHeight',
-      ({currency, decodeFundingRequest, getLnd, getStartHeight}, cbk) =>
+      ({
+        channel,
+        currency,
+        decodeFundingRequest,
+        getLnd,
+        getStartHeight,
+      }, cbk) =>
     {
       if (!!args.recovery) {
         return cbk();
       }
 
-      // Exit early, probing out of a specific channel is not supported
-      if (!!args.peer) {
-        return cbk(null, {});
-      }
-
-      const sub = subscribeToProbe({
-        cltv_delta: decodeFundingRequest.cltv_delta,
+      return executeProbe({
+        cltv_delta: decodeFundingRequest.cltv_delta + cltvBuffer,
         destination: decodeFundingRequest.destination,
-        ignore_probability_below: maxRouteFailProbability,
         lnd: getLnd.lnd,
+        logger: args.logger,
         max_fee: round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),
         max_timeout_height: getStartHeight + maxCltvDelta,
-        path_timeout_ms: maxPathfindingMs,
+        outgoing_channel: channel.id,
         routes: decodeFundingRequest.routes,
         tokens: decodeFundingRequest.tokens,
+      },
+      (err, res) => {
+        if (!!err) {
+          return cbk([503, 'UnexpectedErrorFindingRouteToFundSwap', {err}]);
+        }
+
+        if (!res.route) {
+          return cbk([503, 'FailedToFindAPathToFundSwapOffchain']);
+        }
+
+        return cbk(null, res.route);
       });
-
-      const finished = (err, route) => {
-        sub.removeAllListeners();
-
-        return cbk(err, route);
-      };
-
-      sub.once('end', () => finished([503, 'FailedToFindFundingRoute']));
-
-      sub.once('error', err => finished(err));
-
-      sub.once('probe_success', ({route}) => finished(null, route));
-
-      sub.on('probing', ({route}) => {
-        const fee = numberFromBig(BigInt(route.fee_mtokens) / mtokPerTok);
-
-        const pathFee = `${tokensAsBigUnit(route.fee_mtokens)} ${currency}`;
-
-        return args.logger.info({check_path_with_fee: pathFee});
-      });
-
-      return;
     }],
 
-    // Get funding peer info
+    // Get info about the peer we are going to get inbound liquidity with
     getSwapPeer: [
       'channel',
       'findRouteForFunding',
@@ -677,53 +653,22 @@ module.exports = (args, cbk) => {
 
     // Pay to swap funding
     payToFund: [
-      'channel',
       'checkRequestAmounts',
       'checkSwap',
       'decodeFundingRequest',
       'findRouteForExecution',
       'findRouteForFunding',
       'getLnd',
-      'getStartHeight',
-      'getQuote',
-      'initiateSwap',
-      ({
-        channel,
-        decodeFundingRequest,
-        findRouteForFunding,
-        getLnd,
-        getStartHeight,
-        getQuote,
-        initiateSwap,
-      }, cbk) =>
+      ({decodeFundingRequest, findRouteForFunding, getLnd}, cbk) =>
     {
       if (!!args.recovery) {
         return cbk();
       }
 
-      if (!args.peer) {
-        return payViaRoutes({
-          id: decodeFundingRequest.id,
-          lnd: getLnd.lnd,
-          routes: [findRouteForFunding],
-        },
-        cbk);
-      }
-
-      args.logger.info({paying_funding_request: decodeFundingRequest.id});
-
-      const maxFee = min(
-        round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),
-        args.max_fee || Infinity
-      );
-
-      return payViaPaymentRequest({
+      return payViaRoutes({
+        id: decodeFundingRequest.id,
         lnd: getLnd.lnd,
-        max_fee: maxFee,
-        max_timeout_height: getStartHeight + maxCltvExpiration,
-        outgoing_channel: channel.id,
-        pathfinding_timeout: maxPathfindingMs,
-        request: initiateSwap.swap_fund_request,
+        routes: [findRouteForFunding],
       },
       cbk);
     }],
@@ -1136,6 +1081,7 @@ module.exports = (args, cbk) => {
     // Finished
     summary: [
       'currency',
+      'getFundingPayment',
       'sweep',
       'recover',
       'spentOffchain',
@@ -1148,11 +1094,11 @@ module.exports = (args, cbk) => {
 
       const chainFee = tokens - sweep.output_tokens;
       const liquidityIncrease = (spentOffchainMtokens / mtokPerTok);
-      const routingFeeTokens = numberFromBig(offchainFee);
+      const routingFeeTokens = Number(offchainFee);
       const swapFeeMtokens = BigInt(spentOffchain.spent) - amountReceived;
 
-      const increase = tokensAsBigUnit(numberFromBig(liquidityIncrease));
-      const swapFee = numberFromBig(swapFeeMtokens / mtokPerTok);
+      const increase = tokensAsBigUnit(Number(liquidityIncrease));
+      const swapFee = Number(swapFeeMtokens / mtokPerTok);
 
       args.logger.info({
         inbound_liquidity_increase: `${increase} ${currency}`,

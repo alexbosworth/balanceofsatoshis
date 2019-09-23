@@ -23,6 +23,7 @@ const minInboundBalance = 4294967 * 2;
 const minRemoteBalance = 4294967;
 const minTokens = 0;
 const mtokensPerToken = BigInt(1e3);
+const notFoundIndex = -1;
 const rateDivisor = 1e6;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
 const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
@@ -30,6 +31,7 @@ const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
 /** Rebalance funds between peers
 
   {
+    [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
     [in_through]: <Pay In Through Public Key Hex String>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
@@ -83,7 +85,11 @@ module.exports = (args, cbk) => {
       'lnd',
       ({getInitialLiquidity, lnd}, cbk) =>
     {
-      const active = getInitialLiquidity.channels.filter(n => !!n.is_active)
+      const ignore = args.avoid || [];
+
+      const active = getInitialLiquidity.channels
+        .filter(n => !!n.is_active)
+        .filter(n => ignore.indexOf(n.partner_public_key) === notFoundIndex);
 
       const channels = active
         .map(channel => {
@@ -123,9 +129,12 @@ module.exports = (args, cbk) => {
       'lnd',
       ({getInitialLiquidity, getOutbound, lnd}, cbk) =>
     {
+      const ignore = args.avoid || [];
+
       const activeChannels = getInitialLiquidity.channels
         .filter(n => !!n.is_active)
-        .filter(n => n.partner_public_key !== getOutbound.public_key);
+        .filter(n => n.partner_public_key !== getOutbound.public_key)
+        .filter(n => ignore.indexOf(n.partner_public_key) === notFoundIndex);
 
       const channels = activeChannels
         .filter(n => !!args.in_through || n.remote_balance > minInboundBalance)
@@ -167,9 +176,12 @@ module.exports = (args, cbk) => {
       'getPublicKey',
       ({getInbound, getOutbound, getPublicKey}, cbk) =>
     {
+      const avoid = (args.avoid || []).map(n => ({from_public_key: n}));
+
       return probeDestination({
         destination: getPublicKey.public_key,
         find_max: 5e6,
+        ignore: [{from_public_key: getPublicKey.public_key}].concat(avoid),
         in_through: getInbound.public_key,
         logger: args.logger,
         max_fee: Math.floor(5e6 * 0.0025),
@@ -250,13 +262,22 @@ module.exports = (args, cbk) => {
 
         // Exit early when a max fee is specified and exceeded
         if (!!maxFee && route.fee > maxFee) {
-          return cbk([400, 'RebalanceFeeTooHigh', {needed_fee: route.fee}]);
+          return cbk([
+            400,
+            'RebalanceFeeTooHigh',
+            {needed_max_fee: route.fee},
+          ]);
         }
 
         const feeRate = ceil(route.fee / route.tokens * rateDivisor);
 
+        // Exit early when the max fee rate is specified and exceeded
         if (!!maxFeeRate && feeRate > maxFeeRate) {
-          return cbk([400, 'RebalanceFeeRateTooHigh', {needed_rate: feeRate}]);
+          return cbk([
+            400,
+            'RebalanceFeeTooHigh',
+            {needed_max_fee_rate: feeRate},
+          ]);
         }
 
         return cbk(null, [route]);

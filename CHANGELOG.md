@@ -1,5 +1,9 @@
 # Versions
 
+## Version 4.1.0
+
+- `pay`, `probe`, `rebalance`: Add repeatable `avoid` flag to avoid forwarding via avoid nodes
+
 ## Version 4.0.0
 
 ### Breaking Changes

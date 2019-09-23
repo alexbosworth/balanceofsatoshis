@@ -12,7 +12,11 @@ const pathTimeoutMs = 1000 * 60;
   {
     cltv_delta: <Final Cltv Delta Number>
     destination: <Final Destination Public Key Hex String>
+    [ignore]: [{
+      from_public_key: <Avoid Node With Public Key Hex String>
+    }]
     [is_strict_hints]: <Interpret Routes Strictly Ignoring Other Paths Bool>
+    [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
@@ -96,8 +100,10 @@ module.exports = (args, cbk) => {
         const sub = subscribeToProbe({
           cltv_delta: args.cltv_delta,
           destination: args.destination,
+          ignore: args.ignore,
           is_strict_hints: !!args.is_strict_hints,
           lnd: args.lnd,
+          max_fee: !args.is_strict_max_fee ? undefined : args.max_fee,
           max_timeout_height: args.max_timeout_height,
           outgoing_channel: args.outgoing_channel,
           path_timeout_ms: pathTimeoutMs,
@@ -152,7 +158,9 @@ module.exports = (args, cbk) => {
               // Ignore errors, not all nodes may be in the graph
               const alias = (!!err || !node || !node.alias) ? '' : node.alias;
 
-              return cbk(null, `${hop.channel} ${alias} ${hop.public_key}`);
+              const towards = `${alias} ${hop.public_key}`;
+
+              return cbk(null, `${hop.fee} ${hop.channel} ${towards}`);
             });
           },
           (err, evaluating) => {
