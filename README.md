@@ -107,7 +107,8 @@ bos utxos
 
 ## Saved Nodes Directory
 
-By default `bos` expects `tls.cert` in the root of the default `lnd` directory and `admin.macaroon` in `<default_lnd_dir>/data/chain/bitcoin/<network>`.
+By default `bos` expects `tls.cert` in the root of the default `lnd` directory and
+`admin.macaroon` in `<default_lnd_dir>/data/chain/bitcoin/<network>`.
 
 Default lnd directories:
 * macOS: `~/Library/Application Support/Lnd/`
