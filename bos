@@ -5,6 +5,7 @@ const prog = require('caporal');
 const {rateProviders} = require('ln-accounting');
 
 const {accountingCategories} = require('./balances');
+const {authenticatedLnd} = require('./lnd');
 const {exchanges} = require('./fiat');
 const {findRecord} = require('./lnd');
 const {getAccountingReport} = require('./balances');
@@ -53,17 +54,22 @@ prog
   .help(`Categories: ${keys(accountingCategories).join(', ')}`)
   .help(`Rate providers: ${rateProviders.join(', ')}`)
   .option('--csv', 'Output a CSV')
+  .option('--month <month>', 'Show only records for specific month')
   .option('--node <node_name>', 'Get details from named node')
   .option('--rate-provider <rate_provider>', 'Rate provider', rateProviders)
+  .option('--year <year>', 'Show only records for specified year')
   .action((args, options, logger) => {
     const table = !!options.csv ? null : 'rows';
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       return getAccountingReport({
         category: args.category,
         is_csv: !!options.csv,
+        lnd: (await authenticatedLnd({node: options.node})).lnd,
+        month: options.month,
         node: options.node,
         rate_provider: options.rateProvider,
+        year: options.year,
       },
       returnObject({logger, reject, resolve, table}));
     });

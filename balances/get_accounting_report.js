@@ -1,13 +1,14 @@
 const asyncAuto = require('async/auto');
-const {authenticatedLndGrpc} = require('ln-service');
 const {getAccountingReport} = require('ln-accounting');
+const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const categories = require('./accounting_categories');
-const {lndCredentials} = require('./../lnd');
-
-const defaultCurrency = 'BTC';
-const defaultFiat = 'USD';
+const {defaultCurrency} = require('./constants');
+const {defaultFiat} = require('./constants');
+const {monthNumbers} = require('./constants');
+const {monthOffset} = require('./constants');
+const {notFoundIndex} = require('./constants');
 
 /** Get an accounting report
 
@@ -16,8 +17,11 @@ const defaultFiat = 'USD';
     [currency]: <Currency Label String>
     [fiat]: <Fiat Type String>
     [is_csv]: <Return CSV Output Bool>
+    lnd: <Authenticated LND gRPC API Object>
+    [month]: <Month For Report>
     [node]: <Node Name String>
     [rate_provider]: <Rate Provider String>
+    [year]: <Year For Report>
   }
 
   @returns via cbk
@@ -27,34 +31,70 @@ const defaultFiat = 'USD';
 */
 module.exports = (args, cbk) => {
   return asyncAuto({
-    // Credentials
-    credentials: cbk => lndCredentials({node: args.node}, cbk),
-
     // Validate
     validate: cbk => {
       if (!args.category || !categories[args.category]) {
         return cbk([400, 'ExpectedKnownAccountingRecordsCategory']);
       }
 
+      if (!args.lnd) {
+        return cbk([400, 'ExpectedAuthenticatedLndToGetAccountingReport']);
+      }
+
       return cbk();
     },
 
-    // Lnd
-    lnd: ['credentials', 'validate', ({credentials}, cbk) => {
-      return cbk(null, authenticatedLndGrpc({
-        cert: credentials.cert,
-        macaroon: credentials.macaroon,
-        socket: credentials.socket,
-      }).lnd);
+    // Get date range
+    dateRange: ['validate', ({}, cbk) => {
+      if (!args.year && !args.month) {
+        return cbk(null, {});
+      }
+
+      const after = moment.utc().startOf('year');
+
+      if (!!args.year) {
+        after.year(args.year);
+      }
+
+      if (!after.isValid()) {
+        return cbk([400, 'UnrecognizedFormatForAccountingYear']);
+      }
+
+      const end = after.clone();
+
+      if (!!args.month && monthNumbers.indexOf(args.month) !== notFoundIndex) {
+        [after, end].forEach(n => n.month(Number(args.month) - monthOffset));
+      } else if (!!args.month) {
+        [after, end].forEach(n => n.month(args.month));
+      }
+
+      if (!!args.month) {
+        end.add([args.month].length, 'months');
+      } else {
+        end.add([after].length, 'years');
+      }
+
+      if (!after.isValid()) {
+        return cbk([400, 'UnrecognizedFormatForAccountingMonth']);
+      }
+
+      after.subtract([after].length, 'millisecond');
+
+      return cbk(null, {
+        after: after.toISOString(),
+        before: end.toISOString(),
+      });
     }],
 
     // Get accounting info
-    getAccounting: ['lnd', ({lnd}, cbk) => {
+    getAccounting: ['dateRange', ({dateRange}, cbk) => {
       return getAccountingReport({
-        lnd,
+        after: dateRange.after,
+        before: dateRange.before,
         category: categories[args.category],
         currency: args.currency || defaultCurrency,
         fiat: args.fiat || defaultFiat,
+        lnd: args.lnd,
         rate_provider: args.rate_provider || undefined,
       },
       cbk);

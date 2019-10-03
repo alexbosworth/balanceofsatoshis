@@ -1,5 +1,9 @@
 # Versions
 
+## Version 4.2.0
+
+- `accounting`: Add `month` and `year` flags to return only specified date range results
+
 ## Version 4.1.0
 
 - `pay`, `probe`, `rebalance`: Add repeatable `avoid` flag to avoid forwarding via avoid nodes
