@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -8,6 +9,7 @@ const {authenticatedLnd} = require('./../lnd');
 const {sortBy} = require('./../arrays');
 
 const defaultSort = 'public_key';
+const {max} = Math;
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
 const uniq = arr => Array.from(new Set(arr));
 
@@ -49,8 +51,19 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Get policies
+      getPolicies: ['getChannels', 'getLnd', async ({getChannels, getLnd}) => {
+        return await asyncMap(getChannels.channels, async ({id}) => {
+          return await getChannel({id, lnd: getLnd.lnd});
+        });
+      }],
+
       // Peers
-      peers: ['getChannels', 'getLnd', async ({getChannels, getLnd}) => {
+      peers: [
+        'getChannels',
+        'getLnd',
+        'getPolicies', async ({getChannels, getLnd, getPolicies}) =>
+      {
         const maxInbound = args.inbound_liquidity_below;
         const maxOutbound = args.outbound_liquidity_below;
         const peerKeys = getChannels.channels.map(n => n.partner_public_key);
@@ -60,6 +73,12 @@ module.exports = (args, cbk) => {
             return channel.partner_public_key === publicKey;
           });
 
+          const policies = getPolicies
+            .map(n => n.policies.find(n => n.public_key === publicKey))
+            .filter(n => !!n);
+
+          const feeRate = max(...policies.map(n => n.fee_rate));
+
           const node = await getNode({
             is_omitting_channels: true,
             lnd: getLnd.lnd,
@@ -68,6 +87,7 @@ module.exports = (args, cbk) => {
 
           return {
             alias: node.alias,
+            inbound_fee_rate: feeRate,
             inbound_liquidity: sumOf(channels.map(n => n.remote_balance)),
             outbound_liquidity: sumOf(channels.map(n => n.local_balance)),
             public_key: publicKey,
@@ -80,6 +100,7 @@ module.exports = (args, cbk) => {
           .filter(n => !maxOutbound || n.outbound_liquidity < maxOutbound)
           .map(n => ({
             alias: n.alias,
+            inbound_fee_rate: (n.inbound_fee_rate / 1e4).toFixed(2) + '%',
             inbound_liquidity: (n.inbound_liquidity / 1e8).toFixed(8),
             outbound_liquidity: (n.outbound_liquidity / 1e8).toFixed(8),
             public_key: n.public_key,

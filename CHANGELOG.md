@@ -1,5 +1,9 @@
 # Versions
 
+## Version 4.2.1
+
+- `peers`: Add inbound fee rate attribute to peers listing
+
 ## Version 4.2.0
 
 - `accounting`: Add `month` and `year` flags to return only specified date range results
