@@ -4,6 +4,8 @@ const {getNode} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToProbe} = require('ln-service');
 
+const {describeConfidence} = require('./../routing');
+
 const {now} = Date;
 const pathTimeoutMs = 1000 * 60;
 
@@ -126,10 +128,25 @@ module.exports = (args, cbk) => {
         sub.on('error', err => finished(err));
 
         // Log failures encountered while trying to find a route
-        sub.on('routing_failure', fail => {
-          return args.logger.info({
-            failure: `${fail.reason} at ${fail.channel || fail.public_key}`,
-          });
+        sub.on('routing_failure', async fail => {
+          const at = `at ${fail.channel || fail.public_key}`;
+          const source = fail.route.hops[fail.index - 1];
+
+          let fromName = !source ? null : source.public_key;
+
+          try {
+            const node = await getNode({
+              is_omitting_channels: true,
+              lnd: args.lnd,
+              public_key: source.public_key,
+            });
+
+            fromName = node.alias;
+          } catch (err) {}
+
+          const from = !source ? '' : `from ${fromName}`;
+
+          return args.logger.info({failure: `${fail.reason} ${at} ${from}`});
         });
 
         // Finish with successful probe
@@ -168,7 +185,15 @@ module.exports = (args, cbk) => {
               return args.logger.error(err);
             }
 
-            return args.logger.info({evaluating, potential_fee: route.fee});
+            const {confidence} = route;
+
+            const {description} = describeConfidence({confidence});
+
+            return args.logger.info({
+              evaluating,
+              confidence: description || undefined,
+              potential_fee: route.fee,
+            });
           });
         });
 

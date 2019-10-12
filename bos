@@ -272,6 +272,7 @@ prog
   .command('increase-inbound-liquidity', 'Increase node inbound liquidity')
   .help('Spend down a channel to get inbound. Fee is an estimate, may be more')
   .option('--address <out_address>', 'Out chain address to send funds out to')
+  .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--amount <amount>', 'Amount to increase liquidity', INT, 5e5)
   .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
   .option('--dryrun', 'Only show cost estimate for increase')
@@ -285,6 +286,7 @@ prog
     return new Promise((resolve, reject) => {
       return swapOut({
         logger,
+        avoid: flatten([options.avoid].filter(n => !!n)),
         confs: options.confs,
         is_raw_recovery_shown: options.showRawRecovery || undefined,
         is_dry_run: options.dryrun || false,

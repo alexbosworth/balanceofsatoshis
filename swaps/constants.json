@@ -6,7 +6,7 @@
   "maxExecutionFeeTokens": 100,
   "maxFeeMultiplier": 1000,
   "maxFeeRate": 0.01,
-  "maxPathfindingMs": 600000,
+  "maxPathfindingMs": 1200000,
   "maxRouteFailProbability": 1000000,
   "maxRoutingFeeDenominator": 100,
   "minCltvDelta": 16,

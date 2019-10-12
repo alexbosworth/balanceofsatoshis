@@ -68,6 +68,7 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 /** Get additional inbound liquidity
 
   {
+    [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
     confs: <Confirmations to Wait for Deposit Number>
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
     [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
@@ -468,6 +469,7 @@ module.exports = (args, cbk) => {
       return executeProbe({
         cltv_delta: decodeExecutionRequest.cltv_delta + cltvBuffer,
         destination: decodeExecutionRequest.destination,
+        ignore: (args.avoid || []).map(n => ({from_public_key: n})),
         lnd: getLnd.lnd,
         logger: args.logger,
         max_fee: maxExecutionFeeTokens,
@@ -511,6 +513,7 @@ module.exports = (args, cbk) => {
       return executeProbe({
         cltv_delta: decodeFundingRequest.cltv_delta + cltvBuffer,
         destination: decodeFundingRequest.destination,
+        ignore: (args.avoid || []).map(n => ({from_public_key: n})),
         lnd: getLnd.lnd,
         logger: args.logger,
         max_fee: round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),

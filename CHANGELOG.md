@@ -1,5 +1,10 @@
 # Versions
 
+## Version 4.3.0
+
+- `increase-inbound-liquidity`: Add `avoid` argument to avoid forwards through 
+    nodes.
+
 ## Version 4.2.1
 
 - `peers`: Add inbound fee rate attribute to peers listing
