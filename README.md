@@ -1,10 +1,10 @@
 # Balance of Satoshis
 
-Commands for working with lnd balances.
+Commands for working with LND balances.
 
 ## Install 
 
-Requires Node v10.4.0+
+Requires an [installation of Node v10.4.0+ and NPM](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 
 ```shell
 npm install -g balanceofsatoshis
@@ -24,7 +24,7 @@ To see a list of available options and flags run:
 ```shell
 bos help
 
-// Or get individual help with a command
+# Or get individual help with a command
 bos help commandName
 ```
 
@@ -77,6 +77,9 @@ bos liquidity-cost "inbound" "amount"
 # See market price history
 bos market
 
+# See list of saved nodes
+bos nodes
+
 # Outputs the sum total of local channel liquidity
 bos outbound-liquidity
 
@@ -110,7 +113,7 @@ bos utxos
 By default `bos` expects `tls.cert` in the root of the default `lnd` directory and
 `admin.macaroon` in `<default_lnd_dir>/data/chain/bitcoin/<network>`.
 
-Default lnd directories:
+Default LND directories:
 * macOS: `~/Library/Application Support/Lnd/`
 * Linux: `~/.lnd/`
 

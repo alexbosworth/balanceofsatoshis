@@ -1,5 +1,9 @@
 # Versions
 
+## Version 4.4.0
+
+- `nodes`: Add method to list out all saved nodes
+
 ## Version 4.3.0
 
 - `increase-inbound-liquidity`: Add `avoid` argument to avoid forwards through 

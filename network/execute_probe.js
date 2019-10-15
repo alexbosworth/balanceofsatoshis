@@ -22,7 +22,7 @@ const pathTimeoutMs = 1000 * 60;
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
-    max_timeout_height: <Maximum Timeout Height Number>
+    [max_timeout_height]: <Maximum Timeout Height Number>
     [outgoing_channel]: <Outgoing Channel Id String>
     [routes]: [[{
       [base_fee_mtokens]: <Base Fee Millitokens String>

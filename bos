@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+const {lstat} = require('fs');
+const {readdir} = require('fs');
+const {readFile} = require('fs');
 const {writeFile} = require('fs');
 
 const prog = require('caporal');
@@ -18,6 +21,7 @@ const {getLiquidity} = require('./balances');
 const {getPeers} = require('./network');
 const {getPriceChart} = require('./fiat');
 const {getReport} = require('./wallets');
+const {getSavedNodes} = require('./nodes');
 const {getSwapCost} = require('./swaps');
 const {getSwapService} = require('./swaps');
 const {getUtxos} = require('./chain');
@@ -82,6 +86,7 @@ prog
   .help('Mirroring and urls require lnd --autopilot.heuristic=externalscore:1')
   .option('--dryrun', 'Show scoring without changing autopilot settings')
   .option('--mirror <pubkey>', 'Mirror channels of node', REPEATABLE)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Set autopilot on named node')
   .option('--url <url>', 'Follow nodes from a scoring URL', REPEATABLE)
   .action((args, options, logger) => {
@@ -122,6 +127,7 @@ prog
   .command('chain-receive', 'Receive funds on-chain via submarine swap')
   .argument('[amount]', 'Amount to receive', INT, 1e6)
   .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to receive funds on')
   .option('--recovery <refund_recovery>', 'Attempt refund of swap')
   .option('--refund-address <refund_address>', 'Refund address for swap')
@@ -146,6 +152,7 @@ prog
   .help('Lookup chain fee estimates at various confirm targets')
   .option('--blocks <depth>', 'Blocks confirm target depth to estimate to')
   .option('--file <path>', 'Write the output to a JSON file at desired path')
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get chain fees view from')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -167,6 +174,7 @@ prog
   .command('closed', 'Get the status of a channel closings')
   .help('Channel closes with chain-transaction derived resolution details')
   .option('--limit [limit]', 'Limit of closings to get', INT, 20)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Get channel closes from saved node')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -186,6 +194,7 @@ prog
   .option('--confirmed', 'Only consider confirmed existing utxos')
   .option('--dryrun', 'Execute a fan-out dry run')
   .option('--feerate <feerate>', 'Feerate in per vbyte rate', INT)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to do fan out for')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -205,6 +214,7 @@ prog
   .command('find', 'Find a record')
   .help('Look for something in the node db that matches a query')
   .argument('<query>', 'Query for a record')
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to find record on')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -220,6 +230,7 @@ prog
   .command('forwards', 'Get forwards')
   .help('Peers where routing has taken place from inbound and outbound sides')
   .option('--days <days>', 'Number of past days to evaluate', INT)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get forwards for')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -278,6 +289,7 @@ prog
   .option('--dryrun', 'Only show cost estimate for increase')
   .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 3000)
   .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 24)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Increase inbound liquidity on saved node')
   .option('--recovery <recovery>', 'Recover in-progress swap')
   .option('--show-raw-recovery', 'Show raw recovery transactions')
@@ -308,7 +320,6 @@ prog
   .argument('<type>', 'Liquidity direction', swapTypes)
   .argument('<amount>', 'Amount of liquidity to get quote for', INT)
   .option('--above <tokens>', 'Return amount above watermark', INT)
-  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get liquidity cost')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -319,27 +330,6 @@ prog
         type: args.type,
       },
       returnNumber({logger, reject, resolve, number: 'cost'}));
-    });
-  })
-
-  // Get outbound liquidity information: available outbound off-chain tokens
-  .command('outbound-liquidity', 'Get outbound liquidity size')
-  .option('--above <tokens>', 'Return amount above watermark', INT)
-  .option('--below <tokens>', 'Return amount above watermark', INT)
-  .option('--node <node_name>', 'Node to get outbound liquidity amount')
-  .option('--top', 'Top percentile inbound liquidity in an individual channel')
-  .option('--with', 'Liquidity with a specific node')
-  .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getLiquidity({
-        above: options.above || undefined,
-        below: options.below || undefined,
-        is_outbound: true,
-        is_top: options.top || undefined,
-        node: options.node || undefined,
-        with: options.with || undefined,
-      },
-      returnNumber({logger, reject, resolve, number: 'balance'}));
     });
   })
 
@@ -364,12 +354,49 @@ prog
     });
   })
 
+  // List saved nodes
+  .command('nodes', 'Get the list of saved nodes')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getSavedNodes({
+        fs: {
+          getDirectoryFiles: readdir,
+          getFile: readFile,
+          getFileStatus: lstat,
+        },
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Get outbound liquidity information: available outbound off-chain tokens
+  .command('outbound-liquidity', 'Get outbound liquidity size')
+  .option('--above <tokens>', 'Return amount above watermark', INT)
+  .option('--below <tokens>', 'Return amount above watermark', INT)
+  .option('--node <node_name>', 'Node to get outbound liquidity amount')
+  .option('--top', 'Top percentile inbound liquidity in an individual channel')
+  .option('--with', 'Liquidity with a specific node')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getLiquidity({
+        above: options.above || undefined,
+        below: options.below || undefined,
+        is_outbound: true,
+        is_top: options.top || undefined,
+        node: options.node || undefined,
+        with: options.with || undefined,
+      },
+      returnNumber({logger, reject, resolve, number: 'balance'}));
+    });
+  })
+
   // Pay a payment request, probing first
   .command('pay', 'Pay a payment request, probing first')
   .argument('<request>', 'Payment Request')
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT, 1337)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use to pay payment request')
   .option('--out <public_key>', 'Make first hop through specific peer')
   .action((args, options, logger) => {
@@ -395,6 +422,7 @@ prog
   .option('--node <node_name>', 'Node to get peers for')
   .option('--offline', 'Only offline peer channels')
   .option('--outbound-below <amount>', 'Outbound liquidity below amount', INT)
+  .option('--no-color', 'Mute all colors')
   .option('--public', 'Only peers with public channels')
   .option('--sort', 'Sort results by peer attribute')
   .action((args, options, logger) => {
@@ -416,6 +444,7 @@ prog
   .command('price', 'Get the price')
   .argument('[symbols...]', 'Desired fiat tickers')
   .option('--file <path>', 'Write the output to a JSON file at desired path')
+  .option('--no-color', 'Mute all colors')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getExchangeRates({
@@ -439,6 +468,7 @@ prog
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--find-max', 'Find the maximum routeable amount on success route')
   .option('--in <public_key>', 'Route through specific peer of destination')
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <public_key>', 'Make first hop through specific peer')
   .action((args, options, logger) => {
@@ -465,6 +495,7 @@ prog
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <public_key>', 'Make first hop through specific peer')
   .action((args, options, logger) => {
@@ -500,6 +531,7 @@ prog
   .command('unlock', 'Unlock wallet if locked')
   .help('Check if the wallet is locked, if so use a password file to unlock')
   .argument('<path_to_password_file>', 'Path to password file')
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to unlock')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
@@ -516,6 +548,7 @@ prog
   .option('--confirmed', 'Return only confirmed utxos')
   .option('--count', 'Return the count of utxos')
   .option('--count-below <below>', 'Return only count below number', INT)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get utxos for')
   .option('--size', 'Utxos of size greater than or equal to specified amount')
   .action((args, options, logger) => {

@@ -52,10 +52,19 @@ module.exports = (args, cbk) => {
       }],
 
       // Get policies
-      getPolicies: ['getChannels', 'getLnd', async ({getChannels, getLnd}) => {
-        return await asyncMap(getChannels.channels, async ({id}) => {
-          return await getChannel({id, lnd: getLnd.lnd});
-        });
+      getPolicies: ['getChannels', 'getLnd', ({getChannels, getLnd}, cbk) => {
+        return asyncMap(getChannels.channels, ({id}, cbk) => {
+          return getChannel({id, lnd: getLnd.lnd}, (err, res) => {
+            const [errorCode] = err || [];
+
+            if (errorCode === 404) {
+              return cbk();
+            }
+
+            return cbk(null, {policies: res.policies});
+          });
+        },
+        cbk);
       }],
 
       // Peers
@@ -74,6 +83,7 @@ module.exports = (args, cbk) => {
           });
 
           const policies = getPolicies
+            .filter(n => !!n)
             .map(n => n.policies.find(n => n.public_key === publicKey))
             .filter(n => !!n);
 
