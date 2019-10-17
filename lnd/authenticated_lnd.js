@@ -7,6 +7,7 @@ const lndCredentials = require('./lnd_credentials');
 /** Authenticated LND
 
   {
+    [logger]: <Winston Logger Object>
     [node]: <Node Name String>
   }
 
@@ -15,11 +16,11 @@ const lndCredentials = require('./lnd_credentials');
     lnd: <Authenticated LND gRPC API Object>
   }
 */
-module.exports = ({node}, cbk) => {
+module.exports = ({logger, node}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Credentials
-      credentials: cbk => lndCredentials({node}, cbk),
+      credentials: cbk => lndCredentials({logger, node}, cbk),
 
       // Lnd
       lnd: ['credentials', ({credentials}, cbk) => {

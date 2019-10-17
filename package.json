@@ -28,7 +28,7 @@
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
-    "tap": "14.6.9"
+    "tap": "14.7.1"
   },
   "engines": {
     "node": ">=10.4.0"
@@ -47,7 +47,7 @@
     "url": "https://github.com/alexbosworth/balanceofsatoshis.git"
   },
   "scripts": {
-    "test": "tap test/arrays/*.js test/balances/*.js test/encryption/*.js test/fiat/*.js test/network/*.js test/responses/*.js test/routing/*.js"
+    "test": "tap test/arrays/*.js test/balances/*.js test/encryption/*.js test/fiat/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js"
   },
-  "version": "4.4.0"
+  "version": "4.5.0"
 }

@@ -7,6 +7,8 @@ const asyncDetectSeries = require('async/detectSeries');
 const {flatten} = require('lodash');
 const {returnResult} = require('asyncjs-util');
 
+const {decryptCiphertext} = require('./../encryption');
+const {getSavedCredentials} = require('./../nodes');
 const lndDirectory = require('./lnd_directory');
 
 const base64 = 'base64';
@@ -23,6 +25,7 @@ const socket = 'localhost:10009';
 /** Lnd credentials
 
   {
+    [logger]: <Winston Logger Object>
     [node]: <Node Name String> // Defaults to default local mainnet node creds
   }
 
@@ -33,7 +36,7 @@ const socket = 'localhost:10009';
     socket: <Socket String>
   }
 */
-module.exports = ({node}, cbk) => {
+module.exports = ({logger, node}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Get the default cert
@@ -100,43 +103,54 @@ module.exports = ({node}, cbk) => {
           return cbk();
         }
 
-        const path = [homedir(), home, node, credsFile];
-
-        return readFile(join(...path), (err, creds) => {
-          if (!!err) {
-            return cbk([503, 'FailedToGetNodeCredentials', err]);
-          }
-
-          try {
-            parse(creds);
-          } catch (err) {
-            return cbk([503, 'FailedToParseNodeCredentials', err]);
-          }
-
-          const {cert, macaroon, socket} = parse(creds);
-
-          if (!cert) {
-            return cbk([503, 'FailedToFindCertInCredentials']);
-          }
-
-          if (!macaroon) {
-            return cbk([503, 'FailedToFindMacaroonInCredentials']);
-          }
-
-          if (!socket) {
-            return cbk([503, 'FailedToFindSocketInCredentials']);
-          }
-
-          return cbk(null, {cert, macaroon, socket});
-        });
+        return getSavedCredentials({node, fs: {getFile: readFile}}, cbk);
       },
+
+      // Node credentials
+      nodeCredentials: ['getNodeCredentials', ({getNodeCredentials}, cbk) => {
+        if (!node) {
+          return cbk();
+        }
+
+        if (!getNodeCredentials.credentials) {
+          return cbk([400, 'CredentialsForSpecifiedNodeNotFound']);
+        }
+
+        const {credentials} = getNodeCredentials;
+
+        if (!credentials.encrypted_macaroon) {
+          return cbk(null, {
+            cert: credentials.cert,
+            macaroon: credentials.macaroon,
+            socket: credentials.socket,
+          });
+        }
+
+        const cipher = credentials.encrypted_macaroon;
+
+        if (!!logger) {
+          logger.info({decrypt_credentials_for: node});
+        }
+
+        return decryptCiphertext({cipher}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, {
+            cert: credentials.cert,
+            macaroon: res.clear,
+            socket: credentials.socket,
+          });
+        });
+      }],
 
       // Credentials to use
       credentials: [
         'getCert',
         'getMacaroon',
-        'getNodeCredentials',
-        ({getCert, getMacaroon, getNodeCredentials}) =>
+        'nodeCredentials',
+        ({getCert, getMacaroon, nodeCredentials}) =>
       {
         // Exit early with the default credentials when no node is specified
         if (!node) {
@@ -144,9 +158,9 @@ module.exports = ({node}, cbk) => {
         }
 
         return cbk(null, {
-          cert: getNodeCredentials.cert,
-          macaroon: getNodeCredentials.macaroon,
-          socket: getNodeCredentials.socket,
+          cert: nodeCredentials.cert,
+          macaroon: nodeCredentials.macaroon,
+          socket: nodeCredentials.socket,
         });
       }],
     },

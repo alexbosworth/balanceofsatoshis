@@ -82,7 +82,7 @@ module.exports = (args, cbk) => {
 
     // Get authenticated lnd connection
     getLnd: ['validate', ({}, cbk) => {
-      return authenticatedLnd({node: args.node}, cbk);
+      return authenticatedLnd({logger: args.logger, node: args.node}, cbk);
     }],
 
     // Get wallet info

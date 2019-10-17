@@ -8,17 +8,17 @@ const {authenticatedLndGrpc} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const credentials = 'credentials.json';
+const getSavedCredentials = require('./get_saved_credentials');
+
 const home = '.bos';
-const {parse} = JSON;
 
 /** Get a list of saved nodes
 
   {
     fs: {
+      getDirectoryFiles: <Read Directory Contents Function> (path, cbk) => {}
       getFile: <Read File Contents Function> (path, cbk) => {}
       getFileStatus: <File Status Function> (path, cbk) => {}
-      getDirectoryFiles: <Read Directory Contents Function> (path, cbk) => {}
     }
   }
 
@@ -42,16 +42,16 @@ module.exports = ({fs}, cbk) => {
           return cbk([400, 'ExpectedFileSystemMethods']);
         }
 
+        if (!fs.getDirectoryFiles) {
+          return cbk([400, 'ExpectedGetDirectoryFilesMethod']);
+        }
+
         if (!fs.getFile) {
           return cbk([400, 'ExpectedReadFileFunction']);
         }
 
         if (!fs.getFileStatus) {
           return cbk([400, 'ExpectedReadFileStatusFunction']);
-        }
-
-        if (!fs.getDirectoryFiles) {
-          return cbk([400, 'ExpectedGetDirectoryFilesMethod']);
         }
 
         return cbk();
@@ -61,7 +61,7 @@ module.exports = ({fs}, cbk) => {
       checkDataDir: ['dataDir', ({dataDir}, cbk) => {
         return fs.getFileStatus(dataDir, (err, res) => {
           if (!!err) {
-            return cbk([503, 'UnexpectedErrorCheckingForDataDirectory', {err}]);
+            return cbk([503, 'UnexpectedErrCheckingForDataDirectory', {err}]);
           }
 
           if (!res.isDirectory()) {
@@ -92,54 +92,31 @@ module.exports = ({fs}, cbk) => {
 
       // Get node credentials
       getNodeCredentials: ['getDirs', ({getDirs}, cbk) => {
-        const credentialPaths = getDirs.map(dir => {
-          return {dir, path: join(...[homedir(), home, dir, credentials])};
-        });
-
-        return asyncMap(credentialPaths, ({dir, path}, cbk) => {
-          return fs.getFile(path, (err, res) => {
-            if (!!err || !res) {
-              return cbk();
-            }
-
-            try {
-              parse(res.toString());
-            } catch (err) {
-              return cbk([400, 'SavedNodeHasInvalidCredentials', {err, path}]);
-            }
-
-            const credentials = parse(res.toString());
-
-            if (!credentials.cert) {
-              return cbk([400, 'SavedNodeMissingCertData', {dir}]);
-            }
-
-            if (!credentials.macaroon) {
-              return cbk([400, 'SavedNodeMissingCertData', {dir}]);
-            }
-
-            if (!credentials.socket) {
-              return cbk([400, 'SavedNodeMissingSocket', {dir}]);
-            }
-
-            return cbk(null, {credentials, dir});
-          });
+        return asyncMap(getDirs, (node, cbk) => {
+          return getSavedCredentials({fs, node}, cbk);
         },
         cbk);
       }],
 
       // Get node info
       getNodes: ['getNodeCredentials', ({getNodeCredentials}, cbk) => {
-        return asyncMap(getNodeCredentials, ({credentials, dir}, cbk) => {
+        return asyncMap(getNodeCredentials, ({credentials, node}, cbk) => {
+          if (!credentials.macaroon) {
+            return cbk(null, {
+              node_name: node,
+              locked_to_keys: credentials.encrypted_to,
+            });
+          }
+
           const {lnd} = authenticatedLndGrpc(credentials);
 
           return getWalletInfo({lnd}, (err, res) => {
             if (!!err) {
-              return cbk(null, {node_name: dir});
+              return cbk(null, {node_name: node});
             }
 
             return cbk(null, {
-              node_name: dir,
+              node_name: node,
               is_online: res.is_synced_to_chain,
             });
           });

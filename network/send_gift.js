@@ -142,8 +142,6 @@ module.exports = ({node, to, tokens}, cbk) => {
         if (!!err) {
           const [errCode, errMessage] = err;
 
-          console.log("ERR", err);
-
           switch (errMessage) {
           case 'RejectedUnacceptableFee':
             return cbk([400, 'GiftTokensAmountTooLowToSend']);

@@ -77,7 +77,7 @@ bos liquidity-cost "inbound" "amount"
 # See market price history
 bos market
 
-# See list of saved nodes
+# View and adjust list of saved nodes
 bos nodes
 
 # Outputs the sum total of local channel liquidity

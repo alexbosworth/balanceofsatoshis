@@ -8,6 +8,7 @@ const prog = require('caporal');
 const {rateProviders} = require('ln-accounting');
 
 const {accountingCategories} = require('./balances');
+const {adjustSavedNodes} = require('./nodes');
 const {authenticatedLnd} = require('./lnd');
 const {exchanges} = require('./fiat');
 const {findRecord} = require('./lnd');
@@ -21,7 +22,6 @@ const {getLiquidity} = require('./balances');
 const {getPeers} = require('./network');
 const {getPriceChart} = require('./fiat');
 const {getReport} = require('./wallets');
-const {getSavedNodes} = require('./nodes');
 const {getSwapCost} = require('./swaps');
 const {getSwapService} = require('./swaps');
 const {getUtxos} = require('./chain');
@@ -66,16 +66,20 @@ prog
     const table = !!options.csv ? null : 'rows';
 
     return new Promise(async (resolve, reject) => {
-      return getAccountingReport({
-        category: args.category,
-        is_csv: !!options.csv,
-        lnd: (await authenticatedLnd({node: options.node})).lnd,
-        month: options.month,
-        node: options.node,
-        rate_provider: options.rateProvider,
-        year: options.year,
-      },
-      returnObject({logger, reject, resolve, table}));
+      try {
+        return getAccountingReport({
+          category: args.category,
+          is_csv: !!options.csv,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          month: options.month,
+          node: options.node,
+          rate_provider: options.rateProvider,
+          year: options.year,
+        },
+        returnObject({logger, reject, resolve, table}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -295,23 +299,28 @@ prog
   .option('--show-raw-recovery', 'Show raw recovery transactions')
   .option('--with <peer>', 'Public key of peer to increase liquidity from')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return swapOut({
-        logger,
-        avoid: flatten([options.avoid].filter(n => !!n)),
-        confs: options.confs,
-        is_raw_recovery_shown: options.showRawRecovery || undefined,
-        is_dry_run: options.dryrun || false,
-        max_fee: options.maxFee,
-        max_wait_blocks: Math.ceil((options.maxHours) * 60 / 10),
-        node: options.node || undefined,
-        out_address: options.address || undefined,
-        peer: options.with || undefined,
-        recovery: options.recovery,
-        timeout: 1000 * 60 * 60 * 10,
-        tokens: options.amount,
-      },
-      returnObject({exit, logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return swapOut({
+          logger,
+          avoid: flatten([options.avoid].filter(n => !!n)),
+          confs: options.confs,
+          is_raw_recovery_shown: options.showRawRecovery || undefined,
+          is_dry_run: options.dryrun || false,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          max_fee: options.maxFee,
+          max_wait_blocks: Math.ceil((options.maxHours) * 60 / 10),
+          node: options.node || undefined,
+          out_address: options.address || undefined,
+          peer: options.with || undefined,
+          recovery: options.recovery,
+          timeout: 1000 * 60 * 60 * 10,
+          tokens: options.amount,
+        },
+        returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -354,16 +363,25 @@ prog
     });
   })
 
-  // List saved nodes
-  .command('nodes', 'Get the list of saved nodes')
+  // Saved nodes
+  .command('nodes', 'List and edit saved nodes')
+  .help('Locking and unlocking requires existing installation of GPG')
+  .argument('[node]', 'Specify a saved node')
+  .option('--lock <id>', 'Encrypt node authentication to GPG key>', REPEATABLE)
+  .option('--unlock', 'Remove encryption from auth macaroon')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
-      return getSavedNodes({
+      return adjustSavedNodes({
+        logger,
         fs: {
+          writeFile,
           getDirectoryFiles: readdir,
           getFile: readFile,
           getFileStatus: lstat,
         },
+        is_unlocking: options.unlock || undefined,
+        lock_credentials_to: flatten([options.lock].filter(n => !!n)),
+        node: args.node || undefined,
       },
       returnObject({logger, reject, resolve}));
     });

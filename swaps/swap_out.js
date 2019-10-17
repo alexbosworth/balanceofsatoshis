@@ -72,6 +72,7 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
     confs: <Confirmations to Wait for Deposit Number>
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
     [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
+    lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_wait_blocks]: <Maximum Wait Blocks Number>
@@ -103,6 +104,10 @@ module.exports = (args, cbk) => {
         return cbk([400, 'ExpectedConfirmationsCountToConsiderReorgSafe']);
       }
 
+      if (!args.lnd) {
+        return cbk([400, 'ExpectedLndToInitiateSwapOut']);
+      }
+
       if (!args.logger) {
         return cbk([400, 'ExpectedLoggerForSwapProgressNotifications']);
       }
@@ -118,13 +123,8 @@ module.exports = (args, cbk) => {
       return cbk();
     }],
 
-    // Get authenticated lnd connection
-    getLnd: ['validate', ({}, cbk) => {
-      return authenticatedLnd({node: args.node}, cbk);
-    }],
-
     // Create a sweep address
-    createAddress: ['getLnd', 'recover', ({getLnd, recover}, cbk) => {
+    createAddress: ['recover', 'validate', ({recover}, cbk) => {
       if (!!recover && recover.sweep_address) {
         return cbk(null, {address: recover.sweep_address});
       }
@@ -136,24 +136,22 @@ module.exports = (args, cbk) => {
       return createChainAddress({
         format: 'p2wpkh',
         is_unused: true,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
       },
       cbk);
     }],
 
     // Get channels
-    getChannels: ['getLnd', ({getLnd}, cbk) => {
-      return getChannels({lnd: getLnd.lnd, is_active: true}, cbk);
+    getChannels: ['validate', ({}, cbk) => {
+      return getChannels({lnd: args.lnd, is_active: true}, cbk);
     }],
 
     // Get network
-    getNetwork: ['getLnd', ({getLnd}, cbk) => {
-      return getNetwork({lnd: getLnd.lnd}, cbk);
-    }],
+    getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
     // Get wallet info
-    getWalletInfo: ['getLnd', ({getLnd}, cbk) => {
-      return getWalletInfo({lnd: getLnd.lnd}, cbk);
+    getWalletInfo: ['validate', ({}, cbk) => {
+      return getWalletInfo({lnd: args.lnd}, cbk);
     }],
 
     // Get the current block height
@@ -162,7 +160,7 @@ module.exports = (args, cbk) => {
     }],
 
     // Figure out which channel to use when swapping
-    channel: ['getChannels', 'getLnd', ({getChannels, getLnd}, cbk) => {
+    channel: ['getChannels', ({getChannels}, cbk) => {
       if (!!args.recovery) {
         return cbk();
       }
@@ -194,7 +192,7 @@ module.exports = (args, cbk) => {
 
       return getNode({
         is_omitting_channels: true,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         public_key: channel.partner_public_key,
       },
       (err, res) => {
@@ -339,17 +337,13 @@ module.exports = (args, cbk) => {
     }],
 
     // Decode swap execution request
-    decodeExecutionRequest: [
-      'getLnd',
-      'initiateSwap',
-      ({getLnd, initiateSwap}, cbk) =>
-    {
+    decodeExecutionRequest: ['initiateSwap', ({initiateSwap}, cbk) => {
       if (!!args.recovery) {
         return cbk();
       }
 
       return decodePaymentRequest({
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         request: initiateSwap.swap_execute_request,
       },
       cbk);
@@ -409,17 +403,13 @@ module.exports = (args, cbk) => {
     }],
 
     // Decode funding request
-    decodeFundingRequest: [
-      'getLnd',
-      'initiateSwap',
-      ({getLnd, initiateSwap}, cbk) =>
-    {
+    decodeFundingRequest: ['initiateSwap', ({initiateSwap}, cbk) => {
       if (!!args.recovery) {
         return cbk();
       }
 
       return decodePaymentRequest({
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         request: initiateSwap.swap_fund_request,
       },
       cbk);
@@ -457,9 +447,8 @@ module.exports = (args, cbk) => {
     findRouteForExecution: [
       'channel',
       'decodeExecutionRequest',
-      'getLnd',
       'getStartHeight',
-      ({channel, decodeExecutionRequest, getLnd, getStartHeight}, cbk) =>
+      ({channel, decodeExecutionRequest, getStartHeight}, cbk) =>
     {
       // Exit early when there is a swap recovery
       if (!!args.recovery) {
@@ -470,7 +459,7 @@ module.exports = (args, cbk) => {
         cltv_delta: decodeExecutionRequest.cltv_delta + cltvBuffer,
         destination: decodeExecutionRequest.destination,
         ignore: (args.avoid || []).map(n => ({from_public_key: n})),
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         logger: args.logger,
         max_fee: maxExecutionFeeTokens,
         max_timeout_height: getStartHeight + maxCltvDelta,
@@ -496,13 +485,11 @@ module.exports = (args, cbk) => {
       'channel',
       'currency',
       'decodeFundingRequest',
-      'getLnd',
       'getStartHeight',
       ({
         channel,
         currency,
         decodeFundingRequest,
-        getLnd,
         getStartHeight,
       }, cbk) =>
     {
@@ -514,7 +501,7 @@ module.exports = (args, cbk) => {
         cltv_delta: decodeFundingRequest.cltv_delta + cltvBuffer,
         destination: decodeFundingRequest.destination,
         ignore: (args.avoid || []).map(n => ({from_public_key: n})),
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         logger: args.logger,
         max_fee: round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),
         max_timeout_height: getStartHeight + maxCltvDelta,
@@ -540,8 +527,7 @@ module.exports = (args, cbk) => {
       'channel',
       'findRouteForFunding',
       'getChannels',
-      'getLnd',
-      ({channel, findRouteForFunding, getChannels, getLnd}, cbk) =>
+      ({channel, findRouteForFunding, getChannels}, cbk) =>
     {
       // Exit early when this is a recovery
       if (!!args.recovery) {
@@ -563,7 +549,7 @@ module.exports = (args, cbk) => {
 
       return getNode({
         is_omitting_channels: true,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         public_key: firstHop.public_key,
       },
       (err, res) => {
@@ -588,7 +574,6 @@ module.exports = (args, cbk) => {
       'decodeFundingRequest',
       'findRouteForExecution',
       'findRouteForFunding',
-      'getLnd',
       'getSwapPeer',
       'getQuote',
       ({
@@ -597,7 +582,6 @@ module.exports = (args, cbk) => {
         decodeFundingRequest,
         findRouteForExecution,
         findRouteForFunding,
-        getLnd,
         getSwapPeer,
         getQuote,
       }, cbk) =>
@@ -622,7 +606,7 @@ module.exports = (args, cbk) => {
 
       return getChainFeeRate({
         confirmation_target: getQuote.cltv_delta,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
       },
       (err, res) => {
         if (!!err) {
@@ -661,8 +645,7 @@ module.exports = (args, cbk) => {
       'decodeFundingRequest',
       'findRouteForExecution',
       'findRouteForFunding',
-      'getLnd',
-      ({decodeFundingRequest, findRouteForFunding, getLnd}, cbk) =>
+      ({decodeFundingRequest, findRouteForFunding}, cbk) =>
     {
       if (!!args.recovery) {
         return cbk();
@@ -670,7 +653,7 @@ module.exports = (args, cbk) => {
 
       return payViaRoutes({
         id: decodeFundingRequest.id,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         routes: [findRouteForFunding],
       },
       cbk);
@@ -684,7 +667,6 @@ module.exports = (args, cbk) => {
       'decodeExecutionRequest',
       'findRouteForExecution',
       'findRouteForFunding',
-      'getLnd',
       'getMinSweepFee',
       'getQuote',
       'getStartHeight',
@@ -692,7 +674,6 @@ module.exports = (args, cbk) => {
       ({
         channel,
         decodeExecutionRequest,
-        getLnd,
         getQuote,
         getStartHeight,
         initiateSwap,
@@ -705,7 +686,7 @@ module.exports = (args, cbk) => {
       args.logger.info({paying_execution_request: decodeExecutionRequest.id});
 
       const sub = subscribeToPayViaRequest({
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         max_fee: maxExecutionFeeTokens,
         max_timeout_height: getStartHeight + maxCltvExpiration,
         outgoing_channel: channel.id || undefined,
@@ -774,15 +755,14 @@ module.exports = (args, cbk) => {
 
     // Look for deposit
     findDeposit: [
-      'getLnd',
       'getWalletInfo',
       'initiateSwap',
       'network',
       'recover',
-      ({getWalletInfo, initiateSwap, getLnd, network, recover}, cbk) =>
+      ({getWalletInfo, initiateSwap, network, recover}, cbk) =>
     {
       const currentHeight = getWalletInfo.current_block_height;
-      const sub = subscribeToBlocks({lnd: getLnd.lnd});
+      const sub = subscribeToBlocks({lnd: args.lnd});
       const tokens = !recover ? args.tokens : recover.tokens;
 
       const startHeight = !recover ? currentHeight : recover.start_height;
@@ -803,7 +783,7 @@ module.exports = (args, cbk) => {
         address: initiateSwap.address,
         after: startHeight - fuzzBlocks,
         confirmations: args.confs,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         timeout: args.timeout,
       },
       (err, res) => {
@@ -847,7 +827,6 @@ module.exports = (args, cbk) => {
       'claim',
       'createAddress',
       'getHeight',
-      'getLnd',
       'initiateSwap',
       'network',
       'recover',
@@ -855,7 +834,6 @@ module.exports = (args, cbk) => {
         claim,
         createAddress,
         getHeight,
-        getLnd,
         initiateSwap,
         network,
         recover,
@@ -881,7 +859,7 @@ module.exports = (args, cbk) => {
           current_height: getHeight + i,
           deadline_height: min(maxWaitHeight, maxSafeHeight),
           is_dry_run: true,
-          lnd: getLnd.lnd,
+          lnd: args.lnd,
           max_fee_multiplier: maxFeeMultiplier,
           min_fee_rate: minFeeRate,
           private_key: claim.private_key,
@@ -917,7 +895,6 @@ module.exports = (args, cbk) => {
       'claim',
       'createAddress',
       'getHeight',
-      'getLnd',
       'initiateSwap',
       'network',
       'rawRecovery',
@@ -926,7 +903,6 @@ module.exports = (args, cbk) => {
         claim,
         createAddress,
         getHeight,
-        getLnd,
         initiateSwap,
         network,
         recover,
@@ -940,7 +916,7 @@ module.exports = (args, cbk) => {
 
       args.logger.info({swap_deposit_confirmed: claim.transaction_id});
 
-      const blocksSubscription = subscribeToBlocks({lnd: getLnd.lnd});
+      const blocksSubscription = subscribeToBlocks({lnd: args.lnd});
       const tokens = !recover ? args.tokens : recover.tokens;
 
       blocksSubscription.on('end', () => {});
@@ -955,7 +931,7 @@ module.exports = (args, cbk) => {
           tokens,
           current_height: height,
           deadline_height: initiateSwap.timeout - args.confs,
-          lnd: getLnd.lnd,
+          lnd: args.lnd,
           max_fee_multiplier: maxFeeMultiplier,
           private_key: claim.private_key,
           secret: claim.secret,
@@ -993,7 +969,7 @@ module.exports = (args, cbk) => {
         address: createAddress.address,
         after: getHeight,
         confirmations: max(args.confs, minSweepConfs),
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         timeout: args.timeout,
         transaction_id: claim.transaction_id,
         transaction_vout: claim.transaction_vout,
@@ -1012,17 +988,16 @@ module.exports = (args, cbk) => {
     // Get funding payment
     getFundingPayment: [
       'decodeFundingRequest',
-      'getLnd',
       'payToFund',
       'recover',
       'sweep',
-      ({decodeFundingRequest, getLnd, recover}, cbk) =>
+      ({decodeFundingRequest, recover}, cbk) =>
     {
       const fundingRequest = decodeFundingRequest || {};
 
       const id = fundingRequest.id || sha256(recover.secret).digest('hex');
 
-      const sub = subscribeToPastPayment({id, lnd: getLnd.lnd});
+      const sub = subscribeToPastPayment({id, lnd: args.lnd});
 
       const finished = (err, res) => {
         sub.removeAllListeners();
@@ -1046,16 +1021,15 @@ module.exports = (args, cbk) => {
     // Get execution payment
     getExecutionPayment: [
       'decodeExecutionRequest',
-      'getLnd',
       'payToExecute',
       'recover',
-      ({decodeExecutionRequest, getLnd, recover}, cbk) =>
+      ({decodeExecutionRequest, recover}, cbk) =>
     {
       const executionRequest = decodeExecutionRequest || {};
 
       const id = executionRequest.id || recover.execution_id;
 
-      return getPayment({id, lnd: getLnd.lnd}, cbk);
+      return getPayment({id, lnd: args.lnd}, cbk);
     }],
 
     // Spent offchain
