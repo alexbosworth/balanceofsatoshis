@@ -9,7 +9,6 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
-const {authenticatedLnd} = require('./../lnd');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');
 
@@ -17,6 +16,7 @@ const {ceil} = Math;
 const cltvDelta = 40;
 const defaultMaxFee = 1337;
 const defaultMaxFeeRate = 250;
+const {max} = Math;
 const maxRebalanceTokens = 4294967;
 const {min} = Math;
 const minInboundBalance = 4294967 * 2;
@@ -33,6 +33,7 @@ const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
   {
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
     [in_through]: <Pay In Through Public Key Hex String>
+    lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
@@ -42,9 +43,6 @@ const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
 */
 module.exports = (args, cbk) => {
   return asyncAuto({
-    // Get LND connection
-    getLnd: cbk => authenticatedLnd({node: args.node}, cbk),
-
     // Check arguments
     validate: cbk => {
       if (!args.logger) {
@@ -53,6 +51,10 @@ module.exports = (args, cbk) => {
 
       if (!!args.in_through && args.in_through === args.out_through) {
         return cbk([400, 'ExpectedInPeerNotEqualToOutPeer']);
+      }
+
+      if (!args.lnd) {
+        return cbk([400, 'ExpectedLndToExecuteRebalance']);
       }
 
       if (args.max_fee === 0) {
@@ -71,13 +73,18 @@ module.exports = (args, cbk) => {
     },
 
     // Lnd by itself
-    lnd: ['getLnd', ({getLnd}, cbk) => cbk(null, getLnd.lnd)],
+    lnd: ['validate', ({}, cbk) => cbk(null, args.lnd)],
 
     // Get initial liquidity
     getInitialLiquidity: ['lnd', ({lnd}, cbk) => getChannels({lnd}, cbk)],
 
     // Get public key
     getPublicKey: ['lnd', ({lnd}, cbk) => getWalletInfo({lnd}, cbk)],
+
+    // Get fee rates
+    getFees: ['getPublicKey', 'lnd', ({getPublicKey, lnd}, cbk) => {
+      return getNode({lnd, public_key: getPublicKey.public_key}, cbk);
+    }],
 
     // Get outbound node details
     getOutbound: [
@@ -99,7 +106,7 @@ module.exports = (args, cbk) => {
 
           return {remote, partner_public_key: channel.partner_public_key};
         })
-        .filter(n => n.remote < minRemoteBalance)
+        .filter(n => n.remote < minRemoteBalance);
 
       if (!args.out_through && !channels.length) {
         return cbk([400, 'NoOutboundChannelNeedsARebalance']);
@@ -124,10 +131,11 @@ module.exports = (args, cbk) => {
 
     // Get inbound node details
     getInbound: [
+      'getFees',
       'getInitialLiquidity',
       'getOutbound',
       'lnd',
-      ({getInitialLiquidity, getOutbound, lnd}, cbk) =>
+      ({getFees, getInitialLiquidity, getOutbound, lnd}, cbk) =>
     {
       const ignore = args.avoid || [];
 
@@ -143,14 +151,32 @@ module.exports = (args, cbk) => {
             .filter(n => n.partner_public_key === channel.partner_public_key)
             .reduce((sum, n) => sum + n.remote_balance, minTokens);
 
-          return {remote, partner_public_key: channel.partner_public_key};
+          return {
+            remote,
+            id: channel.id,
+            partner_public_key: channel.partner_public_key,
+          };
         });
 
       if (!channels.length) {
         return cbk([400, 'NoInboundChannelIsAvailableToReceiveRebalance']);
       }
 
-      const {sorted} = sortBy({array: channels, attribute: 'remote'});
+      const array = channels.filter(chan => {
+        const policies = getFees.channels.map(({policies}) => {
+          return policies.find(n => n.public_key === chan.partner_public_key);
+        });
+
+        const feeRate = max(...policies.filter(n => !!n).map(n => n.fee_rate));
+
+        return feeRate < (args.max_fee_rate || defaultMaxFeeRate);
+      });
+
+      if (!array.length) {
+        return cbk([400, 'NoLowFeeInboundChannelToReceiveRebalance']);
+      }
+
+      const {sorted} = sortBy({array, attribute: 'remote'});
 
       const suggestedInbound = sample(topOf(sorted.slice().reverse()));
 
@@ -184,6 +210,7 @@ module.exports = (args, cbk) => {
         ignore: [{from_public_key: getPublicKey.public_key}].concat(avoid),
         in_through: getInbound.public_key,
         logger: args.logger,
+        lnd: args.lnd,
         max_fee: Math.floor(5e6 * 0.0025),
         node: args.node,
         out_through: getOutbound.public_key,

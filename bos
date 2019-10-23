@@ -418,18 +418,23 @@ prog
   .option('--node <node_name>', 'Node to use to pay payment request')
   .option('--out <public_key>', 'Make first hop through specific peer')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return probeDestination({
-        logger,
-        ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
-        in_through: options.in,
-        is_real_payment: true,
-        max_fee: options.maxFee,
-        node: options.node,
-        out_through: options.out,
-        request: args.request,
-      },
-      returnObject({logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return probeDestination({
+          logger,
+          ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
+          in_through: options.in,
+          is_real_payment: true,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          max_fee: options.maxFee,
+          node: options.node,
+          out_through: options.out,
+          request: args.request,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -490,19 +495,24 @@ prog
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <public_key>', 'Make first hop through specific peer')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return probeDestination({
-        logger,
-        destination: args.to.length === 66 ? args.to : undefined,
-        find_max: !!options.findMax ? 1e7 : undefined,
-        ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
-        in_through: options.in || undefined,
-        node: options.node || undefined,
-        out_through: options.out || undefined,
-        request: args.to.length !== 66 ? args.to : undefined,
-        tokens: args.amount || undefined,
-      },
-      returnObject({logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return probeDestination({
+          logger,
+          destination: args.to.length === 66 ? args.to : undefined,
+          find_max: !!options.findMax ? 1e7 : undefined,
+          ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
+          in_through: options.in || undefined,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          node: options.node || undefined,
+          out_through: options.out || undefined,
+          request: args.to.length !== 66 ? args.to : undefined,
+          tokens: args.amount || undefined,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -517,17 +527,22 @@ prog
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <public_key>', 'Make first hop through specific peer')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return rebalance({
-        logger,
-        avoid: flatten([options.avoid].filter(n => !!n)),
-        in_through: options.in || undefined,
-        max_fee: options.maxFee,
-        max_fee_rate: options.maxFeeRate,
-        node: options.node || undefined,
-        out_through: options.out || undefined,
-      },
-      returnObject({logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return rebalance({
+          logger,
+          avoid: flatten([options.avoid].filter(n => !!n)),
+          in_through: options.in || undefined,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          max_fee: options.maxFee,
+          max_fee_rate: options.maxFeeRate,
+          node: options.node || undefined,
+          out_through: options.out || undefined,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 

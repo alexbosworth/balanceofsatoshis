@@ -18,7 +18,6 @@ const defaultMaxFee = 1337;
 const defaultTokens = 10;
 const {floor} = Math;
 const {isArray} = Array;
-const maxCltvDelta = 144 * 30;
 const {now} = Date;
 const reserveRatio = 0.01;
 
@@ -33,6 +32,7 @@ const reserveRatio = 0.01;
     [in_through]: <Pay In Through Public Key Hex String>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
+    lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [node]: <Node Name String>
@@ -53,16 +53,30 @@ const reserveRatio = 0.01;
 */
 module.exports = (args, cbk) => {
   return asyncAuto({
-    // Lnd
-    getLnd: cbk => authenticatedLnd({node: args.node}, cbk),
+    // Check arguments
+    validate: cbk => {
+      if (!args.lnd) {
+        return cbk([400, 'ExpectedLndToProbeDestination']);
+      }
 
-    // Get height
-    getHeight: ['getLnd', ({getLnd}, cbk) => {
-      return getWalletInfo({lnd: getLnd.lnd}, cbk);
+      return cbk();
+    },
+
+    // Get channels to determine an outgoing channel id restriction
+    getChannels: ['validate', ({}, cbk) => {
+      // Exit early when there is no need to add an outgoing channel id
+      if (!args.out_through) {
+        return cbk();
+      }
+
+      return getChannels({lnd: args.lnd}, cbk);
     }],
 
+    // Get height
+    getHeight: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
+
     // Destination to pay
-    to: ['getLnd', ({getLnd}, cbk) => {
+    to: ['validate', ({}, cbk) => {
       if (!!args.destination) {
         return cbk(null, {destination: args.destination, routes: []});
       }
@@ -71,21 +85,7 @@ module.exports = (args, cbk) => {
         return cbk([400, 'PayRequestOrDestinationRequiredToInitiateProbe']);
       }
 
-      return decodePaymentRequest({
-        lnd: getLnd.lnd,
-        request: args.request,
-      },
-      cbk);
-    }],
-
-    // Get channels to determine an outgoing channel id restriction
-    getChannels: ['getLnd', ({getLnd}, cbk) => {
-      // Exit early when there is no need to add an outgoing channel id
-      if (!args.out_through) {
-        return cbk();
-      }
-
-      return getChannels({lnd: getLnd.lnd}, cbk);
+      return decodePaymentRequest({lnd: args.lnd, request: args.request}, cbk);
     }],
 
     // Tokens
@@ -94,7 +94,7 @@ module.exports = (args, cbk) => {
     }],
 
     // Get inbound path if an inbound restriction is specified
-    getInboundPath: ['getLnd', 'to', 'tokens', ({getLnd, to, tokens}, cbk) => {
+    getInboundPath: ['to', 'tokens', ({to, tokens}, cbk) => {
       if (!args.in_through) {
         return cbk();
       }
@@ -102,7 +102,7 @@ module.exports = (args, cbk) => {
       return getInboundPath({
         tokens,
         destination: to.destination,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         through: args.in_through,
       },
       (err, res) => {
@@ -152,11 +152,10 @@ module.exports = (args, cbk) => {
     // Check that there is a potential path
     checkPath: [
       'getInboundPath',
-      'getLnd',
       'outgoingChannelId',
       'to',
       'tokens',
-      ({getInboundPath, getLnd, outgoingChannelId, to, tokens}, cbk) =>
+      ({getInboundPath, outgoingChannelId, to, tokens}, cbk) =>
     {
       return getRoutes({
         tokens,
@@ -165,7 +164,7 @@ module.exports = (args, cbk) => {
         ignore: args.ignore,
         is_adjusted_for_past_failures: true,
         is_strict_hints: !!getInboundPath,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         outgoing_channel: outgoingChannelId,
         routes: getInboundPath || to.routes,
       },
@@ -186,10 +185,9 @@ module.exports = (args, cbk) => {
     probe: [
       'getHeight',
       'getInboundPath',
-      'getLnd',
       'outgoingChannelId',
       'to',
-      ({getHeight, getInboundPath, getLnd, outgoingChannelId, to}, cbk) =>
+      ({getHeight, getInboundPath, outgoingChannelId, to}, cbk) =>
     {
       return executeProbe({
         cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
@@ -197,10 +195,9 @@ module.exports = (args, cbk) => {
         ignore: args.ignore,
         is_strict_hints: !!getInboundPath,
         is_strict_max_fee: args.is_strict_max_fee,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         logger: args.logger,
         max_fee: args.max_fee,
-        max_timeout_height: getHeight.current_block_height + maxCltvDelta,
         outgoing_channel: outgoingChannelId,
         routes: getInboundPath || to.routes,
         tokens: args.tokens || to.tokens || defaultTokens,
@@ -209,7 +206,7 @@ module.exports = (args, cbk) => {
     }],
 
     // Get maximum value of the successful route
-    getMax: ['getLnd', 'probe', 'to', ({getLnd, probe, to}, cbk) => {
+    getMax: ['probe', 'to', ({probe, to}, cbk) => {
       if (!args.find_max || !probe.route) {
         return cbk();
       }
@@ -217,7 +214,7 @@ module.exports = (args, cbk) => {
       return findMaxRoutable({
         cltv: to.cltv_delta || defaultCltvDelta,
         hops: probe.route.hops,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         logger: args.logger,
         max: args.find_max,
       },
@@ -225,7 +222,7 @@ module.exports = (args, cbk) => {
     }],
 
     // If there is a successful route, pay it
-    pay: ['getLnd', 'probe', 'to', ({getLnd, probe, to}, cbk) => {
+    pay: ['probe', 'to', ({probe, to}, cbk) => {
       if (!args.is_real_payment) {
         return cbk();
       }
@@ -242,7 +239,7 @@ module.exports = (args, cbk) => {
 
       return payViaRoutes({
         id: to.id,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         routes: [probe.route],
       },
       cbk);

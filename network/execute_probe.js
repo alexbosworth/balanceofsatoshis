@@ -83,10 +83,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToExecuteProbe']);
         }
 
-        if (!args.max_timeout_height) {
-          return cbk([400, 'ExpectedMaxTimeoutHeightToExecuteProbe']);
-        }
-
         if (!args.tokens) {
           return cbk([400, 'ExpectedTokensToExecuteProbe']);
         }
