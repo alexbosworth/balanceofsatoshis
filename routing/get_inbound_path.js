@@ -70,10 +70,6 @@ module.exports = ({destination, lnd, through, tokens}, cbk) => {
             return false;
           }
 
-          if (!policy.max_htlc_mtokens) {
-            return true;
-          }
-
           return BigInt(policy.max_htlc_mtokens) > tokensAsMtokens(tokens);
         });
 

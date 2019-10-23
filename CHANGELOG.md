@@ -1,6 +1,6 @@
 # Versions
 
-## Version 4.5.1
+## Version 4.5.2
 
 - `nodes`: Add `--lock` and `--unlock` methods to encrypt and decrypt saved node
     credentials

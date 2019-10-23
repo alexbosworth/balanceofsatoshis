@@ -82,10 +82,6 @@ module.exports = ({channels, cltv, lnd, tokens}, cbk) => {
           routes: [route],
         },
         err => {
-          if (!isArray(err)) {
-            return cbk([500, 'ExpectedErrorForRouteAttempt']);
-          }
-
           const [, code] = err;
 
           return cbk(null, {is_payable: code === invalidPaymentMessage});

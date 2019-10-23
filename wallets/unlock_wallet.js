@@ -63,7 +63,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'FailedToReadPasswordFile', err]);
         }
 
-        return cbk(null, password.toString());
+        return cbk(null, password.toString().trim());
       });
     }],
 
