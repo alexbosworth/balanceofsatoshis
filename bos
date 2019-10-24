@@ -16,6 +16,7 @@ const {getAccountingReport} = require('./balances');
 const {getBalance} = require('./balances');
 const {getChainFees} = require('./chain');
 const {getChannelCloses} = require('./chain');
+const {getDepositAddress} = require('./chain');
 const {getExchangeRates} = require('./fiat');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
@@ -124,6 +125,24 @@ prog
         node: options.node,
       },
       returnNumber({logger, reject, resolve, number: 'balance'}));
+    });
+  })
+
+  // Deposit coins
+  .command('chain-deposit', 'Deposit coins in the on-chain wallet')
+  .argument('[amount]', 'Amount to receive', INT)
+  .option('--node <node_name>', 'Node to deposit coins to')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getDepositAddress({
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          tokens: args.amount,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 

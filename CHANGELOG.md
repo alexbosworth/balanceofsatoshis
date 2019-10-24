@@ -1,5 +1,9 @@
 # Versions
 
+## Version 4.6.0
+
+- `chain-deposit`: Added method to show an on-chain address
+
 ## Version 4.5.2
 
 - `nodes`: Add `--lock` and `--unlock` methods to encrypt and decrypt saved node

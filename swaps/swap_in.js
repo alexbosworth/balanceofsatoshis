@@ -15,6 +15,7 @@ const {getSwapInQuote} = require('goldengate');
 const {getWalletInfo} = require('ln-service');
 const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
+const qrcode = require('qrcode-terminal');
 const {refundTransaction} = require('goldengate');
 const request = require('request');
 const {returnResult} = require('asyncjs-util');
@@ -420,17 +421,22 @@ module.exports = (args, cbk) => {
       let foundTx = false;
       const startHeight = getInfo.current_block_height;
 
-      args.logger.info({
-        swap: {
-          send_to_address: swap.address,
-          send_exact_amount: bigFormat(args.tokens),
-        },
-        service_fee: args.tokens - createInvoice.tokens,
-        refund_recovery_secret: recovery,
-        timing: {
-          earliest_completion: moment(now() + msPerBlock).fromNow(),
-          refund_available: moment(now() + expiryBlocks*msPerBlock).fromNow(),
-        },
+      const url = `bitcoin:${swap.address}?amount=${bigFormat(args.tokens)}`;
+
+      qrcode.generate(url, {small: true}, qr => {
+        return args.logger.info({
+          swap: {
+            send_to_address: swap.address,
+            send_exact_amount: bigFormat(args.tokens),
+            send_to_qr: qr,
+          },
+          service_fee: args.tokens - createInvoice.tokens,
+          refund_recovery_secret: recovery,
+          timing: {
+            earliest_completion: moment(now() + msPerBlock).fromNow(),
+            refund_available: moment(now() + expiryBlocks*msPerBlock).fromNow(),
+          },
+        });
       });
 
       const sub = subscribeToInvoice({

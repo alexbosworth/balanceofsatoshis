@@ -29,6 +29,7 @@ const uniq = arr => Array.from(new Set(arr));
   {
     peers: [{
       alias: <Node Alias String>
+      inbound_fee_rate: <Inbound Fee Rate String>
       inbound_liquidity: <Inbound Liquidity Amount String>
       outbound_liquidity: <Outbound Liquidity Amount String>
       public_key: <Public Key Hex String>
