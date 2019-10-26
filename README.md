@@ -44,6 +44,9 @@ bos balance
 # See the current fee estimates confirmation targets
 bos chainfees
 
+# Receive on-chain funds via a regular address
+bos chain-deposit
+
 # Receive funds via swap on-chain
 bos chain-receive "amount"
 
@@ -100,6 +103,9 @@ bos rebalance
 
 # Get a general report of the node activity
 bos report
+
+# Connect up to a Telegram bot
+bos telegram
 
 # Unlock the wallet if it is locked
 bos unlock "path_to_password_file"

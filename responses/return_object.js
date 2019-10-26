@@ -1,13 +1,10 @@
 const {getBorderCharacters} = require('table');
 const renderTable = require('table').table;
-const updateNotifier = require('update-notifier');
 
 const pkg = require('./../package.json');
 const writeJsonFile = require('./write_json_file');
 
 const border = getBorderCharacters('norc');
-
-const notifier = updateNotifier({pkg});
 
 /** Return an object result to a logger in a promise
 
@@ -58,8 +55,6 @@ module.exports = ({exit, file, logger, reject, resolve, table, write}) => {
     } else {
       logger.info(res);
     }
-
-    notifier.notify({isGlobal: true});
 
     if (!!exit) {
       exit();

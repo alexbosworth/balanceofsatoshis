@@ -18,6 +18,9 @@ module.exports = ({}) => {
   case platforms.macOS:
     return {path: join(homedir(), 'Library', 'Application Support', 'Lnd')};
 
+  case platforms.windows:
+    return {path: join(homedir(), 'Lnd')};
+
   default:
     return {path: join(homedir(), '.lnd')};
   }

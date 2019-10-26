@@ -52,6 +52,8 @@ const waitForDepositMs = 1000 * 60 * 60 * 24;
   }
 */
 module.exports = (args, cbk) => {
+  let isSuccessfulSwap = false;
+
   return asyncAuto({
     // Check arguments
     validate: cbk => {
@@ -347,7 +349,7 @@ module.exports = (args, cbk) => {
       'swap',
       ({chainAddress, findDeposit, getFeeRate, getNetwork, swap}, cbk) =>
     {
-      if (!findDeposit) {
+      if (!findDeposit || !!isSuccessfulSwap) {
         return cbk();
       }
 
@@ -457,8 +459,10 @@ module.exports = (args, cbk) => {
           return;
         }
 
+        isSuccessfulSwap = true;
+
         args.logger.info({
-          swap_complete: {
+          swap_successful: {
             completed: moment(invoice.confirmed_at).calendar(),
             received_offchain: bigFormat(invoice.received),
             service_fee_paid: bigFormat(args.tokens - invoice.received),

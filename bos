@@ -6,6 +6,7 @@ const {writeFile} = require('fs');
 
 const prog = require('caporal');
 const {rateProviders} = require('ln-accounting');
+const request = require('request');
 
 const {accountingCategories} = require('./balances');
 const {adjustSavedNodes} = require('./nodes');
@@ -37,6 +38,7 @@ const {returnOutput} = require('./responses');
 const {sendGift} = require('./network');
 const {setAutopilot} = require('./network');
 const {splitUtxos} = require('./chain');
+const {startTelegramBot} = require('./telegram');
 const {swapIn} = require('./swaps');
 const {swapOut} = require('./swaps');
 const {swapTypes} = require('./swaps');
@@ -576,6 +578,32 @@ prog
         style: !!options.styled ? 'styled' : undefined,
       },
       returnOutput({logger, reject, resolve}));
+    });
+  })
+
+  // Link up Telegram bot
+  .command('telegram', 'Post updates to a Telegram bot')
+  .help('Connect to a Telegram bot. Create bot: tg://resolve?domain=botfather')
+  .help('Supported updates: forwards, received payments')
+  .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
+  .option('--connect <connect_code>', 'Connection code', INT)
+  .action(async (args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const nodes = flatten([options.node].filter(n => !!n)).map(node => {
+          return authenticatedLnd({logger, node});
+        });
+
+        return startTelegramBot({
+          logger,
+          request,
+          id: options.connect,
+          lnds: (await Promise.all(nodes)).map(({lnd}) => lnd),
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 

@@ -1,8 +1,12 @@
 # Versions
 
+## Version 4.7.0
+
+- `telegram`: Add method to connect to a Telegram bot
+
 ## Version 4.6.0
 
-- `chain-deposit`: Added method to show an on-chain address
+- `chain-deposit`: Add method to show an on-chain address
 
 ## Version 4.5.2
 
