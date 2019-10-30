@@ -1,5 +1,9 @@
 # Versions
 
+## Version 4.8.0
+
+- `telegram`: Add pay method to pay a payment request
+
 ## Version 4.7.0
 
 - `telegram`: Add method to connect to a Telegram bot

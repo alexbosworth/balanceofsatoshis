@@ -1,43 +1,77 @@
+const {homedir} = require('os');
+const {join} = require('path');
+
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
-const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
-const {getForwards} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const inquirer = require('inquirer');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToInvoices} = require('ln-service');
 const Telegraf = require('telegraf');
 
+const backupCommand = require('./backup_command');
+const interaction = require('./interaction');
+const invoiceCommand = require('./invoice_command');
+const payCommand = require('./pay_command');
+const postForwardedPayments = require('./post_forwarded_payments');
+const postSettledInvoice = require('./post_settled_invoice');
+const postUpdatedBackups = require('./post_updated_backups');
 const sendMessage = require('./send_message');
 
+const botKeyFile = 'telegram_bot_api_key';
+const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
+const home = '.bos';
 const {isArray} = Array;
-const limit = 99999;
-const pollingIntervalMs = 30 * 1000;
-const startMessage = 'Bot started, run /connect to authorize';
+const isNumber = n => !isNaN(n);
+const maxCommandDelayMs = 1000 * 10;
+const msSince = epoch => Date.now() - (epoch * 1e3);
 
 /** Start a Telegram bot
 
   {
+    fs: {
+      getFile: <Get File Contents Function>
+      makeDirectory: <Make Directory Function>
+      writeFile: <Write File Function>
+    }
     [id]: <Authorized User Id Number>
     lnds: [<Authenticated LND gRPC API Object>]
     logger: <Winston Logger Object>
+    payments: {
+      [limit]: <Total Spendable Budget Tokens Limit Number>
+    }
     request: <Request Function>
   }
 
   @returns via cbk or Promise
 */
-module.exports = ({id, lnds, logger, request}, cbk) => {
+module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
+  let connectedId = id;
+  let paymentsLimit = !payments || !payments.limit ? 0 : payments.limit;
+
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!fs) {
+          return cbk([400, 'ExpectedFileSystemMethodsToStartTelegramBot']);
+        }
+
         if (!isArray(lnds) || !lnds.length) {
           return cbk([400, 'ExpectedLndsToStartTelegramBot']);
         }
 
         if (!logger) {
           return cbk([400, 'ExpectedLoggerToStartTelegramBot']);
+        }
+
+        if (!payments) {
+          return cbk([400, 'ExpectedPaymentLimitationsToStartTelegramBot']);
+        }
+
+        if (!isNumber(payments.limit)) {
+          return cbk([400, 'ExpectedPaymentsLimitTokensNumberToStartBot']);
         }
 
         if (!request) {
@@ -49,19 +83,23 @@ module.exports = ({id, lnds, logger, request}, cbk) => {
 
       // Ask for an API key
       apiKey: ['validate', ({}, cbk) => {
-        const token = {
-          message: 'Enter Telegram bot API key ',
-          name: 'key',
-          type: 'password',
-        };
+        const path = join(...[homedir(), home, botKeyFile]);
 
-        inquirer.prompt([token]).then(({key}) => cbk(null, key));
+        return fs.getFile(path, (err, res) => {
+          if (!!err || !res || !res.toString()) {
+            const token = interaction.api_token_prompt;
 
-        return;
+            inquirer.prompt([token]).then(({key}) => cbk(null, key));
+
+            return;
+          }
+
+          return cbk(null, res.toString());
+        });
       }],
 
       // Get node info
-      getInfo: ['validate', ({}, cbk) => {
+      getNodes: ['validate', ({}, cbk) => {
         return asyncMap(lnds, (lnd, cbk) => {
           return getWalletInfo({lnd}, (err, res) => {
             if (!!err) {
@@ -71,7 +109,7 @@ module.exports = ({id, lnds, logger, request}, cbk) => {
             return cbk(null, {
               lnd,
               alias: res.alias,
-              from: `${res.alias} ${res.public_key.substring(0, 8)}`,
+              from: fromName({alias: res.alias, public_key: res.public_key}),
               public_key: res.public_key,
             });
           });
@@ -79,17 +117,136 @@ module.exports = ({id, lnds, logger, request}, cbk) => {
         cbk);
       }],
 
+      // Save API key
+      saveKey: ['apiKey', ({apiKey}, cbk) => {
+        const path = join(...[homedir(), home, botKeyFile]);
+
+        return fs.makeDirectory(join(...[homedir(), home]), () => {
+          // Ignore errors when making directory, it may already be present
+
+          return fs.writeFile(path, apiKey, err => {
+            if (!!err) {
+              return cbk([503, 'FailedToSaveTelegramApiToken', {err}]);
+            }
+
+            return cbk();
+          });
+        });
+      }],
+
       // Setup the bot start action
-      initBot: ['apiKey', ({apiKey}, cbk) => {
+      initBot: ['apiKey', 'getNodes', ({apiKey, getNodes}, cbk) => {
         const bot = new Telegraf(apiKey);
 
-        bot.start(({reply}) => reply(startMessage));
+        bot.catch(err => console.log(err));
 
-        bot.command('connect', ctx => {
-          return ctx.reply(`'Connection code is: ${ctx.from.id}`);
+        bot.use((ctx, next) => {
+          // Ignore messages that are old
+          if (!!ctx.message && msSince(ctx.message.date) > maxCommandDelayMs) {
+            return;
+          }
+
+          // Warn on edit of old message
+          if (!!ctx.update && !!ctx.update.edited_message) {
+            const {text} = ctx.update.edited_message;
+            const warning = interaction.edit_message_warning;
+
+            return ctx.replyWithMarkdown(`${warning}\n${text}`);
+          }
+
+          return next();
         });
 
-        bot.help((ctx) => ctx.reply('Activate with /connect'));
+        bot.start(({replyWithMarkdown}) => {
+          if (!!connectedId) {
+            return replyWithMarkdown(interaction.bot_is_connected);
+          }
+
+          return replyWithMarkdown(interaction.start_message);
+        });
+
+        bot.command('backup', ({message, reply}) => {
+          backupCommand({
+            logger,
+            reply,
+            request,
+            from: message.from.id,
+            id: connectedId,
+            key: apiKey,
+            nodes: getNodes,
+          },
+          err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
+
+          return;
+        });
+
+        bot.command('connect', ({from, replyWithMarkdown}) => {
+          if (!!connectedId) {
+            return replyWithMarkdown(interaction.bot_is_connected);
+          }
+
+          return replyWithMarkdown(`Connection code is: *${from.id}*`);
+        });
+
+        bot.command('invoice', ({message, reply}) => {
+          invoiceCommand({
+            reply,
+            request,
+            from: message.from.id,
+            id: connectedId,
+            key: apiKey,
+            nodes: getNodes,
+            text: message.text,
+          },
+          err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
+
+          return;
+        });
+
+        bot.command('pay', async ({message, reply}) => {
+          const budget = paymentsLimit;
+
+          if (!budget) {
+            return reply(interaction.pay_budget_depleted);
+          }
+
+          // Stop budget while payment is in flight
+          paymentsLimit = 0;
+
+          payCommand({
+            budget,
+            reply,
+            request,
+            from: message.from.id,
+            id: connectedId,
+            key: apiKey,
+            nodes: getNodes,
+            text: message.text,
+          },
+          (err, res) => {
+            if (!!err) {
+              return logger.error({err});
+            }
+
+            // Set the payments limit to the amount unspent by the pay command
+            paymentsLimit = budget - res.tokens;
+
+            return;
+          });
+
+          return;
+        });
+
+        bot.help(ctx => {
+          const commands = [
+            '/backup - Get node backup file',
+            '/connect - Connect bot',
+            '/invoice - Make an invoice',
+            '/pay - Pay an invoice',
+          ];
+
+          return ctx.replyWithMarkdown(`🤖\n${commands.join('\n')}`);
+        });
 
         bot.launch();
 
@@ -98,84 +255,66 @@ module.exports = ({id, lnds, logger, request}, cbk) => {
 
       // Ask the user to confirm their user id
       userId: ['initBot', ({}, cbk) => {
+        // Exit early when the id is specified
         if (!!id) {
-          return cbk(null, id);
+          return cbk();
         }
 
-        const userId = {
-          message: 'Connection code? (Bot command: /connect)',
-          name: 'code',
-          type: 'number',
-        };
+        inquirer.prompt([interaction.user_id_prompt]).then(({code}) => {
+          if (!code) {
+            return cbk([400, 'ExpectedConnectCode']);
+          }
 
-        inquirer.prompt([userId]).then(({code}) => cbk(null, code));
+          connectedId = code;
+
+          return cbk();
+        });
 
         return;
+      }],
+
+      // Subscribe to backups
+      backups: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
+        return asyncEach(getNodes, (node, cbk) => {
+          return postUpdatedBackups({
+            request,
+            id: connectedId,
+            key: apiKey,
+            lnd: node.lnd,
+            node: {alias: node.alias, public_key: node.public_key},
+          },
+          cbk);
+        },
+        cbk);
       }],
 
       // Send connected message
       connected: [
         'apiKey',
-        'getInfo',
+        'getNodes',
         'userId',
-        ({apiKey, getInfo, userId}, cbk) =>
+        ({apiKey, getNodes}, cbk) =>
       {
         logger.info({is_connected: true});
 
         return sendMessage({
           request,
-          id: userId,
+          id: connectedId,
           key: apiKey,
-          text: `_Connected to ${getInfo.map(({from}) => from).join(', ')}_`,
+          text: `_Connected to ${getNodes.map(({from}) => from).join(', ')}_`,
         },
         cbk);
       }],
 
       // Poll for forwards
-      forwards: [
-        'apiKey',
-        'getInfo',
-        'userId',
-        ({apiKey, getInfo, userId}, cbk) =>
-      {
-        return asyncEach(getInfo, (node, cbk) => {
-          let after = new Date().toISOString();
-          const {lnd} = node;
-
-          return asyncForever(cbk => {
-            const before = new Date().toISOString();
-
-            return getForwards({after, before, limit, lnd}, (err, res) => {
-              if (!!err) {
-                return cbk(err);
-              }
-
-              // Push cursor forward
-              after = before;
-
-              // Exit early when there are no forwards
-              if (!res.forwards.length) {
-                return setTimeout(cbk, pollingIntervalMs);
-              }
-
-              const forwards = res.forwards.map(forward => {
-                return `- Earned ${forward.fee} forwarding ${forward.tokens}`;
-              });
-
-              return sendMessage({
-                request,
-                id: userId,
-                key: apiKey,
-                text: `*${node.from}*\n${forwards.join('\n')}`,
-              },
-              err => {
-                if (!!err) {
-                  return cbk(err);
-                }
-
-                return setTimeout(cbk, pollingIntervalMs);
-              });
-            });
+      forwards: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
+        return asyncEach(getNodes, ({from, lnd}, cbk) => {
+          return postForwardedPayments({
+            from,
+            lnd,
+            request,
+            id: connectedId,
+            key: apiKey,
           },
           cbk);
         },
@@ -183,40 +322,22 @@ module.exports = ({id, lnds, logger, request}, cbk) => {
       }],
 
       // Subscribe to invoices
-      invoices: [
-        'apiKey',
-        'getInfo',
-        'userId',
-        ({apiKey, getInfo, userId}, cbk) =>
-      {
-        return getInfo.forEach(node => {
-          const sub = subscribeToInvoices({lnd: node.lnd});
+      invoices: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
+        return getNodes.forEach(({from, lnd}) => {
+          const sub = subscribeToInvoices({lnd});
 
-          sub.on('invoice_updated', async invoice => {
-            if (!invoice.is_confirmed) {
-              return;
-            }
-
-            const {description} = invoice;
-            const {received} = invoice;
-
-            try {
-              const {from} = node;
-
-              await sendMessage({
-                request,
-                id: userId,
-                key: apiKey,
-                text: `*${from}*\n- Received ${received} for “${description}”`,
-              });
-            } catch (err) {
-              logger.error(err);
-            }
-
-            return;
+          sub.on('invoice_updated', invoice => {
+            return postSettledInvoice({
+              from,
+              invoice,
+              request,
+              id: connectedId,
+              key: apiKey,
+            },
+            err => !!err ? logger.error({err}) : null);
           });
 
-          sub.on('error', err => logger.error(err));
+          sub.on('error', err => logger.error({err}));
 
           return;
         });

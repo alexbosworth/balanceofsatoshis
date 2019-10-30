@@ -38,11 +38,11 @@ module.exports = ({id, key, request, text}, cbk) => {
         return cbk();
       },
 
-      // Send Message
+      // Send message
       send: ['validate', ({}, cbk) => {
         return request({
-          url: `${api}/bot${key}/sendMessage`,
           qs: {text, chat_id: id, parse_mode: parseMode},
+          url: `${api}/bot${key}/sendMessage`,
         },
         (err, r, body) => {
           if (!!err) {
@@ -54,7 +54,35 @@ module.exports = ({id, key, request, text}, cbk) => {
           }
 
           if (r.statusCode !== ok) {
-            return cbk([503, 'UnexpectedStatusCodeSendingMessageToTelegram']);
+            return cbk();
+          }
+
+          return cbk(null, true);
+        });
+      }],
+
+      // Send message without format in case the first send didn't work
+      sendNormal: ['send', ({send}, cbk) => {
+        // Exit early when regular send worked
+        if (!!send) {
+          return cbk();
+        }
+
+        return request({
+          qs: {text, chat_id: id},
+          url: `${api}/bot${key}/sendMessage`,
+        },
+        (err, r, body) => {
+          if (!!err) {
+            return cbk([503, 'FailedToConnectToTelegramApiToSendMessage']);
+          }
+
+          if (!r) {
+            return cbk([503, 'ExpectedResponseFromTelegramSendMessage']);
+          }
+
+          if (r.statusCode !== ok) {
+            return cbk([503, 'UnexpectedStatusCodeFromTelegram', {body}]);
           }
 
           return cbk();

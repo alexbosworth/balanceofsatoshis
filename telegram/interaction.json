@@ -1,0 +1,22 @@
+{
+  "api_token_prompt": {
+    "message": "Enter Telegram bot API key",
+    "name": "key",
+    "type": "password"
+  },
+  "ask_for_connect_code": "Run */connect* to authorize.",
+  "bot_is_connected": "🤖 *Bot is online.* /help for commands",
+  "create_invoice_syntax": "/invoice <amount> \\[memo]",
+  "edit_message_warning": "⚠️ *Editing past messages not supported.*\n\n_Did you mean to send a new message?_",
+  "pay_budget_depleted": "⚠️ No budget for payments",
+  "pay_syntax": "/pay <payment request> \\[max payment amount]",
+  "payment_is_stuck": "⚠️ Payment is pending",
+  "select_node_for_invoice": "Node to make invoice on?",
+  "select_node_for_payment": "Node to pay with?",
+  "start_message": "🤖 *Bot started, run /connect to authorize.*",
+  "user_id_prompt": {
+    "message": "Connection code? (Bot command: /connect)",
+    "name": "code",
+    "type": "number"
+  }
+}
