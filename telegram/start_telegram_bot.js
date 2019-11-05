@@ -103,7 +103,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         return asyncMap(lnds, (lnd, cbk) => {
           return getWalletInfo({lnd}, (err, res) => {
             if (!!err) {
-              return cbk(err);
+              return cbk([503, 'FailedToGetNodeInfo', {err}]);
             }
 
             return cbk(null, {
@@ -138,7 +138,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
       initBot: ['apiKey', 'getNodes', ({apiKey, getNodes}, cbk) => {
         const bot = new Telegraf(apiKey);
 
-        bot.catch(err => console.log(err));
+        bot.catch(err => logger.error({err}));
 
         bot.use((ctx, next) => {
           // Ignore messages that are old
@@ -285,7 +285,13 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           },
           cbk);
         },
-        cbk);
+        err => {
+          if (!!err) {
+            return cbk([503, 'SubscriptionChannelBackupsFailed', {err}]);
+          }
+
+          return cbk();
+        });
       }],
 
       // Send connected message
@@ -318,7 +324,13 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           },
           cbk);
         },
-        cbk);
+        err => {
+          if (!!err) {
+            return cbk([503, 'FailedWhenPollingForForwardedPayments', {err}]);
+          }
+
+          return cbk();
+        });
       }],
 
       // Subscribe to invoices
@@ -337,7 +349,9 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             err => !!err ? logger.error({err}) : null);
           });
 
-          sub.on('error', err => logger.error({err}));
+          sub.on('error', err => {
+            return logger.error({err: [503, 'InvoiceSubscribeFailed', {err}]});
+          });
 
           return;
         });

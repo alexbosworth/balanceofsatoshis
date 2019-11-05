@@ -3,8 +3,11 @@ const {lstat} = require('fs');
 const {mkdir} = require('fs');
 const {readdir} = require('fs');
 const {readFile} = require('fs');
+const {rmdir} = require('fs');
+const {unlink} = require('fs');
 const {writeFile} = require('fs');
 
+const inquirer = require('inquirer');
 const prog = require('caporal');
 const {rateProviders} = require('ln-accounting');
 const request = require('request');
@@ -18,6 +21,7 @@ const {getAccountingReport} = require('./balances');
 const {getBalance} = require('./balances');
 const {getChainFees} = require('./chain');
 const {getChannelCloses} = require('./chain');
+const {getCredentials} = require('./lnd');
 const {getDepositAddress} = require('./chain');
 const {getExchangeRates} = require('./fiat');
 const {getForwards} = require('./network');
@@ -212,6 +216,21 @@ prog
     });
   })
 
+  // Export LND credentials from the standard
+  .command('credentials', 'Export local credentials')
+  .help('Output encrypted remote access credentials. Use with "nodes --add"')
+  .option('--node <node_name>', 'Get credentials for a saved node')
+  .action((args, options, logger) => {
+    return new Promise((resolve, reject) => {
+      return getCredentials({
+        logger,
+        ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+        node: options.node,
+      },
+      returnObject({logger, reject, resolve}));
+    });
+  })
+
   // Fan out utxos
   .command('fanout', 'Fan out utxos')
   .argument('<size>', 'UTXO minimum size', INT)
@@ -389,18 +408,26 @@ prog
   .command('nodes', 'List and edit saved nodes')
   .help('Locking and unlocking requires existing installation of GPG')
   .argument('[node]', 'Specify a saved node')
+  .option('--add', 'Add a new node')
   .option('--lock <id>', 'Encrypt node authentication to GPG key>', REPEATABLE)
+  .option('--remove', 'Remove saved node')
   .option('--unlock', 'Remove encryption from auth macaroon')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return adjustSavedNodes({
         logger,
+        ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
         fs: {
           writeFile,
           getDirectoryFiles: readdir,
           getFile: readFile,
           getFileStatus: lstat,
+          makeDirectory: mkdir,
+          removeDirectory: rmdir,
+          removeFile: unlink,
         },
+        is_registering: options.add || undefined,
+        is_removing: options.remove || undefined,
         is_unlocking: options.unlock || undefined,
         lock_credentials_to: flatten([options.lock].filter(n => !!n)),
         node: args.node || undefined,
@@ -471,17 +498,22 @@ prog
   .option('--public', 'Only peers with public channels')
   .option('--sort', 'Sort results by peer attribute')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getPeers({
-        inbound_liquidity_below: options.inboundBelow,
-        is_active: !!options.active,
-        is_offline: !!options.offline,
-        is_public: !!options.public,
-        node: options.node,
-        outbound_liquidity_below: options.outboundBelow,
-        sort_by: options.sort,
-      },
-      returnObject({logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getPeers({
+          inbound_liquidity_below: options.inboundBelow,
+          is_active: !!options.active,
+          is_offline: !!options.offline,
+          is_public: !!options.public,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          node: options.node,
+          outbound_liquidity_below: options.outboundBelow,
+          sort_by: options.sort,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 

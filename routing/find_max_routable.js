@@ -50,12 +50,12 @@ module.exports = ({cltv, hops, lnd, logger, max}, cbk) => {
           return cbk([400, 'ExpectedPublicKeyInHopsToFindMaxRoutable']);
         }
 
-        if (!logger) {
-          return cbk([400, 'ExpectedLoggerToFindMaxRoutable']);
-        }
-
         if (!lnd) {
           return cbk([400, 'ExpectedLndToFindMaxRoutableAmount']);
+        }
+
+        if (!logger) {
+          return cbk([400, 'ExpectedLoggerToFindMaxRoutable']);
         }
 
         if (!max) {

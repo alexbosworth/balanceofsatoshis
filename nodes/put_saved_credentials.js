@@ -4,15 +4,16 @@ const {homedir} = require('os');
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
+const {home} = require('./constants');
+
 const credentials = 'credentials.json';
-const home = '.bos';
 const {isArray} = Array;
 const stringify = obj => JSON.stringify(obj, null, 2);
 
 /** Write saved credentials for node
 
   {
-    cert: <Base64 Encoded Node TLS Certificate String>
+    [cert]: <Base64 Encoded Node TLS Certificate String>
     [encrypted_macaroon]: <Encrypted Macaroon String>
     [encrypted_to]: [<Macaroon Encrypted To Recipient Id String>]
     fs: {
@@ -30,10 +31,6 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!args.cert) {
-          return cbk([400, 'ExpectedCertToWriteSavedCredentialsForNode']);
-        }
-
         if (!!args.encrypted_macaroon && !isArray(args.encrypted_to)) {
           return cbk([400, 'ExpectedRecipientIdsForEncryptedMacaroon']);
         }
@@ -64,7 +61,7 @@ module.exports = (args, cbk) => {
       // Write credentials
       writeCredentials: ['validate', ({}, cbk) => {
         const file = stringify({
-          cert: args.cert,
+          cert: args.cert || undefined,
           encrypted_macaroon: args.encrypted_macaroon || undefined,
           encrypted_to: args.encrypted_to || undefined,
           macaroon: args.macaroon || undefined,
@@ -75,7 +72,7 @@ module.exports = (args, cbk) => {
 
         return args.fs.writeFile(path, file, err => {
           if (!!err) {
-            return cbk([503, 'UnexpectedErrorWritingSavedCredentials']);
+            return cbk([503, 'UnexpectedErrorWritingSavedCredentials', {err}]);
           }
 
           return cbk();

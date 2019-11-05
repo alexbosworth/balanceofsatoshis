@@ -4,7 +4,7 @@ Commands for working with LND balances.
 
 ## Install 
 
-Requires an [installation of Node v10.4.0+ and NPM](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
+Requires an [installation of Node v10.12.0+ and NPM](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 
 ```shell
 npm install -g balanceofsatoshis
@@ -52,6 +52,9 @@ bos chain-receive "amount"
 
 # See details on how closed channels resolved on-chain
 bos closed
+
+# Export credentials
+bos credentials
 
 # Create a utxo fan-out with on-chain funds
 bos fanout "amount" "count"

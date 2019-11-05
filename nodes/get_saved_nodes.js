@@ -9,8 +9,7 @@ const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const getSavedCredentials = require('./get_saved_credentials');
-
-const home = '.bos';
+const {home} = require('./constants');
 
 /** Get a list of saved nodes
 

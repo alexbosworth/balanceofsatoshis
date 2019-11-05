@@ -1,19 +1,24 @@
 const {join} = require('path');
 const {homedir} = require('os');
+const {publicEncrypt} = require('crypto');
 const {readFile} = require('fs');
+const {URL} = require('url');
 
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
 const {flatten} = require('lodash');
+const ini = require('ini');
 const {returnResult} = require('asyncjs-util');
 
 const {decryptCiphertext} = require('./../encryption');
+const {derAsPem} = require('./../encryption');
 const {getSavedCredentials} = require('./../nodes');
 const lndDirectory = require('./lnd_directory');
 
 const base64 = 'base64';
 const certPath = ['tls.cert'];
 const credsFile = 'credentials.json';
+const confPath = ['lnd.conf'];
 const defaults = [['bitcoin', 'litecoin'], ['mainnet', 'testnet']];
 const home = '.bos';
 const macName = 'admin.macaroon';
@@ -25,6 +30,7 @@ const socket = 'localhost:10009';
 /** Lnd credentials
 
   {
+    [key]: <Encrypt to Public Key DER Hex String>
     [logger]: <Winston Logger Object>
     [node]: <Node Name String> // Defaults to default local mainnet node creds
   }
@@ -32,11 +38,13 @@ const socket = 'localhost:10009';
   @returns via cbk or Promise
   {
     cert: <Cert String>
+    [encrypted_macaroon]: <Encrypted Macaroon Base64 String>
+    [external_socket]: <External RPC Socket String>
     macaroon: <Macaroon String>
     socket: <Socket String>
   }
 */
-module.exports = ({logger, node}, cbk) => {
+module.exports = ({logger, key, node}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Get the default cert
@@ -106,6 +114,52 @@ module.exports = ({logger, node}, cbk) => {
         return getSavedCredentials({node, fs: {getFile: readFile}}, cbk);
       },
 
+      // Get socket
+      getSocket: cbk => {
+        // Exit early when a saved node is specified
+        if (!!node) {
+          return cbk();
+        }
+
+        return readFile(join(...[path].concat(confPath)), (err, conf) => {
+          if (!!err || !conf) {
+            return cbk();
+          }
+
+          try {
+            ini.parse(conf.toString())
+          } catch (err) {
+            return cbk();
+          }
+
+          const configuration = ini.parse(conf.toString())
+
+          const applicationOptions = configuration['Application Options'];
+
+          if (!applicationOptions) {
+            return cbk();
+          }
+
+          const ip = applicationOptions.tlsextraip;
+
+          if (!ip) {
+            return cbk();
+          }
+
+          try {
+            if (!(new URL(`rpc://${applicationOptions.rpclisten}`).port)) {
+              return cbk();
+            }
+          } catch (err) {
+            return cbk();
+          }
+
+          const {port} = new URL(`rpc://${applicationOptions.rpclisten}`);
+
+          return cbk(null, {external_socket: `${ip}:${port}`});
+        });
+      },
+
       // Node credentials
       nodeCredentials: ['getNodeCredentials', ({getNodeCredentials}, cbk) => {
         if (!node) {
@@ -150,7 +204,7 @@ module.exports = ({logger, node}, cbk) => {
         'getCert',
         'getMacaroon',
         'nodeCredentials',
-        ({getCert, getMacaroon, nodeCredentials}) =>
+        ({getCert, getMacaroon, nodeCredentials}, cbk) =>
       {
         // Exit early with the default credentials when no node is specified
         if (!node) {
@@ -163,7 +217,30 @@ module.exports = ({logger, node}, cbk) => {
           socket: nodeCredentials.socket,
         });
       }],
+
+      // Final credentials with encryption applied
+      finalCredentials: [
+        'credentials',
+        'getSocket',
+        ({credentials, getSocket}, cbk) =>
+      {
+        // Exit early when the credentials are not encrypted
+        if (!key) {
+          return cbk(null, credentials);
+        }
+
+        const macaroon = Buffer.from(credentials.macaroon, 'base64');
+
+        const encrypted = publicEncrypt(derAsPem({key}).pem, macaroon);
+
+        return cbk(null, {
+          cert: credentials.cert,
+          encrypted_macaroon: encrypted.toString('base64'),
+          external_socket: !!getSocket ? getSocket.external_socket : undefined,
+          socket: credentials.socket,
+        });
+      }],
     },
-    returnResult({reject, resolve, of: 'credentials'}, cbk));
+    returnResult({reject, resolve, of: 'finalCredentials'}, cbk));
   });
 };

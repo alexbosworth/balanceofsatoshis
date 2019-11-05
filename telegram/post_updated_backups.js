@@ -5,7 +5,7 @@ const {subscribeToBackups} = require('ln-service');
 const sendFile = require('./send_file');
 
 const date = () => new Date().toISOString().substring(0, 10);
-const pollingIntervalMs = 1000 * 30;
+const pollingIntervalMs = 1000 * 45;
 
 /** Post updated backups to Telegram
 

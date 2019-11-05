@@ -1,5 +1,14 @@
 # Versions
 
+## Version 5.0.0
+
+- `credentials`: Add method to export node credentials
+- `nodes`: Add `-add` and `--remove` options to add and remove saved nodes
+
+### Breaking Changes
+
+- Node 10.12.0 or higher is required
+
 ## Version 4.8.0
 
 - `telegram`: Add pay method to pay a payment request

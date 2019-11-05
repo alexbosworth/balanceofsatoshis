@@ -8,6 +8,7 @@ const {returnResult} = require('asyncjs-util');
 const {authenticatedLnd} = require('./../lnd');
 const {sortBy} = require('./../arrays');
 
+const asRate = rate => !!rate ? (rate / 1e4).toFixed(2) + '%' : undefined;
 const defaultSort = 'public_key';
 const {max} = Math;
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
@@ -20,7 +21,7 @@ const uniq = arr => Array.from(new Set(arr));
     [is_active]: <Active Channels Only Bool>
     [is_offline]: <Offline Channels Only Bool>
     [is_public]: <Public Channels Only Bool>
-    [node]: <Node Name String>
+    lnd: <Authenticated LND gRPC API Object>
     [outbound_liquidity_below]: <Outbound Liquidity Below Tokens Number>
     [sort_by]: <Sort Results By Attribute String>
   }
@@ -39,23 +40,29 @@ const uniq = arr => Array.from(new Set(arr));
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
-      // Get lnd connection
-      getLnd: async () => await authenticatedLnd({node: args.node}),
+      // Check arguments
+      validate: cbk => {
+        if (!args.lnd) {
+          return cbk([400, 'ExpectedLndToGetPeers']);
+        }
+
+        return cbk();
+      },
 
       // Get channels
-      getChannels: ['getLnd', async ({getLnd}) => {
+      getChannels: ['validate', async ({}) => {
         return await getChannels({
           is_active: args.is_active,
           is_offline: args.is_offline,
           is_public: args.is_public,
-          lnd: getLnd.lnd,
+          lnd: args.lnd,
         });
       }],
 
       // Get policies
-      getPolicies: ['getChannels', 'getLnd', ({getChannels, getLnd}, cbk) => {
+      getPolicies: ['getChannels', ({getChannels}, cbk) => {
         return asyncMap(getChannels.channels, ({id}, cbk) => {
-          return getChannel({id, lnd: getLnd.lnd}, (err, res) => {
+          return getChannel({id, lnd: args.lnd}, (err, res) => {
             const [errorCode] = err || [];
 
             if (errorCode === 404) {
@@ -71,8 +78,8 @@ module.exports = (args, cbk) => {
       // Peers
       peers: [
         'getChannels',
-        'getLnd',
-        'getPolicies', async ({getChannels, getLnd, getPolicies}) =>
+        'getPolicies',
+        async ({getChannels, getPolicies}) =>
       {
         const maxInbound = args.inbound_liquidity_below;
         const maxOutbound = args.outbound_liquidity_below;
@@ -88,11 +95,13 @@ module.exports = (args, cbk) => {
             .map(n => n.policies.find(n => n.public_key === publicKey))
             .filter(n => !!n);
 
-          const feeRate = max(...policies.map(n => n.fee_rate));
+          const feeRates = policies.map(n => n.fee_rate);
+
+          const feeRate = !feeRates.length ? undefined : max(...feeRates);
 
           const node = await getNode({
             is_omitting_channels: true,
-            lnd: getLnd.lnd,
+            lnd: args.lnd,
             public_key: publicKey,
           });
 
@@ -105,17 +114,19 @@ module.exports = (args, cbk) => {
           };
         });
 
-        return sortBy({array: peers, attribute: args.sort_by || defaultSort})
-          .sorted
-          .filter(n => !maxInbound || n.inbound_liquidity < maxInbound)
-          .filter(n => !maxOutbound || n.outbound_liquidity < maxOutbound)
-          .map(n => ({
-            alias: n.alias,
-            inbound_fee_rate: (n.inbound_fee_rate / 1e4).toFixed(2) + '%',
-            inbound_liquidity: (n.inbound_liquidity / 1e8).toFixed(8),
-            outbound_liquidity: (n.outbound_liquidity / 1e8).toFixed(8),
-            public_key: n.public_key,
-          }));
+        return {
+          peers: sortBy({array: peers, attribute: args.sort_by || defaultSort})
+            .sorted
+            .filter(n => !maxInbound || n.inbound_liquidity < maxInbound)
+            .filter(n => !maxOutbound || n.outbound_liquidity < maxOutbound)
+            .map(n => ({
+              alias: n.alias,
+              inbound_fee_rate: asRate(n.inbound_fee_rate),
+              inbound_liquidity: (n.inbound_liquidity / 1e8).toFixed(8),
+              outbound_liquidity: (n.outbound_liquidity / 1e8).toFixed(8),
+              public_key: n.public_key,
+            })),
+        };
       }],
     },
     returnResult({reject, resolve, of: 'peers'}, cbk));

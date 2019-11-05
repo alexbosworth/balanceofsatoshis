@@ -4,8 +4,9 @@ const {homedir} = require('os');
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
+const {home} = require('./constants');
+
 const credentials = 'credentials.json';
-const home = '.bos';
 const {parse} = JSON;
 
 /** Get saved credentials for node
