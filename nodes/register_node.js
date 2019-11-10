@@ -247,7 +247,17 @@ module.exports = ({ask, cryptography, fs, logger, node}, cbk) => {
         'enterPort',
         ({decodeCredentials, decryptMacaroon, enterHost, enterPort}, cbk) =>
       {
-        const cert = decodeCredentials.cert.toString('base64');
+        const rawCert = Buffer.from(decodeCredentials.cert.toString('base64'))
+          .toString();
+
+        const rawCertLines = Buffer.from(rawCert, 'base64').toString()
+            .split('\n');
+
+        rawCertLines.splice(rawCertLines.length - 2, 1);
+
+        const cert = Buffer.from(rawCertLines.join('\n') + '\n')
+          .toString('base64');
+
         const macaroon = decryptMacaroon.toString('base64');
         const socket = `${enterHost}:${enterPort}`;
 
