@@ -2,6 +2,10 @@
 
 Commands for working with LND balances.
 
+[![npm version](https://badge.fury.io/js/balanceofsatoshis.svg)](https://badge.fury.io/js/balanceofsatoshis)
+[![Coverage Status](https://coveralls.io/repos/github/alexbosworth/balanceofsatoshis/badge.svg?branch=master)](https://coveralls.io/github/alexbosworth/balanceofsatoshis?branch=master)
+[![Build Status](https://travis-ci.org/alexbosworth/balanceofsatoshis.svg?branch=master)](https://travis-ci.org/alexbosworth/balanceofsatoshis)
+
 ## Install 
 
 Requires an [installation of Node v10.12.0+ and NPM](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
