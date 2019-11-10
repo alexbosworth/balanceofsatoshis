@@ -1,0 +1,15 @@
+language: node_js
+
+node_js:
+  - 12
+  - 10
+
+os:
+  - linux
+
+cache:
+  directories:
+    - $HOME/.npm
+
+notifications:
+  email: false
