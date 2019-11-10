@@ -8,6 +8,7 @@ const {getNetwork} = require('./../network');
 /** Get swap service
 
   {
+    [logger]: <Winston Logger Object>
     [node]: <Node Name String>
   }
 
@@ -16,11 +17,11 @@ const {getNetwork} = require('./../network');
     service: <Swap Service Object>
   }
 */
-module.exports = ({node}, cbk) => {
+module.exports = ({logger, node}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Get LND
-      getLnd: cbk => authenticatedLnd({node}, cbk),
+      getLnd: cbk => authenticatedLnd({logger, node}, cbk),
 
       // LND object
       lnd: ['getLnd', ({getLnd}, cbk) => cbk(null, getLnd.lnd)],

@@ -1,5 +1,3 @@
-const {spawn} = require('child_process');
-
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
@@ -10,6 +8,7 @@ const {isArray} = Array;
 
   {
     plain: <Plain Clear Text String>
+    spawn: <Spawn Process Function>
     to: [<Encrypt To Recipient String>]
   }
 
@@ -18,13 +17,17 @@ const {isArray} = Array;
     cipher: <Armored Encrypted Text String>
   }
 */
-module.exports = ({plain, to}, cbk) => {
-  return new Promise((reject, resolve) => {
+module.exports = ({plain, spawn, to}, cbk) => {
+  return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
         if (!plain) {
           return cbk([400, 'ExpectedPlainTextToEncrypt']);
+        }
+
+        if (!spawn) {
+          return cbk([400, 'ExpectedSpawnFunctionToEncryptToPublicKeys']);
         }
 
         if (!isArray(to) || !to.length) {

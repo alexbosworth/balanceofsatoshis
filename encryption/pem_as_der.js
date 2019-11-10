@@ -10,7 +10,7 @@ const split = /.{0,64}/g;
 
   @returns
   {
-    der: <DER Public Key Hex Encoded String>
+    der: <DER Binary Buffer>
   }
 */
 module.exports = ({pem}) => {

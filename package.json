@@ -17,7 +17,7 @@
     "caporal": "1.3.0",
     "cbor": "5.0.1",
     "crypto-js": "3.1.9-1",
-    "goldengate": "2.0.1",
+    "goldengate": "3.0.0",
     "html2unicode": "1.1.3",
     "ini": "1.3.5",
     "inquirer": "7.0.0",
@@ -34,7 +34,7 @@
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
-    "tap": "14.9.1"
+    "tap": "14.9.2"
   },
   "engines": {
     "node": ">=10.12.0"
@@ -43,7 +43,9 @@
     "cli",
     "lightning",
     "lightning-network",
-    "lnd"
+    "lnd",
+    "rebalance",
+    "submarine-swaps"
   ],
   "license": "MIT",
   "main": "index.js",
@@ -55,5 +57,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/encryption/*.js test/fiat/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js"
   },
-  "version": "5.0.0"
+  "version": "5.0.1"
 }

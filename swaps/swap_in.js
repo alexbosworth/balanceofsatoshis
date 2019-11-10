@@ -12,6 +12,7 @@ const {findSecret} = require('goldengate');
 const {getChainFeeRate} = require('goldengate');
 const {getInvoice} = require('ln-service');
 const {getSwapInQuote} = require('goldengate');
+const {getSwapInTerms} = require('goldengate');
 const {getWalletInfo} = require('ln-service');
 const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
@@ -109,7 +110,17 @@ module.exports = (args, cbk) => {
       }
     }],
 
-    // Get quote for a Loop In
+    // Get the limits for a swap
+    getLimits: ['service', ({service}, cbk) => {
+      // Exit early when recovering an existing swap
+      if (!!args.recovery) {
+        return cbk();
+      }
+
+      return getSwapInTerms({service}, cbk);
+    }],
+
+    // Get quote for a swap
     getQuote: ['getLiquidity', 'service', ({getLiquidity, service}, cbk) => {
       // Exit early when recovering an existing swap
       if (!!args.recovery) {
@@ -121,11 +132,16 @@ module.exports = (args, cbk) => {
         return cbk([400, 'InsufficientInboundLiquidityToReceiveSwapOffchain']);
       }
 
-      return getSwapInQuote({service}, cbk);
+      return getSwapInQuote({service, tokens: args.tokens}, cbk);
     }],
 
     // Create an invoice
-    createInvoice: ['getLnd', 'getQuote', ({getLnd, getQuote}, cbk) => {
+    createInvoice: [
+      'getLimits',
+      'getLnd',
+      'getQuote',
+      ({getLimits, getLnd, getQuote}, cbk) =>
+    {
       // Exit early when we're recovering an existing swap
       if (!!args.recovery) {
         return (async () => {
@@ -135,36 +151,28 @@ module.exports = (args, cbk) => {
         })();
       }
 
-      if (args.tokens < getQuote.min_tokens) {
-        return cbk([400, 'AmountTooLowToSwap', {min: getQuote.min_tokens}]);
+      if (args.tokens > getLimits.max_tokens) {
+        return cbk([400, 'AmountTooHighToSwap', {max: getLimits.max_tokens}]);
       }
 
-      if (args.tokens > getQuote.max_tokens) {
-        return cbk([400, 'AmountTooHighToSwap', {max: getQuote.max_tokens}]);
+      if (args.tokens < getLimits.min_tokens) {
+        return cbk([400, 'AmountTooLowToSwap', {min: getLimits.min_tokens}]);
       }
 
-      try {
-        const {fee} = swapInFee({
-          base_fee: getQuote.base_fee,
-          fee_rate: getQuote.fee_rate,
-          tokens: args.tokens,
-        });
+      const {fee} = getQuote;
 
-        if (!!args.max_fee && fee > args.max_fee) {
-          return cbk([400, 'MaxFeeExceededForSwap', {required_fee: fee}]);
-        }
-
-        return createInvoice({
-          description: `Submarine swap. Service fee: ${fee}`,
-          expires_at: new Date(now() + msPerYear).toISOString(),
-          is_including_private_channels: true,
-          lnd: getLnd.lnd,
-          tokens: args.tokens - fee,
-        },
-        cbk);
-      } catch (err) {
-        return cbk([500, 'UnexpectedFailureCreatingInvoice', {err}]);
+      if (!!args.max_fee && fee > args.max_fee) {
+        return cbk([400, 'MaxFeeExceededForSwap', {required_fee: fee}]);
       }
+
+      return createInvoice({
+        description: `Submarine swap. Service fee: ${fee}`,
+        expires_at: new Date(now() + msPerYear).toISOString(),
+        is_including_private_channels: true,
+        lnd: getLnd.lnd,
+        tokens: args.tokens - fee,
+      },
+      cbk);
     }],
 
     // Initiate the swap
@@ -181,8 +189,7 @@ module.exports = (args, cbk) => {
 
       return createSwapIn({
         service,
-        base_fee: getQuote.base_fee,
-        fee_rate: getQuote.fee_rate,
+        fee: getQuote.fee,
         request: createInvoice.request,
       },
       cbk);
@@ -415,7 +422,7 @@ module.exports = (args, cbk) => {
       'swap',
       ({createInvoice, getInfo, getLnd, getNetwork, recovery, swap}, cbk) =>
     {
-      if (!createInvoice || !swap) {
+      if (!createInvoice || !swap || !!args.recovery) {
         return cbk();
       }
 

@@ -21,12 +21,13 @@ const notFoundIndex = -1;
     }
     logger: <Winston Logger Object>
     nodes: [<Node Name String>]
+    spawn: <Spawn Function>
     to: [<Encrypt to GPG Key Id String>]
   }
 
   @returns via cbk or Promise
 */
-module.exports = ({fs, logger, nodes, to}, cbk) => {
+module.exports = ({fs, logger, nodes, spawn, to}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -37,6 +38,10 @@ module.exports = ({fs, logger, nodes, to}, cbk) => {
 
         if (!isArray(nodes) || !nodes.length) {
           return cbk([400, 'ExpectedNodesToEncryptSavedMacaroonsFor']);
+        }
+
+        if (!spawn) {
+          return cbk([400, 'ExpectedSpawnFunctionToEncryptSavedMacaroons']);
         }
 
         if (!isArray(to) || !to.length) {
@@ -69,7 +74,7 @@ module.exports = ({fs, logger, nodes, to}, cbk) => {
           return cbk();
         }
 
-        return decryptSavedMacaroons({fs, logger, nodes}, cbk);
+        return decryptSavedMacaroons({fs, logger, nodes, spawn}, cbk);
       }],
 
       // Get the credentials
@@ -88,7 +93,7 @@ module.exports = ({fs, logger, nodes, to}, cbk) => {
         return asyncMapSeries(plainCredentials, ({credentials, node}, cbk) => {
           const plain = credentials.macaroon;
 
-          return encryptToPublicKeys({plain, to}, (err, res) => {
+          return encryptToPublicKeys({plain, spawn, to}, (err, res) => {
             if (!!err) {
               return cbk([503, 'UnexpectedErrorEncryptingMacaroon', {err}]);
             }

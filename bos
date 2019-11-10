@@ -4,6 +4,7 @@ const {mkdir} = require('fs');
 const {readdir} = require('fs');
 const {readFile} = require('fs');
 const {rmdir} = require('fs');
+const {spawn} = require('child_process');
 const {unlink} = require('fs');
 const {writeFile} = require('fs');
 
@@ -123,15 +124,20 @@ prog
   .option('--offchain', 'List only off-chain tokens')
   .option('--onchain', 'List only on-chain tokens')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getBalance({
-        above: options.above,
-        below: options.below,
-        is_offchain_only: !!options.offchain,
-        is_onchain_only: !!options.onchain,
-        node: options.node,
-      },
-      returnNumber({logger, reject, resolve, number: 'balance'}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getBalance({
+          above: options.above,
+          below: options.below,
+          is_offchain_only: !!options.offchain,
+          is_onchain_only: !!options.onchain,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          node: options.node,
+        },
+        returnNumber({logger, reject, resolve, number: 'balance'}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -375,7 +381,7 @@ prog
     return new Promise(async (resolve, reject) => {
       return getSwapCost({
         above: options.above,
-        service: (await getSwapService({node: options.node})).service,
+        service: (await getSwapService({logger, node: options.node})).service,
         tokens: args.amount,
         type: args.type,
       },
@@ -416,6 +422,7 @@ prog
     return new Promise((resolve, reject) => {
       return adjustSavedNodes({
         logger,
+        spawn,
         ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
         fs: {
           writeFile,

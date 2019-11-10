@@ -2,6 +2,7 @@ const {join} = require('path');
 const {homedir} = require('os');
 const {publicEncrypt} = require('crypto');
 const {readFile} = require('fs');
+const {spawn} = require('child_process');
 const {URL} = require('url');
 
 const asyncAuto = require('async/auto');
@@ -186,7 +187,7 @@ module.exports = ({logger, key, node}, cbk) => {
           logger.info({decrypt_credentials_for: node});
         }
 
-        return decryptCiphertext({cipher}, (err, res) => {
+        return decryptCiphertext({cipher, spawn}, (err, res) => {
           if (!!err) {
             return cbk(err);
           }

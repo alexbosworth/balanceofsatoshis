@@ -1,5 +1,3 @@
-const {spawn} = require('child_process');
-
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
@@ -7,6 +5,7 @@ const {returnResult} = require('asyncjs-util');
 
   {
     cipher: <Encrypted Text String>
+    spawn: <Spawn Function>
   }
 
   @returns via cbk or Promise
@@ -14,13 +13,17 @@ const {returnResult} = require('asyncjs-util');
     clear: <Clear Text String>
   }
 */
-module.exports = ({cipher}, cbk) => {
+module.exports = ({cipher, spawn}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
         if (!cipher) {
           return cbk([400, 'ExpectedCiphertextToDecrypt']);
+        }
+
+        if (!spawn) {
+          return cbk([400, 'ExpectedSpawnFunctionToDecryptCiphertext']);
         }
 
         return cbk();

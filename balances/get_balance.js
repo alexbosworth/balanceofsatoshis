@@ -1,5 +1,4 @@
 const asyncAuto = require('async/auto');
-const {authenticatedLndGrpc} = require('ln-service');
 const {getChainBalance} = require('ln-service');
 const {getChannelBalance} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -7,10 +6,9 @@ const {getPendingChainBalance} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const balanceFromTokens = require('./balance_from_tokens');
-const {lndCredentials} = require('./../lnd');
 
 const {max} = Math;
-const noTokens = 0;
+const none = 0;
 
 /** Get the existing balance
 
@@ -19,6 +17,7 @@ const noTokens = 0;
     [below]: <Tokens Below Tokens Number>
     [is_offchain_only]: <Get Only Channels Tokens Bool>
     [is_onchain_only]: <Get Only Chain Tokens Bool>
+    lnd: <Authenticated LND gRPC API Object>
     [node]: <Node Name String>
   }
 
@@ -29,66 +28,68 @@ const noTokens = 0;
   }
 */
 module.exports = (args, cbk) => {
-  return asyncAuto({
-    // Credentials
-    credentials: cbk => lndCredentials({node: args.node}, cbk),
+  return new Promise((resolve, reject) => {
+    return asyncAuto({
+      // Check arguments
+      validate: cbk => {
+        if (!args.lnd) {
+          return cbk([400, 'ExpectedLndToGetBalance']);
+        }
 
-    // Lnd
-    lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, authenticatedLndGrpc({
-        cert: credentials.cert,
-        macaroon: credentials.macaroon,
-        socket: credentials.socket,
-      }).lnd);
-    }],
+        return cbk();
+      },
 
-    // Get the chain balance
-    getChainBalance: ['lnd', ({lnd}, cbk) => getChainBalance({lnd}, cbk)],
+      // Lnd object
+      lnd: ['validate', ({}, cbk) => cbk(null, args.lnd)],
 
-    // Get the channel balance
-    getChannelBalance: ['lnd', ({lnd}, cbk) => getChannelBalance({lnd}, cbk)],
+      // Get the chain balance
+      getChainBalance: ['lnd', ({lnd}, cbk) => getChainBalance({lnd}, cbk)],
 
-    // Get the initiator burden
-    getChannels: ['lnd', ({lnd}, cbk) => getChannels({lnd}, cbk)],
+      // Get the channel balance
+      getChanBalance: ['lnd', ({lnd}, cbk) => getChannelBalance({lnd}, cbk)],
 
-    // Get the pending balance
-    getPending: ['lnd', ({lnd}, cbk) => getPendingChainBalance({lnd}, cbk)],
+      // Get the initiator burden
+      getChannels: ['lnd', ({lnd}, cbk) => getChannels({lnd}, cbk)],
 
-    // Total balances
-    balance: [
-      'getChainBalance',
-      'getChannelBalance',
-      'getChannels',
-      'getPending',
-      ({getChainBalance, getChannelBalance, getChannels, getPending}, cbk) =>
-    {
-      const futureCommitFees = getChannels.channels
-        .filter(n => n.is_partner_initiated === false)
-        .reduce((sum, n) => sum + n.commit_transaction_fee, 0);
+      // Get the pending balance
+      getPending: ['lnd', ({lnd}, cbk) => getPendingChainBalance({lnd}, cbk)],
 
-      const balances = [
-        !!args.is_offchain_only ? noTokens : getChainBalance.chain_balance,
-        !!args.is_onchain_only ? noTokens : getChannelBalance.channel_balance,
-        !!args.is_onchain_only ? noTokens : getChannelBalance.pending_balance,
-        !!args.is_offchain_only ? noTokens : getPending.pending_chain_balance,
-        !!args.is_onchain_only ? noTokens : -futureCommitFees,
-      ];
+      // Total balances
+      balance: [
+        'getChainBalance',
+        'getChanBalance',
+        'getChannels',
+        'getPending',
+        ({getChainBalance, getChanBalance, getChannels, getPending}, cbk) =>
+      {
+        const futureCommitFees = getChannels.channels
+          .filter(n => n.is_partner_initiated === false)
+          .reduce((sum, n) => sum + n.commit_transaction_fee, 0);
 
-      try {
-        const balance = balanceFromTokens({
-          above: args.above,
-          below: args.below,
-          tokens: balances,
-        });
+        const balances = [
+          !!args.is_offchain_only ? none : getChainBalance.chain_balance,
+          !!args.is_onchain_only ? none : getChanBalance.channel_balance,
+          !!args.is_onchain_only ? none : getChanBalance.pending_balance,
+          !!args.is_offchain_only ? none : getPending.pending_chain_balance,
+          !!args.is_onchain_only ? none : -futureCommitFees,
+        ];
 
-        return cbk(null, {
-          balance,
-          channel_balance: getChannelBalance.channel_balance-futureCommitFees,
-        });
-      } catch (err) {
-        return cbk([500, 'FailedToCalculateBalanceTotal', err]);
-      }
-    }],
-  },
-  returnResult({of: 'balance'}, cbk));
+        try {
+          const balance = balanceFromTokens({
+            above: args.above,
+            below: args.below,
+            tokens: balances,
+          });
+
+          return cbk(null, {
+            balance,
+            channel_balance: getChanBalance.channel_balance - futureCommitFees,
+          });
+        } catch (err) {
+          return cbk([500, 'FailedToCalculateBalanceTotal', err]);
+        }
+      }],
+    },
+    returnResult({reject, resolve, of: 'balance'}, cbk));
+  });
 };

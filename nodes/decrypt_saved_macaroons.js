@@ -18,11 +18,12 @@ const {isArray} = Array;
     }
     logger: <Winston Logger Object>
     nodes: [<Node Name String>]
+    spawn: <Spawn Function>
   }
 
   @returns via cbk or Promise
 */
-module.exports = ({fs, logger, nodes}, cbk) => {
+module.exports = ({fs, logger, nodes, spawn}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -37,6 +38,10 @@ module.exports = ({fs, logger, nodes}, cbk) => {
 
         if (!isArray(nodes)) {
           return cbk([400, 'ExpectedNodesToDecryptSavedMacaroons']);
+        }
+
+        if (!spawn) {
+          return cbk([400, 'ExpectedSpawnFunctionToDecryptSavedMacaroons']);
         }
 
         return cbk();
@@ -60,7 +65,7 @@ module.exports = ({fs, logger, nodes}, cbk) => {
 
           logger.info({decrypt_credentials_for: node});
 
-          return decryptCiphertext({cipher}, (err, res) => {
+          return decryptCiphertext({cipher, spawn}, (err, res) => {
             if (!!err) {
               return cbk([503, 'UnexpectedErrorDecryptingMacaroon', {err}]);
             }

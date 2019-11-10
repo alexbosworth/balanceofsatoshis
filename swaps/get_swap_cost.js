@@ -1,6 +1,8 @@
 const asyncAuto = require('async/auto');
 const {getSwapInQuote} = require('goldengate');
+const {getSwapInTerms} = require('goldengate');
 const {getSwapOutQuote} = require('goldengate');
+const {getSwapOutTerms} = require('goldengate');
 const {lightningLabsSwapService} = require('goldengate');
 const {returnResult} = require('asyncjs-util');
 
@@ -43,10 +45,24 @@ module.exports = ({above, service, tokens, type}, cbk) => {
       getQuote: ['validate', ({}, cbk) => {
         switch (type) {
         case 'inbound':
-          return getSwapInQuote({service}, cbk);
+          return getSwapInQuote({service, tokens}, cbk);
 
         case 'outbound':
-          return getSwapOutQuote({service}, cbk);
+          return getSwapOutQuote({service, tokens}, cbk);
+
+        default:
+          return cbk([400, 'GotUnexpectedSwapTypeWhenGettingSwapCost']);
+        }
+      }],
+
+      // Get swap terms
+      getTerms: ['validate', ({}, cbk) => {
+        switch (type) {
+        case 'inbound':
+          return getSwapInTerms({service}, cbk);
+
+        case 'outbound':
+          return getSwapOutTerms({service}, cbk);
 
         default:
           return cbk([400, 'GotUnexpectedSwapTypeWhenGettingSwapCost']);
@@ -54,20 +70,19 @@ module.exports = ({above, service, tokens, type}, cbk) => {
       }],
 
       // Final cost
-      cost: ['getQuote', ({getQuote}, cbk) => {
+      cost: ['getQuote', 'getTerms', ({getQuote, getTerms}, cbk) => {
         const quote = getQuote;
+        const terms = getTerms;
 
-        if (tokens > quote.max_tokens) {
-          return cbk([400, 'AmountExceedsMaximum', {max: quote.max_tokens}]);
+        if (tokens > terms.max_tokens) {
+          return cbk([400, 'AmountExceedsMaximum', {max: terms.max_tokens}]);
         }
 
-        if (tokens < quote.min_tokens) {
-          return cbk([400, 'AmountBelowMinimumSwap', {min: quote.min_tokens}]);
+        if (tokens < terms.min_tokens) {
+          return cbk([400, 'AmountBelowMinimumSwap', {min: terms.min_tokens}]);
         }
 
-        const rateFee = quote.fee_rate / feeRateDenominator * tokens;
-
-        const fee = rateFee + quote.base_fee;
+        const {fee} = quote;
 
         return cbk(null, {cost: balanceFromTokens({above, tokens: [fee]})});
       }],

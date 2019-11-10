@@ -31,6 +31,7 @@ const {isArray} = Array;
     lock_credentials_to: [<Encrypt Macaroon to GPG Key With Id String>]
     logger: <Winston Logger Object>
     [node]: <Node Name String>
+    spawn: <Spawn Function>
   }
 
   @returns via cbk or Promise
@@ -77,6 +78,10 @@ module.exports = (args, cbk) => {
 
         if (!args.logger) {
           return cbk([400, 'ExpectedLoggerFunctionForSavedNodes']);
+        }
+
+        if (!args.spawn) {
+          return cbk([400, 'ExpectedSpawnFunctionToAdjustSavedNodes']);
         }
 
         return cbk();
@@ -147,6 +152,7 @@ module.exports = (args, cbk) => {
           fs: args.fs,
           logger: args.logger,
           nodes: !args.node ? nodes.map(n => n.node_name) : [args.node],
+          spawn: args.spawn,
           to: args.lock_credentials_to,
         },
         cbk);
@@ -165,6 +171,7 @@ module.exports = (args, cbk) => {
           fs: args.fs,
           logger: args.logger,
           nodes: !args.node ? nodes.map(n => n.node_name) : [args.node],
+          spawn: args.spawn,
         },
         cbk);
       }],
