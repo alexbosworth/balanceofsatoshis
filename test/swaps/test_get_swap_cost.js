@@ -2,14 +2,16 @@ const {test} = require('tap');
 
 const {getSwapCost} = require('./../../swaps');
 
-const makeQuote = ({max, min}) => ({
+const makeQuote = ({}) => ({
   cltv_delta: 1,
+  prepay_amt: 1,
+  swap_fee: 2,
+  swap_payment_dest: Buffer.alloc(33).toString('hex'),
+});
+
+const makeTerms = ({max, min}) => ({
   max_swap_amount: max || 1,
   min_swap_amount: min || 1,
-  prepay_amt: 1,
-  swap_fee_base: 1,
-  swap_fee_rate: 1,
-  swap_payment_dest: Buffer.alloc(33).toString('hex'),
 });
 
 const tests = [
@@ -35,7 +37,10 @@ const tests = [
   },
   {
     args: {
-      service: {loopInQuote: ({}, cbk) => cbk(null, makeQuote({}))},
+      service: {
+        loopInQuote: ({}, cbk) => cbk(null, makeQuote({})),
+        loopInTerms: ({}, cbk) => cbk(null, makeTerms({})),
+      },
       tokens: 1e6,
       type: 'inbound',
     },
@@ -45,7 +50,8 @@ const tests = [
   {
     args: {
       service: {
-        loopOutQuote: ({}, cbk) => cbk(null, makeQuote({max: 1e7, min: 1e6})),
+        loopOutQuote: ({}, cbk) => cbk(null, makeQuote({})),
+        loopOutTerms: ({}, cbk) => cbk(null, makeTerms({max: 1e7, min: 1e6})),
       },
       tokens: 1e5,
       type: 'outbound',
@@ -55,7 +61,10 @@ const tests = [
   },
   {
     args: {
-      service: {loopInQuote: ({}, cbk) => cbk(null, makeQuote({max: 1e7}))},
+      service: {
+        loopInQuote: ({}, cbk) => cbk(null, makeQuote({})),
+        loopInTerms: ({}, cbk) => cbk(null, makeTerms({max: 1e7})),
+      },
       tokens: 1e6,
       type: 'inbound',
     },

@@ -5,7 +5,7 @@ const {returnResult} = require('asyncjs-util');
 
 const {lndCredentials} = require('./../lnd');
 
-const noTokens = 0;
+const none = 0;
 
 /** Get UTXOs
 
@@ -13,11 +13,13 @@ const noTokens = 0;
     [count_below]: <Return Only Count, And Below Number>
     [is_count]: <Return Only Count Bool>
     [is_confirmed]: <Return Only Confirmed Utxos Bool>
+    lnd: <Authenticated gRPC LND API Object>
     [min_tokens]: <Return Utxos of Value Above Tokens Size Number>
     [node]: <Node Name String>
   }
 
-  @returns via cbk
+  // Non-count response
+  @returns via cbk or Promise
   {
     utxos: [{
       address: <Chain Address String>
@@ -29,54 +31,57 @@ const noTokens = 0;
       transaction_vout: <Transaction Output Index Number>
     }]
   }
+
+  // Count response
+  @returns via cbk or Promise
+  <Count Number>
 */
 module.exports = (args, cbk) => {
-  return asyncAuto({
-    // Credentials
-    credentials: cbk => lndCredentials({node: args.node}, cbk),
-
-    // Lnd
-    lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, authenticatedLndGrpc({
-        cert: credentials.cert,
-        macaroon: credentials.macaroon,
-        socket: credentials.socket,
-      }).lnd);
-    }],
-
-    // Get UTXOs
-    getUtxos: ['lnd', ({lnd}, cbk) => {
-      return getUtxos({
-        lnd,
-        min_confirmations: !args.is_confirmed ? 0 : 1,
-      },
-      cbk);
-    }],
-
-    // Utxos
-    utxos: ['getUtxos', ({getUtxos}, cbk) => {
-      const utxos = getUtxos.utxos.filter(utxo => {
-        if (!!args.min_tokens) {
-          return utxo.tokens >= args.min_tokens;
+  return new Promise((resolve, reject) => {
+    return asyncAuto({
+      // Check arguments
+      validate: cbk => {
+        if (!args.lnd) {
+          return cbk([400, 'ExpectedLndObjectToGetUtxos']);
         }
 
-        return true;
-      });
+        return cbk();
+      },
 
-      if (!!args.count_below) {
-        const below = args.count_below;
+      // Get UTXOs
+      getUtxos: ['validate', ({}, cbk) => {
+        return getUtxos({
+          lnd: args.lnd,
+          min_confirmations: !args.is_confirmed ? 0 : 1,
+        },
+        cbk);
+      }],
 
-        const total = utxos.length < below ? below - utxos.length : noTokens;
+      // Utxos
+      utxos: ['getUtxos', ({getUtxos}, cbk) => {
+        const utxos = getUtxos.utxos.filter(utxo => {
+          if (!!args.min_tokens) {
+            return utxo.tokens >= args.min_tokens;
+          }
 
-        return cbk(null, total);
-      }
+          return true;
+        });
 
-      if (!!args.is_count) {
-        return cbk(null, utxos.length);
-      }
+        if (!!args.count_below) {
+          const below = args.count_below;
 
-      return cbk(null, {utxos});
-    }],
-  },
-  returnResult({of: 'utxos'}, cbk));
+          const total = utxos.length < below ? below - utxos.length : none;
+
+          return cbk(null, total);
+        }
+
+        if (!!args.is_count) {
+          return cbk(null, utxos.length);
+        }
+
+        return cbk(null, {utxos});
+      }],
+    },
+    returnResult({reject, resolve, of: 'utxos'}, cbk));
+  });
 };

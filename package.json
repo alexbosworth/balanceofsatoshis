@@ -55,7 +55,7 @@
     "url": "https://github.com/alexbosworth/balanceofsatoshis.git"
   },
   "scripts": {
-    "test": "tap test/arrays/*.js test/balances/*.js test/encryption/*.js test/fiat/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js"
+    "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/encryption/*.js test/fiat/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/telegram/*.js"
   },
-  "version": "5.0.2"
+  "version": "5.0.3"
 }

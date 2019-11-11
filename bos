@@ -675,15 +675,20 @@ prog
   .option('--node <node_name>', 'Node to get utxos for')
   .option('--size', 'Utxos of size greater than or equal to specified amount')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getUtxos({
-        count_below: options.countBelow,
-        is_confirmed: !!options.confirmed,
-        is_count: !!options.count,
-        min_tokens: options.size || undefined,
-        node: options.node,
-      },
-      returnObject({logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getUtxos({
+          count_below: options.countBelow,
+          is_confirmed: !!options.confirmed,
+          is_count: !!options.count,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          min_tokens: options.size || undefined,
+          node: options.node,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   });
 

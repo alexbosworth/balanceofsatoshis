@@ -46,7 +46,7 @@ module.exports = ({id, key, request, text}, cbk) => {
         },
         (err, r, body) => {
           if (!!err) {
-            return cbk([503, 'FailedToConnectToTelegramApiToSendMessage']);
+            return cbk([503, 'FailedToConnectToTelegramToSendMessage', {err}]);
           }
 
           if (!r) {
@@ -74,11 +74,11 @@ module.exports = ({id, key, request, text}, cbk) => {
         },
         (err, r, body) => {
           if (!!err) {
-            return cbk([503, 'FailedToConnectToTelegramApiToSendMessage']);
+            return cbk([503, 'FailedToConnectToTelegramApiToSend', {err}]);
           }
 
           if (!r) {
-            return cbk([503, 'ExpectedResponseFromTelegramSendMessage']);
+            return cbk([503, 'ExpectedResponseFromTelegramSend']);
           }
 
           if (r.statusCode !== ok) {

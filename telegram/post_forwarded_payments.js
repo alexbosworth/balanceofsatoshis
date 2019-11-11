@@ -3,6 +3,7 @@ const asyncForever = require('async/forever');
 const {getForwards} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const notifyOfForwards = require('./notify_of_forwards');
 const sendMessage = require('./send_message');
 
 const limit = 99999;
@@ -64,24 +65,16 @@ module.exports = ({from, id, key, lnd, request}, cbk) => {
             // Push cursor forward
             after = before;
 
-            // Exit early when there are no forwards
-            if (!res.forwards.length) {
-              return setTimeout(cbk, pollingIntervalMs);
-            }
-
-            const forwards = res.forwards.map(({fee, tokens}) => {
-              return `- Earned ${fee} forwarding ${tokens}`;
-            });
-
-            const text = `💰 *${from}*\n${forwards.join('\n')}`;
-
-            return sendMessage({id, key, request, text}, err => {
-              if (!!err) {
-                return cbk(err);
-              }
-
-              return setTimeout(cbk, pollingIntervalMs);
-            });
+            // Notify Telegram bot that forwards happened
+            return notifyOfForwards({
+              from,
+              id,
+              key,
+              lnd,
+              request,
+              forwards: res.forwards,
+            },
+            () => setTimeout(cbk, pollingIntervalMs));
           });
         },
         cbk);
