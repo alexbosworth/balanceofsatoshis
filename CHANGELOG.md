@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.0.3
+## Version 5.0.4
 
 - `credentials`: Add method to export node credentials
 - `nodes`: Add `-add` and `--remove` options to add and remove saved nodes
