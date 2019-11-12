@@ -253,8 +253,6 @@ module.exports = ({ask, cryptography, fs, logger, node}, cbk) => {
         const rawCertLines = Buffer.from(rawCert, 'base64').toString()
             .split('\n');
 
-        rawCertLines.splice(rawCertLines.length - 2, 1);
-
         const cert = Buffer.from(rawCertLines.join('\n') + '\n')
           .toString('base64');
 

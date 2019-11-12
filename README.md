@@ -18,7 +18,7 @@ Verify it's installed:
 
 ```shell
 bos --version
-// current installed version
+# current installed version
 ``` 
 
 ## Usage
@@ -121,7 +121,7 @@ bos unlock "path_to_password_file"
 bos utxos
 ```
 
-## Saved Nodes Directory
+## Nodes
 
 By default `bos` expects `tls.cert` in the root of the default `lnd` directory and
 `admin.macaroon` in `<default_lnd_dir>/data/chain/bitcoin/<network>`.
@@ -132,8 +132,15 @@ Default LND directories:
 
 It will check first for a mainnet macaroon, then a testnet macaroon.
 
-To use `bos` with external nodes (or nodes with custom configuration), two
-things need to be done: 
+### Saved Nodes
+
+If you have another node and it is already using `balanceofsatoshis`, you can
+add it as a "saved node" using `bos nodes --add`.
+
+Otherwise you can copy the credentials into a saved nodes directory:
+
+To use `bos` with arbitrary external nodes (or nodes with custom
+configuration), two things need to be done:
 
 1. Create directory `~/.bos/`, and add node credentials in a format of: 
 

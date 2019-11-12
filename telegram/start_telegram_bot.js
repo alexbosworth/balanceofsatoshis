@@ -349,9 +349,8 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             err => !!err ? logger.error({err}) : null);
           });
 
-          sub.on('error', err => {
-            return logger.error({err: [503, 'InvoiceSubscribeFailed', {err}]});
-          });
+          // Silence errors
+          sub.on('error', err => {});
 
           return;
         });
