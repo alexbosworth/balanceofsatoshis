@@ -145,9 +145,13 @@ module.exports = (args, cbk) => {
       // Exit early when we're recovering an existing swap
       if (!!args.recovery) {
         return (async () => {
-          const {id} = await decodeSwapRecovery({recovery: args.recovery});
+          try {
+            const {id} = await decodeSwapRecovery({recovery: args.recovery});
 
-          return getInvoice({id, lnd: getLnd.lnd}, cbk);
+            return getInvoice({id, lnd: getLnd.lnd}, cbk);
+          } catch (err) {
+            return cbk([400, 'FailedToDecodeSwapRecovery', {err}]);
+          }
         })();
       }
 
@@ -381,8 +385,26 @@ module.exports = (args, cbk) => {
     }],
 
     // Broadcast refund transaction
-    broadcastRefund: ['getLnd', 'refund', ({getLnd, refund}, cbk) => {
+    broadcastRefund: [
+      'findDepositInMempool',
+      'getInfo',
+      'getLnd',
+      'refund',
+      'swap',
+      ({getInfo, getLnd, refund, swap}, cbk) =>
+    {
       if (!args.recovery || !refund) {
+        return cbk();
+      }
+
+      const blocks = swap.timeout - getInfo.current_block_height;
+
+      if (blocks > [].length) {
+        args.logger.info({
+          refund_possible: moment(now() + msPerBlock * blocks).fromNow(),
+          blocks_left_until_refund_can_be_broadcast: blocks,
+        });
+
         return cbk();
       }
 
@@ -396,12 +418,7 @@ module.exports = (args, cbk) => {
       'swap',
       ({broadcastRefund, getInfo, swap}, cbk) =>
     {
-      if (!args.recovery) {
-        return cbk();
-      }
-
-      // Exit early when a refund tx will not
-      if (swap.timeout > getInfo.current_block_height) {
+      if (!args.recovery || !broadcastRefund) {
         return cbk();
       }
 
