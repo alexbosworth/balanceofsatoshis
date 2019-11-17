@@ -1,6 +1,7 @@
 const {chains} = require('./networks');
 const {currencySymbols} = require('./networks');
 
+const {isArray} = Array;
 const {keys} = Object;
 const reversedBytes = hex => Buffer.from(hex, 'hex').reverse().toString('hex');
 
@@ -19,10 +20,14 @@ const reversedBytes = hex => Buffer.from(hex, 'hex').reverse().toString('hex');
   }
 */
 module.exports = args => {
+  if (!isArray(args.chains)) {
+    throw new Error('ExpectedArrayOfChainsToDetermineCurrencyForNetwork');
+  }
+
   const [chain, otherChain] = args.chains;
 
   if (!!otherChain) {
-    throw new Error('CannotDetermineSwapChainFromNode');
+    throw new Error('CannotDetermineCurrencyForMultipleChains');
   }
 
   const network = keys(chains).find(network => {

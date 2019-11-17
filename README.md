@@ -45,6 +45,9 @@ bos autopilot "on"
 bos balance
 # 1337
 
+# Get the number of days the node cert remains valid
+bos cert-validity-days
+
 # See the current fee estimates confirmation targets
 bos chainfees
 

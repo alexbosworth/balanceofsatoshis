@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.1.0
+
+- `cert-validity-days`: Add method to indicate the days left until cert expires
+
 ## Version 5.0.7
 
 - `credentials`: Add method to export node credentials

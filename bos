@@ -20,6 +20,7 @@ const {exchanges} = require('./fiat');
 const {findRecord} = require('./lnd');
 const {getAccountingReport} = require('./balances');
 const {getBalance} = require('./balances');
+const {getCertValidityDays} = require('./lnd');
 const {getChainFees} = require('./chain');
 const {getChannelCloses} = require('./chain');
 const {getCredentials} = require('./lnd');
@@ -138,6 +139,21 @@ prog
       } catch (err) {
         return reject(err);
       }
+    });
+  })
+
+  // Get the number of days until the RPC cert expires
+  .command('cert-validity-days', 'Number of days until the cert is invalid')
+  .option('--below <number_of_days>', 'Return number of days below mark', INT)
+  .option('--node <node_name>', 'Node to check cert on')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      return getCertValidityDays({
+        logger,
+        below: options.below,
+        node: options.node,
+      },
+      returnNumber({logger, reject, resolve, number: 'days'}));
     });
   })
 

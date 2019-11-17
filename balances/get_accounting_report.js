@@ -9,6 +9,8 @@ const {defaultFiat} = require('./constants');
 const {monthNumbers} = require('./constants');
 const {monthOffset} = require('./constants');
 const {notFoundIndex} = require('./constants');
+const rangeForDate = require('./range_for_date');
+const tableRowsFromCsv = require('./table_rows_from_csv');
 
 /** Get an accounting report
 
@@ -18,10 +20,10 @@ const {notFoundIndex} = require('./constants');
     [fiat]: <Fiat Type String>
     [is_csv]: <Return CSV Output Bool>
     lnd: <Authenticated LND gRPC API Object>
-    [month]: <Month For Report>
+    [month]: <Month for Report String>
     [node]: <Node Name String>
     [rate_provider]: <Rate Provider String>
-    [year]: <Year For Report>
+    [year]: <Year for Report String>
   }
 
   @returns via cbk
@@ -46,44 +48,11 @@ module.exports = (args, cbk) => {
 
     // Get date range
     dateRange: ['validate', ({}, cbk) => {
-      if (!args.year && !args.month) {
-        return cbk(null, {});
+      try {
+        return cbk(null, rangeForDate({month: args.month, year: args.year}));
+      } catch (err) {
+        return cbk([400, err.message]);
       }
-
-      const after = moment.utc().startOf('year');
-
-      if (!!args.year) {
-        after.year(args.year);
-      }
-
-      if (!after.isValid()) {
-        return cbk([400, 'UnrecognizedFormatForAccountingYear']);
-      }
-
-      const end = after.clone();
-
-      if (!!args.month && monthNumbers.indexOf(args.month) !== notFoundIndex) {
-        [after, end].forEach(n => n.month(Number(args.month) - monthOffset));
-      } else if (!!args.month) {
-        [after, end].forEach(n => n.month(args.month));
-      }
-
-      if (!!args.month) {
-        end.add([args.month].length, 'months');
-      } else {
-        end.add([after].length, 'years');
-      }
-
-      if (!after.isValid()) {
-        return cbk([400, 'UnrecognizedFormatForAccountingMonth']);
-      }
-
-      after.subtract([after].length, 'millisecond');
-
-      return cbk(null, {
-        after: after.toISOString(),
-        before: end.toISOString(),
-      });
     }],
 
     // Get accounting info
@@ -109,22 +78,7 @@ module.exports = (args, cbk) => {
         return cbk(null, getAccounting[csvType]);
       }
 
-      const entries = getAccounting[csvType].split('\n').map(n => {
-        return n.split(',').map(val => {
-          if (val[0] === '"') {
-            return val.slice(1, -1).slice(0, 32);
-          }
-
-          return parseFloat(val, 10).toFixed(4);
-        });
-      });
-
-      const [header] = entries;
-
-      const datedRecords = entries.slice([header].length)
-        .sort((a, b) => a[2] > b[2] ? 1 : -1);
-
-      const rows = [].concat([header]).concat(datedRecords);
+      const {rows} = tableRowsFromCsv({csv: getAccounting[csvType]});
 
       return cbk(null, {rows});
     }],
