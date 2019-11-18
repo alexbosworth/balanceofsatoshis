@@ -33,6 +33,7 @@ const {chains} = require('./../network/networks');
 const {currencySymbols} = require('./../network/networks');
 const {estimatedSweepVbytes} = require('./constants');
 const {executeProbe} = require('./../network');
+const {fastDelayMinutes} = require('./constants');
 const {feeRateDenominator} = require('./constants');
 const {fuzzBlocks} = require('./constants');
 const {getNetwork} = require('./../network');
@@ -48,6 +49,7 @@ const {minConfs} = require('./constants');
 const {minSweepConfs} = require('./constants');
 const {minutesPerBlock} = require('./constants');
 const {requiredBufferBlocks} = require('./constants');
+const {slowDelayMinutes} = require('./constants');
 const {swappable} = require('./../network/networks');
 const {sweepProgressLogDelayMs} = require('./constants');
 
@@ -145,12 +147,7 @@ module.exports = (args, cbk) => {
         return cbk(null, {address: args.out_address});
       }
 
-      return createChainAddress({
-        format: 'p2wpkh',
-        is_unused: true,
-        lnd: args.lnd,
-      },
-      cbk);
+      return createChainAddress({format: 'p2wpkh', lnd: args.lnd}, cbk);
     }],
 
     // Get the current block height
@@ -308,6 +305,7 @@ module.exports = (args, cbk) => {
       }
 
       const fundConfs = (args.confs || minConfs);
+      const swapDelayMin = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
       const sweepConfs = (args.confs || minConfs);
 
       const allFees = getQuote.fee;
@@ -320,7 +318,7 @@ module.exports = (args, cbk) => {
       args.logger.info({
         estimated_time: {
           start_at: moment().calendar(),
-          earliest_completion: fastestSwapTime.fromNow(),
+          earliest_completion: fastestSwapTime.add(swapDelayMin).fromNow(),
           forfeit_funds_deadline_at: swapTimeout.fromNow(),
         },
       });
@@ -349,7 +347,15 @@ module.exports = (args, cbk) => {
         });
       }
 
-      return createSwapOut({network, service, tokens: args.tokens}, cbk);
+      const swapDelayMin = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
+
+      return createSwapOut({
+        network,
+        service,
+        fund_at: moment().add(swapDelayMin, 'minutes').toISOString(),
+        tokens: args.tokens,
+      },
+      cbk);
     }],
 
     // Decode swap execution request

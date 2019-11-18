@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.2.0
+
+- `increase-inbound-liquidity`: Add `--fast` option to choose a fast swap
+
 ## Version 5.1.1
 
 - `cert-validity-days`: Add method to indicate the days left until cert expires

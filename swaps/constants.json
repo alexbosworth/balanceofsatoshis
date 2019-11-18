@@ -1,5 +1,6 @@
 {
   "estimatedSweepVbytes": 153,
+  "fastDelayMinutes": 1,
   "feeRateDenominator": 1000000,
   "fuzzBlocks": 5,
   "maxCltvExpiration": 2016,
@@ -14,6 +15,7 @@
   "minSweepConfs": 1,
   "minutesPerBlock": 10,
   "requiredBufferBlocks": 36,
+  "slowDelayMinutes": 30,
   "swapTypes": ["inbound", "outbound"],
   "sweepProgressLogDelayMs": 2000
 }

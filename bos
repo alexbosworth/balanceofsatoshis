@@ -354,6 +354,7 @@ prog
   .option('--amount <amount>', 'Amount to increase liquidity', INT, 5e5)
   .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
   .option('--dryrun', 'Only show cost estimate for increase')
+  .option('--fast', 'Request swap server avoid batching delay')
   .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 3000)
   .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 24)
   .option('--no-color', 'Mute all colors')
@@ -368,6 +369,7 @@ prog
           logger,
           avoid: flatten([options.avoid].filter(n => !!n)),
           confs: options.confs,
+          is_fast: options.fast || false,
           is_raw_recovery_shown: options.showRawRecovery || undefined,
           is_dry_run: options.dryrun || false,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
