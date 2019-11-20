@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.2.0
+## Version 5.2.2
 
 - `increase-inbound-liquidity`: Add `--fast` option to choose a fast swap
 
