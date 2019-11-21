@@ -57,6 +57,9 @@ bos chain-deposit
 # Receive funds via swap on-chain
 bos chain-receive "amount"
 
+# Show routing fees earned
+bos chart-fees-earned
+
 # See details on how closed channels resolved on-chain
 bos closed
 
@@ -192,10 +195,64 @@ expr $(bos balance --node=savedNode1) + $(bos balance --node=savedNode1)
 # outputs the combined balance of both nodes
 ```
 
-### Send Alerts
+## Alerts and Reports with `sendnotification`
+
+Some commands are made with the idea that they can trigger an alert or regular
+report by piping the output of a command into some reporting script like
+[sendnotification](https://www.npmjs.com/package/sendnotification) which works
+with AWS SNS service to deliver notifications
+
+Examples of shell scripts that could be executed by crontab:
+
+### Cert Expiration Alert
 
 ```shell
-bos inbound-liquidity --below=1000000 2>&1 | sendnotification SNS "AWS_SNS_ID" "WARNING inbound-liquidity deficit: %s sats" --nonzero --subject="Low inbound liquidity warning: node1"
+# cert-expiration-alert.sh
+
+#!/bin/bash
+/path/to/bos cert-validity-days --below 30 | \
+/path/to/sendnotification SNS "sns-topic-id" "Warning: %s days left on TLS cert" \
+--nonzero --subject="Cert expiration warning"
+
+# sends email when the certification has less than 30 days left until invalid
+```
+
+### Daily Node Report
+
+```shell
+# daily-report.sh
+
+#!/bin/bash
+/path/to/bos report --styled 2>&1 | \
+/path/to/sendnotification SNS "sns-topic-id" "%s" --subject="Daily node update"
+
+# sends email about what has happened on the node in the past day
+```
+
+### Low Channel Balance Alert
+
+```shell
+# low-offchain-outbound-liquidity alert
+
+#!/bin/bash
+/path/to/bos balance --offchain --below 4000000 | \
+/path/to/sendnotification SNS "sns-topic-id" "off-chain balance deficit: %s sats" \
+--nonzero --subject="Low balance warning"
+
+# sends email if the channel balance goes below a threshold
+```
+
+### Low Inbound Liquidity Alert
+
+```shell
+# low-inbound-liquidity.sh
+
+#!/bin/bash
+/path/to/bos inbound-liquidity --below=1000000 2>&1 | \
+/path/to/sendnotification SNS "sns-topic-id" \
+"WARNING inbound-liquidity deficit: %s sats" --nonzero \
+--subject="Low inbound liquidity warning: node1"
+
 # sends email if the inbound liquidity drops below a 1,000,000 sats
 ```
 
@@ -203,13 +260,13 @@ bos inbound-liquidity --below=1000000 2>&1 | sendnotification SNS "AWS_SNS_ID" "
 
 Potentially this can be used with Docker with a simple docker file
 
-```
+```dockerfile
 FROM node:latest
 RUN npm install balanceofsatoshis
 ENTRYPOINT [ "/node_modules/balanceofsatoshis/bos" ]
 ```
 
-```
-    #! /usr/bin/env bash
-    docker run -it --rm -v=$HOME/.bos:/root/.bos bos:latest ${@:1}
+```shell
+#! /usr/bin/env bash
+docker run -it --rm -v=$HOME/.bos:/root/.bos bos:latest ${@:1}
 ```

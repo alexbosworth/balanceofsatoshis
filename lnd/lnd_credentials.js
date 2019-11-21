@@ -1,34 +1,20 @@
-const {join} = require('path');
-const {homedir} = require('os');
 const {publicEncrypt} = require('crypto');
 const {readFile} = require('fs');
 const {spawn} = require('child_process');
-const {URL} = require('url');
 
 const asyncAuto = require('async/auto');
-const asyncDetectSeries = require('async/detectSeries');
-const {flatten} = require('lodash');
-const ini = require('ini');
 const {returnResult} = require('asyncjs-util');
 
 const {decryptCiphertext} = require('./../encryption');
 const {derAsPem} = require('./../encryption');
+const getCert = require('./get_cert');
+const getMacaroon = require('./get_macaroon');
 const {getSavedCredentials} = require('./../nodes');
-const lndDirectory = require('./lnd_directory');
+const getSocket = require('./get_socket');
 
-const base64 = 'base64';
-const certPath = ['tls.cert'];
-const credsFile = 'credentials.json';
-const confPath = ['lnd.conf'];
-const defaults = [['bitcoin', 'litecoin'], ['mainnet', 'testnet']];
-const home = '.bos';
-const macName = 'admin.macaroon';
-const {parse} = JSON;
-const {path} = lndDirectory({});
-const pathToMac = ['data', 'chain'];
 const socket = 'localhost:10009';
 
-/** Lnd credentials
+/** LND credentials
 
   {
     [key]: <Encrypt to Public Key DER Hex String>
@@ -49,62 +35,10 @@ module.exports = ({logger, key, node}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Get the default cert
-      getCert: cbk => {
-        if (!!node) {
-          return cbk();
-        }
-
-        return readFile(join(...[path].concat(certPath)), (err, cert) => {
-          if (!!err || !cert) {
-            return cbk([503, 'FailedToGetCertFileData', err]);
-          }
-
-          return cbk(null, cert.toString(base64));
-        });
-      },
+      getCert: cbk => getCert({node, fs: {getFile: readFile}}, cbk),
 
       // Get the default macaroon
-      getMacaroon: cbk => {
-        if (!!node) {
-          return cbk();
-        }
-
-        const [chains, nets] = defaults;
-
-        const all = chains.map(chain => {
-          return nets.map(network => ({chain, network}))
-        });
-
-        // Find the default macaroon
-        return asyncDetectSeries(flatten(all), ({chain, network}, cbk) => {
-          const macPath = []
-            .concat(pathToMac)
-            .concat([chain, network, macName]);
-
-          return readFile(join(...[path].concat(macPath)), (_, macaroon) => {
-            return cbk(null, macaroon);
-          });
-        },
-        (err, macaroon) => {
-          if (!!err || !macaroon) {
-            return cbk([503, 'FailedToGetMacFileData', err]);
-          }
-
-          const {chain, network} = macaroon;
-
-          const macPath = []
-            .concat(pathToMac)
-            .concat([chain, network, macName]);
-
-          return readFile(join(...[path].concat(macPath)), (err, macaroon) => {
-            if (!!err) {
-              return cbk([503, 'FailedToGetMacaroonData', {err}]);
-            }
-
-            return cbk(null, macaroon.toString(base64));
-          });
-        });
-      },
+      getMacaroon: cbk => getMacaroon({node, fs: {getFile: readFile}}, cbk),
 
       // Get the node credentials, if applicable
       getNodeCredentials: cbk => {
@@ -115,51 +49,8 @@ module.exports = ({logger, key, node}, cbk) => {
         return getSavedCredentials({node, fs: {getFile: readFile}}, cbk);
       },
 
-      // Get socket
-      getSocket: cbk => {
-        // Exit early when a saved node is specified
-        if (!!node) {
-          return cbk();
-        }
-
-        return readFile(join(...[path].concat(confPath)), (err, conf) => {
-          if (!!err || !conf) {
-            return cbk();
-          }
-
-          try {
-            ini.parse(conf.toString())
-          } catch (err) {
-            return cbk();
-          }
-
-          const configuration = ini.parse(conf.toString())
-
-          const applicationOptions = configuration['Application Options'];
-
-          if (!applicationOptions) {
-            return cbk();
-          }
-
-          const ip = applicationOptions.tlsextraip;
-
-          if (!ip) {
-            return cbk();
-          }
-
-          try {
-            if (!(new URL(`rpc://${applicationOptions.rpclisten}`).port)) {
-              return cbk();
-            }
-          } catch (err) {
-            return cbk();
-          }
-
-          const {port} = new URL(`rpc://${applicationOptions.rpclisten}`);
-
-          return cbk(null, {external_socket: `${ip}:${port}`});
-        });
-      },
+      // Get the socket out of the ini file
+      getSocket: cbk => getSocket({node, fs: {getFile: readFile}}, cbk),
 
       // Node credentials
       nodeCredentials: ['getNodeCredentials', ({getNodeCredentials}, cbk) => {
@@ -209,7 +100,11 @@ module.exports = ({logger, key, node}, cbk) => {
       {
         // Exit early with the default credentials when no node is specified
         if (!node) {
-          return cbk(null, {socket, cert: getCert, macaroon: getMacaroon});
+          return cbk(null, {
+            socket,
+            cert: getCert.cert,
+            macaroon: getMacaroon.macaroon,
+          });
         }
 
         return cbk(null, {
@@ -237,7 +132,7 @@ module.exports = ({logger, key, node}, cbk) => {
         return cbk(null, {
           cert: credentials.cert,
           encrypted_macaroon: encrypted.toString('base64'),
-          external_socket: !!getSocket ? getSocket.external_socket : undefined,
+          external_socket: getSocket.socket,
           socket: credentials.socket,
         });
       }],

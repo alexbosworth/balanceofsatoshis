@@ -74,20 +74,16 @@ module.exports = (args, cbk) => {
           !!args.is_onchain_only ? none : -futureCommitFees,
         ];
 
-        try {
-          const balance = balanceFromTokens({
-            above: args.above,
-            below: args.below,
-            tokens: balances,
-          });
+        const balance = balanceFromTokens({
+          above: args.above,
+          below: args.below,
+          tokens: balances,
+        });
 
-          return cbk(null, {
-            balance,
-            channel_balance: getChanBalance.channel_balance - futureCommitFees,
-          });
-        } catch (err) {
-          return cbk([500, 'FailedToCalculateBalanceTotal', err]);
-        }
+        return cbk(null, {
+          balance,
+          channel_balance: getChanBalance.channel_balance - futureCommitFees,
+        });
       }],
     },
     returnResult({reject, resolve, of: 'balance'}, cbk));

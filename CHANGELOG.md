@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.3.0
+
+- Add `chart-fees-earned` to show a chart of fees earned
+
 ## Version 5.2.2
 
 - `increase-inbound-liquidity`: Add `--fast` option to choose a fast swap

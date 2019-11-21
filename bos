@@ -26,6 +26,7 @@ const {getChannelCloses} = require('./chain');
 const {getCredentials} = require('./lnd');
 const {getDepositAddress} = require('./chain');
 const {getExchangeRates} = require('./fiat');
+const {getFeesChart} = require('./routing');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
 const {getPeers} = require('./network');
@@ -101,18 +102,24 @@ prog
   .option('--dryrun', 'Show scoring without changing autopilot settings')
   .option('--mirror <pubkey>', 'Mirror channels of node', REPEATABLE)
   .option('--no-color', 'Mute all colors')
-  .option('--node <node_name>', 'Set autopilot on named node')
+  .option('--node <node_name>', 'Set autopilot on saved node')
   .option('--url <url>', 'Follow nodes from a scoring URL', REPEATABLE)
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return setAutopilot({
-        is_dryrun: !!options.dryrun,
-        is_enabled: args.status === 'on',
-        mirrors: flatten([options.mirror].filter(n => !!n)),
-        node: options.node,
-        urls: flatten([options.url].filter(n => !!n)),
-      },
-      returnObject({logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return setAutopilot({
+          request,
+          is_dryrun: !!options.dryrun,
+          is_enabled: args.status === 'on',
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          mirrors: flatten([options.mirror].filter(n => !!n)),
+          node: options.node,
+          urls: flatten([options.url].filter(n => !!n)),
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -219,6 +226,25 @@ prog
         file: options.file,
         write: writeFile,
       }));
+    });
+  })
+
+  // Show a chart of fees earned
+  .command('chart-fees-earned', 'Get a chart of earned routing fees')
+  .help('Show the routing fees earned')
+  .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
+  .option('--node <node_name>', 'Get fee earnings chart for saved node')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getFeesChart({
+          days: options.days,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnChart({logger, reject, resolve, data: 'fees'}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
