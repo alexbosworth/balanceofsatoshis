@@ -1,5 +1,5 @@
-const {join} = require('path');
 const {homedir} = require('os');
+const {join} = require('path');
 
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');

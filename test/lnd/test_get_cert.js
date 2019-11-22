@@ -2,6 +2,8 @@ const {test} = require('tap');
 
 const getCert = require('./../../lnd/get_cert');
 
+const os = {homedir: () => 'homedir', platform: () => 'platform'};
+
 const tests = [
   {
     args: {},
@@ -9,22 +11,27 @@ const tests = [
     error: [400, 'ExpectedFileSystemMethodsToGetCertForNode'],
   },
   {
-    args: {fs: {getFile: () => {}}, node: 'foo'},
+    args: {fs: {getFile: () => {}}},
+    description: 'OS methods are required',
+    error: [400, 'ExpectedOperatingSystemMethodsToGetCertForNode'],
+  },
+  {
+    args: {os, fs: {getFile: () => {}}, node: 'foo'},
     description: 'A specified node returns no cert',
     expected: {},
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk('err')}},
+    args: {os, fs: {getFile: ({}, cbk) => cbk('err')}},
     description: 'A filesystem error is returned',
     error: [503, 'UnexpectedErrorGettingCertFileData', {err: 'err'}],
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk()}},
+    args: {os, fs: {getFile: ({}, cbk) => cbk()}},
     description: 'A file is expected',
     error: [503, 'LndCertNotFoundInDefaultLocation'],
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk(null, Buffer.alloc(1))}},
+    args: {os, fs: {getFile: ({}, cbk) => cbk(null, Buffer.alloc(1))}},
     description: 'A default cert is returned',
     expected: {cert: 'AA=='},
   },

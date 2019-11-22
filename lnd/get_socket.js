@@ -10,7 +10,6 @@ const lndDirectory = require('./lnd_directory');
 const applicationOptions = 'Application Options';
 const confPath = ['lnd.conf'];
 const {keys} = Object;
-const {path} = lndDirectory({});
 const scheme = 'rpc://';
 
 /** Get RPC socket for a node
@@ -20,6 +19,10 @@ const scheme = 'rpc://';
       getFile: <Get Filesystem File Function> (path, cbk) => {}
     }
     [node]: <Saved Node Name String>
+    os: {
+      homedir: <Home Directory Function> () => <Home Directory Path String>
+      platform: <Platform Function> () => <Platform Name String>
+    }
   }
 
   @returns via cbk or Promise
@@ -27,13 +30,17 @@ const scheme = 'rpc://';
     [socket]: <RPC Socket String>
   }
 */
-module.exports = ({fs, node}, cbk) => {
+module.exports = ({fs, node, os}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
         if (!fs) {
           return cbk([400, 'ExpectedFilesystemMethodsToGetSocketInfoForNode']);
+        }
+
+        if (!os) {
+          return cbk([400, 'ExpectedOperatingSystemMethodsToGetNodeSocket']);
         }
 
         return cbk();
@@ -45,6 +52,8 @@ module.exports = ({fs, node}, cbk) => {
         if (!!node) {
           return cbk();
         }
+
+        const {path} = lndDirectory({os});
 
         return fs.getFile(join(...[path].concat(confPath)), (err, conf) => {
           // Don't report errors, the conf file is either there or not

@@ -1,3 +1,5 @@
+const {homedir} = require('os');
+const {platform} = require('os');
 const {publicEncrypt} = require('crypto');
 const {readFile} = require('fs');
 const {spawn} = require('child_process');
@@ -12,6 +14,8 @@ const getMacaroon = require('./get_macaroon');
 const {getSavedCredentials} = require('./../nodes');
 const getSocket = require('./get_socket');
 
+const fs = {getFile: readFile};
+const os = {homedir, platform};
 const socket = 'localhost:10009';
 
 /** LND credentials
@@ -35,10 +39,10 @@ module.exports = ({logger, key, node}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Get the default cert
-      getCert: cbk => getCert({node, fs: {getFile: readFile}}, cbk),
+      getCert: cbk => getCert({fs, node, os}, cbk),
 
       // Get the default macaroon
-      getMacaroon: cbk => getMacaroon({node, fs: {getFile: readFile}}, cbk),
+      getMacaroon: cbk => getMacaroon({fs, node, os}, cbk),
 
       // Get the node credentials, if applicable
       getNodeCredentials: cbk => {
@@ -46,11 +50,11 @@ module.exports = ({logger, key, node}, cbk) => {
           return cbk();
         }
 
-        return getSavedCredentials({node, fs: {getFile: readFile}}, cbk);
+        return getSavedCredentials({fs, node}, cbk);
       },
 
       // Get the socket out of the ini file
-      getSocket: cbk => getSocket({node, fs: {getFile: readFile}}, cbk),
+      getSocket: cbk => getSocket({fs, node, os}, cbk),
 
       // Node credentials
       nodeCredentials: ['getNodeCredentials', ({getNodeCredentials}, cbk) => {

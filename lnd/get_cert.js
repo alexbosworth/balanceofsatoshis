@@ -1,4 +1,6 @@
+const {homedir} = require('os');
 const {join} = require('path');
+const {platform} = require('os');
 
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
@@ -6,7 +8,6 @@ const {returnResult} = require('asyncjs-util');
 const lndDirectory = require('./lnd_directory');
 
 const certPath = ['tls.cert'];
-const {path} = lndDirectory({});
 
 /** Get cert for node
 
@@ -15,6 +16,10 @@ const {path} = lndDirectory({});
       getFile: <Get File Function>
     }
     [node]: <Node Name String>
+    os: {
+      homedir: <Home Directory Function> () => <Home Directory Path String>
+      platform: <Platform Function> () => <Platform Name String>
+    }
   }
 
   @returns via cbk or Promise
@@ -22,13 +27,17 @@ const {path} = lndDirectory({});
     [cert]: <Cert File Base64 Encoded String>
   }
 */
-module.exports = ({fs, node}, cbk) => {
+module.exports = ({fs, node, os}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
         if (!fs) {
           return cbk([400, 'ExpectedFileSystemMethodsToGetCertForNode']);
+        }
+
+        if (!os) {
+          return cbk([400, 'ExpectedOperatingSystemMethodsToGetCertForNode']);
         }
 
         return cbk();
@@ -39,6 +48,8 @@ module.exports = ({fs, node}, cbk) => {
         if (!!node) {
           return cbk();
         }
+
+        const {path} = lndDirectory({os});
 
         return fs.getFile(join(...[path].concat(certPath)), (err, cert) => {
           if (!!err) {

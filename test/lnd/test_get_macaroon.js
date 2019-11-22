@@ -2,6 +2,8 @@ const {test} = require('tap');
 
 const getMacaroon = require('./../../lnd/get_macaroon');
 
+const os = {homedir: () => 'homedir', platform: () => 'platform'};
+
 const tests = [
   {
     args: {},
@@ -9,17 +11,22 @@ const tests = [
     error: [400, 'ExpectedFileSystemMethodsToGetMacaroon'],
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk()}, node: 'node'},
+    args: {fs: {getFile: ({}, cbk) => cbk()}},
+    description: 'Operating system methods are required',
+    error: [400, 'ExpectedOperatingSystemMethodsToGetMacaroon'],
+  },
+  {
+    args: {os, fs: {getFile: ({}, cbk) => cbk()}, node: 'node'},
     description: 'If a node is specified, no macaroon is returned',
     expected: {},
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk()}},
+    args: {os, fs: {getFile: ({}, cbk) => cbk()}},
     description: 'If no macaroon is found, an error is returned',
     error: [503, 'FailedToGetMacaroonFileFromDefaultLocation'],
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk(null, Buffer.alloc(1))}},
+    args: {os, fs: {getFile: ({}, cbk) => cbk(null, Buffer.alloc(1))}},
     description: 'A macaroon in the default location is returned',
     expected: {macaroon: 'AA=='},
   },

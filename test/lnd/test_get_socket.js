@@ -2,6 +2,8 @@ const {test} = require('tap');
 
 const getSocket = require('./../../lnd/get_socket');
 
+const os = {homedir: () => 'homedir', platform: () => 'platform'};
+
 const tests = [
   {
     args: {},
@@ -9,27 +11,33 @@ const tests = [
     error: [400, 'ExpectedFilesystemMethodsToGetSocketInfoForNode'],
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk()}, node: 'node'},
+    args: {fs: {getFile: ({}, cbk) => {}}},
+    description: 'Operating system methods are required',
+    error: [400, 'ExpectedOperatingSystemMethodsToGetNodeSocket'],
+  },
+  {
+    args: {os, fs: {getFile: ({}, cbk) => cbk()}, node: 'node'},
     description: 'Specifying a node returns undefined socket',
     expected: {},
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk()}},
+    args: {os, fs: {getFile: ({}, cbk) => cbk()}},
     description: 'No conf file returns undefined socket',
     expected: {},
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk(null, Buffer.from(''))}},
+    args: {os, fs: {getFile: ({}, cbk) => cbk(null, Buffer.from(''))}},
     description: 'Invalid ini file returns undefined socket',
     expected: {},
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk(null, Buffer.from('attr=val'))}},
+    args: {os, fs: {getFile: ({}, cbk) => cbk(null, Buffer.from('attr=val'))}},
     description: 'No tlsextraip returns undefined socket',
     expected: {},
   },
   {
     args: {
+      os,
       fs: {
         getFile: ({}, cbk) => cbk(
           null,
@@ -42,6 +50,7 @@ const tests = [
   },
   {
     args: {
+      os,
       fs: {
         getFile: ({}, cbk) => cbk(
           null,

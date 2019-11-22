@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.3.0
+## Version 5.3.1
 
 - Add `chart-fees-earned` to show a chart of fees earned
 

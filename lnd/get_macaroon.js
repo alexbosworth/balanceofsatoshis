@@ -10,7 +10,6 @@ const lndDirectory = require('./lnd_directory');
 const defaults = [['bitcoin', 'litecoin'], ['mainnet', 'testnet']];
 const macDirs = ['data', 'chain'];
 const macName = 'admin.macaroon';
-const {path} = lndDirectory({});
 
 /** Get macaroon for node
 
@@ -19,6 +18,10 @@ const {path} = lndDirectory({});
       getFile: <Get File Function> (path, cbk) => {}
     }
     [node]: <Node Name String>
+    os: {
+      homedir: <Home Directory Function> () => <Home Directory Path String>
+      platform: <Platform Function> () => <Platform Name String>
+    }
   }
 
   @returns via cbk or Promise
@@ -26,13 +29,17 @@ const {path} = lndDirectory({});
     [macaroon]: <Base64 Encoded Macaroon String>
   }
 */
-module.exports = ({fs, node}, cbk) => {
+module.exports = ({fs, node, os}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
         if (!fs) {
           return cbk([400, 'ExpectedFileSystemMethodsToGetMacaroon']);
+        }
+
+        if (!os) {
+          return cbk([400, 'ExpectedOperatingSystemMethodsToGetMacaroon']);
         }
 
         return cbk();
@@ -47,6 +54,7 @@ module.exports = ({fs, node}, cbk) => {
 
         const [chains, nets] = defaults;
         let defaultMacaroon;
+        const {path} = lndDirectory({os});
 
         const all = chains.map(chain => {
           return nets.map(network => ({chain, network}));
