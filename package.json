@@ -16,7 +16,7 @@
     "bitcoin-ops": "1.4.1",
     "bitcoinjs-lib": "5.1.6",
     "bolt03": "1.2.1",
-    "bolt07": "1.4.3",
+    "bolt07": "1.4.4",
     "caporal": "1.3.0",
     "cbor": "5.0.1",
     "cert-info": "1.5.1",
@@ -26,7 +26,7 @@
     "ini": "1.3.5",
     "inquirer": "7.0.0",
     "ln-accounting": "3.1.6",
-    "ln-service": "47.4.0",
+    "ln-service": "47.5.0",
     "moment": "2.24.0",
     "qrcode-terminal": "0.12.0",
     "request": "2.88.0",
@@ -38,7 +38,7 @@
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
-    "tap": "14.9.2"
+    "tap": "14.10.1"
   },
   "engines": {
     "node": ">=10.12.0"
@@ -61,5 +61,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/telegram/*.js"
   },
-  "version": "5.3.1"
+  "version": "5.4.0"
 }

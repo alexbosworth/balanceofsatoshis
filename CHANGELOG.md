@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.4.0
+
+- `chart-fees-earned`: Add `via` argument to show only fees related to a peer
+- Add `fund-dev`: method to fund Bitcoin and Lightning development efforts
+
 ## Version 5.3.1
 
 - Add `chart-fees-earned` to show a chart of fees earned

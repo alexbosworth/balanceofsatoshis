@@ -18,6 +18,7 @@ const {adjustSavedNodes} = require('./nodes');
 const {authenticatedLnd} = require('./lnd');
 const {exchanges} = require('./fiat');
 const {findRecord} = require('./lnd');
+const {fundDev} = require('./wallets');
 const {getAccountingReport} = require('./balances');
 const {getBalance} = require('./balances');
 const {getCertValidityDays} = require('./lnd');
@@ -231,6 +232,7 @@ prog
 
   // Show a chart of fees earned
   .command('chart-fees-earned', 'Get a chart of earned routing fees')
+  .argument('[via_peer]', 'Routing fees earned via a specified peer')
   .help('Show the routing fees earned')
   .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
   .option('--node <node_name>', 'Get fee earnings chart for saved node')
@@ -240,6 +242,7 @@ prog
         return getFeesChart({
           days: options.days,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          via: args.viaPeer,
         },
         returnChart({logger, reject, resolve, data: 'fees'}));
       } catch (err) {
@@ -332,6 +335,33 @@ prog
         node: options.node,
       },
       returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Help with funding
+  .command('fund-dev', 'Fund people related to Bitcoin and Lightning efforts')
+  .help('Send some sats (805 default) to a worthy individual. For the cause!')
+  .help('Someone will be automatically chosen if no @handle specified')
+  .help('Nominate worthiness via GitHub issues, include proof of your support')
+  .option('--amount <amount>', 'Choose amount to send', INT, 805)
+  .option('--dryrun', 'Show what would happen without actually sending funds')
+  .option('--node <node_name>', 'Saved node to give funds from')
+  .option('--twitter-handle <nick>', 'Specifically support someone')
+  .action(async (args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return fundDev({
+          logger,
+          request,
+          is_dry_run: options.dryrun,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          to_twitter_account: options.twitterHandle,
+          tokens: options.amount,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -672,7 +702,7 @@ prog
   .option('--budget <amount>', 'Spending amount to allow', INT, 0)
   .option('--connect <connect_code>', 'Connection code', INT)
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
-  .action(async (args, options, logger) => {
+  .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         const nodes = flatten([options.node].filter(n => !!n)).map(node => {

@@ -35,7 +35,6 @@ const reserveRatio = 0.01;
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
-    [node]: <Node Name String>
     [out_through]: <Out through peer with Public Key Hex String>
     [request]: <Payment Request String>
     [tokens]: <Tokens Number>

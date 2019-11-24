@@ -75,6 +75,9 @@ bos find "query"
 # Output a summarized version of peers forwarded towards
 bos forwards
 
+# Fund people related to Bitcoin and Lightning efforts
+bos fund-dev
+
 # Send a gift of some tokens to a directly connected peer
 bos gift "pubkey" "amount"
 
