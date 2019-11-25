@@ -329,12 +329,16 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get forwards for')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getForwards({
-        days: options.days,
-        node: options.node,
-      },
-      returnObject({logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getForwards({
+          days: options.days,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -571,20 +575,24 @@ prog
   // Get a list of channel-connected peers
   .command('peers', 'Get a list of channel-connected peers')
   .option('--active', 'Only active peer channels')
+  .option('--fee-days <past_days>', 'Include fees earned over n days', INT)
   .option('--inbound-below <amount>', 'Inbound liquidity below amount')
   .option('--node <node_name>', 'Node to get peers for')
   .option('--offline', 'Only offline peer channels')
   .option('--outbound-below <amount>', 'Outbound liquidity below amount', INT)
   .option('--no-color', 'Mute all colors')
+  .option('--private', 'Only private channels')
   .option('--public', 'Only peers with public channels')
   .option('--sort', 'Sort results by peer attribute')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return getPeers({
+          earnings_days: options.feeDays,
           inbound_liquidity_below: options.inboundBelow,
           is_active: !!options.active,
           is_offline: !!options.offline,
+          is_private: !!options.private,
           is_public: !!options.public,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           node: options.node,

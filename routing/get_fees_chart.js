@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const {getChannels} = require('ln-service');
 const {getForwards} = require('ln-service');
 const {getNode} = require('ln-service');
 const moment = require('moment');
@@ -44,6 +45,11 @@ module.exports = ({days, lnd, via}, cbk) => {
         return cbk();
       },
 
+      // Get private channels
+      getPrivateChannels: ['validate', ({}, cbk) => {
+        return !via ? cbk() : getChannels({lnd, is_private: true}, cbk);
+      }],
+
       // Get node details
       getNode: ['validate', ({}, cbk) => {
         return !via ? cbk() : getNode({lnd, public_key: via}, cbk);
@@ -77,12 +83,23 @@ module.exports = ({days, lnd, via}, cbk) => {
       }],
 
       // Filter the forwards
-      forwards: ['getForwards', 'getNode', ({getForwards, getNode}, cbk) => {
+      forwards: [
+        'getForwards',
+        'getNode',
+        'getPrivateChannels',
+        ({getForwards, getNode, getPrivateChannels}, cbk) =>
+      {
         if (!via) {
           return cbk(null, getForwards.forwards);
         }
 
-        const channelIds = uniq(getNode.channels.map(({id}) => id));
+        const privateChans = getPrivateChannels.channels
+          .filter(channel => channel.partner_public_key === via)
+          .map(({id}) => id);
+
+        const publicChans = getNode.channels.map(({id}) => id);
+
+        const channelIds = uniq([].concat(privateChans).concat(publicChans));
 
         const forwards = getForwards.forwards.filter(forward => {
           if (channelIds.indexOf(forward.incoming_channel) !== notFound) {
@@ -178,7 +195,9 @@ module.exports = ({days, lnd, via}, cbk) => {
           return cbk(null, title);
         }
 
-        return cbk(null, `${title} via ${getNode.alias}`);
+        const {alias} = getNode;
+
+        return cbk(null, `${title} via ${alias || via}`);
       }],
 
       // Earnings

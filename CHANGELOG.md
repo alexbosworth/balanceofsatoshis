@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.5.0
+
+- `peers`: Add `fee-days` option to show fees earned via a peer
+- `peers`: Add `first_connected` attribute to peers list
+- `peers`: Add `private` option to only show private channel peers
+
 ## Version 5.4.0
 
 - `chart-fees-earned`: Add `via` argument to show only fees related to a peer

@@ -32,6 +32,8 @@ bos help
 bos help commandName
 ```
 
+Or ask about commands on [Telegram](https://t.me/balanceofsatoshis)
+
 ### Example Commands
 
 ```shell

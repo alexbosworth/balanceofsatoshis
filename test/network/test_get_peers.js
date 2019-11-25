@@ -1,6 +1,9 @@
 const {test} = require('tap');
 
+const {getInfoResponse} = require('./fixtures');
 const {getPeers} = require('./../../network');
+
+const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 
 const tests = [
   {
@@ -12,6 +15,8 @@ const tests = [
     args: {
       lnd: {
         default: {
+          closedChannels: ({}, cbk) => cbk(null, {channels: []}),
+          getInfo: ({}, cbk) => cbk(null, getInfoRes()),
           listChannels: ({}, cbk) => cbk(null, {channels: []}),
         },
       },
@@ -23,6 +28,7 @@ const tests = [
     args: {
       lnd: {
         default: {
+          closedChannels: ({}, cbk) => cbk(null, {channels: []}),
           getChanInfo: ({}, cbk) => cbk(null, {
             capacity: '1',
             chan_point: '1:1',
@@ -48,6 +54,7 @@ const tests = [
             },
             node2_pub: 'b',
           }),
+          getInfo: ({}, cbk) => cbk(null, getInfoRes()),
           getNodeInfo: ({}, cbk) => cbk(null, {
             node: {
               addresses: [],
@@ -86,6 +93,7 @@ const tests = [
     expected: {
       peers: [{
         alias: 'alias',
+        fee_earnings: undefined,
         inbound_fee_rate: '0.00%',
         inbound_liquidity: '0.00000001',
         outbound_liquidity: '0.00000001',
@@ -98,7 +106,9 @@ const tests = [
       inbound_liquidity_below: 1000,
       lnd: {
         default: {
+          closedChannels: ({}, cbk) => cbk(null, {channels: []}),
           getChanInfo: ({}, cbk) => cbk({details: 'edge not found'}),
+          getInfo: ({}, cbk) => cbk(null, getInfoRes()),
           getNodeInfo: ({}, cbk) => cbk(null, {
             node: {
               addresses: [],
@@ -138,6 +148,7 @@ const tests = [
     expected: {
       peers: [{
         alias: 'alias',
+        fee_earnings: undefined,
         inbound_fee_rate: undefined,
         inbound_liquidity: '0.00000001',
         outbound_liquidity: '0.00000001',
@@ -153,6 +164,8 @@ tests.forEach(({args, description, error, expected}) => {
       rejects(getPeers(args), error, 'Got expected error');
     } else {
       const {peers} = await getPeers(args);
+
+      peers.forEach(n => delete n.first_connected);
 
       deepIs(peers, expected.peers, 'Got expected peers');
     }
