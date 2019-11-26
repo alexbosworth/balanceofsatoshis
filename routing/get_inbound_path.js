@@ -1,5 +1,7 @@
 const asyncAuto = require('async/auto');
+const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
+const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const tokensAsMtokens = tokens => BigInt(tokens) * BigInt(1e3);
@@ -49,19 +51,32 @@ module.exports = ({destination, lnd, through, tokens}, cbk) => {
         return cbk();
       },
 
+      // Get channels to validate the inbound channel exists
+      getChannels: ['validate', ({}, cbk) => getChannels({lnd}, cbk)],
+
+      // Get local node info to check if this is a local inbound channel
+      getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd}, cbk)],
+
       // Get node
       getNode: ['validate', ({}, cbk) => {
         return getNode({lnd, public_key: destination}, cbk);
       }],
 
       // Connecting path
-      path: ['getNode', ({getNode}, cbk) => {
+      path: [
+        'getChannels',
+        'getInfo',
+        'getNode',
+        ({getChannels, getInfo, getNode}, cbk) =>
+      {
         const connectingChannels = getNode.channels
           .filter(chan => !!chan.policies.find(n => n.public_key === through));
 
         if (!connectingChannels.length) {
           return cbk([400, 'NoConnectingChannelToPayIn']);
         }
+
+        const publicKey = getInfo.public_key;
 
         const [channel] = connectingChannels.filter(chan => {
           const policy = chan.policies.find(n => n.public_key === through);
@@ -71,6 +86,17 @@ module.exports = ({destination, lnd, through, tokens}, cbk) => {
           }
 
           if (!policy.max_htlc_mtokens) {
+            return false;
+          }
+
+          const isLocal = chan.policies.find(n => n.public_key === publicKey);
+
+          const localChannel = getChannels.channels.find(({id}) => {
+            return id === chan.id;
+          });
+
+          // Exit early when this is a local channel but doesn't exist
+          if (!!isLocal && !localChannel) {
             return false;
           }
 

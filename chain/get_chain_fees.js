@@ -19,10 +19,10 @@ const start = 2;
 
   {
     [blocks]: <Block Count Number>
-    [node]: <Node Name String>
+    lnd: <Authenticated LND gRPC API Object>
   }
 
-  @returns via cbk
+  @returns via cbk or Promise
   {
     current_block_hash: <Chain Tip Best Block Hash Hex String>
     fee_by_block_target: {
@@ -30,63 +30,64 @@ const start = 2;
     }
   }
 */
-module.exports = ({blocks, node}, cbk) => {
-  return asyncAuto({
-    // Authenticated lnd
-    getLnd: cbk => authenticatedLnd({node}, cbk),
+module.exports = ({blocks, lnd}, cbk) => {
+  return new Promise((resolve, reject) => {
+    return asyncAuto({
+      // Check arguments
+      validate: cbk => {
+        if (!lnd) {
+          return cbk([400, 'ExpectedLndToGetChainFees']);
+        }
 
-    // Get wallet info
-    getInfo: ['getLnd', ({getLnd}, cbk) => {
-      return getWalletInfo({lnd: getLnd.lnd}, cbk);
-    }],
-
-    // Get the fees
-    getFees: ['getLnd', ({getLnd}, cbk) => {
-      const blockCount = blocks || defaultBlockCount;
-
-      return asyncTimesSeries(blockCount - iteration, (i, cbk) => {
-        return getChainFeeRate({
-          confirmation_target: start + i,
-          lnd: getLnd.lnd,
-        },
-        (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          // Exit with error when there is an invalid fee rate response
-          if (!res.tokens_per_vbyte || res.tokens_per_vbyte < minFeeRate) {
-            return cbk([503, 'UnexpectedChainFeeRateInGetFeesResponse']);
-          }
-
-          return cbk(null, {rate: res.tokens_per_vbyte, target: start + i});
-        });
+        return cbk();
       },
-      cbk);
-    }],
 
-    // Collapse chain fees into steps
-    chainFees: ['getFees', 'getInfo', ({getFees, getInfo}, cbk) => {
-      let cursor = {};
-      const feeByBlockTarget = {};
+      // Get the fees
+      getFees: ['validate', ({}, cbk) => {
+        const blockCount = blocks || defaultBlockCount;
 
-      getFees
-        .filter(fee => {
-          const isNewFee = cursor.rate !== fee.rate;
+        return asyncTimesSeries(blockCount - iteration, (i, cbk) => {
+          return getChainFeeRate({
+            lnd,
+            confirmation_target: start + i,
+          },
+          (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
 
-          cursor = isNewFee ? fee : cursor;
+            return cbk(null, {rate: res.tokens_per_vbyte, target: start + i});
+          });
+        },
+        cbk);
+      }],
 
-          return isNewFee;
-        })
-        .forEach(fee => {
-          return feeByBlockTarget[fee.target+''] = ceil(fee.rate * bytesPerKb);
+      // Get wallet info
+      getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd}, cbk)],
+
+      // Collapse chain fees into steps
+      chainFees: ['getFees', 'getInfo', ({getFees, getInfo}, cbk) => {
+        let cursor = {};
+        const feeByBlockTarget = {};
+
+        getFees
+          .filter(fee => {
+            const isNewFee = cursor.rate !== fee.rate;
+
+            cursor = isNewFee ? fee : cursor;
+
+            return isNewFee;
+          })
+          .forEach(({target, rate}) => {
+            return feeByBlockTarget[target+''] = ceil(rate * bytesPerKb);
+          });
+
+        return cbk(null, {
+          current_block_hash: getInfo.current_block_hash,
+          fee_by_block_target: feeByBlockTarget,
         });
-
-      return cbk(null, {
-        current_block_hash: getInfo.current_block_hash,
-        fee_by_block_target: feeByBlockTarget,
-      });
-    }],
-  },
-  returnResult({of :'chainFees'}, cbk));
+      }],
+    },
+    returnResult({reject, resolve, of :'chainFees'}, cbk));
+  });
 };

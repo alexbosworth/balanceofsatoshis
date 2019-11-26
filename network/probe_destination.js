@@ -138,7 +138,7 @@ module.exports = (args, cbk) => {
       });
 
       if (!withBalance.length) {
-        return cbk([404, 'NoChannelWithSufficientBalance']);
+        return cbk([404, 'NoOutboundPeerWithSufficientBalance']);
       }
 
       const attribute = 'local_balance';

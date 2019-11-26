@@ -349,10 +349,12 @@ module.exports = (args, cbk) => {
 
       const swapDelayMin = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
 
+      const fundAt = moment().add(swapDelayMin, 'minutes');
+
       return createSwapOut({
         network,
         service,
-        fund_at: moment().add(swapDelayMin, 'minutes').toISOString(),
+        fund_at: fundAt.toISOString(),
         tokens: args.tokens,
       },
       cbk);
@@ -664,6 +666,8 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
+      args.logger.info({funding_swap: decodeFundingRequest.id});
+
       return payViaRoutes({
         id: decodeFundingRequest.id,
         lnd: args.lnd,
@@ -696,7 +700,14 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      args.logger.info({paying_execution_request: decodeExecutionRequest.id});
+      const swapDelayMin = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
+
+      const fundAt = moment().add(swapDelayMin, 'minutes');
+
+      args.logger.info({
+        paying_execution_request: decodeExecutionRequest.id,
+        estimated_swap_start_time: fundAt.calendar(),
+      });
 
       const sub = subscribeToPayViaRequest({
         lnd: args.lnd,

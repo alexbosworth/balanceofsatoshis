@@ -215,18 +215,22 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get chain fees view from')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getChainFees({
-        blocks: options.blocks,
-        node: options.node,
-      },
-      returnObject({
-        logger,
-        reject,
-        resolve,
-        file: options.file,
-        write: writeFile,
-      }));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getChainFees({
+          blocks: options.blocks,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnObject({
+          logger,
+          reject,
+          resolve,
+          file: options.file,
+          write: writeFile,
+        }));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -258,12 +262,16 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Get channel closes from saved node')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getChannelCloses({
-        limit: options.limit,
-        node: options.node,
-      },
-      returnObject({logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getChannelCloses({
+          limit: options.limit,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 

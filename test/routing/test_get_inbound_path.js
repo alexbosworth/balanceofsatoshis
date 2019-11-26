@@ -1,6 +1,9 @@
 const {test} = require('tap');
 
 const {getInboundPath} = require('./../../routing');
+const {getInfoResponse} = require('./../network/fixtures');
+
+const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 
 const makeLnd = ({channels}) => {
   return {
@@ -8,6 +11,7 @@ const makeLnd = ({channels}) => {
       getChanInfo: (args, cbk) => {
         return cbk(null, channels.find(n => n.channel_id === args.chan_id));
       },
+      getInfo: ({}, cbk) => cbk(null, getInfoRes()),
       getNodeInfo: ({}, cbk) => {
         return cbk(null, {
           channels: channels || [],
@@ -24,6 +28,7 @@ const makeLnd = ({channels}) => {
           total_capacity: '0',
         });
       },
+      listChannels: ({}, cbk) => cbk(null, {channels: []}),
     },
   };
 };

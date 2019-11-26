@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.5.0
+## Version 5.5.1
 
 - `peers`: Add `fee-days` option to show fees earned via a peer
 - `peers`: Add `first_connected` attribute to peers list
