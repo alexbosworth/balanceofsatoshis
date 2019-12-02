@@ -92,6 +92,9 @@ bos inbound-liquidity
 # Increase inbound liquidity to the node
 bos increase-inbound-liquidity
 
+# Increase the outbound liquidity of the node
+bos increase-outbound-liquidity
+
 # Show liquidity adjustment costs
 bos liquidity-cost "inbound" "amount"
 
