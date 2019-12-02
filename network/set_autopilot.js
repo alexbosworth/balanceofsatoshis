@@ -19,7 +19,7 @@ const pubKeyLen = 66;
 /** Setup or turn off autopilot
 
   {
-    [is_dryrun]: <Only Display Scores But Take No Action Bool>
+    [is_dry_run]: <Only Display Scores But Take No Action Bool>
     is_enabled: <Autopilot Enabled Status Bool>
     lnd: <Authenticated LND gRPC API Object>
     [mirrors]: [<Mirror Channel of Node With Public Key Hex String>]
@@ -223,7 +223,7 @@ module.exports = (args, cbk) => {
 
       // Set autopilot
       setAutopilot: ['candidateNodes', ({candidateNodes}, cbk) => {
-        if (!!args.is_dryrun) {
+        if (!!args.is_dry_run) {
           return cbk();
         }
 

@@ -1,5 +1,12 @@
 # Versions
 
+## Version 5.6.0
+
+- `balance`: Add `--confirmed` option to show only confirmed funds
+- Add `increase-outbound-liquidity` command to create a new channel
+- `pay`: Allow paying invoices more than the regular network limit
+- `peers`: Properly display zero inbound fees
+
 ## Version 5.5.1
 
 - `peers`: Add `fee-days` option to show fees earned via a peer

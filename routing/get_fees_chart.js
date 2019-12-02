@@ -5,14 +5,15 @@ const {getNode} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
+const feesForSegment = require('./fees_for_segment');
+const forwardsViaPeer = require('./forwards_via_peer');
+
 const daysPerWeek = 7;
 const {floor} = Math;
 const hoursPerDay = 24;
 const limit = 99999;
 const minChartDays = 4;
 const maxChartDays = 90;
-const notFound = -1;
-const uniq = arr => Array.from(new Set(arr));
 
 /** Get data for fees chart
 
@@ -93,24 +94,11 @@ module.exports = ({days, lnd, via}, cbk) => {
           return cbk(null, getForwards.forwards);
         }
 
-        const privateChans = getPrivateChannels.channels
-          .filter(channel => channel.partner_public_key === via)
-          .map(({id}) => id);
-
-        const publicChans = getNode.channels.map(({id}) => id);
-
-        const channelIds = uniq([].concat(privateChans).concat(publicChans));
-
-        const forwards = getForwards.forwards.filter(forward => {
-          if (channelIds.indexOf(forward.incoming_channel) !== notFound) {
-            return true;
-          }
-
-          if (channelIds.indexOf(forward.outgoing_channel) !== notFound) {
-            return true;
-          }
-
-          return false;
+        const {forwards} = forwardsViaPeer({
+          via,
+          forwards: getForwards.forwards,
+          private_channels: getPrivateChannels.channels,
+          public_channels: getNode.channels,
         });
 
         return cbk(null, forwards);
@@ -142,34 +130,7 @@ module.exports = ({days, lnd, via}, cbk) => {
         'segments',
         ({forwards, measure, segments}, cbk) =>
       {
-        const fees = [...Array(segments)].map((_, i) => {
-          const segment = moment().subtract(i, measure);
-
-          const segmentForwards = forwards.filter(forward => {
-            const forwardDate = moment(forward.created_at);
-
-            if (segment.year() !== forwardDate.year()) {
-              return false;
-            }
-
-            const isSameDay = segment.dayOfYear() === forwardDate.dayOfYear();
-
-            switch (measure) {
-            case 'hour':
-              return isSameDay && segment.hour() === forwardDate.hour();
-
-            case 'week':
-              return segment.week() === forwardDate.week();
-
-            default:
-              return isSameDay;
-            }
-          });
-
-          return segmentForwards.reduce((sum, {fee}) => sum + fee, Number());
-        });
-
-        return cbk(null, fees.slice().reverse());
+        return cbk(null, feesForSegment({forwards, measure, segments}).fees);
       }],
 
       // Summary description of the fees earned

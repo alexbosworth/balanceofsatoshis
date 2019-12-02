@@ -13,7 +13,7 @@ const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');
 
 const {ceil} = Math;
-const cltvDelta = 43;
+const cltvDelta = 50;
 const defaultMaxFee = 1337;
 const defaultMaxFeeRate = 250;
 const {max} = Math;

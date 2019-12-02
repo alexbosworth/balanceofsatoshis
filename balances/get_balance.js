@@ -15,6 +15,7 @@ const none = 0;
   {
     [above]: <Tokens Above Tokens Number>
     [below]: <Tokens Below Tokens Number>
+    [is_confirmed]: <Is Confirmed Funds Bool>
     [is_offchain_only]: <Get Only Channels Tokens Bool>
     [is_onchain_only]: <Get Only Chain Tokens Bool>
     lnd: <Authenticated LND gRPC API Object>
@@ -66,12 +67,18 @@ module.exports = (args, cbk) => {
           .filter(n => n.is_partner_initiated === false)
           .reduce((sum, n) => sum + n.commit_transaction_fee, 0);
 
+        const pendingChain = !!args.is_offchain_only || !!args.is_confirmed ?
+            none : getPending.pending_chain_balance;
+
+        const pendingChanToks = !!args.is_onchain_only || !!args.is_confirmed ?
+            none : getChanBalance.pending_balance;
+
         const balances = [
           !!args.is_offchain_only ? none : getChainBalance.chain_balance,
           !!args.is_onchain_only ? none : getChanBalance.channel_balance,
-          !!args.is_onchain_only ? none : getChanBalance.pending_balance,
-          !!args.is_offchain_only ? none : getPending.pending_chain_balance,
           !!args.is_onchain_only ? none : -futureCommitFees,
+          pendingChain,
+          pendingChanToks,
         ];
 
         const balance = balanceFromTokens({

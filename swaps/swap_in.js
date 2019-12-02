@@ -1,6 +1,5 @@
 const {addressForScript} = require('goldengate');
 const asyncAuto = require('async/auto');
-const asyncRetry = require('async/retry');
 const {broadcastTransaction} = require('goldengate');
 const {createChainAddress} = require('ln-service');
 const {createInvoice} = require('ln-service');

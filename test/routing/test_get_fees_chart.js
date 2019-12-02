@@ -1,6 +1,18 @@
 const {test} = require('tap');
 
 const {getFeesChart} = require('./../../routing');
+const {getNodeInfoResponse} = require('./../network/fixtures');
+
+const lnd = {
+  default: {
+    forwardingHistory: ({}, cbk) => cbk(null, {
+      forwarding_events: [],
+      last_offset_index: '0',
+    }),
+    getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
+    listChannels: ({}, cbk) => cbk(null, {channels: []}),
+  },
+};
 
 const tests = [
   {
@@ -14,33 +26,58 @@ const tests = [
     error: [400, 'ExpectedLndToGetFeesChart'],
   },
   {
+    args: {lnd, days: 1},
+    description: 'Fee earnings chart data is returned',
+    expected: {
+      fees: '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0',
+      title: 'Routing fees earned',
+    },
+  },
+  {
     args: {
-      days: 1,
+      days: 100,
       lnd: {
         default: {
           forwardingHistory: ({}, cbk) => cbk(null, {
             forwarding_events: [],
             last_offset_index: '0',
           }),
-          getNodeInfo: ({}, cbk) => cbk(null, {
-            channels: [],
-            node: {
-              addresses: [],
-              alias: 'alias',
-              color: '#000000',
-              last_update: '1',
-              pub_key: 'a',
-            },
-            num_channels: 1,
-            total_capacity: '1',
-          }),
+          getNodeInfo: ({}, cbk) => {
+            return cbk(null, {
+              channels: [],
+              node: {
+                addresses: [],
+                alias: '',
+                color: '#000000',
+                last_update: '1',
+                pub_key: 'a',
+              },
+              num_channels: 1,
+              total_capacity: '1',
+            });
+          },
+          listChannels: ({}, cbk) => cbk(null, {channels: []}),
         },
       },
+      via: 'a',
     },
-    description: 'Fee earnings chart data is returned',
+    description: 'No alias uses pubkey instead',
     expected: {
-      fees: '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0',
-      title: 'Routing fees earned',
+      fees: '0,0,0,0,0,0,0,0,0,0,0,0,0,0',
+      title: 'Routing fees earned via a',
+    },
+  },
+  {
+    args: {lnd, days: 7},
+    description: 'Fee earnings chart data over a week is returned',
+    expected: {fees: '0,0,0,0,0,0,0', title: 'Routing fees earned'},
+  },
+  {
+    args: {lnd, days: 100, via: 'a'},
+    description: 'Fee earnings chart data via a peer is returned',
+    expected: {
+      fees: '0,0,0,0,0,0,0,0,0,0,0,0,0,0',
+      title: 'Routing fees earned via alias',
     },
   },
 ];

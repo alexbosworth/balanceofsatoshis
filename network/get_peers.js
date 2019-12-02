@@ -1,11 +1,9 @@
 const asyncAuto = require('async/auto');
-const asyncDoUntil = require('async/doUntil');
 const asyncMap = require('async/map');
 const {decodeChanId} = require('bolt07');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
-const {getForwards} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
@@ -13,12 +11,12 @@ const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');
 const getNetwork = require('./get_network');
+const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
 const asEarnings = (on, tok) => !!on ? (tok / 1e8).toFixed(8) : undefined;
-const asRate = rate => !!rate ? (rate / 1e4).toFixed(2) + '%' : undefined;
+const asRate = n => n !== undefined ? (n / 1e4).toFixed(2) + '%' : undefined;
 const defaultSort = 'first_connected';
-const flatten = arr => [].concat(...arr);
 const {max} = Math;
 const minutesPerBlock = network => network === 'ltcmainnet' ? 10 / 4 : 10;
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
@@ -81,45 +79,7 @@ module.exports = (args, cbk) => {
 
       // Get fee earnings
       getForwards: ['validate', ({}, cbk) => {
-        // Exit early when fee earnings days are not specified
-        if (!args.earnings_days) {
-          return cbk(null, []);
-        }
-
-        const after = moment().subtract(args.earnings_days, 'days');
-        const before = new Date().toISOString();
-        let token;
-        const forwards = [];
-
-        return asyncDoUntil(
-          cbk => {
-            return getForwards({
-              before,
-              token,
-              after: after.toISOString(),
-              lnd: args.lnd,
-            },
-            (err, res) => {
-              if (!!err) {
-                return cbk(err);
-              }
-
-              forwards.push(res.forwards);
-
-              token = res.next;
-
-              return cbk();
-            });
-          },
-          cbk => cbk(null, !token),
-          err => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            return cbk(null, flatten(forwards));
-          }
-        );
+        return getPastForwards({days: args.earnings_days, lnd: args.lnd}, cbk);
       }],
 
       // Get policies
@@ -163,7 +123,7 @@ module.exports = (args, cbk) => {
       {
         const channels = allChannels;
 
-        const forwards = getForwards.map(forward => {
+        const forwards = getForwards.forwards.map(forward => {
           const inKey = channels.find(n => n.id === forward.incoming_channel);
           const outKey = channels.find(n => n.id === forward.outgoing_channel);
 

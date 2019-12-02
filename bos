@@ -38,6 +38,7 @@ const {getSwapService} = require('./swaps');
 const {getUtxos} = require('./chain');
 const {ignoreFromAvoid} = require('./routing');
 const marketPairs = require('./fiat').pairs;
+const {openChannel} = require('./network');
 const {probeDestination} = require('./network');
 const {rebalance} = require('./swaps');
 const {returnChart} = require('./responses');
@@ -110,7 +111,7 @@ prog
       try {
         return setAutopilot({
           request,
-          is_dryrun: !!options.dryrun,
+          is_dry_run: !!options.dryrun,
           is_enabled: args.status === 'on',
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           mirrors: flatten([options.mirror].filter(n => !!n)),
@@ -129,6 +130,7 @@ prog
   .help('Sums balances on-chain, in channels, and pending, minus commit fees')
   .option('--above <tokens>', 'Return tokens above watermark', INT)
   .option('--below <tokens>', 'Return tokens below watermark', INT)
+  .option('--confirmed', 'Return confirmed funds only')
   .option('--node <node_name>', 'Node to get balance for')
   .option('--offchain', 'List only off-chain tokens')
   .option('--onchain', 'List only on-chain tokens')
@@ -138,6 +140,7 @@ prog
         return getBalance({
           above: options.above,
           below: options.below,
+          is_confirmed: !!options.confirmed,
           is_offchain_only: !!options.offchain,
           is_onchain_only: !!options.onchain,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
@@ -457,6 +460,31 @@ prog
     });
   })
 
+  // Increase outbound liquidity
+  .command('increase-outbound-liquidity')
+  .help('Open a new channel to add more off-chain liquidity')
+  .option('--amount <amount>', 'Amount to assign to new channel capacity', INT)
+  .option('--dryrun', 'Avoid actually opening a channel')
+  .option('--node <node_name>', 'Increase outbound liquidity on saved node')
+  .option('--with <peer_public_key>', 'Select a specific peer to open with')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return openChannel({
+          logger,
+          request,
+          is_dry_run: options.dryrun,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          peer: options.with || undefined,
+          tokens: options.amount,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
   // Get the price for liquidity
   .command('liquidity-cost', 'Get the price of liquidity')
   .argument('<type>', 'Liquidity direction', swapTypes)
@@ -690,7 +718,7 @@ prog
           node: options.node || undefined,
           out_through: options.out || undefined,
         },
-        returnObject({logger, reject, resolve}));
+        returnObject({exit, logger, reject, resolve}));
       } catch (err) {
         return reject(err);
       }

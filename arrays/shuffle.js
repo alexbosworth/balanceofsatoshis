@@ -15,10 +15,12 @@ const {random} = Math;
 module.exports = ({array}) => {
   const shuffle = array.slice();
 
-  for (let i = shuffle.length - 1; !!i; i--) {
-    const j = floor(random() * (i + 1));
+  if (!!shuffle.length) {
+    for (let i = shuffle.length - 1; !!i; i--) {
+      const j = floor(random() * (i + 1));
 
-    [shuffle[i], shuffle[j]] = [shuffle[j], shuffle[i]];
+      [shuffle[i], shuffle[j]] = [shuffle[j], shuffle[i]];
+    }
   }
 
   return {shuffled: shuffle};
