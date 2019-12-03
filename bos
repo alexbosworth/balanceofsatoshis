@@ -465,6 +465,7 @@ prog
   .help('Open a new channel to add more off-chain liquidity')
   .option('--amount <amount>', 'Amount to assign to new channel capacity', INT)
   .option('--dryrun', 'Avoid actually opening a channel')
+  .option('--fee-rate <fee_rate>', 'Use specific fee rate (per vbyte)', INT)
   .option('--node <node_name>', 'Increase outbound liquidity on saved node')
   .option('--with <peer_public_key>', 'Select a specific peer to open with')
   .action((args, options, logger) => {
@@ -473,6 +474,7 @@ prog
         return openChannel({
           logger,
           request,
+          chain_fee_rate: options.feeRate || undefined,
           is_dry_run: options.dryrun,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           peer: options.with || undefined,

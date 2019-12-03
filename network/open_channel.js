@@ -277,8 +277,12 @@ module.exports = (args, cbk) => {
                   return cbk(null, true);
                 }
 
+                const normalFee = getNormalFee.tokens_per_vbyte;
+
+                const feeRate = args.chain_fee_rate || normalFee;
+
                 return openChannel({
-                  chain_fee_tokens_per_vbyte: getNormalFee.tokens_per_vbyte,
+                  chain_fee_tokens_per_vbyte: feeRate,
                   lnd: args.lnd,
                   local_tokens: args.tokens || channelTokens,
                   partner_public_key: node.public_key,

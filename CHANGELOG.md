@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.6.1
+
+- `increase-outbound-liquidity`: add `fee-rate` option to specify chain fee rate
+
 ## Version 5.6.0
 
 - `balance`: Add `--confirmed` option to show only confirmed funds
