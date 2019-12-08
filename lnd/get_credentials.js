@@ -9,25 +9,31 @@ const {pemAsDer} = require('./../encryption');
 
   {
     ask: <Inquirer Function> ({message, name, type}, cbk) => {}
+    is_cleartext: <Export Clear Credential Components Bool>
     logger: <Winston Logger Object> ({info}) => ()
     [node]: <Node Name String>
   }
 
   @returns via cbk or Promise
   {
-    credentials: <Encrypted Node Credentials CBOR Hex String>
+    [cleartext]: {
+      cert: <TLS Cert File Base64 Encoded String>
+      macaroon: <Macaroon Authentication File Base64 Encoded String>
+      socket: <External Host and Port String>
+    }
+    [credentials]: <Encrypted Node Credentials CBOR Hex String>
   }
 */
-module.exports = ({ask, logger, node}, cbk) => {
+module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!ask) {
+        if (!args.ask) {
           return cbk([400, 'ExpectedPromptFunctionToGetCredentials']);
         }
 
-        if (!logger) {
+        if (!args.logger) {
           return cbk([400, 'ExpectedLoggerToGetCredentials']);
         }
 
@@ -36,22 +42,43 @@ module.exports = ({ask, logger, node}, cbk) => {
 
       // Ask for the transfer key
       key: ['validate', ({}, cbk) => {
+        if (!!args.is_cleartext) {
+          return cbk();
+        }
+
         const enterTransferKey = {
           message: 'Enter a transfer public key:',
           name: 'key',
           type: 'input',
         };
 
-        return ask(enterTransferKey, ({key}) => cbk(null, key));
+        return args.ask(enterTransferKey, ({key}) => cbk(null, key));
       }],
 
       // Get credentials encrypted to transfer key
       getCredentials: ['key', ({key}, cbk) => {
-        return lndCredentials({key, logger, node}, cbk);
+        if (!args.is_cleartext && !key) {
+          return cbk([400, 'ExpectedCredentialsTransferKeyFromNodesAdd']);
+        }
+
+        return lndCredentials({
+          key,
+          logger: args.logger,
+          node: args.node,
+        },
+        cbk);
       }],
 
       // Packaged credentials
       credentials: ['getCredentials', ({getCredentials}, cbk) => {
+        if (!!args.is_cleartext) {
+          return cbk(null, {
+            cert: getCredentials.cert,
+            macaroon: getCredentials.macaroon,
+            socket: getCredentials.external_socket || getCredentials.socket,
+          });
+        }
+
         const encryptedMacaroon = getCredentials.encrypted_macaroon;
         const externalSocket = getCredentials.external_socket;
 

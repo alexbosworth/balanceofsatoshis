@@ -9,6 +9,7 @@ const isRoutePayable = require('./is_route_payable');
 const accuracy = 1000;
 const {isArray} = Array;
 const from = 0;
+const slowPaymentMs = 1000 * 30;
 const to = tokens => tokens + Math.round(Math.random() * 1000);
 
 /** Find max routable
@@ -91,7 +92,14 @@ module.exports = ({cltv, hops, lnd, logger, max}, cbk) => {
 
           logger.info({evaluating_amount: cursor});
 
+          const slowWarning = setTimeout(() => {
+            logger.info({slow_path_timeout_in: '30 seconds'});
+          },
+          slowPaymentMs);
+
           return isRoutePayable({channels, cltv, lnd, tokens}, (err, res) => {
+            clearTimeout(slowWarning);
+
             if (!!err) {
               return cbk(err);
             }

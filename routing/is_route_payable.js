@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncTimeout = require('async/timeout');
 const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -8,6 +9,7 @@ const invalidPaymentMessage = 'UnknownPaymentHash';
 const {isArray} = Array;
 const mtokensFromTokens = tokens => (BigInt(tokens) * BigInt(1e3)).toString();
 const pathfindingTimeoutMs = 1000 * 60;
+const payWithTimeout = asyncTimeout(payViaRoutes, 1000 * 60);
 
 /** Find out if route is payable
 
@@ -76,12 +78,16 @@ module.exports = ({channels, cltv, lnd, tokens}, cbk) => {
 
       // Attempt the route
       attempt: ['route', ({route}, cbk) => {
-        return payViaRoutes({
+        return payWithTimeout({
           lnd,
           pathfinding_timeout: pathfindingTimeoutMs,
           routes: [route],
         },
         err => {
+          if (!!err && !isArray(err)) {
+            return cbk(null, {is_payable: false});
+          }
+
           const [, code] = err;
 
           return cbk(null, {is_payable: code === invalidPaymentMessage});

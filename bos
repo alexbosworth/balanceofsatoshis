@@ -57,6 +57,7 @@ const {version} = require('./package');
 
 const {exit} = process;
 const flatten = arr => [].concat(...arr);
+const {FLOAT} = prog;
 const {INT} = prog;
 const {isArray} = Array;
 const {keys} = Object;
@@ -281,12 +282,14 @@ prog
   // Export LND credentials from the standard
   .command('credentials', 'Export local credentials')
   .help('Output encrypted remote access credentials. Use with "nodes --add"')
+  .option('--cleartext', 'Output remote access credentials without encryption')
   .option('--node <node_name>', 'Get credentials for a saved node')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getCredentials({
         logger,
         ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+        is_cleartext: options.cleartext,
         node: options.node,
       },
       returnObject({logger, reject, resolve}));
@@ -324,13 +327,17 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to find record on')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return findRecord({
-        node: options.node,
-        query: args.query,
-      },
-      returnObject({logger, reject, resolve}));
-    })
+    try {
+      return new Promise(async (resolve, reject) => {
+        return findRecord({
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          query: args.query,
+        },
+        returnObject({logger, reject, resolve}));
+      });
+    } catch (err) {
+      return reject(err);
+    }
   })
 
   // Get forwards
@@ -387,14 +394,18 @@ prog
   .argument('<amount>', 'Tokens to give', INT)
   .option('--node <node_name>', 'Source node to use to pay gift')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return sendGift({
-        node: options.node,
-        to: args.target,
-        tokens: args.amount,
-      },
-      returnNumber({logger, reject, resolve, number: 'gave_tokens'}));
-    });
+    try {
+      return new Promise(async (resolve, reject) => {
+        return sendGift({
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          to: args.target,
+          tokens: args.amount,
+        },
+        returnNumber({logger, reject, resolve, number: 'gave_tokens'}));
+      });
+    } catch (err) {
+      return reject(err);
+    }
   })
 
   // Get inbound liquidity information: available inbound off-chain tokens
@@ -405,16 +416,20 @@ prog
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
   .option('--with', 'Liquidity with a specific node')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getLiquidity({
-        above: options.above || undefined,
-        below: options.below || undefined,
-        is_top: options.top || undefined,
-        node: options.node || undefined,
-        with: options.with || undefined,
-      },
-      returnNumber({logger, reject, resolve, number: 'balance'}));
-    });
+    try {
+      return new Promise(async (resolve, reject) => {
+        return getLiquidity({
+          above: options.above || undefined,
+          below: options.below || undefined,
+          is_top: options.top || undefined,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          with: options.with || undefined,
+        },
+        returnNumber({logger, reject, resolve, number: 'balance'}));
+      });
+    } catch (err) {
+      return reject(err);
+    }
   })
 
   // Increase inbound liquidity
@@ -465,7 +480,7 @@ prog
   .help('Open a new channel to add more off-chain liquidity')
   .option('--amount <amount>', 'Amount to assign to new channel capacity', INT)
   .option('--dryrun', 'Avoid actually opening a channel')
-  .option('--fee-rate <fee_rate>', 'Use specific fee rate (per vbyte)', INT)
+  .option('--fee-rate <fee_rate>', 'Use specific fee rate (per vbyte)', FLOAT)
   .option('--node <node_name>', 'Increase outbound liquidity on saved node')
   .option('--with <peer_public_key>', 'Select a specific peer to open with')
   .action((args, options, logger) => {
@@ -567,17 +582,21 @@ prog
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
   .option('--with', 'Liquidity with a specific node')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return getLiquidity({
-        above: options.above || undefined,
-        below: options.below || undefined,
-        is_outbound: true,
-        is_top: options.top || undefined,
-        node: options.node || undefined,
-        with: options.with || undefined,
-      },
-      returnNumber({logger, reject, resolve, number: 'balance'}));
-    });
+    try {
+      return new Promise(async (resolve, reject) => {
+        return getLiquidity({
+          above: options.above || undefined,
+          below: options.below || undefined,
+          is_outbound: true,
+          is_top: options.top || undefined,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          with: options.with || undefined,
+        },
+        returnNumber({logger, reject, resolve, number: 'balance'}));
+      });
+    } catch (err) {
+      return reject(err);
+    }
   })
 
   // Pay a payment request, probing first

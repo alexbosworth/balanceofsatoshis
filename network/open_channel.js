@@ -17,10 +17,12 @@ const getScoredNodes = require('./get_scored_nodes');
 const peersWithActivity = require('./peers_with_activity');
 const {shuffle} = require('./../arrays');
 
+const asBigTok = tokens => (tokens / 1e8).toFixed(8);
 const channelTokens = 5e6;
 const days = 90;
 const fastConf = 6;
 const {floor} = Math;
+const getMempoolRetries = 10;
 const maxMempoolSize = 2e6;
 const minOutbound = 4294967;
 const minForwarded = 1e5;
@@ -121,6 +123,7 @@ module.exports = (args, cbk) => {
         return getMempoolSize({
           network: getNetwork.network,
           request: args.request,
+          retries: getMempoolRetries,
         },
         cbk);
       }],
@@ -247,9 +250,9 @@ module.exports = (args, cbk) => {
 
               const node = {
                 alias: !!res && !!res.alias ? res.alias : undefined,
-                forwarded: candidate.forwarded,
-                inbound: candidate.inbound,
-                outbound: candidate.outbound,
+                past_forwarded: asBigTok(candidate.forwarded),
+                current_inbound: asBigTok(candidate.inbound),
+                current_outbound: asBigTok(candidate.outbound),
                 public_key: candidate.public_key,
                 socket: !!socket ? socket.socket : undefined,
               };
@@ -272,6 +275,7 @@ module.exports = (args, cbk) => {
                     opening_with: node,
                     chain_fee_tokens_per_vbyte: getNormalFee.tokens_per_vbyte,
                     is_dry_run: true,
+                    new_channel_size: asBigTok(args.tokens || channelTokens),
                   });
 
                   return cbk(null, true);
@@ -305,6 +309,7 @@ module.exports = (args, cbk) => {
                     opening_with: node,
                     chain_fee_tokens_per_vbyte: getNormalFee.tokens_per_vbyte,
                     transaction_id: res.transaction_id,
+                    new_channel_size: asBigTok(args.tokens || channelTokens),
                   });
 
                   return cbk(null, true);

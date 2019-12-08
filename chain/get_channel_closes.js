@@ -9,7 +9,7 @@ const {take} = require('lodash');
 
 const {authenticatedLnd} = require('./../lnd');
 const getChannelResolution = require('./get_channel_resolution');
-const {getNetwork} = require('./../network');
+const getNetwork = require('./../network/get_network');
 
 const defaultLimit = 20;
 

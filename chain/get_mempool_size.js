@@ -4,13 +4,13 @@ const {returnResult} = require('asyncjs-util');
 
 const interval = n => 50 * Math.pow(2, n);
 const isNumber = n => !isNaN(n);
-const times = 10;
 
 /** Get mempool size
 
   {
     network: <Network Name String>
     request: <Request Function>
+    [retries]: <Retries Count Number>
   }
 
   @returns via cbk or Promise
@@ -18,7 +18,7 @@ const times = 10;
     [vbytes]: <Size of Mempool Virtual Bytes Number>
   }
 */
-module.exports = ({network, request}, cbk) => {
+module.exports = ({network, request, retries}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -54,7 +54,7 @@ module.exports = ({network, request}, cbk) => {
           return cbk(null, {});
         }
 
-        return asyncRetry({interval, times}, cbk => {
+        return asyncRetry({interval, times: retries}, cbk => {
           return request({
             json: true,
             url: `${api}/api/mempool`,

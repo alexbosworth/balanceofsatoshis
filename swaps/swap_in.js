@@ -68,21 +68,6 @@ module.exports = (args, cbk) => {
       return cbk();
     },
 
-    // Get channels
-    getLiquidity: ['validate', ({}, cbk) => {
-      // Exit early when recovering from an existing swap
-      if (!!args.recovery) {
-        return cbk();
-      }
-
-      return getLiquidity({
-        above: args.tokens,
-        is_top: true,
-        node: args.node,
-      },
-      cbk);
-    }],
-
     // Get authenticated lnd connection
     getLnd: ['validate', ({}, cbk) => {
       return authenticatedLnd({logger: args.logger, node: args.node}, cbk);
@@ -91,6 +76,21 @@ module.exports = (args, cbk) => {
     // Get wallet info
     getInfo: ['getLnd', ({getLnd}, cbk) => {
       return getWalletInfo({lnd: getLnd.lnd}, cbk);
+    }],
+
+    // Get channels
+    getLiquidity: ['getLnd', ({getLnd}, cbk) => {
+      // Exit early when recovering from an existing swap
+      if (!!args.recovery) {
+        return cbk();
+      }
+
+      return getLiquidity({
+        above: args.tokens,
+        is_top: true,
+        lnd: getLnd.lnd,
+      },
+      cbk);
     }],
 
     // Get network

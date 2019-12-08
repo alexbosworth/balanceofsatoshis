@@ -1,0 +1,15 @@
+{
+  "alias": "",
+  "best_header_timestamp": 1,
+  "block_hash": "00",
+  "block_height": 1,
+  "chains": [{"chain": "bitcoin", "network": "mainnet"}],
+  "color": "#000000",
+  "identity_pubkey": "00",
+  "num_active_channels": 0,
+  "num_peers": 0,
+  "num_pending_channels": 0,
+  "synced_to_chain": false,
+  "uris": [],
+  "version": ""
+}

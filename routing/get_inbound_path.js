@@ -1,4 +1,6 @@
 const asyncAuto = require('async/auto');
+const asyncMap = require('async/map');
+const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
@@ -62,15 +64,32 @@ module.exports = ({destination, lnd, through, tokens}, cbk) => {
         return getNode({lnd, public_key: destination}, cbk);
       }],
 
+      // Local channels
+      localChannels: ['getChannels', ({getChannels}, cbk) => {
+        const localChannels = getChannels.channels.filter(n => {
+          return n.partner_public_key === through && !!n.is_private;
+        });
+
+        return asyncMap(localChannels, (channel, cbk) => {
+          return getChannel({lnd, id: channel.id}, cbk);
+        },
+        cbk);
+      }],
+
       // Connecting path
       path: [
         'getChannels',
         'getInfo',
         'getNode',
-        ({getChannels, getInfo, getNode}, cbk) =>
+        'localChannels',
+        ({getChannels, getInfo, getNode, localChannels}, cbk) =>
       {
-        const connectingChannels = getNode.channels
-          .filter(chan => !!chan.policies.find(n => n.public_key === through));
+        const channels = [].concat(getNode.channels).concat(localChannels);
+
+        const connectingChannels = channels.filter(chan => {
+          // Channel has a policy that matches the key of the through key
+          return !!chan.policies.find(n => n.public_key === through);
+        });
 
         if (!connectingChannels.length) {
           return cbk([400, 'NoConnectingChannelToPayIn']);

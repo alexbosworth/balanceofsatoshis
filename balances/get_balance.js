@@ -19,7 +19,6 @@ const none = 0;
     [is_offchain_only]: <Get Only Channels Tokens Bool>
     [is_onchain_only]: <Get Only Chain Tokens Bool>
     lnd: <Authenticated LND gRPC API Object>
-    [node]: <Node Name String>
   }
 
   @returns via cbk

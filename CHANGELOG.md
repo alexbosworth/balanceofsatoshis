@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.6.2
+
+- `credentials`: add `--cleartext` option to output node access credentials
+
 ## Version 5.6.1
 
 - `increase-outbound-liquidity`: add `fee-rate` option to specify chain fee rate

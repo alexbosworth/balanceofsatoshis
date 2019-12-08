@@ -45,16 +45,18 @@ module.exports = ({node, style}, cbk) => {
     // Get authenticated lnd connection
     getLnd: cbk => authenticatedLnd({node}, cbk),
 
-    // Get forwards
-    getForwards: cbk => getForwards({node}, cbk),
+    // Get exchange rate
+    getRate: cbk => getExchangeRates({symbols: ['USD']}, cbk),
 
     // Get balance
     getBalance: ['getLnd', ({getLnd}, cbk) => {
       return getBalance({node, lnd: getLnd.lnd}, cbk);
     }],
 
-    // Get exchange rate
-    getRate: cbk => getExchangeRates({symbols: ['USD']}, cbk),
+    // Get forwards
+    getForwards: ['getLnd', ({getLnd}, cbk) => {
+      return getForwards({lnd: getLnd.lnd}, cbk);
+    }],
 
     // Get autopilot status
     getAutopilot: ['getLnd', ({getLnd}, cbk) => {

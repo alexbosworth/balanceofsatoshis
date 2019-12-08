@@ -830,6 +830,21 @@ module.exports = (args, cbk) => {
       return cbk();
     }],
 
+    // Register deposit height
+    depositHeight: ['findDeposit', ({findDeposit}, cbk) => {
+      if (!!args.recovery) {
+        return cbk();
+      }
+
+      return getWalletInfo({lnd: args.lnd}, (err, res) => {
+        if (!!err) {
+          return cbk(err);
+        }
+
+        return cbk(null, res.current_block_height);
+      });
+    }],
+
     // Claim details
     claim: [
       'findDeposit',
@@ -850,6 +865,7 @@ module.exports = (args, cbk) => {
     rawRecovery: [
       'claim',
       'createAddress',
+      'depositHeight',
       'initiateSwap',
       'network',
       'recover',
@@ -857,6 +873,7 @@ module.exports = (args, cbk) => {
       ({
         claim,
         createAddress,
+        depositHeight,
         initiateSwap,
         network,
         recover,
@@ -888,7 +905,7 @@ module.exports = (args, cbk) => {
           min_fee_rate: minFeeRate,
           private_key: claim.private_key,
           secret: claim.secret,
-          start_height: initiateSwap.start_height || startHeight,
+          start_height: initiateSwap.start_height || depositHeight,
           sweep_address: createAddress.address,
           transaction_id: claim.transaction_id,
           transaction_vout: claim.transaction_vout,
@@ -918,6 +935,7 @@ module.exports = (args, cbk) => {
     sweep: [
       'claim',
       'createAddress',
+      'depositHeight',
       'initiateSwap',
       'network',
       'rawRecovery',
@@ -926,6 +944,7 @@ module.exports = (args, cbk) => {
       ({
         claim,
         createAddress,
+        depositHeight,
         initiateSwap,
         network,
         recover,
@@ -959,7 +978,7 @@ module.exports = (args, cbk) => {
           max_fee_multiplier: maxFeeMultiplier,
           private_key: claim.private_key,
           secret: claim.secret,
-          start_height: startHeight,
+          start_height: depositHeight,
           sweep_address: createAddress.address,
           transaction_id: claim.transaction_id,
           transaction_vout: claim.transaction_vout,
