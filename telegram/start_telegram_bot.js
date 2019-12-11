@@ -3,10 +3,12 @@ const {join} = require('path');
 
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
+const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
 const {getWalletInfo} = require('ln-service');
 const inquirer = require('inquirer');
 const {returnResult} = require('asyncjs-util');
+const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const Telegraf = require('telegraf');
 
@@ -14,7 +16,9 @@ const backupCommand = require('./backup_command');
 const interaction = require('./interaction');
 const invoiceCommand = require('./invoice_command');
 const payCommand = require('./pay_command');
+const postClosedMessage = require('./post_closed_message');
 const postForwardedPayments = require('./post_forwarded_payments');
+const postOpenMessage = require('./post_open_message');
 const postSettledInvoice = require('./post_settled_invoice');
 const postUpdatedBackups = require('./post_updated_backups');
 const sendMessage = require('./send_message');
@@ -26,6 +30,7 @@ const {isArray} = Array;
 const isNumber = n => !isNaN(n);
 const maxCommandDelayMs = 1000 * 10;
 const msSince = epoch => Date.now() - (epoch * 1e3);
+const restartSubscriptionTimeMs = 1000 * 30;
 
 /** Start a Telegram bot
 
@@ -294,6 +299,63 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         });
       }],
 
+      // Channel status changes
+      channels: [
+        'apiKey',
+        'getNodes',
+        'userId',
+        ({apiKey, getNodes, userId}, cbk) =>
+      {
+        return asyncEach(getNodes, ({from, lnd}, cbk) => {
+          return asyncForever(cbk => {
+            const sub = subscribeToChannels({lnd});
+
+            sub.on('channel_closed', update => {
+              return postClosedMessage({
+                from,
+                lnd,
+                request,
+                capacity: update.capacity,
+                id: connectedId,
+                is_breach_close: update.is_breach_close,
+                is_cooperative_close: update.is_cooperative_close,
+                is_local_force_close: update.is_local_force_close,
+                is_remote_force_close: update.is_remote_force_close,
+                key: apiKey,
+                partner_public_key: update.partner_public_key,
+              },
+              err => !!err ? logger.error({err}) : null);
+            });
+
+            sub.on('channel_opened', update => {
+              return postOpenMessage({
+                from,
+                lnd,
+                request,
+                capacity: update.capacity,
+                id: connectedId,
+                is_partner_initiated: update.is_partner_initiated,
+                is_private: update.is_private,
+                key: apiKey,
+                partner_public_key: update.partner_public_key,
+              },
+              err => !!err ? logger.error({err}) : null);
+            });
+
+            sub.once('error', err => {
+              // Terminate subscription and restart after a delay
+              sub.removeAllListeners();
+
+              return setTimeout(cbk, restartSubscriptionTimeMs);
+            });
+
+            return;
+          },
+          cbk);
+        },
+        cbk);
+      }],
+
       // Send connected message
       connected: [
         'apiKey',
@@ -341,9 +403,15 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           sub.on('invoice_updated', invoice => {
             return postSettledInvoice({
               from,
-              invoice,
+              lnd,
               request,
               id: connectedId,
+              invoice: {
+                description: invoice.description,
+                id: invoice.id,
+                is_confirmed: invoice.is_confirmed,
+                received: invoice.received,
+              },
               key: apiKey,
             },
             err => !!err ? logger.error({err}) : null);

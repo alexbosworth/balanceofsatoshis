@@ -100,6 +100,10 @@ module.exports = ({fs}, cbk) => {
       // Get node info
       getNodes: ['getNodeCredentials', ({getNodeCredentials}, cbk) => {
         return asyncMap(getNodeCredentials, ({credentials, node}, cbk) => {
+          if (!credentials) {
+            return cbk([400, 'InvalidCredentialsForNode', {node}]);
+          }
+
           if (!credentials.macaroon) {
             return cbk(null, {
               node_name: node,

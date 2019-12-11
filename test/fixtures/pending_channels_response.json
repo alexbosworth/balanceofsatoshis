@@ -1,0 +1,21 @@
+{
+  "pending_closing_channels": [],
+  "pending_force_closing_channels": [],
+  "pending_open_channels": [{
+    "channel": {
+      "capacity": "1",
+      "channel_point": "00:0",
+      "local_balance": "1",
+      "local_chan_reserve_sat": "1",
+      "remote_balance": "1",
+      "remote_chan_reserve_sat": "1",
+      "remote_node_pub": "a"
+    },
+    "commit_fee": "1",
+    "commit_weight": "1",
+    "confirmation_height": 1,
+    "fee_per_kw": "1"
+  }],
+  "total_limbo_balance": "1",
+  "waiting_close_channels": []
+}

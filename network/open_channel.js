@@ -1,10 +1,12 @@
 const {addPeer} = require('ln-service');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
+const asyncTimeout = require('async/timeout');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getNode} = require('ln-service');
+const {getPeers} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {openChannel} = require('ln-service');
@@ -19,6 +21,7 @@ const {shuffle} = require('./../arrays');
 
 const asBigTok = tokens => (tokens / 1e8).toFixed(8);
 const channelTokens = 5e6;
+const connectTimeout = 1000 * 30;
 const days = 90;
 const fastConf = 6;
 const {floor} = Math;
@@ -98,6 +101,9 @@ module.exports = (args, cbk) => {
         },
         cbk);
       }],
+
+      // Get connected peers
+      getPeers: ['validate', ({}, cbk) => getPeers({lnd: args.lnd}, cbk)],
 
       // Get pending channels
       getPending: ['validate', ({}, cbk) => {
@@ -219,12 +225,15 @@ module.exports = (args, cbk) => {
         'candidates',
         'checkChainFees',
         'getNormalFee',
+        'getPeers',
         'getWallet',
-        ({candidates, getNormalFee, getWallet}, cbk) =>
+        ({candidates, getNormalFee, getPeers, getWallet}, cbk) =>
       {
         if (!candidates.length) {
           return cbk([404, 'NoObviousCandidateForNewChannel']);
         }
+
+        const hasPeer = !!getPeers.peers.find(n => n.public_key === args.peer);
 
         // Find peer that can be connected to
         return asyncDetectSeries(
@@ -259,13 +268,13 @@ module.exports = (args, cbk) => {
 
               args.logger.info({evaluating: node.public_key});
 
-              return addPeer({
+              return asyncTimeout(addPeer, connectTimeout)({
                 lnd: args.lnd,
                 public_key: node.public_key,
                 socket: node.socket,
               },
               err => {
-                if (!!err) {
+                if (!!err && !hasPeer) {
                   return cbk(null, false);
                 }
 
@@ -297,6 +306,11 @@ module.exports = (args, cbk) => {
 
                   // Exit early when there is not enough balance
                   if (code === 'InsufficientFundsToCreateChannel') {
+                    return cbk(err);
+                  }
+
+                  // Exit early when there is only one candidate
+                  if (!!err && !!args.peer) {
                     return cbk(err);
                   }
 

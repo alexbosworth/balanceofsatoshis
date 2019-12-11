@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.7.0
+
+- `telegram`: send messages on channel open or close, rebalance
+
 ## Version 5.6.2
 
 - `credentials`: add `--cleartext` option to output node access credentials
