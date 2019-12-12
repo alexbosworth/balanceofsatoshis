@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.7.0
+## Version 5.7.1
 
 - `telegram`: send messages on channel open or close, rebalance
 

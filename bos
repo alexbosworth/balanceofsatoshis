@@ -394,18 +394,18 @@ prog
   .argument('<amount>', 'Tokens to give', INT)
   .option('--node <node_name>', 'Source node to use to pay gift')
   .action((args, options, logger) => {
-    try {
-      return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+      try {
         return sendGift({
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           to: args.target,
           tokens: args.amount,
         },
         returnNumber({logger, reject, resolve, number: 'gave_tokens'}));
-      });
-    } catch (err) {
-      return reject(err);
-    }
+      } catch (err) {
+        return reject(err);
+      }
+    });
   })
 
   // Get inbound liquidity information: available inbound off-chain tokens
@@ -416,8 +416,8 @@ prog
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
   .option('--with', 'Liquidity with a specific node')
   .action((args, options, logger) => {
-    try {
-      return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+      try {
         return getLiquidity({
           above: options.above || undefined,
           below: options.below || undefined,
@@ -426,10 +426,10 @@ prog
           with: options.with || undefined,
         },
         returnNumber({logger, reject, resolve, number: 'balance'}));
-      });
-    } catch (err) {
-      return reject(err);
-    }
+      } catch (err) {
+        return reject(err);
+      }
+    });
   })
 
   // Increase inbound liquidity
@@ -510,13 +510,17 @@ prog
   .option('--node <node_name>', 'Node to get liquidity cost')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
-      return getSwapCost({
-        above: options.above,
-        service: (await getSwapService({logger, node: options.node})).service,
-        tokens: args.amount,
-        type: args.type,
-      },
-      returnNumber({logger, reject, resolve, number: 'cost'}));
+      try {
+        return getSwapCost({
+          above: options.above,
+          service: (await getSwapService({logger, node: options.node})).service,
+          tokens: args.amount,
+          type: args.type,
+        },
+        returnNumber({logger, reject, resolve, number: 'cost'}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -582,8 +586,8 @@ prog
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
   .option('--with', 'Liquidity with a specific node')
   .action((args, options, logger) => {
-    try {
-      return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+      try {
         return getLiquidity({
           above: options.above || undefined,
           below: options.below || undefined,
@@ -593,10 +597,10 @@ prog
           with: options.with || undefined,
         },
         returnNumber({logger, reject, resolve, number: 'balance'}));
-      });
-    } catch (err) {
-      return reject(err);
-    }
+      } catch (err) {
+        return reject(err);
+      }
+    });
   })
 
   // Pay a payment request, probing first
