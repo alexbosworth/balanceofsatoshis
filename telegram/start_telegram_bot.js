@@ -281,21 +281,24 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
       // Subscribe to backups
       backups: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
         return asyncEach(getNodes, (node, cbk) => {
-          return postUpdatedBackups({
-            request,
-            id: connectedId,
-            key: apiKey,
-            lnd: node.lnd,
-            node: {alias: node.alias, public_key: node.public_key},
+          return asyncForever(cbk => {
+            return postUpdatedBackups({
+              logger,
+              request,
+              id: connectedId,
+              key: apiKey,
+              lnd: node.lnd,
+              node: {alias: node.alias, public_key: node.public_key},
+            },
+            cbk);
           },
-          cbk);
-        },
-        err => {
-          if (!!err) {
-            return cbk([503, 'SubscriptionChannelBackupsFailed', {err}]);
-          }
+          err => {
+            if (!!err) {
+              logger.error({err});
+            }
 
-          return cbk();
+            return setTimeout(cbk, restartSubscriptionTimeMs);
+          });
         });
       }],
 

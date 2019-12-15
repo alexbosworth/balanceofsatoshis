@@ -29,7 +29,7 @@ const tests = [
     args: {lnd, days: 1},
     description: 'Fee earnings chart data is returned',
     expected: {
-      fees: '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0',
+      data: '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0',
       title: 'Routing fees earned',
     },
   },
@@ -63,20 +63,20 @@ const tests = [
     },
     description: 'No alias uses pubkey instead',
     expected: {
-      fees: '0,0,0,0,0,0,0,0,0,0,0,0,0,0',
+      data: '0,0,0,0,0,0,0,0,0,0,0,0,0,0',
       title: 'Routing fees earned via a',
     },
   },
   {
     args: {lnd, days: 7},
     description: 'Fee earnings chart data over a week is returned',
-    expected: {fees: '0,0,0,0,0,0,0', title: 'Routing fees earned'},
+    expected: {data: '0,0,0,0,0,0,0', title: 'Routing fees earned'},
   },
   {
     args: {lnd, days: 100, via: 'a'},
     description: 'Fee earnings chart data via a peer is returned',
     expected: {
-      fees: '0,0,0,0,0,0,0,0,0,0,0,0,0,0',
+      data: '0,0,0,0,0,0,0,0,0,0,0,0,0,0',
       title: 'Routing fees earned via alias',
     },
   },
@@ -87,10 +87,10 @@ tests.forEach(({args, description, error, expected}) => {
     if (!!error) {
       rejects(getFeesChart(args), error, 'Got expected error');
     } else {
-      const {description, fees, title} = await getFeesChart(args);
+      const {data, description, title} = await getFeesChart(args);
 
+      equal(data.join(','), expected.data, 'Got expected fees');
       equal(!!description, true, 'Got description');
-      equal(fees.join(','), expected.fees, 'Got expected fees');
       equal(title, expected.title, 'Got expected title');
     }
 

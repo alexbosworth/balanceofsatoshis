@@ -19,27 +19,28 @@ const maxChartDays = 90;
 
   {
     days: <Fees Earned Over Days Count Number>
+    is_count: <Return Only Count of Forwards Bool>
     lnd: <Authenticated LND gRPC API Object>
     via: <Via Public Key Hex String>
   }
 
   @returns via cbk or Promise
   {
+    data: [<Earned Fee Tokens Number>]
     description: <Chart Description String>
-    fees: [<Earned Fee Tokens Number>]
     title: <Chart Title String>
   }
 */
-module.exports = ({days, lnd, via}, cbk) => {
+module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!days) {
+        if (!args.days) {
           return cbk([400, 'ExpectedNumberOfDaysToGetFeesOverForChart']);
         }
 
-        if (!lnd) {
+        if (!args.lnd) {
           return cbk([400, 'ExpectedLndToGetFeesChart']);
         }
 
@@ -48,19 +49,28 @@ module.exports = ({days, lnd, via}, cbk) => {
 
       // Get private channels
       getPrivateChannels: ['validate', ({}, cbk) => {
-        return !via ? cbk() : getChannels({lnd, is_private: true}, cbk);
+        return !args.via ? cbk() : getChannels({
+          is_private: true,
+          lnd: args.lnd,
+        },
+        cbk);
       }],
 
       // Get node details
       getNode: ['validate', ({}, cbk) => {
-        return !via ? cbk() : getNode({lnd, public_key: via}, cbk);
+        // Exit early when there is no via node specified
+        if (!args.via) {
+          return cbk();
+        }
+
+        return getNode({lnd: args.lnd, public_key: args.via}, cbk);
       }],
 
       // Segment measure
       measure: ['validate', ({}, cbk) => {
-        if (days > maxChartDays) {
+        if (args.days > maxChartDays) {
           return cbk(null, 'week');
-        } else if (days < minChartDays) {
+        } else if (args.days < minChartDays) {
           return cbk(null, 'hour');
         } else {
           return cbk(null, 'day');
@@ -69,16 +79,16 @@ module.exports = ({days, lnd, via}, cbk) => {
 
       // Start date for forwards
       start: ['validate', ({}, cbk) => {
-        return cbk(null, moment().subtract(days, 'days'));
+        return cbk(null, moment().subtract(args.days, 'days'));
       }],
 
       // Get forwards
       getForwards: ['start', ({start}, cbk) => {
         return getForwards({
           limit,
-          lnd,
           after: start.toISOString(),
           before: new Date().toISOString(),
+          lnd: args.lnd,
         },
         cbk);
       }],
@@ -90,15 +100,15 @@ module.exports = ({days, lnd, via}, cbk) => {
         'getPrivateChannels',
         ({getForwards, getNode, getPrivateChannels}, cbk) =>
       {
-        if (!via) {
+        if (!args.via) {
           return cbk(null, getForwards.forwards);
         }
 
         const {forwards} = forwardsViaPeer({
-          via,
           forwards: getForwards.forwards,
           private_channels: getPrivateChannels.channels,
           public_channels: getNode.channels,
+          via: args.via,
         });
 
         return cbk(null, forwards);
@@ -113,64 +123,75 @@ module.exports = ({days, lnd, via}, cbk) => {
       segments: ['measure', ({measure}, cbk) => {
         switch (measure) {
         case 'hour':
-          return cbk(null, hoursPerDay * days);
+          return cbk(null, hoursPerDay * args.days);
 
         case 'week':
-          return cbk(null, floor(days / daysPerWeek));
+          return cbk(null, floor(args.days / daysPerWeek));
 
         default:
-          return cbk(null, days);
+          return cbk(null, args.days);
         }
       }],
 
-      // Fees earned
-      fees: [
+      // Forwarding activity aggregated
+      sum: [
         'forwards',
         'measure',
         'segments',
         ({forwards, measure, segments}, cbk) =>
       {
-        return cbk(null, feesForSegment({forwards, measure, segments}).fees);
+        return cbk(null, feesForSegment({forwards, measure, segments}));
       }],
 
       // Summary description of the fees earned
       description: [
-        'fees',
+        'forwards',
         'measure',
         'start',
+        'sum',
         'totalEarned',
-        ({fees, measure, start, totalEarned}, cbk) =>
+        ({forwards, measure, start, totalEarned, sum}, cbk) =>
       {
-        const duration = `Earned in ${fees.length} ${measure}s`;
-        const earned = (totalEarned / 1e8).toFixed(8);
         const since = `since ${start.calendar().toLowerCase()}`;
 
-        return cbk(null, `${duration} ${since}. Total: ${earned}`);
+        if (!!args.is_count) {
+          const duration = `Forwarded in ${sum.count.length} ${measure}s`;
+          const forwarded = `Total: ${forwards.length} forwards`;
+
+          return cbk(null, `${duration} ${since}. ${forwarded}`);
+        } else {
+          const duration = `Earned in ${sum.fees.length} ${measure}s`;
+          const earned = (totalEarned / 1e8).toFixed(8);
+
+          return cbk(null, `${duration} ${since}. Total: ${earned}`);
+        }
       }],
 
       // Summary title of the fees earned
       title: ['getNode', ({getNode}, cbk) => {
-        const title = 'Routing fees earned';
+        const head = !args.is_count ? 'Routing fees earned' : 'Forwards count';
 
-        if (!via) {
-          return cbk(null, title);
+        if (!args.via) {
+          return cbk(null, head);
         }
 
         const {alias} = getNode;
 
-        return cbk(null, `${title} via ${alias || via}`);
+        return cbk(null, `${head} via ${alias || args.via}`);
       }],
 
-      // Earnings
-      earnings: [
+      // Forwarding activity
+      data: [
         'description',
-        'fees',
+        'sum',
         'title',
-        ({description, fees, title}, cbk) =>
+        ({description, sum, title}, cbk) =>
       {
-        return cbk(null, {description, fees, title});
+        const data = !args.is_count ? sum.fees : sum.count;
+
+        return cbk(null, {data, description, title});
       }],
     },
-    returnResult({reject, resolve, of: 'earnings'}, cbk));
+    returnResult({reject, resolve, of: 'data'}, cbk));
   });
 };

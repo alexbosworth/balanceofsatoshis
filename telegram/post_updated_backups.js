@@ -5,7 +5,7 @@ const {subscribeToBackups} = require('ln-service');
 const sendFile = require('./send_file');
 
 const date = () => new Date().toISOString().substring(0, 10);
-const pollingIntervalMs = 1000 * 45;
+const pollingIntervalMs = 1000 * 60;
 
 /** Post updated backups to Telegram
 
@@ -13,6 +13,7 @@ const pollingIntervalMs = 1000 * 45;
     id: <Connected User Id Number>
     key: <Telegram API Key String>
     lnd: <Authenticated LND gRPC API Object>
+    logger: <Winston Logger Object>
     node: {
       alias: <Node Alias String>
       public_key: <Public Key Hex String>
@@ -22,7 +23,7 @@ const pollingIntervalMs = 1000 * 45;
 
   @returns via cbk or Promise
 */
-module.exports = ({id, key, lnd, node, request}, cbk) => {
+module.exports = ({id, key, lnd, logger, node, request}, cbk) => {
   new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -39,6 +40,10 @@ module.exports = ({id, key, lnd, node, request}, cbk) => {
           return cbk([400, 'ExpectedLndToPostUpdatedBackups']);
         }
 
+        if (!logger) {
+          return cbk([400, 'ExpectedLoggerToPostUpdatedBackups']);
+        }
+
         if (!node) {
           return cbk([400, 'ExpectedNodeToPostUpdatedBackups']);
         }
@@ -52,35 +57,30 @@ module.exports = ({id, key, lnd, node, request}, cbk) => {
 
       // Subscribe to backups
       subscribe: ['validate', ({}, cbk) => {
-        const backups = [];
+        let postBackup;
         const sub = subscribeToBackups({lnd});
 
         sub.on('backup', ({backup}) => {
           const filename = `${date()}-${node.alias}-${node.public_key}.backup`;
+          const hex = backup;
 
-          backups.push(backup);
+          // Cancel pending backup notification when there is a new backup
+          if (!!postBackup) {
+            clearTimeout(postBackup);
+          }
 
           // Time delay backup posting to avoid posting duplicate messages
-          return setTimeout(async () => {
-            const hex = backups.pop();
-
-            // Exit early when there is no backup to post
-            if (!hex) {
-              return;
-            }
-
+          postBackup = setTimeout(async () => {
             try {
               await sendFile({filename, hex, id, key, request});
             } catch (err) {
+              console.log("LOGGER", err);
               logger.error({err});
             }
-
-              // Don't bother with the older backups
-            backups.length = [].length;
-
-            return;
           },
           pollingIntervalMs);
+
+          return;
         });
 
         sub.on('error', err => cbk(null, err));

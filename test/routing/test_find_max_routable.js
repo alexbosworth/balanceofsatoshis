@@ -172,7 +172,7 @@ tests.forEach(({args, description, error, expected}) => {
     } else {
       const {maximum} = await findMaxRoutable(args);
 
-      equal(maximum > expected.maximum, true, 'Got expected maximum');
+      equal(maximum > expected.maximum - 1000, true, 'Got expected maximum');
     }
 
     return end();

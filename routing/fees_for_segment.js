@@ -13,6 +13,7 @@ const moment = require('moment');
 
   @returns
   {
+    count: [<Forwards Count In Segment Number>]
     fees: [<Fee Earnings In Segment Number>]
   }
 */
@@ -41,8 +42,14 @@ module.exports = ({forwards, measure, segments}) => {
       }
     });
 
-    return segmentForwards.reduce((sum, {fee}) => sum + fee, Number());
+    return {
+      count: segmentForwards.reduce((sum, {}) => ++sum, Number()),
+      fees: segmentForwards.reduce((sum, {fee}) => sum + fee, Number()),
+    };
   });
 
-  return {fees: fees.slice().reverse()};
+  return {
+    count: fees.map(({count}) => count).slice().reverse(),
+    fees: fees.map(({fees}) => fees).slice().reverse(),
+  };
 };

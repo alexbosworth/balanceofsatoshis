@@ -242,6 +242,7 @@ prog
   .command('chart-fees-earned', 'Get a chart of earned routing fees')
   .argument('[via_peer]', 'Routing fees earned via a specified peer')
   .help('Show the routing fees earned')
+  .option('--count', 'Show count of forwards instead of fees earned')
   .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
   .option('--node <node_name>', 'Get fee earnings chart for saved node')
   .action((args, options, logger) => {
@@ -249,10 +250,11 @@ prog
       try {
         return getFeesChart({
           days: options.days,
+          is_count: options.count,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           via: args.viaPeer,
         },
-        returnChart({logger, reject, resolve, data: 'fees'}));
+        returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
         return reject(err);
       }
@@ -704,7 +706,7 @@ prog
         return probeDestination({
           logger,
           destination: args.to.length === 66 ? args.to : undefined,
-          find_max: !!options.findMax ? 1e7 : undefined,
+          find_max: !!options.findMax ? 4294967 : undefined,
           ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
           in_through: options.in || undefined,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
