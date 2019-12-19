@@ -1,6 +1,10 @@
 # Versions
 
-## Version 5.7.2
+## Version 5.8.0
+
+- `reconnect`: Add command to attempt reconnecting to offline peers
+
+## Version 5.7.3
 
 - `chart-fees-earned`: add `--count` to show number of forwards instead of fees
 

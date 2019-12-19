@@ -41,6 +41,7 @@ const marketPairs = require('./fiat').pairs;
 const {openChannel} = require('./network');
 const {probeDestination} = require('./network');
 const {rebalance} = require('./swaps');
+const {reconnect} = require('./network');
 const {returnChart} = require('./responses');
 const {returnNumber} = require('./responses');
 const {returnObject} = require('./responses');
@@ -747,6 +748,24 @@ prog
         },
         returnObject({exit, logger, reject, resolve}));
       } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
+  // Attempt reconnecting to disconnected channel partners
+  .command('reconnect', 'Reconnect to disconnected channel parterners')
+  .option('--no-color', 'Mute all colors')
+  .option('--node <node_name>', 'Node to attempt reconnects on')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return reconnect({
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        console.log("ERROR", err);
         return reject(err);
       }
     });

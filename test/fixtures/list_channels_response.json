@@ -18,7 +18,7 @@
     "private": false,
     "remote_balance": "1",
     "remote_chan_reserve_sat": "1",
-    "remote_pubkey": "a",
+    "remote_pubkey": "000000000000000000000000000000000000000000000000000000000000000000",
     "static_remote_key": true,
     "total_satoshis_received": "1",
     "total_satoshis_sent": "1",

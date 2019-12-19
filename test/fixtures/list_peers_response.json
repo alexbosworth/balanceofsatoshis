@@ -1,0 +1,14 @@
+{
+  "peers": [{
+    "address": "address",
+    "bytes_recv": "1",
+    "bytes_sent": "1",
+    "features": {},
+    "inbound": true,
+    "ping_time": "1",
+    "pub_key": "010000000000000000000000000000000000000000000000000000000000000000",
+    "sat_recv": "1",
+    "sat_sent": "1",
+    "sync_type": "ACTIVE_SYNC"
+  }]
+}

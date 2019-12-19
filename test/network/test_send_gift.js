@@ -4,6 +4,8 @@ const {chanInfoResponse} = require('./../fixtures');
 const {getInfoResponse} = require('./../fixtures');
 const {sendGift} = require('./../../network');
 
+const pubKey = '000000000000000000000000000000000000000000000000000000000000000000';
+
 const tests = [
   {
     args: {},
@@ -16,7 +18,7 @@ const tests = [
     error: [400, 'ExpectedPeerToSendGiftTo'],
   },
   {
-    args: {lnd: {}, to: 'b'},
+    args: {lnd: {}, to: pubKey},
     description: 'Tokens are required to send a gift',
     error: [400, 'ExpectedTokensToGiftToPeer'],
   },
@@ -27,7 +29,7 @@ const tests = [
           listChannels: ({}, cbk) => cbk(null, {channels: []})
         },
       },
-      to: 'b',
+      to: pubKey,
       tokens: 1,
     },
     description: 'A channel is required to send a gift',
@@ -59,7 +61,7 @@ const tests = [
               private: true,
               remote_balance: 1,
               remote_chan_reserve_sat: '1',
-              remote_pubkey: 'b',
+              remote_pubkey: pubKey,
               total_satoshis_received: 1,
               total_satoshis_sent: 1,
               unsettled_balance: 1,
@@ -67,7 +69,7 @@ const tests = [
           }),
         },
       },
-      to: 'b',
+      to: pubKey,
       tokens: 1,
     },
     description: 'A channel with balance is required to send a gift',
@@ -99,7 +101,7 @@ const tests = [
               private: true,
               remote_balance: 1,
               remote_chan_reserve_sat: '1',
-              remote_pubkey: 'b',
+              remote_pubkey: pubKey,
               total_satoshis_received: 1,
               total_satoshis_sent: 1,
               unsettled_balance: 1,
@@ -118,7 +120,7 @@ const tests = [
           }),
         },
       },
-      to: 'b',
+      to: pubKey,
       tokens: 1,
     },
     description: 'A channel with balance is required to send a gift',

@@ -1,7 +1,7 @@
 const {test} = require('tap');
 
 const {findMaxRoutable} = require('./../../routing');
-const {getInfoResponse} = require('./../network/fixtures');
+const {getInfoResponse} = require('./../fixtures');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 

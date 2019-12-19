@@ -1,6 +1,6 @@
 const {test} = require('tap');
 
-const {getInfoResponse} = require('./fixtures');
+const {getInfoResponse} = require('./../fixtures');
 const {getNetwork} = require('./../../network');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));

@@ -1,7 +1,7 @@
 const {test} = require('tap');
 
 const {chanInfoResult} = require('./fixtures');
-const {getInfoResponse} = require('./../network/fixtures');
+const {getInfoResponse} = require('./../fixtures');
 const {nodeInfoResult} = require('./fixtures');
 const notifyOfForwards = require('./../../telegram/notify_of_forwards');
 

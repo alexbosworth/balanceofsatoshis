@@ -9,7 +9,7 @@
       "local_chan_reserve_sat": "1",
       "remote_balance": "1",
       "remote_chan_reserve_sat": "1",
-      "remote_node_pub": "a"
+      "remote_node_pub": "000000000000000000000000000000000000000000000000000000000000000000"
     },
     "commit_fee": "1",
     "commit_weight": "1",

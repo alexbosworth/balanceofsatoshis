@@ -5,6 +5,8 @@ const {getNodeInfoResponse} = require('./../fixtures');
 const {pendingChannelsResponse} = require('./../fixtures');
 const postOpenMessage = require('./../../telegram/post_open_message');
 
+const pubKey = '000000000000000000000000000000000000000000000000000000000000000000';
+
 const makeArgs = (overrides => {
   const args = {
     capacity: 1,
@@ -20,7 +22,7 @@ const makeArgs = (overrides => {
         pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
       },
     },
-    partner_public_key: 'a',
+    partner_public_key: pubKey,
     request: ({}, cbk) => cbk(null, {statusCode: 200}),
   };
 
@@ -76,7 +78,7 @@ const tests = [
     expected: {
       text: [
         '🌹 node1',
-        'Accepted new 0.00000001 private channel from alias a. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.',
+        `Accepted new 0.00000001 private channel from alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
       ],
     },
   },
@@ -86,7 +88,7 @@ const tests = [
     expected: {
       text: [
         '🌹 node1',
-        'Opened new 0.00000001 channel to alias a. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.',
+        `Opened new 0.00000001 channel to alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
       ],
     },
   },

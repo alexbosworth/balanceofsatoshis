@@ -7,6 +7,7 @@ const getScoredNodes = require('./get_scored_nodes');
 const networks = require('./networks');
 const openChannel = require('./open_channel');
 const probeDestination = require('./probe_destination');
+const reconnect = require('./reconnect');
 const sendGift = require('./send_gift');
 const setAutopilot = require('./set_autopilot');
 
@@ -20,6 +21,7 @@ module.exports = {
   networks,
   openChannel,
   probeDestination,
+  reconnect,
   sendGift,
   setAutopilot,
 };

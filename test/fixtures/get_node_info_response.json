@@ -1,10 +1,11 @@
 {
   "node": {
-    "addresses": [],
+    "addresses": [{"addr": "addr", "network": "network"}],
     "alias": "alias",
     "color": "#000000",
+    "features": {},
     "last_update": "1",
-    "pub_key": "a"
+    "pub_key": "000000000000000000000000000000000000000000000000000000000000000000"
   },
   "num_channels": "1",
   "total_capacity": "1"

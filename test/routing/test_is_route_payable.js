@@ -1,6 +1,6 @@
 const {test} = require('tap');
 
-const {getInfoResponse} = require('./../network/fixtures');
+const {getInfoResponse} = require('./../fixtures');
 
 const isRoutePayable = require('./../../routing/is_route_payable');
 

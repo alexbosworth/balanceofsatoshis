@@ -1,7 +1,7 @@
 const {test} = require('tap');
 
 const {getChainFees} = require('./../../chain');
-const {getInfoResponse} = require('./../network/fixtures');
+const {getInfoResponse} = require('./../fixtures');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 

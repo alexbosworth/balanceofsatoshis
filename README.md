@@ -122,6 +122,9 @@ bos probe "payment_request/public_key"
 # Rebalance funds between peers
 bos rebalance
 
+# Attempt to reconnect to disconnected peers
+bos reconnect
+
 # Get a general report of the node activity
 bos report
 

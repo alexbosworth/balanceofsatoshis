@@ -1,6 +1,6 @@
 const {test} = require('tap');
 
-const {getInfoResponse} = require('./fixtures');
+const {getInfoResponse} = require('./../fixtures');
 const {getPeers} = require('./../../network');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
@@ -60,6 +60,7 @@ const tests = [
               addresses: [],
               alias: 'alias',
               color: '#000000',
+              features: {},
               last_update: 1,
               pub_key: 'b',
             },
@@ -114,6 +115,7 @@ const tests = [
               addresses: [],
               alias: 'alias',
               color: '#000000',
+              features: {},
               last_update: 1,
               pub_key: 'b',
             },

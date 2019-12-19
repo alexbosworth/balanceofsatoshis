@@ -1,7 +1,7 @@
 const {test} = require('tap');
 
 const {getInboundPath} = require('./../../routing');
-const {getInfoResponse} = require('./../network/fixtures');
+const {getInfoResponse} = require('./../fixtures');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 
@@ -20,6 +20,7 @@ const makeLnd = ({channels}) => {
             alias: 'b',
             channels: [],
             color: '#000000',
+            features: {},
             last_update: 1,
             num_channels: 0,
             pub_key: Buffer.alloc(33),

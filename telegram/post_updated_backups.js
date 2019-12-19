@@ -74,7 +74,6 @@ module.exports = ({id, key, lnd, logger, node, request}, cbk) => {
             try {
               await sendFile({filename, hex, id, key, request});
             } catch (err) {
-              console.log("LOGGER", err);
               logger.error({err});
             }
           },

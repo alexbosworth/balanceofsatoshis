@@ -49,6 +49,7 @@ const tests = [
                 addresses: [],
                 alias: '',
                 color: '#000000',
+                features: {},
                 last_update: '1',
                 pub_key: 'a',
               },

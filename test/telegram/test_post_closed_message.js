@@ -5,6 +5,8 @@ const {getNodeInfoResponse} = require('./../fixtures');
 const {pendingChannelsResponse} = require('./../fixtures');
 const postClosedMessage = require('./../../telegram/post_closed_message');
 
+const pubKey = '000000000000000000000000000000000000000000000000000000000000000000';
+
 const makeArgs = (overrides => {
   const args = {
     capacity: 1,
@@ -22,7 +24,7 @@ const makeArgs = (overrides => {
         pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
       },
     },
-    partner_public_key: 'a',
+    partner_public_key: pubKey,
     request: ({}, cbk) => cbk(null, {statusCode: 200}),
   };
 
@@ -93,7 +95,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        '0.00000001 channel closed with alias a. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.',
+        `0.00000001 channel closed with alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
       ],
     },
   },
@@ -103,7 +105,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        'Breach countered on 0.00000001 channel with alias a. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.',
+        `Breach countered on 0.00000001 channel with alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
       ],
     },
   },
@@ -113,7 +115,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        'Cooperatively closed 0.00000001 channel with alias a. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.',
+        `Cooperatively closed 0.00000001 channel with alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
       ],
     },
   },
@@ -123,7 +125,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        'Force-closed 0.00000001 channel with alias a. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.',
+        `Force-closed 0.00000001 channel with alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
       ],
     },
   },
@@ -133,7 +135,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        '0.00000001 channel was force closed by alias a. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.',
+        `0.00000001 channel was force closed by alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
       ],
     },
   },

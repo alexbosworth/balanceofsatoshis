@@ -25,7 +25,7 @@ const tests = [
           pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
         },
       },
-      public_key: 'a',
+      public_key: Buffer.alloc(33).toString('hex'),
     },
     description: 'Get peer liquidity',
     expected: {alias: 'alias', inbound: 2, outbound: 2},
