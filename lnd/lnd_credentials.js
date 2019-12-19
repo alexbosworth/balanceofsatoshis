@@ -5,6 +5,7 @@ const {readFile} = require('fs');
 const {spawn} = require('child_process');
 
 const asyncAuto = require('async/auto');
+const {restrictMacaroon} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {decryptCiphertext} = require('./../encryption');
@@ -21,6 +22,7 @@ const socket = 'localhost:10009';
 /** LND credentials
 
   {
+    [expiry]: <Credential Expiration Date ISO 8601 Date String>
     [key]: <Encrypt to Public Key DER Hex String>
     [logger]: <Winston Logger Object>
     [node]: <Node Name String> // Defaults to default local mainnet node creds
@@ -35,7 +37,7 @@ const socket = 'localhost:10009';
     socket: <Socket String>
   }
 */
-module.exports = ({logger, key, node}, cbk) => {
+module.exports = ({expiry, logger, key, node}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Get the default cert
@@ -118,20 +120,39 @@ module.exports = ({logger, key, node}, cbk) => {
         });
       }],
 
+      // Macaroon with restriction
+      macaroon: ['credentials', ({credentials}, cbk) => {
+        if (!expiry) {
+          return cbk(null, credentials.macaroon);
+        }
+
+        const {macaroon} = restrictMacaroon({
+          expires_at: expiry,
+          macaroon: credentials.macaroon,
+        });
+
+        return cbk(null, macaroon);
+      }],
+
       // Final credentials with encryption applied
       finalCredentials: [
         'credentials',
         'getSocket',
-        ({credentials, getSocket}, cbk) =>
+        'macaroon',
+        ({credentials, getSocket, macaroon}, cbk) =>
       {
         // Exit early when the credentials are not encrypted
         if (!key) {
-          return cbk(null, credentials);
+          return cbk(null, {
+            macaroon,
+            cert: credentials.cert,
+            socket: credentials.socket,
+          });
         }
 
-        const macaroon = Buffer.from(credentials.macaroon, 'base64');
+        const macaroonData = Buffer.from(macaroon, 'base64');
 
-        const encrypted = publicEncrypt(derAsPem({key}).pem, macaroon);
+        const encrypted = publicEncrypt(derAsPem({key}).pem, macaroonData);
 
         return cbk(null, {
           cert: credentials.cert,

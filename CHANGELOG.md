@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.8.1
+
+- `credentials`: Add `--days` option to time-limit the credentials validity
+
 ## Version 5.8.0
 
 - `reconnect`: Add command to attempt reconnecting to offline peers

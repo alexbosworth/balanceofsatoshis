@@ -66,7 +66,6 @@ module.exports = ({filename, hex, id, key, request}, cbk) => {
           }
 
           if (r.statusCode !== ok) {
-            console.log("BODY", body);
             return cbk([503, 'UnexpectedStatusCodeSendingDocumentToTelegram']);
           }
 

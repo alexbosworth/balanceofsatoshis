@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const {encode} = require('cbor');
+const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const lndCredentials = require('./lnd_credentials');
@@ -9,6 +10,7 @@ const {pemAsDer} = require('./../encryption');
 
   {
     ask: <Inquirer Function> ({message, name, type}, cbk) => {}
+    [expire_days]: <Expire Access in Days Number>
     is_cleartext: <Export Clear Credential Components Bool>
     logger: <Winston Logger Object> ({info}) => ()
     [node]: <Node Name String>
@@ -40,6 +42,15 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Expiration date
+      expiry: ['validate', ({}, cbk) => {
+        if (!args.expire_days) {
+          return cbk();
+        }
+
+        return cbk(null, moment().add(args.expire_days, 'days').toISOString());
+      }],
+
       // Ask for the transfer key
       key: ['validate', ({}, cbk) => {
         if (!!args.is_cleartext) {
@@ -56,12 +67,13 @@ module.exports = (args, cbk) => {
       }],
 
       // Get credentials encrypted to transfer key
-      getCredentials: ['key', ({key}, cbk) => {
+      getCredentials: ['expiry', 'key', ({expiry, key}, cbk) => {
         if (!args.is_cleartext && !key) {
           return cbk([400, 'ExpectedCredentialsTransferKeyFromNodesAdd']);
         }
 
         return lndCredentials({
+          expiry,
           key,
           logger: args.logger,
           node: args.node,

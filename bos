@@ -286,12 +286,14 @@ prog
   .command('credentials', 'Export local credentials')
   .help('Output encrypted remote access credentials. Use with "nodes --add"')
   .option('--cleartext', 'Output remote access credentials without encryption')
+  .option('--days <days>', 'Expiration days for credentials', INT, 365)
   .option('--node <node_name>', 'Get credentials for a saved node')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getCredentials({
         logger,
         ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+        expire_days: options.days,
         is_cleartext: options.cleartext,
         node: options.node,
       },
@@ -765,7 +767,6 @@ prog
         },
         returnObject({logger, reject, resolve}));
       } catch (err) {
-        console.log("ERROR", err);
         return reject(err);
       }
     });
