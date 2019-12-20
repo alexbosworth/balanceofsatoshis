@@ -1,7 +1,7 @@
 const {test} = require('tap');
 
 const {getFeesChart} = require('./../../routing');
-const {getNodeInfoResponse} = require('./../network/fixtures');
+const {getNodeInfoResponse} = require('./../fixtures');
 
 const lnd = {
   default: {

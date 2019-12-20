@@ -11,6 +11,7 @@ const interaction = require('./interaction');
 const sendMessage = require('./send_message');
 
 const {ceil} = Math;
+const cltvDeltaBuffer = 3;
 const defaultMaxTokensMultiplier = 1.01;
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
@@ -160,7 +161,7 @@ module.exports = ({budget, from, id, key, nodes, reply, request, text}, cbk) => 
         let probeTimeout;
 
         const sub = subscribeToProbe({
-          cltv_delta: decodeRequest.cltv_delta,
+          cltv_delta: decodeRequest.cltv_delta + cltvDeltaBuffer,
           destination: decodeRequest.destination,
           lnd: decodeCommand.lnd,
           path_timeout_ms: pathTimeoutMs,
