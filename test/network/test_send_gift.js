@@ -111,6 +111,7 @@ const tests = [
             creation_date: 1,
             description_hash: '',
             expiry: 1,
+            features: {},
             htlcs: [],
             memo: '',
             payment_request: 'payment_request',
