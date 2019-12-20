@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.8.1
+## Version 5.8.2
 
 - `credentials`: Add `--days` option to time-limit the credentials validity
 
