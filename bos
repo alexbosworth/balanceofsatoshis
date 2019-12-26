@@ -729,12 +729,13 @@ prog
   .command('rebalance', 'Rebalance funds between peers')
   .help('Change the liquidity profile of two peers')
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
-  .option('--in <public_key>', 'Route through specific peer of destination')
+  .option('--avoid-high-inbound', 'Avoid rebalancing when inbound is high')
+  .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for payment request check')
-  .option('--out <public_key>', 'Make first hop through specific peer')
+  .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -742,6 +743,7 @@ prog
           logger,
           avoid: flatten([options.avoid].filter(n => !!n)),
           in_through: options.in || undefined,
+          is_avoiding_high_inbound: options.avoidHighInbound || undefined,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           max_fee: options.maxFee,
           max_fee_rate: options.maxFeeRate,

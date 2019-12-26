@@ -25,6 +25,7 @@ const tests = [
               commit_fee: 1,
               commit_weight: 1,
               fee_per_kw: 1,
+              initiator: true,
               local_balance: 1,
               local_chan_reserve_sat: '1',
               num_updates: 1,

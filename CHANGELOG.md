@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.9.0
+
+- `rebalance`: Allow specifying alias for inbound and outbound peer
+- `rebalance`: Add option `--is_avoiding_high_inbound` to avoid over-rebalancing
+
 ## Version 5.8.2
 
 - `credentials`: Add `--days` option to time-limit the credentials validity

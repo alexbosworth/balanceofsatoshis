@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncMap = require('async/map');
 const asyncMapSeries = require('async/mapSeries');
 const {createInvoice} = require('ln-service');
 const {getChannel} = require('ln-service');
@@ -16,6 +17,7 @@ const {ceil} = Math;
 const cltvDelta = 50;
 const defaultMaxFee = 1337;
 const defaultMaxFeeRate = 250;
+const highInbound = 4500000;
 const {max} = Math;
 const maxRebalanceTokens = 4294967;
 const {min} = Math;
@@ -24,22 +26,25 @@ const minRemoteBalance = 4294967;
 const minTokens = 0;
 const mtokensPerToken = BigInt(1e3);
 const notFoundIndex = -1;
+const pubKeyHexLength = 66;
 const rateDivisor = 1e6;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
 const tokAsBigTok = tokens => (tokens / 1e8).toFixed(8);
 const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
+const uniq = arr => Array.from(new Set(arr));
 
 /** Rebalance funds between peers
 
   {
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
-    [in_through]: <Pay In Through Public Key Hex String>
+    [in_through]: <Pay In Through Peer String>
+    [is_avoiding_high_inbound]: <Avoid High Inbound Liquidity Bool>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
     [node]: <Node Name String>
-    [out_through]: <Out through peer with Public Key Hex String>
+    [out_through]: <Pay Out Through Peer String>
   }
 
   @returns via cbk or Promise
@@ -90,11 +95,106 @@ module.exports = (args, cbk) => {
         return getNode({lnd, public_key: getPublicKey.public_key}, cbk);
       }],
 
-      // Get outbound node details
-      getOutbound: [
+      // Find inbound peer key if a name is specified
+      findInKey: [
         'getInitialLiquidity',
         'lnd',
         ({getInitialLiquidity, lnd}, cbk) =>
+      {
+        if (!args.in_through || args.in_through.length === pubKeyHexLength) {
+          return cbk(null, args.in_through);
+        }
+
+        const {channels} = getInitialLiquidity;
+        const query = args.in_through;
+
+        const keys = uniq(channels.map(n => n.partner_public_key));
+
+        return asyncMap(keys, (key, cbk) => {
+          return getNode({lnd, public_key: key}, (err, node) => {
+            // Suppress errors on matching lookup
+            if (!!err) {
+              return cbk();
+            }
+
+            // Exit early when the alias doesn't match the query
+            if (!node.alias.toLowerCase().includes(query.toLowerCase())) {
+              return cbk();
+            }
+
+            return cbk(null, {alias: node.alias, public_key: key});
+          });
+        },
+        (err, res) => {
+          const matching = !res ? null : res.filter(n => !!n);
+
+          if (!!err || !matching.length) {
+            return cbk([400, 'FailedToFindAliasMatchForInboundPeer']);
+          }
+
+          const [match, secondMatch] = matching.filter(n => !!n);
+
+          if (!!secondMatch) {
+            return cbk([400, 'AmbiguousInboundPeerSpecified', {matching}]);
+          }
+
+          return cbk(null, match.public_key);
+        });
+      }],
+
+      // Find outbound peer key if a name is specified
+      findOutKey: [
+        'getInitialLiquidity',
+        'lnd',
+        ({getInitialLiquidity, lnd}, cbk) =>
+      {
+        if (!args.out_through || args.out_through.length === pubKeyHexLength) {
+          return cbk(null, args.out_through);
+        }
+
+        const {channels} = getInitialLiquidity;
+        const query = args.out_through;
+
+        const keys = uniq(channels.map(n => n.partner_public_key));
+
+        return asyncMap(keys, (key, cbk) => {
+          return getNode({lnd, public_key: key}, (err, node) => {
+            // Suppress errors on lookup
+            if (!!err) {
+              return cbk();
+            }
+
+            // Exit early when the node doesn't match the query
+            if (!node.alias.toLowerCase().includes(query.toLowerCase())) {
+              return cbk();
+            }
+
+            return cbk(null, {alias: node.alias, public_key: key});
+          });
+        },
+        (err, res) => {
+          const matching = res.filter(n => !!n);
+
+          if (!!err || !matching.length) {
+            return cbk([400, 'FailedToFindAliasMatchForOutboundPeer']);
+          }
+
+          const [match, secondMatch] = matching;
+
+          if (!!secondMatch) {
+            return cbk([400, 'AmbiguousOutboundPeerSpecified', {matching}]);
+          }
+
+          return cbk(null, match.public_key);
+        });
+      }],
+
+      // Get outbound node details
+      getOutbound: [
+        'findOutKey',
+        'getInitialLiquidity',
+        'lnd',
+        ({findOutKey, getInitialLiquidity, lnd}, cbk) =>
       {
         const ignore = args.avoid || [];
 
@@ -112,13 +212,23 @@ module.exports = (args, cbk) => {
           })
           .filter(n => n.remote < minRemoteBalance);
 
+        // Exit early with error when an outbound channel cannot be guessed
         if (!args.out_through && !channels.length) {
-          return cbk([400, 'NoOutboundChannelNeedsARebalance']);
+          return cbk([400, 'NoOutboundChannelNeedsRebalance']);
         }
 
         const {sorted} = sortBy({array: channels, attribute: 'remote'});
 
-        const key = args.out_through || sample(sorted).partner_public_key;
+        const key = findOutKey || sample(sorted).partner_public_key;
+
+        const currentInbound = active
+          .filter(n => n.partner_public_key === key)
+          .map(n => n.remote_balance)
+          .reduce((sum, n) => sum + n, minTokens);
+
+        if (args.is_avoiding_high_inbound && currentInbound > highInbound) {
+          return cbk([400, 'InboundIsAlreadyHigh', {inbound: currentInbound}]);
+        }
 
         return getNode({
           lnd,
@@ -135,11 +245,12 @@ module.exports = (args, cbk) => {
 
       // Get inbound node details
       getInbound: [
+        'findInKey',
         'getFees',
         'getInitialLiquidity',
         'getOutbound',
         'lnd',
-        ({getFees, getInitialLiquidity, getOutbound, lnd}, cbk) =>
+        ({findInKey, getFees, getInitialLiquidity, getOutbound, lnd}, cbk) =>
       {
         const hasInThrough = !!args.in_through;
         const ignore = args.avoid || [];
@@ -189,7 +300,7 @@ module.exports = (args, cbk) => {
 
         const suggestedInbound = sample(topOf(sorted.slice().reverse()));
 
-        const key = args.in_through || suggestedInbound.partner_public_key;
+        const key = findInKey || suggestedInbound.partner_public_key;
 
         return getNode({
           lnd,
