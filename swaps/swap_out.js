@@ -618,6 +618,7 @@ module.exports = (args, cbk) => {
       const sumOf = tokens => tokens.reduce((sum, n) => sum + n, 0);
 
       const routingFees = executionRoutingFee + fundingRoutingFee;
+      const serviceFee = fundingSend + executionSend - args.tokens;
 
       return getChainFeeRate({
         confirmation_target: getQuote.cltv_delta,
@@ -630,7 +631,7 @@ module.exports = (args, cbk) => {
 
         const sweepFee = res.tokens_per_vbyte * estimatedSweepVbytes;
 
-        const allFees = ceil(getQuote.fee + sweepFee + routingFees);
+        const allFees = ceil(serviceFee + sweepFee + routingFees);
 
         if (!!args.max_fee && allFees > args.max_fee) {
           return cbk([400, 'MaxFeeTooLowToExecuteSwap', {needed: allFees}]);
@@ -639,7 +640,7 @@ module.exports = (args, cbk) => {
         args.logger.info({
           inbound_liquidity_increase: increase,
           with_peer: `${getSwapPeer.alias} ${getSwapPeer.public_key}`,
-          swap_service_fee: `${tokensAsBigUnit(getQuote.fee)} ${currency}`,
+          swap_service_fee: `${tokensAsBigUnit(serviceFee)} ${currency}`,
           estimated_total_fee: `${tokensAsBigUnit(allFees)} ${currency}`,
           peer_inbound: `${tokensAsBigUnit(sumOf(peerIn))} ${currency}`,
           peer_outbound: `${tokensAsBigUnit(sumOf(peerOut))} ${currency}`,

@@ -46,7 +46,13 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           public_key: args.public_key,
         },
-        cbk);
+        (err, res) => {
+          if (!!err) {
+            return cbk(null, {alias: '', public_key: args.public_key});
+          }
+
+          return cbk(null, res);
+        });
       }],
 
       // Get pending channels

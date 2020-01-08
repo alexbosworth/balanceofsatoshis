@@ -380,51 +380,59 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
       // Poll for forwards
       forwards: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
-          return postForwardedPayments({
-            from,
-            lnd,
-            request,
-            id: connectedId,
-            key: apiKey,
-          },
-          cbk);
-        },
-        err => {
-          if (!!err) {
-            return cbk([503, 'FailedWhenPollingForForwardedPayments', {err}]);
-          }
-
-          return cbk();
-        });
-      }],
-
-      // Subscribe to invoices
-      invoices: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
-        return getNodes.forEach(({from, lnd}) => {
-          const sub = subscribeToInvoices({lnd});
-
-          sub.on('invoice_updated', invoice => {
-            return postSettledInvoice({
+          return asyncForever(cbk => {
+            return postForwardedPayments({
               from,
               lnd,
               request,
               id: connectedId,
-              invoice: {
-                description: invoice.description,
-                id: invoice.id,
-                is_confirmed: invoice.is_confirmed,
-                received: invoice.received,
-              },
               key: apiKey,
             },
-            err => !!err ? logger.error({err}) : null);
+            cbk);
+          },
+          err => {
+            if (!!err) {
+              logger.error({err});
+            }
+
+            return setTimeout(cbk, restartSubscriptionTimeMs);
           });
+        },
+        cbk);
+      }],
 
-          // Silence errors
-          sub.on('error', err => {});
+      // Subscribe to invoices
+      invoices: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
+        return asyncEach(getNodes, ({from, lnd}, cbk) => {
+          return asyncForever(cbk => {
+            const sub = subscribeToInvoices({lnd});
 
-          return;
-        });
+            sub.on('invoice_updated', invoice => {
+              return postSettledInvoice({
+                from,
+                lnd,
+                request,
+                id: connectedId,
+                invoice: {
+                  description: invoice.description,
+                  id: invoice.id,
+                  is_confirmed: invoice.is_confirmed,
+                  received: invoice.received,
+                },
+                key: apiKey,
+              },
+              err => !!err ? logger.error({err}) : null);
+            });
+
+            sub.on('error', err => {
+              logger.error({err});
+
+              return setTimeout(cbk, restartSubscriptionTimeMs);
+            });
+          },
+          cbk);
+        },
+        cbk);
       }],
     },
     returnResult({reject, resolve}, cbk));

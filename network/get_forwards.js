@@ -118,7 +118,7 @@ module.exports = ({lnd, days}, cbk) => {
           },
           (err, node) => {
             if (!!err) {
-              return cbk(err);
+              return cbk(null, {alias: '', public_key: publicKey});
             }
 
             return cbk(null, {alias: node.alias, public_key: publicKey});

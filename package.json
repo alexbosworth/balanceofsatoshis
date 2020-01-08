@@ -14,17 +14,18 @@
     "async": "3.1.0",
     "asyncjs-util": "1.1.2",
     "bitcoin-ops": "1.4.1",
-    "bitcoinjs-lib": "5.1.6",
-    "bolt03": "1.2.1",
+    "bitcoinjs-lib": "5.1.7",
+    "bolt03": "1.2.2",
     "bolt07": "1.4.4",
     "caporal": "1.3.0",
     "cbor": "5.0.1",
     "cert-info": "1.5.1",
     "crypto-js": "3.1.9-1",
-    "goldengate": "4.0.1",
+    "csv-parse": "4.8.3",
+    "goldengate": "4.0.2",
     "html2unicode": "1.1.3",
     "ini": "1.3.5",
-    "inquirer": "7.0.1",
+    "inquirer": "7.0.3",
     "ln-accounting": "3.1.7",
     "ln-service": "47.10.0",
     "moment": "2.24.0",
@@ -33,7 +34,7 @@
     "sanitize-filename": "1.6.3",
     "stats-lite": "2.2.0",
     "table": "5.4.6",
-    "telegraf": "3.34.1",
+    "telegraf": "3.35.0",
     "update-notifier": "4.0.0"
   },
   "description": "Lightning balance CLI",
@@ -61,5 +62,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/telegram/*.js"
   },
-  "version": "5.9.0"
+  "version": "5.9.1"
 }

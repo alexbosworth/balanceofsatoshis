@@ -26,62 +26,90 @@ const tableRowsFromCsv = require('./table_rows_from_csv');
     [year]: <Year for Report String>
   }
 
-  @returns via cbk
+  @returns via cbk or Promise
   {
     [rows]: [[<Column String>]]
   }
 */
 module.exports = (args, cbk) => {
-  return asyncAuto({
-    // Validate
-    validate: cbk => {
-      if (!args.category || !categories[args.category]) {
-        return cbk([400, 'ExpectedKnownAccountingRecordsCategory']);
-      }
+  return new Promise((resolve, reject) => {
+    return asyncAuto({
+      // Validate
+      validate: cbk => {
+        if (!args.category || !categories[args.category]) {
+          return cbk([400, 'ExpectedKnownAccountingRecordsCategory']);
+        }
 
-      if (!args.lnd) {
-        return cbk([400, 'ExpectedAuthenticatedLndToGetAccountingReport']);
-      }
+        if (!args.lnd) {
+          return cbk([400, 'ExpectedAuthenticatedLndToGetAccountingReport']);
+        }
 
-      return cbk();
-    },
-
-    // Get date range
-    dateRange: ['validate', ({}, cbk) => {
-      try {
-        return cbk(null, rangeForDate({month: args.month, year: args.year}));
-      } catch (err) {
-        return cbk([400, err.message]);
-      }
-    }],
-
-    // Get accounting info
-    getAccounting: ['dateRange', ({dateRange}, cbk) => {
-      return getAccountingReport({
-        after: dateRange.after,
-        before: dateRange.before,
-        category: categories[args.category],
-        currency: args.currency || defaultCurrency,
-        fiat: args.fiat || defaultFiat,
-        lnd: args.lnd,
-        rate_provider: args.rate_provider || undefined,
+        return cbk();
       },
-      cbk);
-    }],
 
-    // Accounting
-    accounting: ['getAccounting', ({getAccounting}, cbk) => {
-      const csvType = `${categories[args.category]}_csv`;
+      // Get date range
+      dateRange: ['validate', ({}, cbk) => {
+        try {
+          return cbk(null, rangeForDate({month: args.month, year: args.year}));
+        } catch (err) {
+          return cbk([400, err.message]);
+        }
+      }],
 
-      // Exit early when a CSV dump is requested
-      if (!!args.is_csv) {
-        return cbk(null, getAccounting[csvType]);
-      }
+      // Get accounting info
+      getAccounting: ['dateRange', ({dateRange}, cbk) => {
+        return getAccountingReport({
+          after: dateRange.after,
+          before: dateRange.before,
+          category: categories[args.category],
+          currency: args.currency || defaultCurrency,
+          fiat: args.fiat || defaultFiat,
+          lnd: args.lnd,
+          rate_provider: args.rate_provider || undefined,
+        },
+        cbk);
+      }],
 
-      const {rows} = tableRowsFromCsv({csv: getAccounting[csvType]});
+      // Accounting
+      accounting: ['getAccounting', ({getAccounting}, cbk) => {
+        const csvType = `${categories[args.category]}_csv`;
 
-      return cbk(null, {rows});
-    }],
-  },
-  returnResult({of: 'accounting'}, cbk));
+        // Exit early when a CSV dump is requested
+        if (!!args.is_csv) {
+          return cbk(null, getAccounting[csvType]);
+        }
+
+        return tableRowsFromCsv({csv: getAccounting[csvType]}, cbk);
+      }],
+
+      // Clean rows for display if necessary
+      report: ['accounting', ({accounting}, cbk) => {
+        // Exit early when there is no cleaning necessary
+        if (!!args.is_csv) {
+          return cbk(null, accounting);
+        }
+
+        const [header] = accounting.rows;
+
+        const fiatIndex = header.findIndex(row => row === 'Fiat Amount');
+
+        const rows = accounting.rows.map((row, i) => {
+          return row.map((col, j) => {
+            if (!i) {
+              return col;
+            }
+
+            if (j === fiatIndex) {
+              return parseFloat(col).toFixed(2);
+            }
+
+            return col.substring(0, 32);
+          });
+        });
+
+        return cbk(null, {rows});
+      }],
+    },
+    returnResult({reject, resolve, of: 'report'}, cbk));
+  });
 };

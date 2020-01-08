@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.9.1
+
+- `accounting`: Fix issue with unexpected commas in rows
+- `increase-inbound-liquidity`: Add compatibility with service fee API change
+
 ## Version 5.9.0
 
 - `rebalance`: Allow specifying alias for inbound and outbound peer
