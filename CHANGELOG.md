@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.9.1
+## Version 5.9.2
 
 - `accounting`: Fix issue with unexpected commas in rows
 - `increase-inbound-liquidity`: Add compatibility with service fee API change

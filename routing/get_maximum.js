@@ -12,7 +12,7 @@ const {returnResult} = require('asyncjs-util');
 
   <Async Test Function> ({cursor}, (err, isLow) => {}) => {}
 
-  @returns via cbk
+  @returns via cbk or Promise
   {
     maximum: <Maximum Number>
   }
