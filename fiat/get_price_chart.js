@@ -129,7 +129,7 @@ module.exports = ({exchange, fee, node, pair}, cbk) => {
         'getPrices',
         ({decodedRequest, getHeight, getLnd, getPrices}, cbk) =>
       {
-        const {tokens} = decodedRequest.tokens;
+        const {tokens} = decodedRequest;
 
         // Check that the payment request doesn't require too many tokens
         if (tokens > (fee || defaultMaxFee)) {

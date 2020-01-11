@@ -1,6 +1,10 @@
 # Versions
 
-## Version 5.9.4
+## Version 5.9.6
+
+- `market`: Fix issue with market data not being returned
+
+## Version 5.9.5
 
 - `accounting`: Fix issue with unexpected commas in rows
 - `increase-inbound-liquidity`: Add compatibility with service fee API change
