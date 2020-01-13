@@ -85,9 +85,11 @@ module.exports = (args, cbk) => {
       credentials: ['getCredentials', ({getCredentials}, cbk) => {
         if (!!args.is_cleartext) {
           return cbk(null, {
-            cert: getCredentials.cert,
-            macaroon: getCredentials.macaroon,
-            socket: getCredentials.external_socket || getCredentials.socket,
+            cleartext: {
+              cert: getCredentials.cert,
+              macaroon: getCredentials.macaroon,
+              socket: getCredentials.external_socket || getCredentials.socket,
+            },
           });
         }
 

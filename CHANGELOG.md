@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.9.7
+
+- `fund-dev`: Remove function
+- `report`: Change fiat oracle to coindesk
+
 ## Version 5.9.6
 
 - `market`: Fix issue with market data not being returned

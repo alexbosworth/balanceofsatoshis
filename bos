@@ -18,7 +18,6 @@ const {adjustSavedNodes} = require('./nodes');
 const {authenticatedLnd} = require('./lnd');
 const {exchanges} = require('./fiat');
 const {findRecord} = require('./lnd');
-const {fundDev} = require('./wallets');
 const {getAccountingReport} = require('./balances');
 const {getBalance} = require('./balances');
 const {getCertValidityDays} = require('./lnd');
@@ -357,33 +356,6 @@ prog
         return getForwards({
           days: options.days,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
-        },
-        returnObject({logger, reject, resolve}));
-      } catch (err) {
-        return reject(err);
-      }
-    });
-  })
-
-  // Help with funding
-  .command('fund-dev', 'Fund people related to Bitcoin and Lightning efforts')
-  .help('Send some sats (805 default) to a worthy individual. For the cause!')
-  .help('Someone will be automatically chosen if no @handle specified')
-  .help('Nominate worthiness via GitHub issues, include proof of your support')
-  .option('--amount <amount>', 'Choose amount to send', INT, 805)
-  .option('--dryrun', 'Show what would happen without actually sending funds')
-  .option('--node <node_name>', 'Saved node to give funds from')
-  .option('--twitter-handle <nick>', 'Specifically support someone')
-  .action(async (args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        return fundDev({
-          logger,
-          request,
-          is_dry_run: options.dryrun,
-          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
-          to_twitter_account: options.twitterHandle,
-          tokens: options.amount,
         },
         returnObject({logger, reject, resolve}));
       } catch (err) {

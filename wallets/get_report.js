@@ -13,12 +13,13 @@ const {getWalletInfo} = require('ln-service');
 const {italicize} = require('html2unicode');
 const moment = require('moment');
 const {parsePaymentRequest} = require('ln-service');
+const request = require('request');
 const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');
 const {currencyForNetwork} = require('./../network');
 const {getBalance} = require('./../balances');
-const {getExchangeRates} = require('./../fiat');
+const {getCoindeskCurrentPrice} = require('./../fiat');
 const {getForwards} = require('./../network');
 
 const afterMs = 1000 * 60 * 60 * 24;
@@ -46,7 +47,14 @@ module.exports = ({node, style}, cbk) => {
     getLnd: cbk => authenticatedLnd({node}, cbk),
 
     // Get exchange rate
-    getRate: cbk => getExchangeRates({symbols: ['USD']}, cbk),
+    getRate: cbk => {
+      return getCoindeskCurrentPrice({
+        request,
+        currency: 'BTC',
+        fiat: 'USD',
+      },
+      cbk);
+    },
 
     // Get balance
     getBalance: ['getLnd', ({getLnd}, cbk) => {
@@ -160,7 +168,7 @@ module.exports = ({node, style}, cbk) => {
       const channelBalance = getBalance.channel_balance;
       const currentHeight = getInfo.current_block_height;
       const {nodes} = getGraph;
-      const [{rate}] = getRate.tickers;
+      const rate = getRate.cents;
       const totalBalance = getBalance.balance;
 
       const fiatBalance = (balance * rate / centsPerDollar).toFixed(2);
