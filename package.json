@@ -22,7 +22,7 @@
     "cert-info": "1.5.1",
     "crypto-js": "3.1.9-1",
     "csv-parse": "4.8.5",
-    "goldengate": "4.0.2",
+    "goldengate": "4.1.0",
     "html2unicode": "1.1.3",
     "ini": "1.3.5",
     "inquirer": "7.0.3",
@@ -62,5 +62,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/telegram/*.js"
   },
-  "version": "5.9.8"
+  "version": "5.10.0"
 }

@@ -69,6 +69,7 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
   {
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
     confs: <Confirmations to Wait for Deposit Number>
+    [is_fast]: <Execute Swap Immediately Bool>
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
     [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
     lnd: <Authenticated LND gRPC API Object>

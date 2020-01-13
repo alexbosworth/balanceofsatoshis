@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.10.0
+
+- `liquidity-cost`: Add parameter to get fast swap out price
+
 ## Version 5.9.8
 
 - `price`: Change fiat oracle to coindesk

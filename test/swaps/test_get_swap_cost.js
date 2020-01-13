@@ -38,8 +38,8 @@ const tests = [
   {
     args: {
       service: {
-        loopInQuote: ({}, cbk) => cbk(null, makeQuote({})),
-        loopInTerms: ({}, cbk) => cbk(null, makeTerms({})),
+        loopOutQuote: ({}, cbk) => cbk(null, makeQuote({})),
+        loopOutTerms: ({}, cbk) => cbk(null, makeTerms({})),
       },
       tokens: 1e6,
       type: 'inbound',
@@ -50,8 +50,8 @@ const tests = [
   {
     args: {
       service: {
-        loopOutQuote: ({}, cbk) => cbk(null, makeQuote({})),
-        loopOutTerms: ({}, cbk) => cbk(null, makeTerms({max: 1e7, min: 1e6})),
+        loopInQuote: ({}, cbk) => cbk(null, makeQuote({})),
+        loopInTerms: ({}, cbk) => cbk(null, makeTerms({max: 1e7, min: 1e6})),
       },
       tokens: 1e5,
       type: 'outbound',
@@ -62,8 +62,8 @@ const tests = [
   {
     args: {
       service: {
-        loopInQuote: ({}, cbk) => cbk(null, makeQuote({})),
-        loopInTerms: ({}, cbk) => cbk(null, makeTerms({max: 1e7})),
+        loopOutQuote: ({}, cbk) => cbk(null, makeQuote({})),
+        loopOutTerms: ({}, cbk) => cbk(null, makeTerms({max: 1e7})),
       },
       tokens: 1e6,
       type: 'inbound',
