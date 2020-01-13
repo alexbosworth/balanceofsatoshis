@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.9.8
+
+- `price`: Change fiat oracle to coindesk
+
 ## Version 5.9.7
 
 - `fund-dev`: Remove function

@@ -18,14 +18,15 @@ const {adjustSavedNodes} = require('./nodes');
 const {authenticatedLnd} = require('./lnd');
 const {exchanges} = require('./fiat');
 const {findRecord} = require('./lnd');
+const {gateway} = require('./lnd');
 const {getAccountingReport} = require('./balances');
 const {getBalance} = require('./balances');
 const {getCertValidityDays} = require('./lnd');
 const {getChainFees} = require('./chain');
 const {getChannelCloses} = require('./chain');
+const {getCoindeskRates} = require('./fiat');
 const {getCredentials} = require('./lnd');
 const {getDepositAddress} = require('./chain');
-const {getExchangeRates} = require('./fiat');
 const {getFeesChart} = require('./routing');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
@@ -364,6 +365,23 @@ prog
     });
   })
 
+  // Start a REST gateway
+  .command('gateway', 'Start REST request gateway')
+  .option('--node <node_name>', 'Node for gateway')
+  .option('--port <port>', 'Port for gateway', INT, 4805)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return gateway({
+          credentials: await lndCredentials({node: options.node}),
+          port: options.port,
+        });
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
   // Give a peer some tokens
   .command('gift', 'Give a direct peer some free funds off-chain')
   .help('Send some funds to a connected peer')
@@ -651,7 +669,8 @@ prog
   .option('--no-color', 'Mute all colors')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
-      return getExchangeRates({
+      return getCoindeskRates({
+        request,
         symbols: args.symbols.map(n => n.toUpperCase()),
       },
       returnObject({
