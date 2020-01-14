@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.10.0
+## Version 5.10.1
 
 - `liquidity-cost`: Add parameter to get fast swap out price
 

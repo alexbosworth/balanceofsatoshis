@@ -58,11 +58,7 @@ module.exports = ({request, symbols}, cbk) => {
               return cbk(err);
             }
 
-            return cbk(null, {
-              date: res.date,
-              rate: res.cents,
-              ticker: `${currency}${fiat}`,
-            });
+            return cbk(null, {date: res.date, rate: res.cents, ticker: fiat});
           });
         },
         cbk);

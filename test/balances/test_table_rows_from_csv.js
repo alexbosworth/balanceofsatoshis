@@ -15,7 +15,7 @@ const tests = [
   },
   {
     args: {
-      csv: '"1st","2nd","3rd"\n"foo",0.123456,"1"\n"baz",0.123456,"3"\n"bar",0.123456,"2"',
+      csv: '"1st","2nd","3rd"\n"bee",0.123456,"3"\n"foo",0.123456,"1"\n"baz",0.123456,"3"\n"bar",0.123456,"2"',
     },
     description: 'No csv results in no rows',
     expected: {
@@ -23,6 +23,7 @@ const tests = [
         ['1st', '2nd', '3rd'],
         ['foo', '0.123456', '1'],
         ['bar', '0.123456', '2'],
+        ['bee', '0.123456', '3'],
         ['baz', '0.123456', '3'],
       ],
     },
