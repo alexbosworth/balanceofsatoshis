@@ -16,7 +16,9 @@ const request = require('request');
 const {accountingCategories} = require('./balances');
 const {adjustSavedNodes} = require('./nodes');
 const {authenticatedLnd} = require('./lnd');
+const {encryptToNode} = require('./encryption');
 const {exchanges} = require('./fiat');
+const {decryptWithNode} = require('./encryption');
 const {findRecord} = require('./lnd');
 const {gateway} = require('./lnd');
 const {getAccountingReport} = require('./balances');
@@ -298,6 +300,46 @@ prog
         node: options.node,
       },
       returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Decrypt a message
+  .command('decrypt', 'Decrypt data using the node key')
+  .argument('<encrypted>', 'Encrypted message')
+  .help('Decrypt a message encrypted to the node key or to another node key')
+  .option('--node <node_name>', 'Node to decrypt with')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return decryptWithNode({
+          encrypted: args.encrypted,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
+  // Encrypt a message
+  .command('encrypt', 'Encrypt data using the node key')
+  .help('Encrypt a message to the node key or to another node key')
+  .option('--node <node_name>', 'Node to encrypt with')
+  .option('--message <message>', 'Text message to encrypt')
+  .option('--to <to>', 'Encrypt message to another node')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return encryptToNode({
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          message: options.message,
+          to: options.to,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 

@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.11.0
+
+- `decrypt`: Add method to decrypt a message using the node key
+- `encrypt`: Add method to decrypt a message using the node key
+
 ## Version 5.10.1
 
 - `liquidity-cost`: Add parameter to get fast swap out price

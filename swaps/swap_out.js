@@ -907,7 +907,7 @@ module.exports = (args, cbk) => {
           min_fee_rate: minFeeRate,
           private_key: claim.private_key,
           secret: claim.secret,
-          start_height: initiateSwap.start_height || depositHeight,
+          start_height: depositHeight || initiateSwap.start_height,
           sweep_address: createAddress.address,
           transaction_id: claim.transaction_id,
           transaction_vout: claim.transaction_vout,
