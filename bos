@@ -589,7 +589,7 @@ prog
   .help('Locking and unlocking requires existing installation of GPG')
   .argument('[node]', 'Specify a saved node')
   .option('--add', 'Add a new node')
-  .option('--lock <id>', 'Encrypt node authentication to GPG key>', REPEATABLE)
+  .option('--lock <id>', 'Encrypt node authentication to GPG key', REPEATABLE)
   .option('--remove', 'Remove saved node')
   .option('--unlock', 'Remove encryption from auth macaroon')
   .action((args, options, logger) => {

@@ -15,6 +15,7 @@ const getMacaroon = require('./get_macaroon');
 const {getSavedCredentials} = require('./../nodes');
 const getSocket = require('./get_socket');
 
+const defaultNodeName = process.env.BOS_DEFAULT_SAVED_NODE;
 const fs = {getFile: readFile};
 const os = {homedir, platform};
 const socket = 'localhost:10009';
@@ -40,27 +41,50 @@ const socket = 'localhost:10009';
 module.exports = ({expiry, logger, key, node}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
+      // Figure out which node the credentials are for
+      forNode: cbk => {
+        if (!!node) {
+          return cbk(null, node);
+        }
+
+        if (!!defaultNodeName) {
+          return cbk(null, defaultNodeName);
+        }
+
+        return cbk();
+      },
+
       // Get the default cert
-      getCert: cbk => getCert({fs, node, os}, cbk),
+      getCert: ['forNode', ({forNode}, cbk) => {
+        return getCert({fs, os, node: forNode}, cbk);
+      }],
 
       // Get the default macaroon
-      getMacaroon: cbk => getMacaroon({fs, node, os}, cbk),
+      getMacaroon: ['forNode', ({forNode}, cbk) => {
+        return getMacaroon({fs, os, node: forNode}, cbk);
+      }],
 
       // Get the node credentials, if applicable
-      getNodeCredentials: cbk => {
-        if (!node) {
+      getNodeCredentials: ['forNode', ({forNode}, cbk) => {
+        if (!forNode) {
           return cbk();
         }
 
-        return getSavedCredentials({fs, node}, cbk);
-      },
+        return getSavedCredentials({fs, node: forNode}, cbk);
+      }],
 
       // Get the socket out of the ini file
-      getSocket: cbk => getSocket({fs, node, os}, cbk),
+      getSocket: ['forNode', ({forNode}, cbk) => {
+        return getSocket({fs, os, node: forNode}, cbk);
+      }],
 
       // Node credentials
-      nodeCredentials: ['getNodeCredentials', ({getNodeCredentials}, cbk) => {
-        if (!node) {
+      nodeCredentials: [
+        'forNode',
+        'getNodeCredentials',
+        ({forNode, getNodeCredentials}, cbk) =>
+      {
+        if (!forNode) {
           return cbk();
         }
 
@@ -81,7 +105,7 @@ module.exports = ({expiry, logger, key, node}, cbk) => {
         const cipher = credentials.encrypted_macaroon;
 
         if (!!logger) {
-          logger.info({decrypt_credentials_for: node});
+          logger.info({decrypt_credentials_for: forNode});
         }
 
         return decryptCiphertext({cipher, spawn}, (err, res) => {
@@ -99,13 +123,14 @@ module.exports = ({expiry, logger, key, node}, cbk) => {
 
       // Credentials to use
       credentials: [
+        'forNode',
         'getCert',
         'getMacaroon',
         'nodeCredentials',
-        ({getCert, getMacaroon, nodeCredentials}, cbk) =>
+        ({forNode, getCert, getMacaroon, nodeCredentials}, cbk) =>
       {
         // Exit early with the default credentials when no node is specified
-        if (!node) {
+        if (!forNode) {
           return cbk(null, {
             socket,
             cert: getCert.cert,

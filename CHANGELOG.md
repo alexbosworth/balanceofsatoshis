@@ -1,5 +1,13 @@
 # Versions
 
+## Version 5.12.0
+
+Add the ability to use a default saved node by specifying a
+`BOS_DEFAULT_SAVED_NODE` environment variable.
+
+Add the ability specify `cert_path` and `macaroon_path` in saved node
+credentials file to avoid copying and pasting values.
+
 ## Version 5.11.1
 
 Change routing logic on LND 0.9.0 nodes to add support for 0.9.0 pathfinding

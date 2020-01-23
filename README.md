@@ -182,6 +182,9 @@ configuration), two things need to be done:
     >
     > **Note_2:** `socket` should contain `host:ip` pointing to `lnd`'s gRPC interface, `localhost:10009` by convention.  
  
+ You can also set `cert_path` and `macaroon_path` to the path of the relevant
+ files instead.
+
 ### Using Saved Nodes
  
 To run commands on nodes specified this way, you need to suffix commands with
@@ -191,6 +194,13 @@ their name, ex:
 bos balance --node=SAVED_NODE_NAME
 bos forwards --node=SAVED_NODE_NAME
 ```
+
+If a saved node is actually your default node, you can set an environment
+variable to avoid adding the --node prefix
+
+`export BOS_DEFAULT_SAVED_NODE=nodename`
+
+If that is set, it will use that node if no node is specified.
 
 ## Linux Fu
 

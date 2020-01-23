@@ -46,8 +46,8 @@ module.exports = ({fs, node}, cbk) => {
         return cbk();
       },
 
-      // Get credentials
-      getCredentials: ['validate', ({}, cbk) => {
+      // Get the credentials file
+      getFile: ['validate', ({}, cbk) => {
         const path = join(...[homedir(), home, node, credentials]);
 
         return fs.getFile(path, (err, res) => {
@@ -64,35 +64,75 @@ module.exports = ({fs, node}, cbk) => {
 
           const credentials = parse(res.toString());
 
-          if (!credentials.cert) {
-            return cbk([400, 'SavedNodeMissingCertData']);
+          return cbk(null, credentials);
+        });
+      }],
+
+      // Get cert from path if necessary
+      getCert: ['getFile', ({getFile}, cbk) => {
+        if (!getFile.cert_path) {
+          return cbk(null, getFile.cert);
+        }
+
+        return fs.getFile(getFile.cert_path, (err, res) => {
+          if (!!err) {
+            return cbk([400, 'SavedNodeCertFileNotFoundAtCertPath', {err}]);
           }
 
-          if (!credentials.macaroon && !credentials.encrypted_macaroon) {
-            return cbk([400, 'SavedNodeMissingMacaroonData']);
+          return cbk(null, res.toString('base64'));
+        });
+      }],
+
+      // Get macaroon from path if necessary
+      getMacaroon: ['getFile', ({getFile}, cbk) => {
+        if (!getFile.macaroon_path) {
+          return cbk(null, getFile.macaroon);
+        }
+
+        return fs.getFile(getFile.macaroon_path, (err, res) => {
+          if (!!err) {
+            return cbk([400, 'SavedNodeMacaroonNotFoundAtPath', {err}]);
           }
 
-          if (!!credentials.encrypted_macaroon && !credentials.encrypted_to) {
-            return cbk([400, 'MissingEncryptToRecipientsInSavedCredentials']);
-          }
+          return cbk(null, res.toString('base64'));
+        });
+      }],
 
-          if (!credentials.socket) {
-            return cbk([400, 'SavedNodeMissingSocket']);
-          }
+      // Final credentials
+      credentials: [
+        'getCert',
+        'getFile',
+        'getMacaroon',
+        ({getCert, getFile, getMacaroon}, cbk) =>
+      {
+        if (!getCert) {
+          return cbk([400, 'SavedNodeMissingCertData']);
+        }
 
-          return cbk(null, {
-            node,
-            credentials: {
-              cert: credentials.cert,
-              encrypted_macaroon: credentials.encrypted_macaroon,
-              encrypted_to: credentials.encrypted_to,
-              macaroon: credentials.macaroon,
-              socket: credentials.socket,
-            },
-          });
+        if (!getMacaroon && !getFile.encrypted_macaroon) {
+          return cbk([400, 'SavedNodeMissingMacaroonData']);
+        }
+
+        if (!!getFile.encrypted_macaroon && !getFile.encrypted_to) {
+          return cbk([400, 'MissingEncryptToRecipientsInSavedCredentials']);
+        }
+
+        if (!getFile.socket) {
+          return cbk([400, 'SavedNodeMissingSocket']);
+        }
+
+        return cbk(null, {
+          node,
+          credentials: {
+            cert: getCert,
+            encrypted_macaroon: getFile.encrypted_macaroon,
+            encrypted_to: getFile.encrypted_to,
+            macaroon: getMacaroon,
+            socket: getFile.socket,
+          },
         });
       }],
     },
-    returnResult({reject, resolve, of: 'getCredentials'}, cbk));
+    returnResult({reject, resolve, of: 'credentials'}, cbk));
   });
 };
