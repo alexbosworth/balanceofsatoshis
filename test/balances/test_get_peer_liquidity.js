@@ -30,6 +30,20 @@ const tests = [
     description: 'Get peer liquidity',
     expected: {alias: 'alias', inbound: 2, outbound: 2},
   },
+  {
+    args: {
+      lnd: {
+        default: {
+          getNodeInfo: ({}, cbk) => cbk('err'),
+          listChannels: ({}, cbk) => cbk(null, listChannelsResponse),
+          pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
+        },
+      },
+      public_key: Buffer.alloc(33).toString('hex'),
+    },
+    description: 'Get peer liquidity when node info returns an error',
+    expected: {alias: '', inbound: 2, outbound: 2},
+  },
 ];
 
 tests.forEach(({args, description, error, expected}) => {

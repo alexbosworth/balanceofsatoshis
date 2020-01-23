@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.11.1
+
+Change routing logic on LND 0.9.0 nodes to add support for 0.9.0 pathfinding
+changes.
+
 ## Version 5.11.0
 
 - `decrypt`: Add method to decrypt a message using the node key

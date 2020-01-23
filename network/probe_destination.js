@@ -1,6 +1,8 @@
 const asyncAuto = require('async/auto');
 const {decodePaymentRequest} = require('ln-service');
 const {getChannels} = require('ln-service');
+const {getNode} = require('ln-service');
+const {getRouteToDestination} = require('ln-service');
 const {getRoutes} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
@@ -72,7 +74,7 @@ module.exports = (args, cbk) => {
     }],
 
     // Get height
-    getHeight: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
+    getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
 
     // Destination to pay
     to: ['validate', ({}, cbk) => {
@@ -90,6 +92,19 @@ module.exports = (args, cbk) => {
     // Tokens
     tokens: ['to', ({to}, cbk) => {
       return cbk(null, args.tokens || to.tokens || defaultTokens);
+    }],
+
+    // Get the features of the node to probe
+    getFeatures: ['getInfo', 'to', ({getInfo, to}, cbk) => {
+      if (!getInfo.features.length) {
+        return cbk(null, {});
+      }
+
+      if (!!to.features) {
+        return cbk(null, {features: to.features});
+      }
+
+      return getNode({lnd: args.lnd, public_key: to.destination}, cbk);
     }],
 
     // Get inbound path if an inbound restriction is specified
@@ -148,6 +163,44 @@ module.exports = (args, cbk) => {
       return cbk(null, channel.id);
     }],
 
+    // Check path to destination
+    checkPathToDestination: [
+      'getFeatures',
+      'getInfo',
+      'outgoingChannelId',
+      'to',
+      'tokens',
+      ({getFeatures, getInfo, outgoingChannelId, to, tokens}, cbk) =>
+    {
+      return cbk();
+
+      if (!getInfo.features.length) {
+        return cbk();
+      }
+
+      return getRouteToDestination({
+        tokens,
+        destination: to.destination,
+        features: getFeatures.features,
+        ignore: args.ignore,
+        incoming_peer: args.in_through,
+        lnd: args.lnd,
+        outgoing_channel: outgoingChannelId,
+        routes: to.routes,
+      },
+      (err, res) => {
+        if (!!err) {
+          return cbk(err);
+        }
+
+        if (!res.route) {
+          return cbk([503, 'FailedToFindRouteToDestination']);
+        }
+
+        return cbk();
+      });
+    }],
+
     // Check that there is a potential path
     checkPath: [
       'getInboundPath',
@@ -182,23 +235,29 @@ module.exports = (args, cbk) => {
 
     // Probe towards destination
     probe: [
-      'getHeight',
+      'checkPathToDestination',
+      'getFeatures',
       'getInboundPath',
+      'getInfo',
       'outgoingChannelId',
       'to',
-      ({getHeight, getInboundPath, outgoingChannelId, to}, cbk) =>
+      ({getInboundPath, getFeatures, getInfo, outgoingChannelId, to}, cbk) =>
     {
+      const inboundPath = !getInfo.features.length ? getInboundPath : null;
+
       return executeProbe({
         cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
         destination: to.destination,
+        features: getFeatures.features,
         ignore: args.ignore,
+        in_through: args.in_through,
         is_strict_hints: !!getInboundPath,
         is_strict_max_fee: args.is_strict_max_fee,
         lnd: args.lnd,
         logger: args.logger,
         max_fee: args.max_fee,
         outgoing_channel: outgoingChannelId,
-        routes: getInboundPath || to.routes,
+        routes: inboundPath || to.routes,
         tokens: args.tokens || to.tokens || defaultTokens,
       },
       cbk);

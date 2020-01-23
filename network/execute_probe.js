@@ -3,6 +3,7 @@ const asyncMapSeries = require('async/mapSeries');
 const {getNode} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToProbe} = require('ln-service');
+const {subscribeToProbeForRoute} = require('ln-service');
 
 const {describeConfidence} = require('./../routing');
 
@@ -14,9 +15,13 @@ const pathTimeoutMs = 1000 * 60;
   {
     cltv_delta: <Final Cltv Delta Number>
     destination: <Final Destination Public Key Hex String>
+    [features]: [{
+      bit: <Feature Bit Number>
+    }]
     [ignore]: [{
       from_public_key: <Avoid Node With Public Key Hex String>
     }]
+    [in_through]: <In Through Public Key Hex String>
     [is_strict_hints]: <Interpret Routes Strictly Ignoring Other Paths Bool>
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND gRPC API Object>
@@ -93,12 +98,17 @@ module.exports = (args, cbk) => {
       // Probe
       probe: ['validate', ({}, cbk) => {
         const attemptedPaths = [];
+        const {features} = args;
         const start = now();
 
-        const sub = subscribeToProbe({
+        const method = !features ? subscribeToProbe : subscribeToProbeForRoute;
+
+        const sub = method({
           cltv_delta: args.cltv_delta,
           destination: args.destination,
+          features: args.features,
           ignore: args.ignore,
+          incoming_peer: args.in_through,
           is_strict_hints: !!args.is_strict_hints,
           lnd: args.lnd,
           max_fee: !args.is_strict_max_fee ? undefined : args.max_fee,

@@ -327,7 +327,10 @@ module.exports = (args, cbk) => {
         return probeDestination({
           destination: getPublicKey.public_key,
           find_max: 4294967,
-          ignore: [{from_public_key: getPublicKey.public_key}].concat(avoid),
+          ignore: [{
+            from_public_key: getPublicKey.public_key,
+            to_public_key: getInbound.public_key,
+          }].concat(avoid),
           in_through: getInbound.public_key,
           logger: args.logger,
           lnd: args.lnd,
