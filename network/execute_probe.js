@@ -183,7 +183,7 @@ module.exports = (args, cbk) => {
 
               const towards = `${alias} ${hop.public_key}`;
 
-              return cbk(null, `${hop.fee} ${hop.channel} ${towards}`);
+              return cbk(null, {towards, channel: hop.channel, fee: hop.fee});
             });
           },
           (err, evaluating) => {
@@ -196,7 +196,17 @@ module.exports = (args, cbk) => {
             const {description} = describeConfidence({confidence});
 
             return args.logger.info({
-              evaluating,
+              evaluating: evaluating
+                .map((n, i) => {
+                  const nextHop = evaluating[i + 1];
+
+                  if (!nextHop) {
+                    return;
+                  }
+
+                  return `${n.channel} ${n.towards}. Hop fee: ${n.fee}`;
+                })
+                .filter(n => !!n),
               confidence: description || undefined,
               potential_fee: route.fee,
             });

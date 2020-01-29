@@ -39,6 +39,7 @@ const {getSwapCost} = require('./swaps');
 const {getSwapService} = require('./swaps');
 const {getUtxos} = require('./chain');
 const {ignoreFromAvoid} = require('./routing');
+const {lndCredentials} = require('./lnd');
 const marketPairs = require('./fiat').pairs;
 const {openChannel} = require('./network');
 const {probeDestination} = require('./network');
@@ -193,24 +194,33 @@ prog
   // Create on-chain submarine swap
   .command('chain-receive', 'Receive funds on-chain via submarine swap')
   .argument('[amount]', 'Amount to receive', INT, 1e6)
+  .option('--api-key <api_key>', 'Pre-paid API key to use')
   .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
+  .option('--no-auth', 'Avoid using authenticated service')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to receive funds on')
   .option('--recovery <refund_recovery>', 'Attempt refund of swap')
   .option('--refund-address <refund_address>', 'Refund address for swap')
   .option('--test-refund', 'Reduce refund timeout height to test refund')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return swapIn({
-        logger,
-        is_refund_test: options.testRefund,
-        max_fee: options.maxFee,
-        node: options.node,
-        recovery: options.recovery,
-        refund_address: options.refundAddress,
-        tokens: args.amount,
-      },
-      returnObject({exit, logger, reject, resolve}));
+    return new Promise(async (resolve, reject) => {
+      try {
+        return swapIn({
+          logger,
+          api_key: options.apiKey || undefined,
+          is_free: options.noAuth || false,
+          is_refund_test: options.testRefund,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          max_fee: options.maxFee,
+          node: options.node,
+          recovery: options.recovery,
+          refund_address: options.refundAddress,
+          tokens: args.amount,
+        },
+        returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 
@@ -473,6 +483,7 @@ prog
   .command('increase-inbound-liquidity', 'Increase node inbound liquidity')
   .help('Spend down a channel to get inbound. Fee is an estimate, may be more')
   .option('--address <out_address>', 'Out chain address to send funds out to')
+  .option('--api-key <api_key>', 'Pre-paid API key to use')
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--amount <amount>', 'Amount to increase liquidity', INT, 5e5)
   .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
@@ -480,6 +491,7 @@ prog
   .option('--fast', 'Request swap server avoid batching delay')
   .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 3000)
   .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 24)
+  .option('--no-auth', 'Avoid using authenticated service')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Increase inbound liquidity on saved node')
   .option('--recovery <recovery>', 'Recover in-progress swap')
@@ -490,9 +502,11 @@ prog
       try {
         return swapOut({
           logger,
+          api_key: options.apiKey || undefined,
           avoid: flatten([options.avoid].filter(n => !!n)),
           confs: options.confs,
           is_fast: options.fast || false,
+          is_free: options.noAuth || false,
           is_raw_recovery_shown: options.showRawRecovery || undefined,
           is_dry_run: options.dryrun || false,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,

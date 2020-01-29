@@ -19,27 +19,9 @@ const tests = [
     error: [400, 'ExpectedNodeNameToGetSavedCredentials'],
   },
   {
-    args: {fs: {getFile: ({}, cbk) => cbk('err')}, node: 'node'},
-    description: 'Error getting credentials still returns node name',
-    expected: {node: 'node'},
-  },
-  {
-    args: {fs: {getFile: ({}, cbk) => cbk()}, node: 'node'},
-    description: 'No credentials still returns node name',
-    expected: {node: 'node'},
-  },
-  {
     args: {fs: {getFile: ({}, cbk) => cbk(null, 'foo')}, node: 'node'},
     description: 'Invalid saved credentials returns error',
     error: [400, 'SavedNodeHasInvalidCredentials'],
-  },
-  {
-    args: {
-      fs: {getFile: ({}, cbk) => cbk(null, JSON.stringify({}))},
-      node: 'node',
-    },
-    description: 'Saved credentials missing cert returns error',
-    error: [400, 'SavedNodeMissingCertData'],
   },
   {
     args: {

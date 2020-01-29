@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.13.0
+
+- `chain-receive`: Add `api-key` and `no-auth` options for swap authentication
+- `increase-inbound-liquidity`: Add `--api-key` and `--no-auth` options
+- `rebalance`: Add the option to `--avoid` a channel
+
 ## Version 5.12.0
 
 Add the ability to use a default saved node by specifying a

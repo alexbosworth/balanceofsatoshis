@@ -5,6 +5,7 @@ const {createInvoice} = require('ln-service');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
+const {getRouteThroughHops} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -14,11 +15,14 @@ const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');
 
 const {ceil} = Math;
-const cltvDelta = 50;
+const channelMatch = /^\d*x\d*x\d*$/;
+const cltvDelta = 144;
 const defaultMaxFee = 1337;
 const defaultMaxFeeRate = 250;
+const flatten = arr => [].concat(...arr);
 const highInbound = 4500000;
 const {max} = Math;
+const maxPaymentSize = 4294967;
 const maxRebalanceTokens = 4294967;
 const {min} = Math;
 const minInboundBalance = 4294967 * 2;
@@ -89,6 +93,54 @@ module.exports = (args, cbk) => {
 
       // Get public key
       getPublicKey: ['lnd', ({lnd}, cbk) => getWalletInfo({lnd}, cbk)],
+
+      // Ignore
+      ignore: ['getPublicKey', 'lnd', ({getPublicKey, lnd}, cbk) => {
+        return asyncMap(args.avoid || [], (id, cbk) => {
+          if (!channelMatch.test(id)) {
+            return cbk(null, {from_public_key: id});
+          }
+
+          return getChannel({id, lnd: args.lnd}, (err, res) => {
+            if (!!err) {
+              return cbk([404, 'FailedToFindChannelToAvoid', {err}]);
+            }
+
+            const [node1, node2] = res.policies.map(n => n.public_key);
+
+            const ignore = [
+              {channel: id, from_public_key: node1, to_public_key: node2},
+              {channel: id, from_public_key: node2, to_public_key: node1},
+            ];
+
+            return cbk(null, ignore);
+          });
+        },
+        (err, ignore) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const allIgnores = flatten(ignore).filter(n => {
+            const isFromInThrough = n.from_public_key === args.in_through;
+            const isFromSelf = n.from_public_key === getPublicKey.public_key;
+            const isToOutThrough = n.to_public_key === args.out_through;
+            const isToSelf = n.to_public_key === getPublicKey.public_key;
+
+            if (isFromSelf && isToOutThrough) {
+              return false;
+            }
+
+            if (isToSelf && isFromInThrough) {
+              return false;
+            }
+
+            return true;
+          });
+
+          return cbk(null, allIgnores);
+        });
+      }],
 
       // Get fee rates
       getFees: ['getPublicKey', 'lnd', ({getPublicKey, lnd}, cbk) => {
@@ -320,24 +372,34 @@ module.exports = (args, cbk) => {
         'getInbound',
         'getOutbound',
         'getPublicKey',
-        ({getInbound, getOutbound, getPublicKey}, cbk) =>
+        'ignore',
+        ({getInbound, getOutbound, getPublicKey, ignore}, cbk) =>
       {
-        const avoid = (args.avoid || []).map(n => ({from_public_key: n}));
+        args.logger.info({
+          outgoing_peer: {
+            alias: getOutbound.alias,
+            public_key: getOutbound.public_key,
+          },
+          incoming_peer: {
+            alias: getInbound.alias,
+            public_key: getInbound.public_key,
+          },
+        });
 
         return probeDestination({
           destination: getPublicKey.public_key,
-          find_max: 4294967,
+          find_max: maxPaymentSize,
           ignore: [{
             from_public_key: getPublicKey.public_key,
             to_public_key: getInbound.public_key,
-          }].concat(avoid),
+          }].concat(ignore),
           in_through: getInbound.public_key,
           logger: args.logger,
           lnd: args.lnd,
           max_fee: Math.floor(5e6 * 0.0025),
           node: args.node,
           out_through: getOutbound.public_key,
-          tokens: 10000,
+          tokens: Math.round((Math.random() * 1e5) + 1e5),
         },
         cbk);
       }],
@@ -392,13 +454,32 @@ module.exports = (args, cbk) => {
         return getWalletInfo({lnd}, cbk);
       }],
 
+      // Get route for rebalance
+      getRoute: ['channels', 'invoice', ({channels, invoice}, cbk) => {
+        return getRouteThroughHops({
+          cltv_delta: cltvDelta,
+          lnd: args.lnd,
+          mtokens: invoice.mtokens,
+          public_keys: channels.map(n => n.destination),
+        },
+        (err, res) => {
+          // Exit early when there is an error and use local route calculation
+          if (!!err) {
+            return cbk();
+          }
+
+          return cbk(null, res.route);
+        });
+      }],
+
       // Calculate route for rebalance
       routes: [
         'channels',
         'getHeight',
         'getPublicKey',
+        'getRoute',
         'invoice',
-        ({channels, getHeight, getPublicKey, invoice}, cbk) =>
+        ({channels, getHeight, getPublicKey, getRoute, invoice}, cbk) =>
       {
         try {
           const {route} = routeFromChannels({
@@ -409,30 +490,31 @@ module.exports = (args, cbk) => {
             mtokens: (BigInt(invoice.tokens) * mtokensPerToken).toString(),
           });
 
+          const endRoute = getRoute.route || route;
           const maxFee = args.max_fee || defaultMaxFee;
           const maxFeeRate = args.max_fee_rate || defaultMaxFeeRate;
 
           // Exit early when a max fee is specified and exceeded
-          if (!!maxFee && route.fee > maxFee) {
+          if (!!maxFee && endRoute.fee > maxFee) {
             return cbk([
               400,
-              'RebalanceFeeTooHigh',
-              {needed_max_fee: route.fee},
+              'RebalanceTotalFeeTooHigh',
+              {needed_max_fee: endRoute.fee},
             ]);
           }
 
-          const feeRate = ceil(route.fee / route.tokens * rateDivisor);
+          const feeRate = ceil(endRoute.fee / endRoute.tokens * rateDivisor);
 
           // Exit early when the max fee rate is specified and exceeded
           if (!!maxFeeRate && feeRate > maxFeeRate) {
             return cbk([
               400,
-              'RebalanceFeeTooHigh',
+              'RebalanceFeeRateTooHigh',
               {needed_max_fee_rate: feeRate},
             ]);
           }
 
-          return cbk(null, [route]);
+          return cbk(null, [endRoute]);
         } catch (err) {
           return cbk([500, 'FailedToConstructRebalanceRoute', {err}]);
         }
@@ -440,7 +522,13 @@ module.exports = (args, cbk) => {
 
       // Execute the rebalance
       pay: ['invoice', 'lnd', 'routes', ({invoice, lnd, routes}, cbk) => {
-        return payViaRoutes({lnd, routes, id: invoice.id}, cbk);
+        return payViaRoutes({lnd, routes, id: invoice.id}, (err, res) => {
+          if (!!err) {
+            return cbk([503, 'UnexpectedErrExecutingRebalance', {err}]);
+          }
+
+          return cbk(null, {fee: res.fee, tokens: res.tokens});
+        });
       }],
 
       // Final rebalancing

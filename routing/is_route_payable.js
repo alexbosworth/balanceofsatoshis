@@ -1,10 +1,12 @@
 const asyncAuto = require('async/auto');
 const asyncTimeout = require('async/timeout');
+const {getRouteThroughHops} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
+const invalidCltvExpiry = 'IncorrectCltvExpiry';
 const invalidPaymentMessage = 'UnknownPaymentHash';
 const {isArray} = Array;
 const mtokensFromTokens = tokens => (BigInt(tokens) * BigInt(1e3)).toString();
@@ -76,12 +78,30 @@ module.exports = ({channels, cltv, lnd, tokens}, cbk) => {
         return cbk(null, route);
       }],
 
+      // Build a route
+      getRoute: ['validate', ({}, cbk) => {
+        return getRouteThroughHops({
+          lnd,
+          cltv_delta: cltv,
+          mtokens: mtokensFromTokens(tokens),
+          public_keys: channels.map(n => n.destination),
+        },
+        (err, res) => {
+          // Exit early when there is an error and use local route calculation
+          if (!!err) {
+            return cbk();
+          }
+
+          return cbk(null, res.route);
+        });
+      }],
+
       // Attempt the route
-      attempt: ['route', ({route}, cbk) => {
+      attempt: ['getRoute', 'route', ({getRoute, route}, cbk) => {
         return payWithTimeout({
           lnd,
           pathfinding_timeout: pathfindingTimeoutMs,
-          routes: [route],
+          routes: [getRoute || route],
         },
         err => {
           if (!!err && !isArray(err)) {
@@ -89,6 +109,10 @@ module.exports = ({channels, cltv, lnd, tokens}, cbk) => {
           }
 
           const [, code] = err;
+
+          if (code === invalidCltvExpiry) {
+            return cbk([503, 'UnexpectedErrorCode', {err}]);
+          }
 
           return cbk(null, {is_payable: code === invalidPaymentMessage});
         });

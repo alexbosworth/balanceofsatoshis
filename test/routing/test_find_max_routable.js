@@ -91,6 +91,7 @@ const tests = [
           getInfo: ({}, cbk) => cbk(null, getInfoRes()),
         },
         router: {
+          buildRoute: ({}, cbk) => cbk('err'),
           sendToRoute: ({}, cbk) => cbk(null, {
             failure: {code: 'UNKNOWN_PAYMENT_HASH'},
           }),
@@ -172,7 +173,7 @@ tests.forEach(({args, description, error, expected}) => {
     } else {
       const {maximum} = await findMaxRoutable(args);
 
-      equal(maximum > expected.maximum - 1000, true, 'Got expected maximum');
+      equal(maximum > expected.maximum - 10000, true, 'Got expected maximum');
     }
 
     return end();

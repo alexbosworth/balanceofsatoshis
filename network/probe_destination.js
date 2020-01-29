@@ -172,8 +172,6 @@ module.exports = (args, cbk) => {
       'tokens',
       ({getFeatures, getInfo, outgoingChannelId, to, tokens}, cbk) =>
     {
-      return cbk();
-
       if (!getInfo.features.length) {
         return cbk();
       }

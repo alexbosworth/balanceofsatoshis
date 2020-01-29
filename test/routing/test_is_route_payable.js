@@ -56,6 +56,7 @@ const tests = [
       lnd: {
         default: {getInfo: ({}, cbk) => cbk(null, getInfoRes())},
         router: {
+          buildRoute: ({}, cbk) => cbk('err'),
           sendToRoute: ({}, cbk) => cbk(null, {
             failure: {code: 'UNKNOWN_PAYMENT_HASH'},
           },

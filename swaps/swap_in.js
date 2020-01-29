@@ -27,8 +27,9 @@ const {swapScript} = require('goldengate');
 const {authenticatedLnd} = require('./../lnd');
 const {getLiquidity} = require('./../balances');
 const {getNetwork} = require('./../network');
+const getPaidService = require('./get_paid_service');
 
-const bigFormat = tokens => (tokens / 1e8).toFixed(8);
+const bigFormat = tokens => ((tokens || 0) / 1e8).toFixed(8);
 const msPerBlock = 1000 * 60 * 10;
 const msPerYear = 1000 * 60 * 60 * 24 * 365;
 const {now} = Date;
@@ -37,10 +38,12 @@ const waitForDepositMs = 1000 * 60 * 60 * 24;
 /** Receive funds on-chain
 
   {
+    [api_key]: <API Key CBOR String>
+    [is_free]: <Use Free Service Bool>
     [is_refund_test]: <Alter Swap Timeout To Have Short Refund Bool>
+    lnd: <Authenticated LND gRPC API Object>
     logger: <Logger Object>
     [max_fee]: <Maximum Fee Tokens to Pay Number>
-    [node]: <Node Name String>
     [recovery]: <Recover In-Progress Swap String>
     [refund_address]: <Refund Address String>
     [tokens]: <Tokens Number>
@@ -61,6 +64,10 @@ module.exports = (args, cbk) => {
         return cbk([400, 'ExpectedLoggerToReceiveOnChain']);
       }
 
+      if (!args.lnd) {
+        return cbk([400, 'ExpectedLndToReceiveOnChain']);
+      }
+
       if (!args.tokens && !args.recovery) {
         return cbk([400, 'ExpectedTokensAmountToReceiveOnChain']);
       }
@@ -68,18 +75,11 @@ module.exports = (args, cbk) => {
       return cbk();
     },
 
-    // Get authenticated lnd connection
-    getLnd: ['validate', ({}, cbk) => {
-      return authenticatedLnd({logger: args.logger, node: args.node}, cbk);
-    }],
-
     // Get wallet info
-    getInfo: ['getLnd', ({getLnd}, cbk) => {
-      return getWalletInfo({lnd: getLnd.lnd}, cbk);
-    }],
+    getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
 
     // Get channels
-    getLiquidity: ['getLnd', ({getLnd}, cbk) => {
+    getLiquidity: ['validate', ({}, cbk) => {
       // Exit early when recovering from an existing swap
       if (!!args.recovery) {
         return cbk();
@@ -88,22 +88,25 @@ module.exports = (args, cbk) => {
       return getLiquidity({
         above: args.tokens,
         is_top: true,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
       },
       cbk);
     }],
 
     // Get network
-    getNetwork: ['getLnd', ({getLnd}, cbk) => {
-      return getNetwork({lnd: getLnd.lnd}, cbk)
-    }],
+    getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
     // Swap service
     service: ['getNetwork', ({getNetwork}, cbk) => {
       const {network} = getNetwork;
 
       try {
-        return cbk(null, lightningLabsSwapService({network}).service);
+        const {service} = lightningLabsSwapService({
+          network,
+          is_free: true,
+        });
+
+        return cbk(null, service);
       } catch (err) {
         return cbk([500, 'FailedToInitiateSwapServiceConnection', {err}]);
       }
@@ -135,19 +138,14 @@ module.exports = (args, cbk) => {
     }],
 
     // Create an invoice
-    createInvoice: [
-      'getLimits',
-      'getLnd',
-      'getQuote',
-      ({getLimits, getLnd, getQuote}, cbk) =>
-    {
+    createInvoice: ['getLimits', 'getQuote', ({getLimits, getQuote}, cbk) => {
       // Exit early when we're recovering an existing swap
       if (!!args.recovery) {
         return (async () => {
           try {
             const {id} = await decodeSwapRecovery({recovery: args.recovery});
 
-            return getInvoice({id, lnd: getLnd.lnd}, cbk);
+            return getInvoice({id, lnd: args.lnd}, cbk);
           } catch (err) {
             return cbk([400, 'FailedToDecodeSwapRecovery', {err}]);
           }
@@ -172,8 +170,35 @@ module.exports = (args, cbk) => {
         description: `Submarine swap. Service fee: ${fee}`,
         expires_at: new Date(now() + msPerYear).toISOString(),
         is_including_private_channels: true,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         tokens: args.tokens - fee,
+      },
+      cbk);
+    }],
+
+    // Upgrade service object to a paid service if necessary
+    getService: [
+      'createInvoice',
+      'getNetwork',
+      'getQuote',
+      'service',
+      ({getNetwork, service}, cbk) =>
+    {
+      // Exit early when we're recovering an existing swap
+      if (!!args.recovery) {
+        return cbk();
+      }
+
+      // Exit early when unpaid service is requested
+      if (!!args.is_free) {
+        return cbk(null, {service});
+      }
+
+      return getPaidService({
+        lnd: args.lnd,
+        logger: args.logger,
+        network: getNetwork.network,
+        token: args.api_key,
       },
       cbk);
     }],
@@ -182,18 +207,27 @@ module.exports = (args, cbk) => {
     createSwap: [
       'createInvoice',
       'getQuote',
-      'service',
-      ({createInvoice, getQuote, service}, cbk) =>
+      'getService',
+      ({createInvoice, getQuote, getService}, cbk) =>
     {
       // Exit early when we're recovering an existing swap
       if (!!args.recovery) {
         return cbk();
       }
 
+      if (!!getService.token) {
+        args.logger.info({
+          amount_paid_for_api_key: bigFormat(getService.paid),
+          service_api_key: getService.token,
+        });
+      }
+
       return createSwapIn({
-        service,
         fee: getQuote.fee,
+        macaroon: getService.macaroon,
+        preimage: getService.preimage,
         request: createInvoice.request,
+        service: getService.service,
       },
       cbk);
     }],
@@ -254,11 +288,11 @@ module.exports = (args, cbk) => {
     }],
 
     // Create a regular address
-    chainAddress: ['getLnd', 'swap', ({getLnd, swap}, cbk) => {
+    chainAddress: ['swap', ({swap}, cbk) => {
       return createChainAddress({
         format: 'p2wpkh',
         is_unused: true,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
       },
       cbk);
     }],
@@ -320,10 +354,9 @@ module.exports = (args, cbk) => {
     // Find deposit
     findDeposit: [
       'createInvoice',
-      'getLnd',
       'getNetwork',
       'swap',
-      ({createInvoice, getLnd, getNetwork, swap}, cbk) =>
+      ({createInvoice, getNetwork, swap}, cbk) =>
     {
       if (!createInvoice || !!createInvoice.is_confirmed) {
         return cbk();
@@ -333,7 +366,7 @@ module.exports = (args, cbk) => {
         address: swap.address,
         after: swap.start_height,
         confirmations: [].length,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
         network: getNetwork.network,
         timeout: waitForDepositMs,
         tokens: swap.tokens,
@@ -342,10 +375,10 @@ module.exports = (args, cbk) => {
     }],
 
     // Get chain fee rate
-    getFeeRate: ['getLnd', 'swap', ({getLnd, swap}, cbk) => {
+    getFeeRate: ['swap', ({swap}, cbk) => {
       return getChainFeeRate({
         confirmation_target: swap.timeout,
-        lnd: getLnd.lnd,
+        lnd: args.lnd,
       },
       cbk);
     }],
@@ -387,10 +420,9 @@ module.exports = (args, cbk) => {
     broadcastRefund: [
       'findDepositInMempool',
       'getInfo',
-      'getLnd',
       'refund',
       'swap',
-      ({getInfo, getLnd, refund, swap}, cbk) =>
+      ({getInfo, refund, swap}, cbk) =>
     {
       if (!args.recovery || !refund) {
         return cbk();
@@ -407,7 +439,7 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      return broadcastTransaction({lnd: getLnd.lnd, transaction: refund}, cbk);
+      return broadcastTransaction({lnd: args.lnd, transaction: refund}, cbk);
     }],
 
     // Refund broadcast
@@ -432,11 +464,10 @@ module.exports = (args, cbk) => {
     waitForPayment: [
       'createInvoice',
       'getInfo',
-      'getLnd',
       'getNetwork',
       'recovery',
       'swap',
-      ({createInvoice, getInfo, getLnd, getNetwork, recovery, swap}, cbk) =>
+      ({createInvoice, getInfo, getNetwork, recovery, swap}, cbk) =>
     {
       if (!createInvoice || !swap || !!args.recovery) {
         return cbk();
@@ -464,10 +495,7 @@ module.exports = (args, cbk) => {
         });
       });
 
-      const sub = subscribeToInvoice({
-        id: createInvoice.id,
-        lnd: getLnd.lnd
-      });
+      const sub = subscribeToInvoice({id: createInvoice.id, lnd: args.lnd});
 
       const finished = (err, res) => {
         sub.removeAllListeners();

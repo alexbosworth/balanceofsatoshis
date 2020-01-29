@@ -6,9 +6,10 @@ const {returnResult} = require('asyncjs-util');
 const getMaximum = require('./get_maximum');
 const isRoutePayable = require('./is_route_payable');
 
-const accuracy = 1000;
+const accuracy = 10000;
 const {isArray} = Array;
 const from = 0;
+const nextAttemptDelayMs = 1000 * 2;
 const slowPaymentMs = 1000 * 30;
 const to = tokens => tokens - Math.round(Math.random() * 1000);
 
@@ -104,7 +105,10 @@ module.exports = ({cltv, hops, lnd, logger, max}, cbk) => {
               return cbk(err);
             }
 
-            return cbk(null, res.is_payable);
+            return setTimeout(() => {
+              return cbk(null, res.is_payable);
+            },
+            nextAttemptDelayMs);
           });
         },
         cbk);

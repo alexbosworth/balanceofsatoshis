@@ -92,19 +92,6 @@ const tests = [
     args: {
       fs: {
         getDirectoryFiles,
-        getFile: ({}, cbk) => cbk(null, JSON.stringify({})),
-        getFileStatus: (path, cbk) => {
-          return cbk(null, {isDirectory: () => true});
-        },
-      },
-    },
-    description: 'The saved node has to have JSON credentials',
-    error: [400, 'SavedNodeMissingCertData'],
-  },
-  {
-    args: {
-      fs: {
-        getDirectoryFiles,
         getFile: ({}, cbk) => cbk(null, JSON.stringify({cert: 'cert'})),
         getFileStatus: (path, cbk) => {
           return cbk(null, {isDirectory: () => true});

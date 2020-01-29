@@ -37,6 +37,7 @@ const {fastDelayMinutes} = require('./constants');
 const {feeRateDenominator} = require('./constants');
 const {fuzzBlocks} = require('./constants');
 const {getNetwork} = require('./../network');
+const getPaidService = require('./get_paid_service');
 const {maxCltvExpiration} = require('./constants');
 const {maxExecutionFeeTokens} = require('./constants');
 const {maxFeeMultiplier} = require('./constants');
@@ -62,14 +63,16 @@ const {min} = Math;
 const mtokPerTok = BigInt(1000);
 const {round} = Math;
 const sha256 = n => createHash('sha256').update(Buffer.from(n, 'hex'));
-const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
+const tokensAsBigUnit = tokens => ((tokens || 0) / 1e8).toFixed(8);
 
 /** Get additional inbound liquidity
 
   {
+    [api_key]: <API Key CBOR String>
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
     confs: <Confirmations to Wait for Deposit Number>
     [is_fast]: <Execute Swap Immediately Bool>
+    [is_free]: <Use Free Service Bool>
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
     [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
     lnd: <Authenticated LND gRPC API Object>
@@ -233,7 +236,12 @@ module.exports = (args, cbk) => {
     // Swap service
     service: ['network', ({network}, cbk) => {
       try {
-        return cbk(null, lightningLabsSwapService({network}).service);
+        const {service} = lightningLabsSwapService({
+          network,
+          is_free: args.is_free,
+        });
+
+        return cbk(null, service);
       } catch (err) {
         return cbk([400, 'FailedToFindSupportedSwapService', {err}]);
       }
@@ -327,14 +335,41 @@ module.exports = (args, cbk) => {
       return cbk(null, {deposit: getQuote.deposit, service_fee: allFees});
     }],
 
-    // Make sweep
-    initiateSwap: [
+    // Upgrade service object to a paid service if necessary
+    getService: [
       'checkQuote',
       'network',
       'recover',
       'recoverAddress',
       'service',
-      ({network, recover, recoverAddress, service}, cbk) =>
+      ({network, service}, cbk) =>
+    {
+      // Exit early when the swap is already initiated
+      if (!!args.recovery) {
+        return cbk();
+      }
+
+      // Exit early when unpaid service is requested
+      if (!!args.is_free) {
+        return cbk(null, {service});
+      }
+
+      return getPaidService({
+        network,
+        lnd: args.lnd,
+        logger: args.logger,
+        token: args.api_key,
+      },
+      cbk);
+    }],
+
+    // Make sweep
+    initiateSwap: [
+      'getService',
+      'network',
+      'recover',
+      'recoverAddress',
+      ({getService, network, recover, recoverAddress}, cbk) =>
     {
       // Exit early when the swap is already initiated
       if (!!args.recovery) {
@@ -348,14 +383,23 @@ module.exports = (args, cbk) => {
         });
       }
 
+      if (!!getService.token) {
+        args.logger.info({
+          amount_paid_for_api_key: tokensAsBigUnit(getService.paid),
+          service_api_key: getService.token,
+        });
+      }
+
       const swapDelayMin = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
 
       const fundAt = moment().add(swapDelayMin, 'minutes');
 
       return createSwapOut({
         network,
-        service,
         fund_at: fundAt.toISOString(),
+        macaroon: getService.macaroon,
+        preimage: getService.preimage,
+        service: getService.service,
         tokens: args.tokens,
       },
       cbk);
@@ -475,9 +519,12 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
+      const hasFeatures = !!decodeExecutionRequest.features.length;
+
       return executeProbe({
         cltv_delta: decodeExecutionRequest.cltv_delta + cltvBuffer,
         destination: decodeExecutionRequest.destination,
+        features: !!hasFeatures ? decodeExecutionRequest.features : undefined,
         ignore: (args.avoid || []).map(n => ({from_public_key: n})),
         lnd: args.lnd,
         logger: args.logger,
@@ -516,9 +563,12 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
+      const hasFeatures = !!decodeFundingRequest.features.length;
+
       return executeProbe({
         cltv_delta: decodeFundingRequest.cltv_delta + cltvBuffer,
         destination: decodeFundingRequest.destination,
+        features: !!hasFeatures ? decodeFundingRequest.features : undefined,
         ignore: (args.avoid || []).map(n => ({from_public_key: n})),
         lnd: args.lnd,
         logger: args.logger,

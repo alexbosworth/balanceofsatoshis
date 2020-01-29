@@ -21,7 +21,7 @@ const {parse} = JSON;
   @returns via cbk or Promise
   {
     [credentials]: {
-      cert: <Base64 or Hex Serialized LND TLS Cert>
+      [cert]: <Base64 or Hex Serialized LND TLS Cert>
       [encrypted_macaroon]: <Encrypted Macaroon String>
       [encrypted_to]: [<Encrypted to GPG Recipient String>]
       [macaroon]: <Base64 or Hex Serialized Macaroon String>
@@ -105,10 +105,6 @@ module.exports = ({fs, node}, cbk) => {
         'getMacaroon',
         ({getCert, getFile, getMacaroon}, cbk) =>
       {
-        if (!getCert) {
-          return cbk([400, 'SavedNodeMissingCertData']);
-        }
-
         if (!getMacaroon && !getFile.encrypted_macaroon) {
           return cbk([400, 'SavedNodeMissingMacaroonData']);
         }
@@ -124,7 +120,7 @@ module.exports = ({fs, node}, cbk) => {
         return cbk(null, {
           node,
           credentials: {
-            cert: getCert,
+            cert: getCert || undefined,
             encrypted_macaroon: getFile.encrypted_macaroon,
             encrypted_to: getFile.encrypted_to,
             macaroon: getMacaroon,
