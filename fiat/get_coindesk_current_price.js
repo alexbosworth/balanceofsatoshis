@@ -19,8 +19,8 @@ const remoteServiceTimeoutMs = 1000 * 30;
 
   @returns via cbk or Promise
   {
-    date: <Updated At ISO 8601 Date String>
     cents: <Cents Per Token Number>
+    date: <Updated At ISO 8601 Date String>
   }
 */
 module.exports = ({currency, date, fiat, request}, cbk) => {
@@ -70,7 +70,7 @@ module.exports = ({currency, date, fiat, request}, cbk) => {
           const cents = body.bpi[fiat].rate_float * centsPerDollar;
           const date = new Date(body.time.updatedISO).toISOString();
 
-          return cbk(null, {date, cents});
+          return cbk(null, {cents, date});
         });
       }],
     },

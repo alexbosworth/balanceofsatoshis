@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.13.0
+## Version 5.13.1
 
 - `chain-receive`: Add `api-key` and `no-auth` options for swap authentication
 - `increase-inbound-liquidity`: Add `--api-key` and `--no-auth` options

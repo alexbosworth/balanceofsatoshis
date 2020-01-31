@@ -465,7 +465,7 @@ module.exports = (args, cbk) => {
         (err, res) => {
           // Exit early when there is an error and use local route calculation
           if (!!err) {
-            return cbk();
+            return cbk(null, {});
           }
 
           return cbk(null, res.route);

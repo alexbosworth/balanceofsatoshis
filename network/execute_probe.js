@@ -186,7 +186,7 @@ module.exports = (args, cbk) => {
               return cbk(null, {towards, channel: hop.channel, fee: hop.fee});
             });
           },
-          (err, evaluating) => {
+          (err, path) => {
             if (!!err) {
               return args.logger.error(err);
             }
@@ -195,18 +195,20 @@ module.exports = (args, cbk) => {
 
             const {description} = describeConfidence({confidence});
 
+            const evaluating = path
+              .map((n, i) => {
+                const nextHop = path[i + 1];
+
+                if (!nextHop) {
+                  return;
+                }
+
+                return `${n.channel} ${n.towards}. Hop fee: ${n.fee}`;
+              })
+              .filter(n => !!n);
+
             return args.logger.info({
-              evaluating: evaluating
-                .map((n, i) => {
-                  const nextHop = evaluating[i + 1];
-
-                  if (!nextHop) {
-                    return;
-                  }
-
-                  return `${n.channel} ${n.towards}. Hop fee: ${n.fee}`;
-                })
-                .filter(n => !!n),
+              evaluating: !!evaluating.length ? evaluating : undefined,
               confidence: description || undefined,
               potential_fee: route.fee,
             });
