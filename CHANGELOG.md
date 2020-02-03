@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.14.0
+
+- `rebalance`: Add `--amount` to specify maximum rebalance amount
+
 ## Version 5.13.1
 
 - `chain-receive`: Add `api-key` and `no-auth` options for swap authentication

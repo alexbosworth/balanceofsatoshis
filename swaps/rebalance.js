@@ -47,6 +47,7 @@ const uniq = arr => Array.from(new Set(arr));
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
+    [max_rebalance]: <Maximum Amount to Rebalance Tokens Number>
     [node]: <Node Name String>
     [out_through]: <Pay Out Through Peer String>
   }
@@ -388,7 +389,7 @@ module.exports = (args, cbk) => {
 
         return probeDestination({
           destination: getPublicKey.public_key,
-          find_max: maxPaymentSize,
+          find_max: args.max_rebalance || maxPaymentSize,
           ignore: [{
             from_public_key: getPublicKey.public_key,
             to_public_key: getInbound.public_key,

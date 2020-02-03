@@ -777,6 +777,7 @@ prog
   // Rebalance between peers
   .command('rebalance', 'Rebalance funds between peers')
   .help('Change the liquidity profile of two peers')
+  .option('--amount <amount>', 'Maximum amount to rebalance', INT, 4294967)
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--avoid-high-inbound', 'Avoid rebalancing when inbound is high')
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
@@ -796,6 +797,7 @@ prog
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           max_fee: options.maxFee,
           max_fee_rate: options.maxFeeRate,
+          max_rebalance: options.amount,
           node: options.node || undefined,
           out_through: options.out || undefined,
         },
