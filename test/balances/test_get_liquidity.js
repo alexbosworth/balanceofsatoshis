@@ -1,70 +1,20 @@
 const {test} = require('tap');
 
+const {chanInfoResponse} = require('./../fixtures');
+const channels = require('./../fixtures').liquidityChannelsResponse;
+const {getInfoResponse} = require('./../fixtures');
 const {getLiquidity} = require('./../../balances');
+const {getNodeInfoResponse} = require('./../fixtures');
 
-const makeChannels = () => {
-  return [
-    {
-      active: true,
-      capacity: '1',
-      chan_id: '1',
-      channel_point: '00:1',
-      commit_fee: 1,
-      commit_weight: 1,
-      fee_per_kw: 1,
-      local_balance: 1,
-      local_chan_reserve_sat: 1,
-      num_updates: 1,
-      pending_htlcs: [],
-      private: false,
-      remote_balance: 1,
-      remote_chan_reserve_sat: 1,
-      remote_pubkey: 'b',
-      total_satoshis_received: 1,
-      total_satoshis_sent: 1,
-      unsettled_balance: 1,
+const makeLnd = () => {
+  return {
+    default: {
+      getChanInfo: ({}, cbk) => cbk(null, chanInfoResponse),
+      getInfo: ({}, cbk) => cbk(null, getInfoResponse),
+      getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
+      listChannels: ({}, cbk) => cbk(null, {channels}),
     },
-    {
-      active: true,
-      capacity: '1',
-      chan_id: '1',
-      channel_point: '00:1',
-      commit_fee: 1,
-      commit_weight: 1,
-      fee_per_kw: 1,
-      local_balance: 1,
-      local_chan_reserve_sat: 1,
-      num_updates: 1,
-      pending_htlcs: [],
-      private: false,
-      remote_balance: 1,
-      remote_chan_reserve_sat: 1,
-      remote_pubkey: 'b',
-      total_satoshis_received: 1,
-      total_satoshis_sent: 1,
-      unsettled_balance: 1,
-    },
-    {
-      active: true,
-      capacity: '1',
-      chan_id: '1',
-      channel_point: '00:1',
-      commit_fee: 1,
-      commit_weight: 1,
-      fee_per_kw: 1,
-      local_balance: 1,
-      local_chan_reserve_sat: 1,
-      num_updates: 1,
-      pending_htlcs: [],
-      private: false,
-      remote_balance: 1,
-      remote_chan_reserve_sat: 1,
-      remote_pubkey: 'b',
-      total_satoshis_received: 1,
-      total_satoshis_sent: 1,
-      unsettled_balance: 1,
-    },
-  ];
+  };
 };
 
 const tests = [
@@ -74,29 +24,38 @@ const tests = [
     error: [400, 'ExpectedLndToGetLiquidity'],
   },
   {
+    args: {is_outbound: true, lnd: makeLnd({}), max_fee_rate: 1},
+    description: 'Fee rate is not supported for outbound liquidity',
+    error: [400, 'MaxLiquidityFeeRateNotSupportedForOutbound'],
+  },
+  {
+    args: {lnd: makeLnd({}), min_node_score: 1},
+    description: 'A request method is required when node score specified',
+    error: [400, 'ExpectedRequestFunctionToFilterByNodeScore'],
+  },
+  {
     args: {
-      is_top: true,
-      lnd: {
-        default: {
-          listChannels: ({}, cbk) => cbk(null, {channels: makeChannels()}),
-        },
-      },
+      lnd: makeLnd({}),
+      min_node_score: 1,
+      request: ({}, cbk) => cbk('err'),
     },
+    description: 'Errors from request method are passed back',
+    error: [503, 'UnexpectedErrorGettingNodeScores'],
+  },
+  {
+    args: {is_top: true, lnd: makeLnd({})},
     description: 'Liquidity is returned',
     expected: {balance: 1},
   },
   {
-    args: {
-      is_outbound: true,
-      lnd: {
-        default: {
-          listChannels: ({}, cbk) => cbk(null, {channels: makeChannels()}),
-        },
-      },
-      with: 'b',
-    },
-    description: 'Liquidity is returned',
+    args: {is_outbound: true, lnd: makeLnd({}), with: 'b'},
+    description: 'Liquidity is returned for outbound request',
     expected: {balance: 3},
+  },
+  {
+    args: {lnd: makeLnd({}), max_fee_rate: 1},
+    description: 'Liquidity is returned with max fee rate',
+    expected: {balance: 0},
   },
 ];
 

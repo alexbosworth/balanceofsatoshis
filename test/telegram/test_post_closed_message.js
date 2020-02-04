@@ -1,5 +1,6 @@
 const {test} = require('tap');
 
+const {chanInfoResponse} = require('./../fixtures');
 const {listChannelsResponse} = require('./../fixtures');
 const {getNodeInfoResponse} = require('./../fixtures');
 const {pendingChannelsResponse} = require('./../fixtures');
@@ -19,6 +20,7 @@ const makeArgs = (overrides => {
     key: 'key',
     lnd: {
       default: {
+        getChanInfo: ({}, cbk) => cbk(null, chanInfoResponse),
         getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
         listChannels: ({}, cbk) => cbk(null, listChannelsResponse),
         pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),

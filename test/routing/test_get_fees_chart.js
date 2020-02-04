@@ -1,5 +1,6 @@
 const {test} = require('tap');
 
+const {chanInfoResponse} = require('./../fixtures');
 const {getFeesChart} = require('./../../routing');
 const {getNodeInfoResponse} = require('./../fixtures');
 
@@ -9,6 +10,7 @@ const lnd = {
       forwarding_events: [],
       last_offset_index: '0',
     }),
+    getChanInfo: ({}, cbk) => cbk(null, chanInfoResponse),
     getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
     listChannels: ({}, cbk) => cbk(null, {channels: []}),
   },

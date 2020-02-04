@@ -1,5 +1,6 @@
 const {test} = require('tap');
 
+const {chanInfoResponse} = require('./../fixtures');
 const {listChannelsResponse} = require('./../fixtures');
 const {getNodeInfoResponse} = require('./../fixtures');
 const {getPeerLiquidity} = require('./../../balances');
@@ -20,6 +21,7 @@ const tests = [
     args: {
       lnd: {
         default: {
+          getChanInfo: ({}, cbk) => cbk(null, chanInfoResponse),
           getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
           listChannels: ({}, cbk) => cbk(null, listChannelsResponse),
           pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
@@ -34,6 +36,7 @@ const tests = [
     args: {
       lnd: {
         default: {
+          getChanInfo: ({}, cbk) => cbk(null, chanInfoResponse),
           getNodeInfo: ({}, cbk) => cbk('err'),
           listChannels: ({}, cbk) => cbk(null, listChannelsResponse),
           pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),

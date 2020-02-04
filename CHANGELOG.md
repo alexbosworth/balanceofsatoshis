@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.15.0
+
+- `inbound-liquidity`: Add `--max-fee-rate` to specify the max inbound fee rate
+- `inbound-liquidity`: Add `--min-score` to specify the minimum node score
+
 ## Version 5.14.0
 
 - `rebalance`: Add `--amount` to specify maximum rebalance amount

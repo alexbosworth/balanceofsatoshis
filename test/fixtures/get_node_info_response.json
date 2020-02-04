@@ -1,4 +1,29 @@
 {
+  "channels": [{
+    "capacity": "1",
+    "chan_point": "1:1",
+    "channel_id": "1",
+    "node1_policy": {
+      "disabled": false,
+      "fee_base_msat": "1",
+      "fee_rate_milli_msat": "1",
+      "last_update": 1,
+      "max_htlc_msat": "1",
+      "min_htlc": "1",
+      "time_lock_delta": 1
+    },
+    "node1_pub": "000000000000000000000000000000000000000000000000000000000000000000",
+    "node2_policy": {
+      "disabled": false,
+      "fee_base_msat": "1",
+      "fee_rate_milli_msat": "1",
+      "last_update": 1,
+      "max_htlc_msat": "1",
+      "min_htlc": "1",
+      "time_lock_delta": 1
+    },
+    "node2_pub": "010000000000000000000000000000000000000000000000000000000000000000"
+  }],
   "node": {
     "addresses": [{"addr": "addr", "network": "network"}],
     "alias": "alias",

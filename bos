@@ -459,6 +459,8 @@ prog
   .command('inbound-liquidity', 'Get inbound liquidity size')
   .option('--above <tokens>', 'Return amount above watermark', INT)
   .option('--below <tokens>', 'Return amount above watermark', INT)
+  .option('--max-fee-rate <fee_rate>', 'Maximum fee rate to consider', INT)
+  .option('--min-score <min_score>', 'Minimum fee rate to consider', INT)
   .option('--node <node_name>', 'Node to get inbound liquidity')
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
   .option('--with', 'Liquidity with a specific node')
@@ -466,10 +468,13 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return getLiquidity({
+          request,
           above: options.above || undefined,
           below: options.below || undefined,
           is_top: options.top || undefined,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          max_fee_rate: options.maxFeeRate || undefined,
+          min_node_score: options.minScore || undefined,
           with: options.with || undefined,
         },
         returnNumber({logger, reject, resolve, number: 'balance'}));
