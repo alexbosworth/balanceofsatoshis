@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.16.0
+
+- `swap-api-key`: Add method to purchase or view details about a swap api token
+
 ## Version 5.15.0
 
 - `inbound-liquidity`: Add `--max-fee-rate` to specify the max inbound fee rate

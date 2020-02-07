@@ -1,11 +1,13 @@
 const asyncAuto = require('async/auto');
-const {decodeFirst} = require('cbor');
 const {encode} = require('cbor');
 const {getSwapMacaroon} = require('goldengate');
 const {lightningLabsSwapService} = require('goldengate');
 const {paidMacaroon} = require('goldengate');
 const {returnResult} = require('asyncjs-util');
+const {swapUserId} = require('goldengate');
 
+const decodeSwapApiKey = require('./decode_swap_api_key');
+const {getNetwork} = require('./../network');
 const {probeDestination} = require('./../network');
 
 const encodeCbor = json => encode(json).toString('hex');
@@ -16,12 +18,12 @@ const maxRoutingFee = 100;
   {
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
-    network: <Network Name String>
     [token]: <Prepaid Service Token CBOR Encoded String>
   }
 
   @returns via cbk or Promise
   {
+    id: <Authenticated User Id string>
     macaroon: <Authenticated Service Macaroon Base64 String>
     paid: <Paid Tokens Number>
     preimage: <Authenticated Preimage Hex String>
@@ -29,7 +31,7 @@ const maxRoutingFee = 100;
     token: <Authentication Token Hex String>
   }
 */
-module.exports = ({lnd, logger, network, token}, cbk) => {
+module.exports = ({lnd, logger, token}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -42,10 +44,6 @@ module.exports = ({lnd, logger, network, token}, cbk) => {
           return cbk([400, 'ExpectedLoggerToGetPaidService']);
         }
 
-        if (!network) {
-          return cbk([400, 'ExpectedNetworkToGetPaidService']);
-        }
-
         return cbk();
       },
 
@@ -56,36 +54,27 @@ module.exports = ({lnd, logger, network, token}, cbk) => {
           return cbk();
         }
 
-        return decodeFirst(token, (err, decoded) => {
-          if (!!err) {
-            return cbk([400, 'FailedToDecodeServiceToken', {err}]);
-          }
-
-          if (!decoded) {
-            return cbk([400, 'ExpectedEncodedServiceTokenData']);
-          }
-
-          if (!Buffer.isBuffer(decoded.macaroon)) {
-            return cbk([400, 'ExpectedEncodedServiceTokenMacaroon']);
-          }
-
-          if (!Buffer.isBuffer(decoded.preimage)) {
-            return cbk([400, 'ExpectedEncodedServiceTokenPreimage']);
-          }
-
-          return cbk(null, {
-            macaroon: decoded.macaroon.toString('base64'),
-            preimage: decoded.preimage.toString('hex'),
-          });
-        });
+        return decodeSwapApiKey({key: token}, cbk);
       }],
 
+      // Get network
+      getNetwork: ['validate', ({}, cbk) => getNetwork({lnd}, cbk)],
+
       // Get an unpaid swap macaroon
-      getUnpaidMacaroon: ['decodeToken', ({decodeToken}, cbk) => {
+      getUnpaidMacaroon: [
+        'decodeToken',
+        'getNetwork',
+        ({decodeToken, getNetwork}, cbk) =>
+      {
         // Exit early when there is already a service token macaroon
         if (!!decodeToken) {
-          return cbk(null, {macaroon: decodeToken.macaroon});
+          return cbk(null, {
+            id: swapUserId({macaroon: decodeToken.macaroon}).id,
+            macaroon: decodeToken.macaroon,
+          });
         }
+
+        const {network} = getNetwork;
 
         try {
           lightningLabsSwapService({network});
@@ -122,11 +111,14 @@ module.exports = ({lnd, logger, network, token}, cbk) => {
 
       // Get the paid service object
       service: [
+        'getNetwork',
         'getUnpaidMacaroon',
         'payForMacaroon',
-        ({getUnpaidMacaroon, payForMacaroon}, cbk) =>
+        ({getNetwork, getUnpaidMacaroon, payForMacaroon}, cbk) =>
       {
+        const {id} = getUnpaidMacaroon;
         const {macaroon} = getUnpaidMacaroon;
+        const {network} = getNetwork;
         const {paid} = payForMacaroon;
         const {preimage} = payForMacaroon;
 
@@ -143,7 +135,7 @@ module.exports = ({lnd, logger, network, token}, cbk) => {
           preimage: Buffer.from(preimage, 'hex'),
         });
 
-        return cbk(null, {macaroon, paid, preimage, service, token});
+        return cbk(null, {id, macaroon, paid, preimage, service, token});
       }],
     },
     returnResult({reject, resolve, of: 'service'}, cbk));

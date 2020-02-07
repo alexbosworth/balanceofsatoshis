@@ -53,6 +53,7 @@ const {sendGift} = require('./network');
 const {setAutopilot} = require('./network');
 const {splitUtxos} = require('./chain');
 const {startTelegramBot} = require('./telegram');
+const {swapApiKey} = require('./swaps');
 const {swapIn} = require('./swaps');
 const {swapOut} = require('./swaps');
 const {swapTypes} = require('./swaps');
@@ -841,6 +842,32 @@ prog
         style: !!options.styled ? 'styled' : undefined,
       },
       returnOutput({logger, reject, resolve}));
+    });
+  })
+
+  // Get a swap API key or inspect an existing one
+  .command('swap-api-key', 'Purchase a swap API key or inspect a swap API key')
+  .option('--api-key <api_key>', 'Hex encoded full swap API key')
+  .option('--purchase', 'Purchase a new swap API key')
+  .option('--macaroon <macaroon>', 'Hex encoded macaroon of swap API key')
+  .option('--node <node_name>', 'Node to use to pay for API key')
+  .option('--preimage <preimage>', 'Hex encoded preimage of swap API key')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return swapApiKey({
+          logger,
+          api_key: options.apiKey,
+          is_purchase: options.purchase,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          macaroon: options.macaroon,
+          node: options.node,
+          preimage: options.preimage,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 

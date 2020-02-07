@@ -177,13 +177,7 @@ module.exports = (args, cbk) => {
     }],
 
     // Upgrade service object to a paid service if necessary
-    getService: [
-      'createInvoice',
-      'getNetwork',
-      'getQuote',
-      'service',
-      ({getNetwork, service}, cbk) =>
-    {
+    getService: ['createInvoice', 'getQuote', 'service', ({service}, cbk) => {
       // Exit early when we're recovering an existing swap
       if (!!args.recovery) {
         return cbk();
@@ -197,7 +191,6 @@ module.exports = (args, cbk) => {
       return getPaidService({
         lnd: args.lnd,
         logger: args.logger,
-        network: getNetwork.network,
         token: args.api_key,
       },
       cbk);

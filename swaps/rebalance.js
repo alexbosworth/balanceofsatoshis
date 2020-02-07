@@ -57,6 +57,11 @@ const uniq = arr => Array.from(new Set(arr));
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
+      // Starting tokens to rebalance
+      tokens: cbk => {
+        return cbk(null, Math.round((Math.random() * 1e5) + 1e5));
+      },
+
       // Check arguments
       validate: cbk => {
         if (!args.logger) {
@@ -247,7 +252,8 @@ module.exports = (args, cbk) => {
         'findOutKey',
         'getInitialLiquidity',
         'lnd',
-        ({findOutKey, getInitialLiquidity, lnd}, cbk) =>
+        'tokens',
+        ({findOutKey, getInitialLiquidity, lnd, tokens}, cbk) =>
       {
         const ignore = args.avoid || [];
 
@@ -256,6 +262,7 @@ module.exports = (args, cbk) => {
           .filter(n => ignore.indexOf(n.partner_public_key) === notFoundIndex);
 
         const channels = active
+          .filter(n => n.local_balance - n.local_reserve > tokens)
           .map(channel => {
             const remote = active
               .filter(n => n.partner_public_key === channel.partner_public_key)
@@ -374,7 +381,8 @@ module.exports = (args, cbk) => {
         'getOutbound',
         'getPublicKey',
         'ignore',
-        ({getInbound, getOutbound, getPublicKey, ignore}, cbk) =>
+        'tokens',
+        ({getInbound, getOutbound, getPublicKey, ignore, tokens}, cbk) =>
       {
         args.logger.info({
           outgoing_peer: {
@@ -388,6 +396,7 @@ module.exports = (args, cbk) => {
         });
 
         return probeDestination({
+          tokens,
           destination: getPublicKey.public_key,
           find_max: args.max_rebalance || maxPaymentSize,
           ignore: [{
@@ -400,7 +409,6 @@ module.exports = (args, cbk) => {
           max_fee: Math.floor(5e6 * 0.0025),
           node: args.node,
           out_through: getOutbound.public_key,
-          tokens: Math.round((Math.random() * 1e5) + 1e5),
         },
         cbk);
       }],
@@ -443,7 +451,7 @@ module.exports = (args, cbk) => {
       invoice: ['channels', 'findRoute', 'lnd', ({findRoute, lnd}, cbk) => {
         return createInvoice({
           lnd,
-          cltv_delta: cltvDelta,
+          cltv_delta: 40,
           description: 'Rebalance',
           tokens: min(maxRebalanceTokens, findRoute.route_maximum),
         },

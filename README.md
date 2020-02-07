@@ -135,6 +135,10 @@ bos unlock "path_to_password_file"
 bos utxos
 ```
 
+## HowTos:
+
+- The `accounting` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/bc71e6bf-f2aa-4bae-a3e8-b12e7be2284c)
+
 ## Nodes
 
 By default `bos` expects `tls.cert` in the root of the default `lnd` directory and

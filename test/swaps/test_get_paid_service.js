@@ -1,16 +1,21 @@
 const {encode} = require('cbor');
 const {test} = require('tap');
 
+const {getInfoResponse} = require('./../fixtures');
 const getPaidService = require('./../../swaps/get_paid_service');
 
+const macaroon = 'AgEEbHNhdAJCAADXNkGQ+faRDM3Ey4M6YGALyTwqnLqDTNVgCBckgnpSZ4vd9z8+Ndr1+zLD6i/AmJIbDVuEAvBwgZBezq2hcys5AAIPc2VydmljZXM9bG9vcDowAAISbG9vcF9jYXBhYmlsaXRpZXM9AAAGIDPTqKe/hckryPR6hINTa7Dg8/bbxqVqq02/eBMpmt7Z';
 const makeToken = (m, p) => encode({macaroon: m, preimage: p}).toString('hex');
 
 const makeArgs = override => {
   const args = {
-    lnd: {},
+    lnd: {
+      default: {
+        getInfo: ({}, cbk) => cbk(null, getInfoResponse),
+      },
+    },
     logger: {},
-    network: 'btc',
-    token: makeToken(Buffer.alloc(1, 0), Buffer.alloc(1, 1)),
+    token: makeToken(Buffer.from(macaroon, 'base64'), Buffer.alloc(1, 1)),
   };
 
   Object.keys(override).forEach(key => args[key] = override[key]);
@@ -30,23 +35,13 @@ const tests = [
     error: [400, 'ExpectedLoggerToGetPaidService'],
   },
   {
-    args: makeArgs({network: undefined}),
-    description: 'Network name is required',
-    error: [400, 'ExpectedNetworkToGetPaidService'],
-  },
-  {
-    args: makeArgs({network: 'network'}),
-    description: 'Known network name is required',
-    error: [400, 'FailedToFindSupportedSwapService'],
-  },
-  {
     args: makeArgs({}),
     description: 'A paid service object is returned',
     expected: {
-      macaroon: Buffer.alloc(1, 0).toString('base64'),
+      macaroon,
       preimage: Buffer.alloc(1, 1).toString('hex'),
       service: {},
-      token: makeToken(Buffer.alloc(1, 0), Buffer.alloc(1, 1)),
+      token: makeToken(Buffer.from(macaroon, 'base64'), Buffer.alloc(1, 1)),
     },
   },
 ];

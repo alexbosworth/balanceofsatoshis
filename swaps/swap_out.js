@@ -387,6 +387,7 @@ module.exports = (args, cbk) => {
         args.logger.info({
           amount_paid_for_api_key: tokensAsBigUnit(getService.paid),
           service_api_key: getService.token,
+          service_user_id: getService.id,
         });
       }
 
