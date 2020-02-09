@@ -1,5 +1,5 @@
 const asyncAuto = require('async/auto');
-const {bolden} = require('html2unicode');
+const {bolden} = require('@alexbosworth/html2unicode');
 const {decodeChanId} = require('bolt07');
 const {getAutopilot} = require('ln-service');
 const {getBackups} = require('ln-service');
@@ -10,7 +10,7 @@ const {getInvoices} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
 const {getPayments} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
-const {italicize} = require('html2unicode');
+const {italicize} = require('@alexbosworth/html2unicode');
 const moment = require('moment');
 const {parsePaymentRequest} = require('ln-service');
 const request = require('request');
