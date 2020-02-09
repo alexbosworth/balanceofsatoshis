@@ -477,7 +477,7 @@ module.exports = (args, cbk) => {
             return cbk(null, {});
           }
 
-          return cbk(null, res.route);
+          return cbk(null, {route: res.route});
         });
       }],
 

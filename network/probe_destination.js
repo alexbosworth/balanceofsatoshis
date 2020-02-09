@@ -94,8 +94,29 @@ module.exports = (args, cbk) => {
       return cbk(null, args.tokens || to.tokens || defaultTokens);
     }],
 
+    // Lookup node destination details
+    getDestinationNode: ['to', ({to}, cbk) => {
+      return getNode({
+        lnd: args.lnd,
+        public_key: to.destination,
+      },
+      (err, res) => {
+        // Suppress errors when the node is not found
+        if (!!err) {
+          return cbk(null, {});
+        }
+
+        return cbk(null, res);
+      });
+    }],
+
     // Get the features of the node to probe
-    getFeatures: ['getInfo', 'to', ({getInfo, to}, cbk) => {
+    getFeatures: [
+      'getDestinationNode',
+      'getInfo',
+      'to',
+      ({getDestinationNode, getInfo, to}, cbk) =>
+    {
       if (!getInfo.features.length) {
         return cbk(null, {});
       }
@@ -104,7 +125,7 @@ module.exports = (args, cbk) => {
         return cbk(null, {features: to.features});
       }
 
-      return getNode({lnd: args.lnd, public_key: to.destination}, cbk);
+      return cbk(null, getDestinationNode);
     }],
 
     // Get inbound path if an inbound restriction is specified
@@ -163,77 +184,26 @@ module.exports = (args, cbk) => {
       return cbk(null, channel.id);
     }],
 
-    // Check path to destination
-    checkPathToDestination: [
-      'getFeatures',
+    // Log sending towards destination
+    checkPath: [
+      'getDestinationNode',
       'getInfo',
-      'outgoingChannelId',
       'to',
-      'tokens',
-      ({getFeatures, getInfo, outgoingChannelId, to, tokens}, cbk) =>
+      ({getDestinationNode, getInfo, to}, cbk) =>
     {
-      if (!getInfo.features.length) {
-        return cbk();
+      const sendingTo = getDestinationNode.alias || to.destination;
+
+      if (to.destination === getInfo.public_key) {
+        args.logger.info({circular_rebalance_for: sendingTo});
+      } else {
+        args.logger.info({checking_for_path_to: sendingTo});
       }
 
-      return getRouteToDestination({
-        tokens,
-        destination: to.destination,
-        features: getFeatures.features,
-        ignore: args.ignore,
-        incoming_peer: args.in_through,
-        lnd: args.lnd,
-        outgoing_channel: outgoingChannelId,
-        routes: to.routes,
-      },
-      (err, res) => {
-        if (!!err) {
-          return cbk(err);
-        }
-
-        if (!res.route) {
-          return cbk([503, 'FailedToFindRouteToDestination']);
-        }
-
-        return cbk();
-      });
-    }],
-
-    // Check that there is a potential path
-    checkPath: [
-      'getInboundPath',
-      'outgoingChannelId',
-      'to',
-      'tokens',
-      ({getInboundPath, outgoingChannelId, to, tokens}, cbk) =>
-    {
-      return getRoutes({
-        tokens,
-        cltv_delta: to.cltv_delta,
-        destination: to.destination,
-        ignore: args.ignore,
-        is_adjusted_for_past_failures: true,
-        is_strict_hints: !!getInboundPath,
-        lnd: args.lnd,
-        outgoing_channel: outgoingChannelId,
-        routes: getInboundPath || to.routes,
-      },
-      (err, res) => {
-        if (!!err) {
-          return cbk(err);
-        }
-
-        if (!res.routes.length) {
-          return cbk([404, 'FailedToFindPathToDestination']);
-        }
-
-        return cbk();
-      });
+      return cbk();
     }],
 
     // Probe towards destination
     probe: [
-      'checkPathToDestination',
       'getFeatures',
       'getInboundPath',
       'getInfo',

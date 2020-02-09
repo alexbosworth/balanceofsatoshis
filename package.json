@@ -10,6 +10,7 @@
     "url": "https://github.com/alexbosworth/balanceofsatoshis/issues"
   },
   "dependencies": {
+    "@alexbosworth/html2unicode": "1.1.4",
     "asciichart": "1.5.9",
     "async": "3.1.1",
     "asyncjs-util": "1.1.3",
@@ -23,7 +24,6 @@
     "crypto-js": "3.1.9-1",
     "csv-parse": "4.8.5",
     "goldengate": "5.1.0",
-    "html2unicode": "1.1.3",
     "ini": "1.3.5",
     "inquirer": "7.0.4",
     "ln-accounting": "3.1.8",
@@ -32,6 +32,7 @@
     "qrcode-terminal": "0.12.0",
     "request": "2.88.0",
     "sanitize-filename": "1.6.3",
+    "saxophone": "0.6.1",
     "stats-lite": "2.2.0",
     "table": "5.4.6",
     "telegraf": "3.36.0",
@@ -62,5 +63,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/telegram/*.js"
   },
-  "version": "5.16.0"
+  "version": "5.16.1"
 }

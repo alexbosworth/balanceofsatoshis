@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.16.1
+
+- Fix issue with saxophone out of date warning
+
 ## Version 5.16.0
 
 - `swap-api-key`: Add method to purchase or view details about a swap api token
