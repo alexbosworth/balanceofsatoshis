@@ -1,4 +1,5 @@
 const {homedir} = require('os');
+const {join} = require('path');
 const {platform} = require('os');
 const {publicEncrypt} = require('crypto');
 const {readFile} = require('fs');
@@ -15,9 +16,12 @@ const getMacaroon = require('./get_macaroon');
 const {getSavedCredentials} = require('./../nodes');
 const getSocket = require('./get_socket');
 
+const config = 'config.json';
 const defaultNodeName = process.env.BOS_DEFAULT_SAVED_NODE;
 const fs = {getFile: readFile};
+const home = '.bos';
 const os = {homedir, platform};
+const {parse} = JSON;
 const socket = 'localhost:10009';
 
 /** LND credentials
@@ -51,7 +55,28 @@ module.exports = ({expiry, logger, key, node}, cbk) => {
           return cbk(null, defaultNodeName);
         }
 
-        return cbk();
+        const path = join(...[homedir(), home, config]);
+
+        return fs.getFile(path, (err, res) => {
+          // Exit early on errors, there is no config found
+          if (!!err || !res) {
+            return cbk();
+          }
+
+          try {
+            parse(res.toString());
+          } catch (err) {
+            return cbk([400, 'ConfigurationFileIsInvalidFormat', {err}]);
+          }
+
+          const config = parse(res.toString());
+
+          if (!!config.default_saved_node) {
+            return cbk(null, config.default_saved_node);
+          }
+
+          return cbk();
+        });
       },
 
       // Get the default cert

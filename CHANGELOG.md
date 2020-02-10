@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.17.0
+
+- Add config.json support to specify default saved node
+
 ## Version 5.16.2
 
 - Fix issue with saxophone out of date warning
