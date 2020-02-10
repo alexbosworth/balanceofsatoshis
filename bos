@@ -668,6 +668,7 @@ prog
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT, 1337)
+  .option('--message <message>', 'Attach text message to payment')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use to pay payment request')
   .option('--out <public_key>', 'Make first hop through specific peer')
@@ -681,6 +682,7 @@ prog
           is_real_payment: true,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           max_fee: options.maxFee,
+          message: options.message,
           node: options.node,
           out_through: options.out,
           request: args.request,

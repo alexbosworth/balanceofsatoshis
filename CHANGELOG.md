@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.18.0
+
+- `pay`: Add `--message` to send a message along with the payment
+
 ## Version 5.17.0
 
 - Add config.json support to specify default saved node

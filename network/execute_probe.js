@@ -28,6 +28,10 @@ const pathTimeoutMs = 1000 * 60;
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_timeout_height]: <Maximum Timeout Height Number>
+    [messages]: [{
+      type: <Message To Final Destination Type Number String>
+      value: <Message To Final Destination Raw Value Hex Encoded String>
+    }]
     [outgoing_channel]: <Outgoing Channel Id String>
     [routes]: [[{
       [base_fee_mtokens]: <Base Fee Millitokens String>
@@ -113,6 +117,7 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           max_fee: !args.is_strict_max_fee ? undefined : args.max_fee,
           max_timeout_height: args.max_timeout_height,
+          messages: args.messages,
           outgoing_channel: args.outgoing_channel,
           path_timeout_ms: pathTimeoutMs,
           routes: args.routes,

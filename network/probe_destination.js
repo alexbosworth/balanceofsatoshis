@@ -20,6 +20,7 @@ const defaultMaxFee = 1337;
 const defaultTokens = 10;
 const {floor} = Math;
 const {isArray} = Array;
+const messageType = '34349334';
 const {now} = Date;
 const reserveRatio = 0.01;
 
@@ -37,6 +38,7 @@ const reserveRatio = 0.01;
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
+    [message]: <Message String>
     [out_through]: <Out through peer with Public Key Hex String>
     [request]: <Payment Request String>
     [tokens]: <Tokens Number>
@@ -202,18 +204,45 @@ module.exports = (args, cbk) => {
       return cbk();
     }],
 
+    // Determine messages to attach
+    messages: ['getFeatures', 'getInfo', ({getFeatures, getInfo}, cbk) => {
+      // Exit early when there are no messages
+      if (!args.message) {
+        return cbk();
+      }
+
+      if (!getInfo.features && !args.message) {
+        return cbk([400, 'SendingNodeDoesNotSupportSendingMessages']);
+      }
+
+      return cbk(null, [{
+        type: messageType,
+        value: Buffer.from(args.message).toString('hex'),
+      }]);
+    }],
+
     // Probe towards destination
     probe: [
       'getFeatures',
       'getInboundPath',
       'getInfo',
+      'messages',
       'outgoingChannelId',
       'to',
-      ({getInboundPath, getFeatures, getInfo, outgoingChannelId, to}, cbk) =>
+      ({
+        getInboundPath,
+        getFeatures,
+        getInfo,
+        messages,
+        outgoingChannelId,
+        to,
+      },
+      cbk) =>
     {
       const inboundPath = !getInfo.features.length ? getInboundPath : null;
 
       return executeProbe({
+        messages,
         cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
         destination: to.destination,
         features: getFeatures.features,
