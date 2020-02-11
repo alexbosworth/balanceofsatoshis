@@ -417,6 +417,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                   description: invoice.description,
                   id: invoice.id,
                   is_confirmed: invoice.is_confirmed,
+                  payments: invoice.payments,
                   received: invoice.received,
                 },
                 key: apiKey,

@@ -1,5 +1,13 @@
 # Versions
 
+## Version 5.19.0
+
+- `peers`: add `--idle-days` to show only peers that have been idle for n days
+- `peers`: add `--last-received` to show the last final hop payments from peer
+- `peers`: add `--omit` to omit peers from the list
+- `send`: add method to unilaterally send to a destionation accepting such sends
+- `telegram`: show messages received with received payments
+
 ## Version 5.18.0
 
 - `pay`: Add `--message` to send a message along with the payment

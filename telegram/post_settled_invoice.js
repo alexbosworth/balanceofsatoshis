@@ -6,6 +6,8 @@ const {subscribeToPastPayment} = require('ln-service');
 const sendMessage = require('./send_message');
 
 const earnEmoji = '💰';
+const fromKeyType = '34349339';
+const messageType = '34349334';
 const rebalanceEmoji = '☯️';
 
 /** Post settled invoices
@@ -21,6 +23,23 @@ const rebalanceEmoji = '☯️';
     }
     key: <Telegram API Key String>
     lnd: <Authenticated LND gRPC API Object>
+    payments: [{
+      [confirmed_at]: <Payment Settled At ISO 8601 Date String>
+      created_at: <Payment Held Since ISO 860 Date String>
+      created_height: <Payment Held Since Block Height Number>
+      in_channel: <Incoming Payment Through Channel Id String>
+      is_canceled: <Payment is Canceled Bool>
+      is_confirmed: <Payment is Confirmed Bool>
+      is_held: <Payment is Held Bool>
+      messages: [{
+        type: <Message Type Number String>
+        value: <Raw Value Hex String>
+      }]
+      mtokens: <Incoming Payment Millitokens String>
+      [pending_index]: <Pending Payment Channel HTLC Index Number>
+      tokens: <Payment Tokens Number>
+      [total_mtokens]: <Total Payment Millitokens String>
+    }]
     request: <Request Function>
   }
 
@@ -73,7 +92,7 @@ module.exports = ({from, id, invoice, key, lnd, request}, cbk) => {
         }
       }],
 
-      // Deatils for message
+      // Details for message
       details: ['getPayment', ({getPayment}, cbk) => {
         // Exit early when the invoice has yet to be confirmed
         if (!invoice.is_confirmed) {
@@ -81,10 +100,26 @@ module.exports = ({from, id, invoice, key, lnd, request}, cbk) => {
         }
 
         const {description} = invoice;
+        const {payments} = invoice;
         const {received} = invoice;
 
+        const [payment] = payments;
+
+        const messages = !!payment ? payment.messages : [];
+
+        const [from] = messages.filter(n => n.type === fromKeyType);
+        const [message] = messages.filter(n => n.type === messageType);
+
         if (!getPayment) {
-          return cbk(null, `Received ${received} for “${description}”`);
+          const msg = !message ? '' : Buffer.from(message.value, 'hex');
+          const quotedDescription = !description ? '' : `for “${description}”`;
+
+          const receiveLine = `Received ${received} ${quotedDescription}`;
+          const sender = !msg ? '' : `\nSender message: “${msg.toString()}”`;
+
+          const replyTo = !from ? '' : `\nReply-to: ${from.value}`;
+
+          return cbk(null, `${receiveLine}${sender}${replyTo}`);
         }
 
         const sub = subscribeToPastPayment({lnd, id: invoice.id});

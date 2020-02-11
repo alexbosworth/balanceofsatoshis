@@ -21,13 +21,13 @@
     "caporal": "1.3.0",
     "cbor": "5.0.1",
     "cert-info": "1.5.1",
-    "crypto-js": "3.1.9-1",
+    "crypto-js": "3.2.0",
     "csv-parse": "4.8.5",
     "goldengate": "5.1.0",
     "ini": "1.3.5",
     "inquirer": "7.0.4",
     "ln-accounting": "3.1.8",
-    "ln-service": "47.14.4",
+    "ln-service": "47.14.5",
     "moment": "2.24.0",
     "qrcode-terminal": "0.12.0",
     "request": "2.88.0",
@@ -63,5 +63,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/telegram/*.js"
   },
-  "version": "5.18.0"
+  "version": "5.19.0"
 }

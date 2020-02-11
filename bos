@@ -698,9 +698,12 @@ prog
   .command('peers', 'Get a list of channel-connected peers')
   .option('--active', 'Only active peer channels')
   .option('--fee-days <past_days>', 'Include fees earned over n days', INT)
+  .option('--idle-days <days>', 'No receives or routes for n days', INT)
   .option('--inbound-below <amount>', 'Inbound liquidity below amount')
+  .option('--last-received', 'Show latest date of directly received invoice')
   .option('--node <node_name>', 'Node to get peers for')
   .option('--offline', 'Only offline peer channels')
+  .option('--omit <key>', 'Omit peer with public key', REPEATABLE)
   .option('--outbound-below <amount>', 'Outbound liquidity below amount', INT)
   .option('--no-color', 'Mute all colors')
   .option('--private', 'Only private channels')
@@ -711,13 +714,16 @@ prog
       try {
         return getPeers({
           earnings_days: options.feeDays,
+          idle_days: options.idleDays,
           inbound_liquidity_below: options.inboundBelow,
           is_active: !!options.active,
           is_offline: !!options.offline,
           is_private: !!options.private,
           is_public: !!options.public,
+          is_showing_last_received: !!options.lastReceived,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           node: options.node,
+          omit: flatten([options.omit].filter(n => !!n)),
           outbound_liquidity_below: options.outboundBelow,
           sort_by: options.sort,
         },
@@ -770,7 +776,6 @@ prog
           ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
           in_through: options.in || undefined,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
-          node: options.node || undefined,
           out_through: options.out || undefined,
           request: args.to.length !== 66 ? args.to : undefined,
           tokens: args.amount || undefined,
@@ -844,6 +849,32 @@ prog
         style: !!options.styled ? 'styled' : undefined,
       },
       returnOutput({logger, reject, resolve}));
+    });
+  })
+
+  // Send funds to a destination
+  .command('send', 'Send funds to a node')
+  .argument('<to>', 'Send to node with public key')
+  .option('--amount <amount>', 'Amount to send to destination', INT, 1)
+  .option('--message <message>', 'Message to include with payment')
+  .option('--no-color', 'Mute all colors')
+  .option('--node <name>', 'Node to send funds from')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return probeDestination({
+          logger,
+          destination: args.to,
+          is_push: true,
+          is_real_payment: true,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          message: options.message,
+          tokens: args.amount,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 

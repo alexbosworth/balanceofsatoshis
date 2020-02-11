@@ -12,6 +12,11 @@ const tests = [
     error: [400, 'ExpectedLndToGetPeers'],
   },
   {
+    args: {lnd: {}},
+    description: 'Getting peers requires an omit array',
+    error: [400, 'ExpectedOmitArrayToGetPeers'],
+  },
+  {
     args: {
       lnd: {
         default: {
@@ -20,6 +25,7 @@ const tests = [
           listChannels: ({}, cbk) => cbk(null, {channels: []}),
         },
       },
+      omit: [],
     },
     description: 'Getting peers with no channels returns nothing',
     expected: {peers: []},
@@ -89,6 +95,7 @@ const tests = [
           }]}),
         },
       },
+      omit: [],
     },
     description: 'Getting peers with a channel returns peers',
     expected: {
@@ -98,6 +105,8 @@ const tests = [
         inbound_fee_rate: '0.00%',
         inbound_liquidity: '0.00000001',
         outbound_liquidity: '0.00000001',
+        last_received: undefined,
+        last_routed: undefined,
         public_key: 'b',
       }],
     },
@@ -144,6 +153,7 @@ const tests = [
           }]}),
         },
       },
+      omit: [],
       outbound_liquidity_below: 1000,
     },
     description: 'Getting peers where a channel is missing returns peers',
@@ -154,6 +164,8 @@ const tests = [
         inbound_fee_rate: undefined,
         inbound_liquidity: '0.00000001',
         outbound_liquidity: '0.00000001',
+        last_received: undefined,
+        last_routed: undefined,
         public_key: 'b',
       }],
     },

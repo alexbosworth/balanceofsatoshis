@@ -1,3 +1,6 @@
+const {createHash} = require('crypto');
+const {randomBytes} = require('crypto');
+
 const asyncAuto = require('async/auto');
 const {decodePaymentRequest} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -19,8 +22,11 @@ const defaultCltvDelta = 144;
 const defaultMaxFee = 1337;
 const defaultTokens = 10;
 const {floor} = Math;
+const fromKeyType = '34349339';
 const {isArray} = Array;
+const keySendPreimageType = '5482373484';
 const messageType = '34349334';
+const preimageByteLength = 32;
 const {now} = Date;
 const reserveRatio = 0.01;
 
@@ -33,6 +39,7 @@ const reserveRatio = 0.01;
       from_public_key: <Avoid Node With Public Key Hex String>
     }]
     [in_through]: <Pay In Through Public Key Hex String>
+    [is_push]: <Is Push Payment Bool>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND gRPC API Object>
@@ -80,6 +87,16 @@ module.exports = (args, cbk) => {
 
     // Destination to pay
     to: ['validate', ({}, cbk) => {
+      if (!!args.is_push) {
+        const secret = randomBytes(preimageByteLength);
+
+        return cbk(null, {
+          secret,
+          destination: args.destination,
+          id: createHash('sha256').update(secret).digest().toString('hex'),
+        });
+      }
+
       if (!!args.destination) {
         return cbk(null, {destination: args.destination, routes: []});
       }
@@ -128,6 +145,40 @@ module.exports = (args, cbk) => {
       }
 
       return cbk(null, getDestinationNode);
+    }],
+
+    // Determine messages to attach
+    messages: [
+      'getFeatures',
+      'getInfo',
+      'to',
+      ({getFeatures, getInfo, to}, cbk) =>
+    {
+      // Exit early when there are no messages
+      if (!args.message && !args.is_push) {
+        return cbk();
+      }
+
+      if (!getInfo.features) {
+        return cbk([400, 'SendingNodeDoesNotSupportSendingMessages']);
+      }
+
+      const messages = []
+
+      if (!!args.message) {
+        messages.push({
+          type: messageType,
+          value: Buffer.from(args.message).toString('hex'),
+        });
+
+        messages.push({type: fromKeyType, value: getInfo.public_key});
+      }
+
+      if (!!args.is_push) {
+        messages.push({type: keySendPreimageType, value: to.secret});
+      }
+
+      return cbk(null, messages);
     }],
 
     // Get inbound path if an inbound restriction is specified
@@ -193,7 +244,7 @@ module.exports = (args, cbk) => {
       'to',
       ({getDestinationNode, getInfo, to}, cbk) =>
     {
-      const sendingTo = getDestinationNode.alias || to.destination;
+      const sendingTo = `${getDestinationNode.alias} ${to.destination}`;
 
       if (to.destination === getInfo.public_key) {
         args.logger.info({circular_rebalance_for: sendingTo});
@@ -202,23 +253,6 @@ module.exports = (args, cbk) => {
       }
 
       return cbk();
-    }],
-
-    // Determine messages to attach
-    messages: ['getFeatures', 'getInfo', ({getFeatures, getInfo}, cbk) => {
-      // Exit early when there are no messages
-      if (!args.message) {
-        return cbk();
-      }
-
-      if (!getInfo.features && !args.message) {
-        return cbk([400, 'SendingNodeDoesNotSupportSendingMessages']);
-      }
-
-      return cbk(null, [{
-        type: messageType,
-        value: Buffer.from(args.message).toString('hex'),
-      }]);
     }],
 
     // Probe towards destination

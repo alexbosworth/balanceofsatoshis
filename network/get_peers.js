@@ -1,10 +1,13 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const asyncUntil = require('async/until');
 const {decodeChanId} = require('bolt07');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
+const {getInvoices} = require('ln-service');
 const {getNode} = require('ln-service');
+const {getPayments} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
@@ -17,8 +20,10 @@ const {sortBy} = require('./../arrays');
 const asEarnings = (on, tok) => !!on ? (tok / 1e8).toFixed(8) : undefined;
 const asRate = n => n !== undefined ? (n / 1e4).toFixed(2) + '%' : undefined;
 const defaultSort = 'first_connected';
+const {isArray} = Array;
 const {max} = Math;
 const minutesPerBlock = network => network === 'ltcmainnet' ? 10 / 4 : 10;
+const notFoundIndex = -1;
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
 const uniq = arr => Array.from(new Set(arr));
 
@@ -26,12 +31,15 @@ const uniq = arr => Array.from(new Set(arr));
 
   {
     [earnings_days]: <Routing Fee Earnings Days Number>
+    [idle_days]: <Not Active For Days Number>
     [inbound_liquidity_below]: <Inbound Liquidity Below Tokens Number>
     [is_active]: <Active Channels Only Bool>
     [is_offline]: <Offline Channels Only Bool>
     [is_private]: <Private Channels Only Bool>
     [is_public]: <Public Channels Only Bool>
+    [is_showing_last_received]: <Show Last Diret Received Bool>
     lnd: <Authenticated LND gRPC API Object>
+    omit: [<Omit Peer With Public Key Hex String>]
     [outbound_liquidity_below]: <Outbound Liquidity Below Tokens Number>
     [sort_by]: <Sort Results By Attribute String>
   }
@@ -58,6 +66,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLndToGetPeers']);
         }
 
+        if (!isArray(args.omit)) {
+          return cbk([400, 'ExpectedOmitArrayToGetPeers']);
+        }
+
         return cbk();
       },
 
@@ -79,7 +91,50 @@ module.exports = (args, cbk) => {
 
       // Get fee earnings
       getForwards: ['validate', ({}, cbk) => {
-        return getPastForwards({days: args.earnings_days, lnd: args.lnd}, cbk);
+        const dayFilters = [args.earnings_days, args.idle_days];
+
+        // Exit early when there are no days to get forwards over
+        if (!dayFilters.filter(n => !!n).length) {
+          return cbk(null, {forwards: []});
+        }
+
+        const days = max(...dayFilters.filter(n => !!n));
+
+        return getPastForwards({days, lnd: args.lnd}, cbk);
+      }],
+
+      // Get invoices
+      getInvoices: ['validate', ({}, cbk) => {
+        const invoices = [];
+        let token;
+
+        if (!args.idle_days && !args.is_showing_last_received) {
+          return cbk(null, invoices);
+        }
+
+        return asyncUntil(
+          cbk => cbk(null, token === false),
+          cbk => {
+            return getInvoices({token, lnd: args.lnd}, (err, res) => {
+              if (!!err) {
+                return cbk(err);
+              }
+
+              token = res.next || false;
+
+              res.invoices.forEach(n => invoices.push(n));
+
+              return cbk();
+            });
+          },
+          err => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            return cbk(null, invoices.filter(n => !!n.is_confirmed));
+          }
+        );
       }],
 
       // Get policies
@@ -143,9 +198,58 @@ module.exports = (args, cbk) => {
         'allChannels',
         'forwards',
         'getChannels',
+        'getInvoices',
         'getPolicies',
-        async ({allChannels, forwards, getChannels, getPolicies}) =>
+        async ({
+          allChannels,
+          forwards,
+          getChannels,
+          getInvoices,
+          getPolicies,
+        }) =>
       {
+        const lastForwardedPayment = forwards.reduce((sum, forward) => {
+          [forward.inbound, forward.outbound]
+            .filter(n => !!n)
+            .forEach(publicKey => {
+              const last = sum[publicKey];
+
+              // Exit early when the last forward is later than this forward
+              if (!!last && last > forward.created_at) {
+                return;
+              }
+
+              return sum[publicKey] = forward.created_at;
+            });
+
+          return sum;
+        },
+        {});
+
+        const lastReceivedPayment = getInvoices.reduce((sum, n) => {
+          n.payments.forEach(payment => {
+            const {channels} = getChannels;
+
+            const channel = channels.find(n => n.id === payment.in_channel);
+
+            if (!channel) {
+              return;
+            }
+
+            const last = sum[channel.partner_public_key];
+
+            // Exit early when the last payment is later than this payment
+            if (!!last && last > payment.confirmed_at) {
+              return;
+            }
+
+            return sum[channel.partner_public_key] = payment.confirmed_at;
+          });
+
+          return sum;
+        },
+        {});
+
         const maxInbound = args.inbound_liquidity_below;
         const maxOutbound = args.outbound_liquidity_below;
         const {network} = await getNetwork({lnd: args.lnd});
@@ -159,6 +263,9 @@ module.exports = (args, cbk) => {
         const mpb = minutesPerBlock(network);
 
         const peers = await asyncMap(uniq(peerKeys), async publicKey => {
+          const forwarded = lastForwardedPayment[publicKey];
+          const gotLast = lastReceivedPayment[publicKey];
+
           const feeEarnings = forwards.filter(fwd => {
             return fwd.inbound === publicKey || fwd.outbound === publicKey;
           });
@@ -181,7 +288,9 @@ module.exports = (args, cbk) => {
             .map(n => n.policies.find(n => n.public_key === publicKey))
             .filter(n => !!n);
 
-          const feeRates = policies.map(n => n.fee_rate);
+          const feeRates = policies
+            .map(n => n.fee_rate)
+            .filter(n => n !== undefined);
 
           const feeRate = !feeRates.length ? undefined : max(...feeRates);
 
@@ -197,6 +306,8 @@ module.exports = (args, cbk) => {
             first_connected: moment().subtract(blocks * mpb, 'minutes').unix(),
             inbound_fee_rate: feeRate,
             inbound_liquidity: sumOf(channels.map(n => n.remote_balance)),
+            last_received: !gotLast ? Number() : moment(gotLast).unix(),
+            last_routed: !forwarded ? Number() : moment(forwarded).unix(),
             outbound_liquidity: sumOf(channels.map(n => n.local_balance)),
             public_key: publicKey,
           };
@@ -207,6 +318,29 @@ module.exports = (args, cbk) => {
             .sorted
             .filter(n => !maxInbound || n.inbound_liquidity < maxInbound)
             .filter(n => !maxOutbound || n.outbound_liquidity < maxOutbound)
+            .filter(n => args.omit.indexOf(n.public_key) === notFoundIndex)
+            .filter(n => {
+              // Always return peer when no idle days are specified
+              if (!args.idle_days) {
+                return true;
+              }
+
+              const after = moment().subtract(args.idle_days, 'days').unix();
+
+              const hasRecentlyConnected = n.first_connected > after;
+              const hasRecentlyReceived = n.last_received > after;
+              const hasRecentlyRouted = n.last_routed > after;
+
+              if (hasRecentlyConnected) {
+                return false;
+              }
+
+              if (hasRecentlyReceived || hasRecentlyRouted) {
+                return false;
+              }
+
+              return true;
+            })
             .map(n => ({
               alias: n.alias,
               fee_earnings: asEarnings(args.earnings_days, n.fee_earnings),
@@ -214,6 +348,8 @@ module.exports = (args, cbk) => {
               inbound_fee_rate: asRate(n.inbound_fee_rate),
               inbound_liquidity: (n.inbound_liquidity / 1e8).toFixed(8),
               outbound_liquidity: (n.outbound_liquidity / 1e8).toFixed(8),
+              last_received: !n.last_received ? undefined : moment(n.last_received * 1e3).fromNow(),
+              last_routed: !n.last_routed ? undefined : moment(n.last_routed * 1e3).fromNow(),
               public_key: n.public_key,
             })),
         };
