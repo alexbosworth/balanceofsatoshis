@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.19.1
+
+Improve compatibility with older node versions
+
 ## Version 5.19.0
 
 - `peers`: add `--idle-days` to show only peers that have been idle for n days
