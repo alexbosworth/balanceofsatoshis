@@ -15,14 +15,16 @@ const standardIdHexLength = Buffer.alloc(32).toString('hex').length;
 
   {
     lnd: <Authenticated LND gRPC API Object>
-    [query]: <Query String>
+    query: <Query String>
   }
 
-  @returns via cbk
+  @returns via cbk or Promise
   {
-    fee_by_block_target: {
-      $number: <Kvbyte Fee Rate Number>
-    }
+    [channels]: [<Channel Object>]
+    [nodes]: [<Node Object>]
+    [payment]: <Payment Object>
+    [payment_failed]: <Payment Failed Object>
+    [payment_pending]: <Payment Pending Bool>
   }
 */
 module.exports = ({lnd, query}, cbk) => {
@@ -32,6 +34,10 @@ module.exports = ({lnd, query}, cbk) => {
       validate: cbk => {
         if (!lnd) {
           return cbk([400, 'ExpectedLndObjectToFindRecord']);
+        }
+
+        if (!query) {
+          return cbk([400, 'QueryExpectedToFindRecord']);
         }
 
         return cbk();
@@ -70,7 +76,7 @@ module.exports = ({lnd, query}, cbk) => {
 
                   return sum + capacity;
                 },
-                0
+                Number()
               )),
               public_key: node.public_key,
               updated: moment(node.updated_at).fromNow(),

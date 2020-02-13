@@ -122,6 +122,9 @@ bos rebalance
 # Attempt to reconnect to disconnected peers
 bos reconnect
 
+# Remove all channels with a peer
+bos remove-peer
+
 # Get a general report of the node activity
 bos report
 

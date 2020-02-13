@@ -1,0 +1,36 @@
+{
+  "edges": [
+    {
+      "capacity": 1,
+      "chan_point": "0:0",
+      "channel_id": "1",
+      "node1_pub": "a",
+      "node2_pub": "b"
+    },
+    {
+      "capacity": 1,
+      "chan_point": "0:0",
+      "channel_id": "2",
+      "node1_pub": "c",
+      "node2_pub": "d"
+    }
+  ],
+  "nodes": [
+    {
+      "addresses": [{"addr": "127.0.0.1:9735"}],
+      "alias": "alias",
+      "color": "#000000",
+      "features": [],
+      "last_update": 1,
+      "pub_key": "a"
+    },
+    {
+      "addresses": [],
+      "alias": "b",
+      "color": "#000000",
+      "features": [],
+      "last_update": 1,
+      "pub_key": "b"
+    }
+  ]
+}

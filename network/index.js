@@ -8,6 +8,7 @@ const networks = require('./networks');
 const openChannel = require('./open_channel');
 const probeDestination = require('./probe_destination');
 const reconnect = require('./reconnect');
+const removePeer = require('./remove_peer');
 const sendGift = require('./send_gift');
 const setAutopilot = require('./set_autopilot');
 
@@ -22,6 +23,7 @@ module.exports = {
   openChannel,
   probeDestination,
   reconnect,
+  removePeer,
   sendGift,
   setAutopilot,
 };

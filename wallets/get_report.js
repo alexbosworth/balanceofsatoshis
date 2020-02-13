@@ -13,7 +13,7 @@ const {getWalletInfo} = require('ln-service');
 const {italicize} = require('@alexbosworth/html2unicode');
 const moment = require('moment');
 const {parsePaymentRequest} = require('ln-service');
-const request = require('request');
+const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');

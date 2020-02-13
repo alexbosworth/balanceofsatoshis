@@ -3,7 +3,7 @@ const {decodePaymentRequest} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
 const {payViaPaymentRequest} = require('ln-service');
-const request = require('request');
+const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');

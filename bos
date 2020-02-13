@@ -11,7 +11,7 @@ const {writeFile} = require('fs');
 const inquirer = require('inquirer');
 const prog = require('caporal');
 const {rateProviders} = require('ln-accounting');
-const request = require('request');
+const request = require('@alexbosworth/request');
 
 const {accountingCategories} = require('./balances');
 const {adjustSavedNodes} = require('./nodes');
@@ -45,6 +45,7 @@ const {openChannel} = require('./network');
 const {probeDestination} = require('./network');
 const {rebalance} = require('./swaps');
 const {reconnect} = require('./network');
+const {removePeer} = require('./network');
 const {returnChart} = require('./responses');
 const {returnNumber} = require('./responses');
 const {returnObject} = require('./responses');
@@ -699,13 +700,12 @@ prog
   .option('--active', 'Only active peer channels')
   .option('--fee-days <past_days>', 'Include fees earned over n days', INT)
   .option('--idle-days <days>', 'No receives or routes for n days', INT)
-  .option('--inbound-below <amount>', 'Inbound liquidity below amount')
-  .option('--last-received', 'Show latest date of directly received invoice')
+  .option('--inbound-below <amount>', 'Inbound liquidity below amount', INT)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get peers for')
   .option('--offline', 'Only offline peer channels')
   .option('--omit <key>', 'Omit peer with public key', REPEATABLE)
   .option('--outbound-below <amount>', 'Outbound liquidity below amount', INT)
-  .option('--no-color', 'Mute all colors')
   .option('--private', 'Only private channels')
   .option('--public', 'Only peers with public channels')
   .option('--sort', 'Sort results by peer attribute')
@@ -714,15 +714,13 @@ prog
       try {
         return getPeers({
           earnings_days: options.feeDays,
-          idle_days: options.idleDays,
+          idle_days: options.idleDays || undefined,
           inbound_liquidity_below: options.inboundBelow,
           is_active: !!options.active,
           is_offline: !!options.offline,
           is_private: !!options.private,
           is_public: !!options.public,
-          is_showing_last_received: !!options.lastReceived,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
-          node: options.node,
           omit: flatten([options.omit].filter(n => !!n)),
           outbound_liquidity_below: options.outboundBelow,
           sort_by: options.sort,
@@ -830,6 +828,51 @@ prog
       try {
         return reconnect({
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
+  // Remove a peer
+  .command('remove-peer', 'Close out with a channel-connected peer')
+  .argument('[public_key]', 'Choose a specific peer to close with')
+  .option('--active', 'Make sure the peer is online')
+  .option('--address <address>', 'Address to close out funds to')
+  .option('--dryrun', 'Avoid actually closing channels with peer')
+  .option('--fee-rate <rate>', 'Fee rate per vbyte to close out with', INT)
+  .option('--force', 'Force close channels if they cannot be coop closed')
+  .option('--idle-days <days>', 'No receives or routes for n days', INT)
+  .option('--inbound-below <amount>', 'Peer inbound is below amount', INT)
+  .option('--no-color', 'Mute all colors')
+  .option('--node <node_name>', 'Node to remote peer on')
+  .option('--offline', 'Make sure the peer is offline')
+  .option('--omit <key>', 'Avoid closing peer with public key', REPEATABLE)
+  .option('--outbound-below <amount>', 'Peer outbound is below amount', INT)
+  .option('--private', 'Peer is privately connected')
+  .option('--public', 'Peer is publicly connected')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return removePeer({
+          logger,
+          request,
+          address: options.address,
+          chain_fee_rate: options.feeRate || undefined,
+          idle_days: options.idleDays,
+          inbound_liquidity_below: options.inboundBelow,
+          is_active: !!options.active,
+          is_dry_run: !!options.dryrun,
+          is_forced: !!options.force,
+          is_offline: !!options.offline,
+          is_private: !!options.private,
+          is_public: !!options.public,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          omit: flatten([options.omit].filter(n => !!n)),
+          outbound_liquidity_below: options.outboundBelow,
+          public_key: args.public_key,
         },
         returnObject({logger, reject, resolve}));
       } catch (err) {

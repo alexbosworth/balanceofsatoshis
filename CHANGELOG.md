@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.20.0
+
+- `remove-peer`: add method to remove channels with a peer
+
 ## Version 5.19.1
 
 Improve compatibility with older node versions

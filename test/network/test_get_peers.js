@@ -2,6 +2,7 @@ const {test} = require('tap');
 
 const {getInfoResponse} = require('./../fixtures');
 const {getPeers} = require('./../../network');
+const {pendingChannelsResponse} = require('./../fixtures');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 
@@ -23,6 +24,7 @@ const tests = [
           closedChannels: ({}, cbk) => cbk(null, {channels: []}),
           getInfo: ({}, cbk) => cbk(null, getInfoRes()),
           listChannels: ({}, cbk) => cbk(null, {channels: []}),
+          pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
         },
       },
       omit: [],
@@ -73,6 +75,7 @@ const tests = [
             num_channels: 1,
             total_capacity: '1',
           }),
+          pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
           listChannels: ({}, cbk) => cbk(null, {channels: [{
             active: true,
             capacity: '1',
@@ -102,11 +105,10 @@ const tests = [
       peers: [{
         alias: 'alias',
         fee_earnings: undefined,
+        last_activity: undefined,
         inbound_fee_rate: '0.00%',
         inbound_liquidity: '0.00000001',
         outbound_liquidity: '0.00000001',
-        last_received: undefined,
-        last_routed: undefined,
         public_key: 'b',
       }],
     },
@@ -151,6 +153,7 @@ const tests = [
             total_satoshis_sent: 1,
             unsettled_balance: 1,
           }]}),
+          pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
         },
       },
       omit: [],
@@ -161,11 +164,10 @@ const tests = [
       peers: [{
         alias: 'alias',
         fee_earnings: undefined,
+        last_activity: undefined,
         inbound_fee_rate: undefined,
         inbound_liquidity: '0.00000001',
         outbound_liquidity: '0.00000001',
-        last_received: undefined,
-        last_routed: undefined,
         public_key: 'b',
       }],
     },
