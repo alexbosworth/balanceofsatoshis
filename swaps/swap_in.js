@@ -39,6 +39,7 @@ const waitForDepositMs = 1000 * 60 * 60 * 24;
 
   {
     [api_key]: <API Key CBOR String>
+    [in_through]: <Request Inbound Payment Public Key Hex String>
     [is_free]: <Use Free Service Bool>
     [is_refund_test]: <Alter Swap Timeout To Have Short Refund Bool>
     lnd: <Authenticated LND gRPC API Object>
@@ -217,6 +218,7 @@ module.exports = (args, cbk) => {
 
       return createSwapIn({
         fee: getQuote.fee,
+        in_through: args.in_through,
         macaroon: getService.macaroon,
         preimage: getService.preimage,
         request: createInvoice.request,

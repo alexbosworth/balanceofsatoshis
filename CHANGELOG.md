@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.21.0
+
+- `chain-receive`: add `--in` argument to specify desired inbound peer
+
 ## Version 5.20.0
 
 - `remove-peer`: add method to remove channels with a peer

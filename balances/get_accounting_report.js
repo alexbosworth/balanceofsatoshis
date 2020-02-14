@@ -23,6 +23,7 @@ const tableRowsFromCsv = require('./table_rows_from_csv');
     [month]: <Month for Report String>
     [node]: <Node Name String>
     [rate_provider]: <Rate Provider String>
+    request: <Request Function>
     [year]: <Year for Report String>
   }
 
@@ -42,6 +43,10 @@ module.exports = (args, cbk) => {
 
         if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToGetAccountingReport']);
+        }
+
+        if (!args.request) {
+          return cbk([400, 'ExpectedRequestFunctionToGetAccountingReport']);
         }
 
         return cbk();
@@ -66,6 +71,7 @@ module.exports = (args, cbk) => {
           fiat: args.fiat || defaultFiat,
           lnd: args.lnd,
           rate_provider: args.rate_provider || undefined,
+          request: args.request,
         },
         cbk);
       }],

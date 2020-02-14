@@ -88,6 +88,7 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return getAccountingReport({
+          request,
           category: args.category,
           is_csv: !!options.csv,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
@@ -197,6 +198,7 @@ prog
   .command('chain-receive', 'Receive funds on-chain via submarine swap')
   .argument('[amount]', 'Amount to receive', INT, 1e6)
   .option('--api-key <api_key>', 'Pre-paid API key to use')
+  .option('--in <peer>', 'Request receiving through a specific peer')
   .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
   .option('--no-auth', 'Avoid using authenticated service')
   .option('--no-color', 'Mute all colors')
@@ -210,6 +212,7 @@ prog
         return swapIn({
           logger,
           api_key: options.apiKey || undefined,
+          in_through: options.in || undefined,
           is_free: options.noAuth || false,
           is_refund_test: options.testRefund,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
