@@ -64,10 +64,13 @@ const {version} = require('./package');
 const {exit} = process;
 const flatten = arr => [].concat(...arr);
 const {FLOAT} = prog;
+const hexMatch = /^[0-9a-f]+$/i;
 const {INT} = prog;
 const {isArray} = Array;
 const {keys} = Object;
+const months = [...Array(12).keys()].map(n => ++n);
 const {REPEATABLE} = prog;
+const yearMatch = /^\d{4}$/;
 
 prog
   .version(version)
@@ -78,10 +81,10 @@ prog
   .help(`Categories: ${keys(accountingCategories).join(', ')}`)
   .help(`Rate providers: ${rateProviders.join(', ')}`)
   .option('--csv', 'Output a CSV')
-  .option('--month <month>', 'Show only records for specific month')
+  .option('--month <month>', 'Show only records for specific month', months)
   .option('--node <node_name>', 'Get details from named node')
   .option('--rate-provider <rate_provider>', 'Rate provider', rateProviders)
-  .option('--year <year>', 'Show only records for specified year')
+  .option('--year <year>', 'Show only records for specified year', yearMatch)
   .action((args, options, logger) => {
     const table = !!options.csv ? null : 'rows';
 
@@ -106,6 +109,7 @@ prog
 
   // Direct autopilot to mirror one or more nodes on the network
   .command('autopilot', 'Enable autopilot')
+  .visible(false)
   .argument('<status>', 'Status of autopilot', ['off', 'on'])
   .help('Autopilot status is either on or off')
   .help('Mirroring and urls require lnd --autopilot.heuristic=externalscore:1')
@@ -179,6 +183,7 @@ prog
   // Deposit coins
   .command('chain-deposit', 'Deposit coins in the on-chain wallet')
   .argument('[amount]', 'Amount to receive', INT)
+  .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to deposit coins to')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -197,7 +202,7 @@ prog
   // Create on-chain submarine swap
   .command('chain-receive', 'Receive funds on-chain via submarine swap')
   .argument('[amount]', 'Amount to receive', INT, 1e6)
-  .option('--api-key <api_key>', 'Pre-paid API key to use')
+  .option('--api-key <api_key>', 'Pre-paid API key to use', hexMatch)
   .option('--in <peer>', 'Request receiving through a specific peer')
   .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
   .option('--no-auth', 'Avoid using authenticated service')
@@ -424,6 +429,7 @@ prog
 
   // Start a REST gateway
   .command('gateway', 'Start REST request gateway')
+  .visible(false)
   .option('--node <node_name>', 'Node for gateway')
   .option('--port <port>', 'Port for gateway', INT, 4805)
   .action((args, options, logger) => {
@@ -441,6 +447,7 @@ prog
 
   // Give a peer some tokens
   .command('gift', 'Give a direct peer some free funds off-chain')
+  .visible(false)
   .help('Send some funds to a connected peer')
   .argument('<target>', 'Peer to give funds to')
   .argument('<amount>', 'Tokens to give', INT)
@@ -499,7 +506,7 @@ prog
   .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
   .option('--dryrun', 'Only show cost estimate for increase')
   .option('--fast', 'Request swap server avoid batching delay')
-  .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 3000)
+  .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 4000)
   .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 24)
   .option('--no-auth', 'Avoid using authenticated service')
   .option('--no-color', 'Mute all colors')
@@ -824,6 +831,7 @@ prog
 
   // Attempt reconnecting to disconnected channel partners
   .command('reconnect', 'Reconnect to disconnected channel parterners')
+  .visible(false)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to attempt reconnects on')
   .action((args, options, logger) => {
@@ -875,7 +883,7 @@ prog
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           omit: flatten([options.omit].filter(n => !!n)),
           outbound_liquidity_below: options.outboundBelow,
-          public_key: args.public_key,
+          public_key: args.publicKey,
         },
         returnObject({logger, reject, resolve}));
       } catch (err) {

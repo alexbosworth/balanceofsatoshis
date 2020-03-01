@@ -40,9 +40,6 @@ Or ask about commands on [Telegram](https://t.me/balanceofsatoshis)
 # See an accounting formatted list of various types of transactions
 bos accounting "category"
 
-# Set autopilot on or off. With heuristic externalscore, set guided autopilot
-bos autopilot "on"
-
 # See total balance, including pending funds, excluding future commit fees
 bos balance
 # 1337
@@ -76,9 +73,6 @@ bos find "query"
 
 # Output a summarized version of peers forwarded towards
 bos forwards
-
-# Send a gift of some tokens to a directly connected peer
-bos gift "pubkey" "amount"
 
 # See help about a command
 bos help "command"
@@ -118,9 +112,6 @@ bos probe "payment_request/public_key"
 
 # Rebalance funds between peers
 bos rebalance
-
-# Attempt to reconnect to disconnected peers
-bos reconnect
 
 # Remove all channels with a peer
 bos remove-peer

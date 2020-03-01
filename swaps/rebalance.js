@@ -21,6 +21,7 @@ const defaultMaxFee = 1337;
 const defaultMaxFeeRate = 250;
 const flatten = arr => [].concat(...arr);
 const highInbound = 4500000;
+const {isArray} = Array;
 const {max} = Math;
 const maxPaymentSize = 4294967;
 const maxRebalanceTokens = 4294967;
@@ -68,6 +69,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToRebalance'])
         }
 
+        if (isArray(args.in_through)) {
+          return cbk([400, 'MultipleInPeersIsNotSupported']);
+        }
+
         if (!!args.in_through && args.in_through === args.out_through) {
           return cbk([400, 'ExpectedInPeerNotEqualToOutPeer']);
         }
@@ -82,6 +87,10 @@ module.exports = (args, cbk) => {
 
         if (args.max_fee_rate === 0) {
           return cbk([400, 'ExpectedNonZeroMaxFeeRateForRebalance']);
+        }
+
+        if (isArray(args.out_through)) {
+          return cbk([400, 'MultipleOutPeersIsNotSupported']);
         }
 
         if (!!args.out_through && args.in_through === args.out_through) {

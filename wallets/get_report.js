@@ -17,10 +17,13 @@ const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');
+const channelsAsReportActivity = require('./channels_as_report_activity');
 const {currencyForNetwork} = require('./../network');
 const {getBalance} = require('./../balances');
 const {getCoindeskCurrentPrice} = require('./../fiat');
 const {getForwards} = require('./../network');
+const {getNetwork} = require('./../network');
+const reportOverview = require('./report_overview');
 
 const afterMs = 1000 * 60 * 60 * 24;
 const centsPerDollar = 100;
@@ -122,6 +125,11 @@ module.exports = ({node, style}, cbk) => {
       return getInvoices({lnd: getLnd.lnd}, cbk);
     }],
 
+    // Get network
+    getNetwork: ['getLnd', ({getLnd}, cbk) => {
+      return getNetwork({lnd: getLnd.lnd}, cbk);
+    }],
+
     // Get payments
     getPayments: ['getLnd', ({getLnd}, cbk) => {
       return getPayments({lnd: getLnd.lnd}, cbk);
@@ -145,6 +153,7 @@ module.exports = ({node, style}, cbk) => {
       'getGraph',
       'getInfo',
       'getInvoices',
+      'getNetwork',
       'getPayments',
       'getRate',
       ({
@@ -159,111 +168,51 @@ module.exports = ({node, style}, cbk) => {
         getGraph,
         getInfo,
         getInvoices,
+        getNetwork,
         getPayments,
         getRate,
       }, cbk) =>
     {
       const activity = [];
-      const balance = formatAsBigUnit(getBalance.balance);
-      const channelBalance = getBalance.channel_balance;
       const currentHeight = getInfo.current_block_height;
       const {nodes} = getGraph;
-      const rate = getRate.cents;
-      const totalBalance = getBalance.balance;
 
-      const fiatBalance = (balance * rate / centsPerDollar).toFixed(2);
       const findNode = pk => nodes.find(n => n.public_key === pk) || {};
-      const lightningFunds = (channelBalance / totalBalance * 100).toFixed();
 
-      const report = [
-        {subtitle: 'current status', title: 'Node'},
-        {details: getInfo.public_key},
-        {details: getInfo.alias},
-        {details: `${balance} ${currency} ($${fiatBalance})`},
-        {details: `1 ${currency}~$${(rate / 100).toFixed(2)}`},
-        {},
-        {
-          is_hidden: !getAutopilot.is_enabled,
-          subtitle: 'Enabled',
-          title: 'Autopilot:',
+      const {report} = reportOverview({
+        currency,
+        alias: getInfo.alias,
+        balance: getBalance.balance,
+        chain_fee: !getChainFee ? undefined : getChainFee.tokens_per_vbyte,
+        channel_balance: getBalance.channel_balance,
+        latest_block_at: getInfo.latest_block_at,
+        public_key: getInfo.public_key,
+        rate: getRate.cents,
+      });
+
+      const channelsActivity = channelsAsReportActivity({
+        now,
+        backups: getBackups.channels,
+        chain: {
+          currency,
+          height: getInfo.current_block_height,
+          network: getNetwork.network,
         },
-        {
-          subtitle: moment(getInfo.latest_block_at).fromNow(),
-          title: 'Last Block:',
-        },
-        {
-          subtitle: `${lightningFunds}%`,
-          title: 'Funds on Lightning',
-        },
-      ];
+        channels: getChannels.channels.slice().reverse(),
+        days: 1,
+        nodes: getGraph.nodes,
+      });
 
-      if (!!getChainFee) {
-        report.push({
-          subtitle: `${getChainFee.tokens_per_vbyte} sat/vbyte`,
-          title: 'Confirmation Fee:',
-        });
-      }
-
-      getChannels.channels.slice().reverse()
-        .filter(({id}) => {
-          const chanHeight = decodeChanId({channel: id}).block_height;
-
-          return getInfo.current_block_height - chanHeight < 144;
-        })
-        .forEach(channel => {
-          const chanId = channel.id;
-          const elements = [];
-          const pubKey = channel.partner_public_key;
-
-          const {backup} = getBackups.channels.find(chan => {
-            if (chan.transaction_id !== channel.transaction_id) {
-              return false;
-            }
-
-            return chan.transaction_vout === channel.transaction_vout;
-          });
-
-          const channels = getChannels.channels.filter(chan => {
-            return chan.partner_public_key === channel.partner_public_key
-          });
-
-          const chanBlockHeight = decodeChanId({channel: chanId}).block_height;
-
-          const blocksSinceOpen = currentHeight - chanBlockHeight;
-
-          const date = moment(now() - blocksSinceOpen * msPerBlock);
-          const node = getGraph.nodes.find(n => n.public_key === pubKey) || {};
-
-          elements.push({
-            subtitle: date.fromNow(),
-            title: node.alias || channel.partner_public_key,
-          });
-
-          elements.push({action: 'Opened channel'});
-
-          const localBalances = channels.map(n => n.local_balance);
-          const remoteBalances = channels.map(n => n.remote_balance);
-
-          const inbound = (sumOf(remoteBalances) / 1e8).toFixed(8);
-          const outbound = (sumOf(localBalances) / 1e8).toFixed(8);
-
-          const inboundLiquid = `${inbound} ${currency} inbound`;
-          const outboundLiquid = `${outbound} ${currency} outbound`;
-
-          elements.push({
-            details: `Liquidity now ${inboundLiquid}, ${outboundLiquid}`,
-          });
-
-          const utxo = `${channel.transaction_id}:${channel.transaction_vout}`;
-
-          elements.push({details: `Backup: ${utxo} ${backup}`});
-
-          return activity.push({elements, date: date.toISOString()});
-        });
+      channelsActivity.activity.forEach(n => activity.push(n));
 
       getInvoices.invoices.slice().reverse()
         .filter(invoice => !!invoice.confirmed_at)
         .filter(invoice => now() - Date.parse(invoice.confirmed_at) < afterMs)
+        .filter(invoice => {
+          const isToSelf = getPayments.payments.find(n => n.id === invoice.id);
+
+          return !isToSelf;
+        })
         .forEach(invoice => {
           const elements = [];
           const received = invoice.received;
@@ -278,6 +227,7 @@ module.exports = ({node, style}, cbk) => {
           });
 
           elements.push({
+            is_hidden: !invoice.description,
             details: `"${invoice.description}"`,
           });
 
@@ -290,6 +240,41 @@ module.exports = ({node, style}, cbk) => {
 
       getPayments.payments.slice().reverse()
         .filter(payment => now() - Date.parse(payment.created_at) < afterMs)
+        .filter(payment => payment.destination === getInfo.public_key)
+        .forEach(payment => {
+          const elements = [];
+          const {fee} = payment;
+          const {tokens} = payment;
+
+          const amount = `${formatAsBigUnit(tokens)} ${currency}`;
+
+          const [outHop] = payment.hops;
+
+          const outNode = getGraph.nodes.find(n => n.public_key === outHop);
+
+          const outbound = (outNode || {}).alias || (outNode || {}).public_key;
+
+          elements.push({
+            subtitle: moment(payment.created_at).fromNow(),
+            title: getInfo.alias || getInfo.public_key,
+          });
+
+          elements.push({action: 'Rebalance'});
+
+          elements.push({
+            details: `Increased inbound liquidity on ${outbound} by ${amount}`,
+          });
+
+          elements.push({
+            details: `Fee: ${formatAsBigUnit(fee)} ${currency}`,
+          });
+
+          return activity.push({elements, date: payment.created_at});
+        });
+
+      getPayments.payments.slice().reverse()
+        .filter(payment => now() - Date.parse(payment.created_at) < afterMs)
+        .filter(payment => payment.destination !== getInfo.public_key)
         .forEach(payment => {
           const elements = [];
           const node = findNode(payment.destination);
@@ -311,6 +296,12 @@ module.exports = ({node, style}, cbk) => {
           elements.push({
             details: `Sent: ${formatAsBigUnit(payment.tokens)} ${currency}`,
           });
+
+          if (!!payment.fee) {
+            elements.push({
+              details: `Fee: ${formatAsBigUnit(payment.fee)} ${currency}`,
+            });
+          }
 
           return activity.push({elements, date: payment.created_at});
         });

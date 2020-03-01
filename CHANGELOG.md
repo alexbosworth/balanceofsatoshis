@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.21.1
+
+- `remove-peer`: Fix specifying peer public key
+- `report`: Highlight circular rebalances
+
 ## Version 5.21.0
 
 - `chain-receive`: add `--in` argument to specify desired inbound peer
@@ -17,7 +22,7 @@ Improve compatibility with older node versions
 - `peers`: add `--idle-days` to show only peers that have been idle for n days
 - `peers`: add `--last-received` to show the last final hop payments from peer
 - `peers`: add `--omit` to omit peers from the list
-- `send`: add method to unilaterally send to a destionation accepting such sends
+- `send`: add method to unilaterally send to a destination accepting such sends
 - `telegram`: show messages received with received payments
 
 ## Version 5.18.0

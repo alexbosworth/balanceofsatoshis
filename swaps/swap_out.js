@@ -306,7 +306,7 @@ module.exports = (args, cbk) => {
       }
 
       if (!!args.max_fee && getQuote.fee > args.max_fee) {
-        return cbk([400, 'FeeForSwapExceedsMaximumFeeLimit']);
+        return cbk([400, 'FeeForSwapExceedsMaximumFeeLimit', getQuote]);
       }
 
       if (getQuote.cltv_delta < minCltvDelta) {
