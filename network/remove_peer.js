@@ -231,7 +231,7 @@ module.exports = (args, cbk) => {
             address: !isLocked && !!args.address ? args.address : undefined,
             is_force_close: !channel.is_active,
             lnd: args.lnd,
-            tokens_per_vbyte: feeRate,
+            tokens_per_vbyte: !!channel.is_active ? feeRate : undefined,
             transaction_id: channel.transaction_id,
             transaction_vout: channel.transaction_vout,
           },
