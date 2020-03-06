@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.22.0
+
+Improve support for node version 10
+
+- `chart-fees-paid`: Show routing fees paid and payment breakdowns by node
+
 ## Version 5.21.2
 
 - `remove-peer`: Fix specifying peer public key

@@ -28,7 +28,7 @@
     "ini": "1.3.5",
     "inquirer": "7.0.6",
     "ln-accounting": "4.1.0",
-    "ln-service": "47.15.1",
+    "ln-service": "47.15.2",
     "moment": "2.24.0",
     "qrcode-terminal": "0.12.0",
     "sanitize-filename": "1.6.3",

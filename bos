@@ -30,6 +30,7 @@ const {getCoindeskRates} = require('./fiat');
 const {getCredentials} = require('./lnd');
 const {getDepositAddress} = require('./chain');
 const {getFeesChart} = require('./routing');
+const {getFeesPaid} = require('./routing');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
 const {getPeers} = require('./network');
@@ -278,6 +279,32 @@ prog
           via: args.viaPeer,
         },
         returnChart({logger, reject, resolve, data: 'data'}));
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
+  // Show a chart of routing fees paid
+  .command('chart-fees-paid', 'Get a chart of paid routing fees')
+  .help('Show the routing fees paid to forwarding nodes')
+  .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
+  .option('--node <node_name>', 'Get fees paid chart for saved node')
+  .option('--most-fees', 'View table of fees paid per node')
+  .option('--most-forwarded', 'View table of forwarded per node')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      const chart = returnChart({logger, reject, resolve, data: 'data'});
+      const table = returnObject({logger, reject, resolve, table: 'rows'});
+
+      try {
+        return getFeesPaid({
+          days: options.days,
+          is_most_fees_table: options.mostFees,
+          is_most_forwarded_table: options.mostForwarded,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        (options.mostFees || options.mostForwarded) ? table : chart);
       } catch (err) {
         return reject(err);
       }

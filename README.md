@@ -10,6 +10,9 @@ Commands for working with LND balances.
 
 Requires an [installation of Node v10.12.0+ and NPM](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 
+If you want to try out any command without npm install, you can also do `npx
+balanceofsatoshis` to run a command directly.
+
 ```shell
 npm install -g balanceofsatoshis
 ```
@@ -47,17 +50,20 @@ bos balance
 # Get the number of days the node cert remains valid
 bos cert-validity-days
 
-# See the current fee estimates confirmation targets
-bos chainfees
-
 # Receive on-chain funds via a regular address
 bos chain-deposit
 
 # Receive funds via swap on-chain
 bos chain-receive "amount"
 
+# See the current fee estimates confirmation targets
+bos chainfees
+
 # Show routing fees earned
 bos chart-fees-earned
+
+# Show routing fees paid
+bos chart-fees-paid
 
 # See details on how closed channels resolved on-chain
 bos closed
@@ -118,6 +124,9 @@ bos remove-peer
 
 # Get a general report of the node activity
 bos report
+
+# Send funds and an optional message to a node
+bos send
 
 # Connect up to a Telegram bot
 bos telegram
