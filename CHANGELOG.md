@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.22.1
+
+- `rebalance`: Improve automatic inbound peer selection
+
 ## Version 5.22.0
 
 Improve support for node version 10

@@ -329,8 +329,23 @@ module.exports = (args, cbk) => {
           .filter(n => n.partner_public_key !== getOutbound.public_key)
           .filter(n => ignore.indexOf(n.partner_public_key) === notFoundIndex);
 
+        const remote = activeChannels.reduce((sum, channel) => {
+          const key = channel.partner_public_key;
+
+          sum[key] = sum[key] || Number();
+
+          sum[key] = sum[key] + channel.remote_balance;
+
+          return sum;
+        },
+        {});
+
         const channels = activeChannels
-          .filter(n => hasInThrough || n.remote_balance > minInboundBalance)
+          .filter(channel => {
+            const key = channel.partner_public_key;
+
+            return hasInThrough || remote[key] > minInboundBalance;
+          })
           .map(channel => {
             const remote = activeChannels
               .filter(n => n.partner_public_key === channel.partner_public_key)
