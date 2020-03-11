@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.22.2
+## Version 5.22.3
 
 - `rebalance`: Improve automatic inbound peer selection
 

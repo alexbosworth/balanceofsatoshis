@@ -10,7 +10,7 @@ const accuracy = 10000;
 const {isArray} = Array;
 const from = 0;
 const nextAttemptDelayMs = 1000 * 2;
-const slowPaymentMs = 1000 * 30;
+const slowPaymentMs = 1000 * 60 * 4.5;
 const to = tokens => tokens - Math.round(Math.random() * 1000);
 
 /** Find max routable
