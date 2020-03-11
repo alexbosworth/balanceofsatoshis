@@ -8,7 +8,7 @@ const {subscribeToProbeForRoute} = require('ln-service');
 const {describeConfidence} = require('./../routing');
 
 const {now} = Date;
-const pathTimeoutMs = 1000 * 60;
+const pathTimeoutMs = 1000 * 60 * 5;
 
 /** Execute a probe
 
