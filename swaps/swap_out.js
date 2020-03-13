@@ -83,6 +83,8 @@ const tokensAsBigUnit = tokens => ((tokens || 0) / 1e8).toFixed(8);
     [out_address]: <Out Address String>
     [peer]: <Peer Public Key Hex String>
     [recovery]: <Recover In-Progress Swap Hex String>
+    [spend_address]: <Attempt Spend Out To Address String>
+    [spend_tokens]: <Spend Address Exact Tokens Number>
     timeout: <Wait for Deposit Timeout Milliseconds Number>
     tokens: <Tokens Number>
   }
@@ -115,6 +117,18 @@ module.exports = (args, cbk) => {
         return cbk([400, 'ExpectedLoggerForSwapProgressNotifications']);
       }
 
+      if (!!args.spend_address && !args.spend_tokens) {
+        return cbk([400, 'ExpectedSpendAmountWhenSpecifyingSpendAddress']);
+      }
+
+      if (!!args.spend_tokens && !args.spend_address) {
+        return cbk([400, 'ExpectedSpendAddressWhenSpecifyingSpendTokens']);
+      }
+
+      if (args.spend_tokens > args.tokens) {
+        return cbk([400, 'ExpectedSpendTokensLessThanTotalTokens']);
+      }
+
       if (!args.timeout) {
         return cbk([400, 'ExpectedTimeoutToWaitForSwapDeposit']);
       }
@@ -137,6 +151,18 @@ module.exports = (args, cbk) => {
     // Get wallet info
     getWalletInfo: ['validate', ({}, cbk) => {
       return getWalletInfo({lnd: args.lnd}, cbk);
+    }],
+
+    // Externals sends
+    sends: ['validate', ({}, cbk) => {
+      if (!args.spend_address) {
+        return cbk();
+      }
+
+      return cbk(null, [{
+        address: args.spend_address,
+        tokens: args.spend_tokens,
+      }]);
     }],
 
     // Create a sweep address
@@ -922,6 +948,7 @@ module.exports = (args, cbk) => {
       'initiateSwap',
       'network',
       'recover',
+      'sends',
       'startHeight',
       ({
         claim,
@@ -930,6 +957,7 @@ module.exports = (args, cbk) => {
         initiateSwap,
         network,
         recover,
+        sends,
         startHeight,
       }, cbk) =>
     {
@@ -949,6 +977,7 @@ module.exports = (args, cbk) => {
       asyncTimesSeries(blocksUntilTimeout, (i, cbk) => {
         return attemptSweep({
           network,
+          sends,
           tokens,
           current_height: startHeight + i,
           deadline_height: min(maxWaitHeight, maxSafeHeight),
@@ -993,6 +1022,7 @@ module.exports = (args, cbk) => {
       'network',
       'rawRecovery',
       'recover',
+      'sends',
       'startHeight',
       ({
         claim,
@@ -1001,6 +1031,7 @@ module.exports = (args, cbk) => {
         initiateSwap,
         network,
         recover,
+        sends,
         startHeight,
       }, cbk) =>
     {
@@ -1024,6 +1055,7 @@ module.exports = (args, cbk) => {
         return attemptSweep({
           network,
           request,
+          sends,
           tokens,
           current_height: height,
           deadline_height: initiateSwap.timeout - args.confs,

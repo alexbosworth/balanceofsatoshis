@@ -1,9 +1,9 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
 const {getChannel} = require('ln-service');
+const {getMaximum} = require('asyncjs-util');
 const {returnResult} = require('asyncjs-util');
 
-const getMaximum = require('./get_maximum');
 const isRoutePayable = require('./is_route_payable');
 
 const accuracy = 10000;

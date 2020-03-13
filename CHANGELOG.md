@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.23.0
+
+- `increase-inbound-liquidity`: Add send exact amount option
+
 ## Version 5.22.3
 
 - `rebalance`: Improve automatic inbound peer selection
