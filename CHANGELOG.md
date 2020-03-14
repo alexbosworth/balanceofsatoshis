@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.24.1
+
+- `increase-inbound-liquidity`: Fix execution without settings
+
 ## Version 5.24.0
 
 - `rebalance`: Add `out-channel` to whitelist specific channels set

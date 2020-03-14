@@ -540,7 +540,7 @@ prog
   .option('--node <node_name>', 'Increase inbound liquidity on saved node')
   .option('--recovery <recovery>', 'Recover in-progress swap')
   .option('--spend-address', 'Send an exact amount to a specific address')
-  .option('--spend-amount', 'Exact amount to send to a specific address', INT)
+  .option('--spend-amount', 'Exact amount to send to a specific address')
   .option('--show-raw-recovery', 'Show raw recovery transactions')
   .option('--with <peer>', 'Public key of peer to increase liquidity from')
   .action((args, options, logger) => {
