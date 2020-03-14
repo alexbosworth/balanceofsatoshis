@@ -838,6 +838,7 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
+  .option('--out-channel', 'Lock outbound rebalance to channels', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -851,6 +852,7 @@ prog
           max_fee_rate: options.maxFeeRate,
           max_rebalance: options.amount,
           node: options.node || undefined,
+          out_channels: flatten([options.outChannel].filter(n => !!n)),
           out_through: options.out || undefined,
         },
         returnObject({exit, logger, reject, resolve}));

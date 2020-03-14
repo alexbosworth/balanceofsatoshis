@@ -55,6 +55,7 @@ const {swappable} = require('./../network/networks');
 const {sweepProgressLogDelayMs} = require('./constants');
 
 const {ceil} = Math;
+const changeTokens = 1e4;
 const cltvBuffer = 3;
 const {floor} = Math;
 const {max} = Math;
@@ -159,6 +160,14 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
+      if (args.spend_tokens + changeTokens > args.tokens) {
+        return cbk([
+          400,
+          'ExpectedSwapAmountGreaterThanSpendAmount',
+          {minimum: args.spend_tokens + changeTokens},
+        ]);
+      }
+
       return cbk(null, [{
         address: args.spend_address,
         tokens: args.spend_tokens,
@@ -166,7 +175,7 @@ module.exports = (args, cbk) => {
     }],
 
     // Create a sweep address
-    createAddress: ['recover', 'validate', ({recover}, cbk) => {
+    createAddress: ['recover', 'sends', ({recover}, cbk) => {
       // Exit early when there is already a sweep address specified in recovery
       if (!!recover && recover.sweep_address) {
         return cbk(null, {address: recover.sweep_address});

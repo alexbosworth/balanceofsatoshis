@@ -50,7 +50,8 @@ const uniq = arr => Array.from(new Set(arr));
     [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
     [max_rebalance]: <Maximum Amount to Rebalance Tokens Number>
     [node]: <Node Name String>
-    [out_through]: <Pay Out Through Peer String>
+    [out_channels]: [<Exclusively Rebalance Through Channel Ids String>]
+    out_through: <Pay Out Through Peer String>
   }
 
   @returns via cbk or Promise
@@ -284,6 +285,20 @@ module.exports = (args, cbk) => {
         // Exit early with error when an outbound channel cannot be guessed
         if (!args.out_through && !channels.length) {
           return cbk([400, 'NoOutboundChannelNeedsRebalance']);
+        }
+
+        if (!!args.out_through && !!args.out_channels.length) {
+          const outChannels = getInitialLiquidity.channels
+            .filter(n => n.partner_public_key === args.out_through)
+            .map(n => n.id);
+
+          if (outChannels.length !== args.out_channels.length) {
+            return cbk([400, 'ExpectedAllOutChannels', {chans: outChannels}]);
+          }
+
+          if (!outChannels.every(n => args.out_channels.includes(n))) {
+            return cbk([400, 'ExpectedAllOutChannels', {chans: outChannels}]);
+          }
         }
 
         const {sorted} = sortBy({array: channels, attribute: 'remote'});

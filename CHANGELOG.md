@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.24.0
+
+- `rebalance`: Add `out-channel` to whitelist specific channels set
+
 ## Version 5.23.0
 
 - `increase-inbound-liquidity`: Add send exact amount option
