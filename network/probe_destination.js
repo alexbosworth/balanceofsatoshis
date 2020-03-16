@@ -48,6 +48,7 @@ const reserveRatio = 0.01;
     [message]: <Message String>
     [out_through]: <Out through peer with Public Key Hex String>
     [request]: <Payment Request String>
+    [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
     [tokens]: <Tokens Number>
   }
 
@@ -289,6 +290,7 @@ module.exports = (args, cbk) => {
         max_fee: args.max_fee,
         outgoing_channel: outgoingChannelId,
         routes: inboundPath || to.routes,
+        timeout_minutes: args.timeout_minutes || undefined,
         tokens: args.tokens || to.tokens || defaultTokens,
       },
       cbk);

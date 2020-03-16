@@ -835,6 +835,7 @@ prog
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
+  .option('--minutes <minutes>', 'Time-out route search after N minutes', INT)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
@@ -854,6 +855,7 @@ prog
           node: options.node || undefined,
           out_channels: flatten([options.outChannel].filter(n => !!n)),
           out_through: options.out || undefined,
+          timeout_minutes: options.minutes || undefined,
         },
         returnObject({exit, logger, reject, resolve}));
       } catch (err) {

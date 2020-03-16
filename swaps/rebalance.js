@@ -52,6 +52,7 @@ const uniq = arr => Array.from(new Set(arr));
     [node]: <Node Name String>
     [out_channels]: [<Exclusively Rebalance Through Channel Ids String>]
     out_through: <Pay Out Through Peer String>
+    [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
   }
 
   @returns via cbk or Promise
@@ -448,6 +449,7 @@ module.exports = (args, cbk) => {
           max_fee: Math.floor(5e6 * 0.0025),
           node: args.node,
           out_through: getOutbound.public_key,
+          timeout_minutes: args.timeout_minutes,
         },
         cbk);
       }],

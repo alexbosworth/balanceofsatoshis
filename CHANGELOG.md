@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.25.0
+
+- `rebalance`: Add `--minutes` to specify timeout in minutes for a route search
+
 ## Version 5.24.2
 
 - `increase-inbound-liquidity`: Improve parsing of spend amount

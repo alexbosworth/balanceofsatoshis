@@ -8,6 +8,7 @@ const {subscribeToProbeForRoute} = require('ln-service');
 const {describeConfidence} = require('./../routing');
 
 const {now} = Date;
+const minutesAsMs = minutes => 1000 * 60 * minutes;
 const pathTimeoutMs = 1000 * 60 * 5;
 
 /** Execute a probe
@@ -41,6 +42,7 @@ const pathTimeoutMs = 1000 * 60 * 5;
       [fee_rate]: <Proportional Fee Rate Number>
       public_key: <Destination Public Key Hex String>
     }]]
+    [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
     tokens: <Tokens To Probe Number>
   }
 
@@ -120,6 +122,7 @@ module.exports = (args, cbk) => {
           messages: args.messages,
           outgoing_channel: args.outgoing_channel,
           path_timeout_ms: pathTimeoutMs,
+          probe_timeout_ms: minutesAsMs((args.timeout_minutes || Number())),
           routes: args.routes,
           tokens: args.tokens,
         });
