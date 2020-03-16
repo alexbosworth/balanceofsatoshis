@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.24.2
+
+- `increase-inbound-liquidity`: Improve parsing of spend amount
+
 ## Version 5.24.1
 
 - `increase-inbound-liquidity`: Fix execution without settings

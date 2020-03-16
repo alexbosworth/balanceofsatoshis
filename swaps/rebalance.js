@@ -289,7 +289,7 @@ module.exports = (args, cbk) => {
 
         if (!!args.out_through && !!args.out_channels.length) {
           const outChannels = getInitialLiquidity.channels
-            .filter(n => n.partner_public_key === args.out_through)
+            .filter(n => n.partner_public_key === findOutKey)
             .map(n => n.id);
 
           if (outChannels.length !== args.out_channels.length) {

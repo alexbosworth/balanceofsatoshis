@@ -160,17 +160,17 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      if (args.spend_tokens + changeTokens > args.tokens) {
+      if (Number(args.spend_tokens) + changeTokens > args.tokens) {
         return cbk([
           400,
           'ExpectedSwapAmountGreaterThanSpendAmount',
-          {minimum: args.spend_tokens + changeTokens},
+          {minimum: Number(args.spend_tokens) + changeTokens},
         ]);
       }
 
       return cbk(null, [{
         address: args.spend_address,
-        tokens: args.spend_tokens,
+        tokens: Number(args.spend_tokens),
       }]);
     }],
 
