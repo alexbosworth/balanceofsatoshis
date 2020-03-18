@@ -37,6 +37,7 @@ const slowConf = 144;
   {
     [chain_fee_rate]: <Chain Fee Tokens Per VByte to Pay Number>
     [is_dry_run]: <Avoid Actually Opening a New Channel Bool>
+    [is_private]: <Mark Channel as Private Booll>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [peer]: <Peer Public Key Hex String>
@@ -296,6 +297,7 @@ module.exports = (args, cbk) => {
 
                 return openChannel({
                   chain_fee_tokens_per_vbyte: feeRate,
+                  is_private: args.is_private,
                   lnd: args.lnd,
                   local_tokens: args.tokens || channelTokens,
                   partner_public_key: node.public_key,
@@ -324,6 +326,7 @@ module.exports = (args, cbk) => {
                     chain_fee_tokens_per_vbyte: getNormalFee.tokens_per_vbyte,
                     transaction_id: res.transaction_id,
                     new_channel_size: asBigTok(args.tokens || channelTokens),
+                    is_private: args.is_private || undefined,
                   });
 
                   return cbk(null, true);

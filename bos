@@ -581,6 +581,7 @@ prog
   .option('--dryrun', 'Avoid actually opening a channel')
   .option('--fee-rate <fee_rate>', 'Use specific fee rate (per vbyte)', FLOAT)
   .option('--node <node_name>', 'Increase outbound liquidity on saved node')
+  .option('--private', 'Mark new channel as private')
   .option('--with <peer_public_key>', 'Select a specific peer to open with')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -590,6 +591,7 @@ prog
           request,
           chain_fee_rate: options.feeRate || undefined,
           is_dry_run: options.dryrun,
+          is_private: options.private,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           peer: options.with || undefined,
           tokens: options.amount,

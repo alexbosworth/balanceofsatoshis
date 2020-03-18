@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.26.0
+
+- `increase-outbound-liquidity`: Add `--private` to increase private outbound
+
 ## Version 5.25.0
 
 - `rebalance`: Add `--minutes` to specify timeout in minutes for a route search
