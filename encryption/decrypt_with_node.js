@@ -79,7 +79,12 @@ module.exports = ({encrypted, lnd}, cbk) => {
 
       // Get details about the node
       getNode: ['foreignKey', ({foreignKey}, cbk) => {
-        return getNode({lnd, public_key: foreignKey}, (err, res) => {
+        return getNode({
+          lnd,
+          is_omitting_channels: true,
+          public_key: foreignKey,
+        },
+        (err, res) => {
           if (!!err) {
             return cbk(null, {public_key: foreignKey});
           }

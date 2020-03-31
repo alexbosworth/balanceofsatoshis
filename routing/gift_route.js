@@ -1,4 +1,4 @@
-const {routeFromChannels} = require('ln-service');
+const {routeFromChannels} = require('bolt07');
 
 const defaultBaseFeeMtokens = '1000';
 const defaultFeeRate = 1;

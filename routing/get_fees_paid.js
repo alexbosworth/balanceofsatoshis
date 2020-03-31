@@ -129,7 +129,12 @@ module.exports = (args, cbk) => {
         {});
 
         return asyncMap(keys(fees), (key, cbk) => {
-          return getNode({lnd: args.lnd, public_key: key}, (err, res) => {
+          return getNode({
+            is_omitting_channels: true,
+            lnd: args.lnd,
+            public_key: key,
+          },
+          (err, res) => {
             return cbk(null, {
               alias: (res || {}).alias,
               fees_paid: fees[key],

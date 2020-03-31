@@ -117,6 +117,7 @@ module.exports = (args, cbk) => {
     // Lookup node destination details
     getDestinationNode: ['to', ({to}, cbk) => {
       return getNode({
+        is_omitting_channels: true,
         lnd: args.lnd,
         public_key: to.destination,
       },

@@ -4,11 +4,11 @@ const {getUtxos} = require('./../../chain');
 
 const utxo = {
   address: 'address',
+  address_type: 'NESTED_PUBKEY_HASH',
   amount_sat: '1',
   confirmations: '1',
   outpoint: {bytes: Buffer.alloc(1), output_index: 0, txid_str: '00'},
   pk_script: '00',
-  type: 'NESTED_PUBKEY_HASH',
 };
 
 const tests = [
@@ -49,6 +49,7 @@ const tests = [
           listUnspent: ({}, cbk) => cbk(null, {
             utxos: [{
               address: 'address',
+              address_type: 'NESTED_PUBKEY_HASH',
               amount_sat: '2',
               confirmations: '1',
               outpoint: {
@@ -57,7 +58,6 @@ const tests = [
                 txid_str: '00',
               },
               pk_script: '00',
-              type: 'NESTED_PUBKEY_HASH',
             }],
           }),
         },
@@ -75,6 +75,7 @@ const tests = [
           listUnspent: ({}, cbk) => cbk(null, {
             utxos: [{
               address: 'address',
+              address_type: 'NESTED_PUBKEY_HASH',
               amount_sat: '2',
               confirmations: '1',
               outpoint: {
@@ -83,7 +84,6 @@ const tests = [
                 txid_str: '00',
               },
               pk_script: '00',
-              type: 'NESTED_PUBKEY_HASH',
             }],
           }),
         },

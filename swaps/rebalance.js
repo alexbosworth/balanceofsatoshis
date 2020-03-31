@@ -180,7 +180,12 @@ module.exports = (args, cbk) => {
         const keys = uniq(channels.map(n => n.partner_public_key));
 
         return asyncMap(keys, (key, cbk) => {
-          return getNode({lnd, public_key: key}, (err, node) => {
+          return getNode({
+            lnd,
+            is_omitting_channels: true,
+            public_key: key,
+          },
+          (err, node) => {
             // Suppress errors on matching lookup
             if (!!err) {
               return cbk();
@@ -227,14 +232,21 @@ module.exports = (args, cbk) => {
         const keys = uniq(channels.map(n => n.partner_public_key));
 
         return asyncMap(keys, (key, cbk) => {
-          return getNode({lnd, public_key: key}, (err, node) => {
+          return getNode({
+            lnd,
+            is_omitting_channels: true,
+            public_key: key,
+          },
+          (err, node) => {
             // Suppress errors on lookup
             if (!!err) {
               return cbk();
             }
 
+            const alias = node.alias || String();
+
             // Exit early when the node doesn't match the query
-            if (!node.alias.toLowerCase().includes(query.toLowerCase())) {
+            if (!alias.toLowerCase().includes(query.toLowerCase())) {
               return cbk();
             }
 

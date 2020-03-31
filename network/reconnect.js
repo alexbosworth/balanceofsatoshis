@@ -67,7 +67,12 @@ module.exports = ({lnd, retries}, cbk) => {
       // Get sockets for nodes
       getDisconnected: ['disconnected', ({disconnected}, cbk) => {
         return asyncMap(disconnected, (publicKey, cbk) => {
-          return getNode({lnd, public_key: publicKey}, (err, node) => {
+          return getNode({
+            lnd,
+            is_omitting_channels: true,
+            public_key: publicKey,
+          },
+          (err, node) => {
             // Ignore errors
             if (!!err) {
               return cbk();

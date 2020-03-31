@@ -8,6 +8,7 @@ const {getClosedChannels} = require('ln-service');
 const {getInvoices} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPayments} = require('ln-service');
+const {getPeers} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
@@ -149,6 +150,9 @@ module.exports = (args, cbk) => {
         return getPayments({lnd: args.lnd}, cbk);
       }],
 
+      // Get connected peers
+      getPeers: ['validate', ({}, cbk) => getPeers({lnd: args.lnd}, cbk)],
+
       // Get pending channels
       getPending: ['validate', ({}, cbk) => {
         return getPendingChannels({lnd: args.lnd}, cbk);
@@ -217,6 +221,7 @@ module.exports = (args, cbk) => {
         'getChannels',
         'getInvoices',
         'getPayments',
+        'getPeers',
         'getPending',
         'getPolicies',
         async ({
@@ -225,6 +230,7 @@ module.exports = (args, cbk) => {
           getChannels,
           getInvoices,
           getPayments,
+          getPeers,
           getPending,
           getPolicies,
         }) =>
@@ -297,6 +303,7 @@ module.exports = (args, cbk) => {
         const peers = await asyncMap(uniq(peerKeys), async publicKey => {
           const forwarded = lastForwardedPayment[publicKey];
           const gotLast = lastReceivedPayment[publicKey];
+          const peer = getPeers.peers.find(n => n.public_key === publicKey);
           const lastPaidThrough = lastPaidOut[publicKey];
 
           const feeEarnings = forwards.filter(fwd => {
@@ -314,9 +321,15 @@ module.exports = (args, cbk) => {
           const blocks = wallet.current_block_height - oldest.height;
           const newBlocks = wallet.current_block_height - newest.height;
 
-          const channels = getChannels.channels.filter(channel => {
+          const activeChannels = getChannels.channels.filter(channel => {
             return channel.partner_public_key === publicKey;
           });
+
+          const pendingChannels = getPending.pending_channels.filter(chan => {
+            return chan.partner_public_key === publicKey;
+          });
+
+          const channels = [].concat(activeChannels).concat(pendingChannels);
 
           const policies = getPolicies
             .filter(n => !!n)
@@ -349,6 +362,7 @@ module.exports = (args, cbk) => {
             first_connected: moment().subtract(blocks * mpb, 'minutes').unix(),
             inbound_fee_rate: feeRate,
             inbound_liquidity: sumOf(channels.map(n => n.remote_balance)),
+            is_offline: !peer || undefined,
             last_activity: args.idle_days !== undefined ? lastActivity : null,
             outbound_liquidity: sumOf(channels.map(n => n.local_balance)),
             public_key: publicKey,
@@ -390,6 +404,7 @@ module.exports = (args, cbk) => {
               last_activity: fromNow(n.last_activity),
               inbound_fee_rate: asRate(n.inbound_fee_rate),
               inbound_liquidity: (n.inbound_liquidity / 1e8).toFixed(8),
+              is_offline: n.is_offline,
               outbound_liquidity: (n.outbound_liquidity / 1e8).toFixed(8),
               public_key: n.public_key,
             })),
