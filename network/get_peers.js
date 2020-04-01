@@ -342,11 +342,15 @@ module.exports = (args, cbk) => {
 
           const feeRate = !feeRates.length ? undefined : max(...feeRates);
 
-          const node = await getNode({
-            is_omitting_channels: true,
-            lnd: args.lnd,
-            public_key: publicKey,
-          });
+          let node = {alias: String(), public_key: publicKey};
+
+          try {
+            node = await getNode({
+              is_omitting_channels: true,
+              lnd: args.lnd,
+              public_key: publicKey,
+            });
+          } catch (err) {}
 
           const lastActivity = max(...[
             moment().subtract(blocks * mpb, 'minutes').unix(),

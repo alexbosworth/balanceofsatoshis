@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.26.2
+## Version 5.26.3
 
 - `increase-outbound-liquidity`: Add `--private` to increase private outbound
 
