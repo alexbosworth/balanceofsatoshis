@@ -20,6 +20,7 @@ const msPerDay = 1000 * 60 * 60 * 24;
 const {now} = Date;
 const numDays = 1;
 const {parse} = Date;
+const sort = (a, b) => a > b ? 1 : ((b > a) ? -1 : 0);
 const tokensAsBigTokens = tokens => (tokens / 1e8).toFixed(8);
 
 /** Get recent forwarding activity
@@ -198,14 +199,17 @@ module.exports = ({lnd, days}, cbk) => {
           };
         });
 
-        peers.sort((a, b) => {
-          const [lastA] = [a.last_outbound_at, a.last_inbound_at].sort();
-          const [lastB] = [b.last_outbound_at, b.last_inbound_at].sort();
+        const sorted = peers.sort((a, b) => {
+          const aEvents = [a.last_outbound_at, a.last_inbound_at];
+          const bEvents = [b.last_outbound_at, b.last_inbound_at];
 
-          return lastA < lastB ? -1 : 1;
+          const [lastA] = aEvents.filter(n => !!n).sort().reverse();
+          const [lastB] = bEvents.filter(n => !!n).sort().reverse();
+
+          return sort(lastA, lastB);
         });
 
-        return cbk(null, {peers});
+        return cbk(null, {peers: sorted});
       }],
     },
     returnResult({reject, resolve, of: 'forwards'}, cbk));

@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.26.4
+
+- `forwards`: Improve sorting of peers
+
 ## Version 5.26.3
 
 - `increase-outbound-liquidity`: Add `--private` to increase private outbound
