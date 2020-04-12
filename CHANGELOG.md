@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.27.0
+
+- `chart-fees-paid`: Add `--peers` and `--network` to filter out peers/non-peers
+
 ## Version 5.26.4
 
 - `forwards`: Improve sorting of peers

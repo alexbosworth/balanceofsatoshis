@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {getNode} = require('ln-service');
+const {getChannels} = require('ln-service');
 const {getPayments} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
@@ -24,6 +25,8 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
     days: <Fees Earned Over Days Count Number>
     [is_most_fees_table]: <Is Most Fees Table Bool>
     [is_most_forwarded_table]: <Is Most Forwarded Bool>
+    [is_network]: <Show Only Non-Peers In Table Bool>
+    [is_peer]: <Show Only Peers In Table Bool>
     lnd: <Authenticated LND gRPC API Object>
   }
 
@@ -43,12 +46,21 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedNumberOfDaysToGetFeesOverForChart']);
         }
 
+        if (!!args.is_network && !!args.is_peer) {
+          return cbk([400, 'ExpectedEitherNetworkOrPeersNotBoth']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToGetFeesChart']);
         }
 
         return cbk();
       },
+
+      // Get channels
+      getChannels: ['validate', ({}, cbk) => {
+        return getChannels({lnd: args.lnd}, cbk);
+      }],
 
       // Get payments
       getPayments: ['validate', ({}, cbk) => {
@@ -81,7 +93,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Fees paid to specific forwarding peers
-      rows: ['forwards', ({forwards}, cbk) => {
+      rows: ['forwards', 'getChannels', ({forwards, getChannels}, cbk) => {
         if (!args.is_most_forwarded_table && !args.is_most_fees_table) {
           return cbk();
         }
@@ -150,14 +162,27 @@ module.exports = (args, cbk) => {
 
           const sort = !!args.is_most_fees_table ? 'fees_paid' : 'forwarded';
 
-          const rows = sortBy({array, attribute: sort}).sorted.map(n => {
-            return [
-              n.alias,
-              n.public_key,
-              mtokensAsBigUnit(n.fees_paid),
-              mtokensAsBigUnit(n.forwarded),
-            ];
-          });
+          const peerKeys = getChannels.channels.map(n => n.partner_public_key);
+
+          const rows = sortBy({array, attribute: sort}).sorted
+            .filter(n => {
+              // Exit early when there is no peer/network filter
+              if (!args.is_network && !args.is_peer) {
+                return true;
+              }
+
+              const isPeer = !!peerKeys.find(key => key === n.public_key);
+
+              return !!args.is_peer ? isPeer : !isPeer;
+            })
+            .map(n => {
+              return [
+                n.alias,
+                n.public_key,
+                mtokensAsBigUnit(n.fees_paid),
+                mtokensAsBigUnit(n.forwarded),
+              ];
+            });
 
           return cbk(null, [].concat(heading).concat(rows));
         });

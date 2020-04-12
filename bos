@@ -289,9 +289,11 @@ prog
   .command('chart-fees-paid', 'Get a chart of paid routing fees')
   .help('Show the routing fees paid to forwarding nodes')
   .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
-  .option('--node <node_name>', 'Get fees paid chart for saved node')
   .option('--most-fees', 'View table of fees paid per node')
   .option('--most-forwarded', 'View table of forwarded per node')
+  .option('--network', 'Show only non-peers in table view')
+  .option('--node <node_name>', 'Get fees paid chart for saved node')
+  .option('--peers', 'Show only peers in table view')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       const chart = returnChart({logger, reject, resolve, data: 'data'});
@@ -302,6 +304,8 @@ prog
           days: options.days,
           is_most_fees_table: options.mostFees,
           is_most_forwarded_table: options.mostForwarded,
+          is_network: options.network,
+          is_peer: options.peers,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
         },
         (options.mostFees || options.mostForwarded) ? table : chart);

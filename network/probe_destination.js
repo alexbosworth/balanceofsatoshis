@@ -124,7 +124,7 @@ module.exports = (args, cbk) => {
       (err, res) => {
         // Suppress errors when the node is not found
         if (!!err) {
-          return cbk(null, {});
+          return cbk(null, {alias: String()});
         }
 
         return cbk(null, res);
