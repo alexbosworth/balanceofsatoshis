@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.28.1
+
+- Fix automatic detection of credentials on Windows
+
 ## Version 5.28.0
 
 - `chart-fees-earned`: Sum across nodes with multiple `--node` arguments
