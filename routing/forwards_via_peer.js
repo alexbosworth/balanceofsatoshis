@@ -20,7 +20,7 @@ const uniq = arr => Array.from(new Set(arr));
     public_channels: [{
       [id]: <Public Channel Id String>
     }]
-    via: <Via Peer With Public Key Hex String>
+    [via]: <Via Peer With Public Key Hex String>
   }
 
   @returns
@@ -37,6 +37,10 @@ const uniq = arr => Array.from(new Set(arr));
   }
 */
 module.exports = args => {
+  if (!args.via) {
+    return {forwards: args.forwards};
+  }
+
   const privateChans = args.private_channels
     .filter(channel => channel.partner_public_key === args.via)
     .map(({id}) => id);

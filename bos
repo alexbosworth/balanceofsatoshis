@@ -33,6 +33,7 @@ const {getFeesChart} = require('./routing');
 const {getFeesPaid} = require('./routing');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
+const {getLnds} = require('./lnd');
 const {getPeers} = require('./network');
 const {getPriceChart} = require('./fiat');
 const {getReport} = require('./wallets');
@@ -268,14 +269,14 @@ prog
   .help('Show the routing fees earned')
   .option('--count', 'Show count of forwards instead of fees earned')
   .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
-  .option('--node <node_name>', 'Get fee earnings chart for saved node')
+  .option('--node <node_name>', 'Get saved node fees earned', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return getFeesChart({
           days: options.days,
           is_count: options.count,
-          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          lnds: (await getLnds({logger, nodes: options.node})).lnds,
           via: args.viaPeer,
         },
         returnChart({logger, reject, resolve, data: 'data'}));
@@ -306,7 +307,7 @@ prog
           is_most_forwarded_table: options.mostForwarded,
           is_network: options.network,
           is_peer: options.peers,
-          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          lnds: (await getLnds({logger, nodes: options.node})).lnds,
         },
         (options.mostFees || options.mostForwarded) ? table : chart);
       } catch (err) {
@@ -356,6 +357,7 @@ prog
 
   // Decrypt a message
   .command('decrypt', 'Decrypt data using the node key')
+  .visible(false)
   .argument('<encrypted>', 'Encrypted message')
   .help('Decrypt a message encrypted to the node key or to another node key')
   .option('--node <node_name>', 'Node to decrypt with')
@@ -375,6 +377,7 @@ prog
 
   // Encrypt a message
   .command('encrypt', 'Encrypt data using the node key')
+  .visible(false)
   .help('Encrypt a message to the node key or to another node key')
   .option('--node <node_name>', 'Node to encrypt with')
   .option('--message <message>', 'Text message to encrypt')
@@ -609,6 +612,7 @@ prog
 
   // Get the price for liquidity
   .command('liquidity-cost', 'Get the price of liquidity')
+  .visible(false)
   .argument('<type>', 'Liquidity direction', swapTypes)
   .argument('<amount>', 'Amount of liquidity to get quote for', INT)
   .option('--above <tokens>', 'Return amount above watermark', INT)
@@ -894,7 +898,7 @@ prog
   .option('--active', 'Make sure the peer is online')
   .option('--address <address>', 'Address to close out funds to')
   .option('--dryrun', 'Avoid actually closing channels with peer')
-  .option('--fee-rate <rate>', 'Fee rate per vbyte to close out with', INT)
+  .option('--fee-rate <rate>', 'Fee rate per vbyte to close out with', FLOAT)
   .option('--force', 'Force close channels if they cannot be coop closed')
   .option('--idle-days <days>', 'No receives or routes for n days', INT)
   .option('--inbound-below <amount>', 'Peer inbound is below amount', INT)
@@ -1009,16 +1013,12 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const nodes = flatten([options.node].filter(n => !!n)).map(node => {
-          return authenticatedLnd({logger, node});
-        });
-
         return startTelegramBot({
           logger,
           request,
           fs: {writeFile, getFile: readFile, makeDirectory: mkdir},
           id: options.connect,
-          lnds: (await Promise.all(nodes)).map(({lnd}) => lnd),
+          lnds: (await getLnds({logger, nodes: options.node})).lnds,
           payments: {limit: options.budget}
         },
         returnObject({logger, reject, resolve}));

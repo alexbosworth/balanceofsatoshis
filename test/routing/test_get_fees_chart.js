@@ -4,7 +4,7 @@ const {chanInfoResponse} = require('./../fixtures');
 const {getFeesChart} = require('./../../routing');
 const {getNodeInfoResponse} = require('./../fixtures');
 
-const lnd = {
+const lnds = [{
   default: {
     forwardingHistory: ({}, cbk) => cbk(null, {
       forwarding_events: [],
@@ -14,7 +14,7 @@ const lnd = {
     getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
     listChannels: ({}, cbk) => cbk(null, {channels: []}),
   },
-};
+}];
 
 const tests = [
   {
@@ -28,7 +28,7 @@ const tests = [
     error: [400, 'ExpectedLndToGetFeesChart'],
   },
   {
-    args: {lnd, days: 1},
+    args: {lnds, days: 1},
     description: 'Fee earnings chart data is returned',
     expected: {
       data: '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0',
@@ -38,7 +38,7 @@ const tests = [
   {
     args: {
       days: 100,
-      lnd: {
+      lnds: [{
         default: {
           forwardingHistory: ({}, cbk) => cbk(null, {
             forwarding_events: [],
@@ -53,7 +53,7 @@ const tests = [
                 color: '#000000',
                 features: {},
                 last_update: '1',
-                pub_key: 'a',
+                pub_key: Buffer.alloc(33).toString('hex'),
               },
               num_channels: 1,
               total_capacity: '1',
@@ -61,22 +61,22 @@ const tests = [
           },
           listChannels: ({}, cbk) => cbk(null, {channels: []}),
         },
-      },
-      via: 'a',
+      }],
+      via: Buffer.alloc(33).toString('hex'),
     },
     description: 'No alias uses pubkey instead',
     expected: {
       data: '0,0,0,0,0,0,0,0,0,0,0,0,0,0',
-      title: 'Routing fees earned via a',
+      title: 'Routing fees earned via 000000000000000000000000000000000000000000000000000000000000000000',
     },
   },
   {
-    args: {lnd, days: 7},
+    args: {lnds, days: 7},
     description: 'Fee earnings chart data over a week is returned',
     expected: {data: '0,0,0,0,0,0,0', title: 'Routing fees earned'},
   },
   {
-    args: {lnd, days: 100, via: 'a'},
+    args: {lnds, days: 100, via: Buffer.alloc(33).toString('hex')},
     description: 'Fee earnings chart data via a peer is returned',
     expected: {
       data: '0,0,0,0,0,0,0,0,0,0,0,0,0,0',

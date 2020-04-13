@@ -45,7 +45,6 @@ bos accounting "category"
 
 # See total balance, including pending funds, excluding future commit fees
 bos balance
-# 1337
 
 # Get the number of days the node cert remains valid
 bos cert-validity-days
@@ -91,9 +90,6 @@ bos increase-inbound-liquidity
 
 # Increase the outbound liquidity of the node
 bos increase-outbound-liquidity
-
-# Show liquidity adjustment costs
-bos liquidity-cost "inbound" "amount"
 
 # See market price history
 bos market

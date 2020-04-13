@@ -10,9 +10,11 @@ const feesForSegment = require('./fees_for_segment');
 const {sortBy} = require('./../arrays');
 
 const daysPerWeek = 7;
+const flatten = arr => [].concat(...arr);
 const {floor} = Math;
 const heading = [['Node', 'Public Key', 'Fees Paid', 'Forwarded']];
 const hoursPerDay = 24;
+const {isArray} = Array;
 const {keys} = Object;
 const minChartDays = 4;
 const maxChartDays = 90;
@@ -27,7 +29,7 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
     [is_most_forwarded_table]: <Is Most Forwarded Bool>
     [is_network]: <Show Only Non-Peers In Table Bool>
     [is_peer]: <Show Only Peers In Table Bool>
-    lnd: <Authenticated LND gRPC API Object>
+    lnds: [<Authenticated LND API Object>]
   }
 
   @returns via cbk or Promise
@@ -50,7 +52,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedEitherNetworkOrPeersNotBoth']);
         }
 
-        if (!args.lnd) {
+        if (!isArray(args.lnds) || !args.lnds.length) {
           return cbk([400, 'ExpectedLndToGetFeesChart']);
         }
 
@@ -59,12 +61,30 @@ module.exports = (args, cbk) => {
 
       // Get channels
       getChannels: ['validate', ({}, cbk) => {
-        return getChannels({lnd: args.lnd}, cbk);
+        return asyncMap(args.lnds, (lnd, cbk) => {
+          return getChannels({lnd}, cbk);
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, flatten(res.map(n => n.channels)));
+        });
       }],
 
       // Get payments
       getPayments: ['validate', ({}, cbk) => {
-        return getPayments({lnd: args.lnd}, cbk);
+        return asyncMap(args.lnds, (lnd, cbk) => {
+          return getPayments({lnd}, cbk);
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, flatten(res.map(n => n.payments)));
+        });
       }],
 
       // Segment measure
@@ -85,8 +105,8 @@ module.exports = (args, cbk) => {
 
       // Filter the payments
       forwards: ['getPayments', 'start', ({getPayments, start}, cbk) => {
-        const payments = getPayments.payments.filter(n => {
-          return n.created_at > start.toISOString();
+        const payments = getPayments.filter(payment => {
+          return payment.created_at > start.toISOString();
         });
 
         return cbk(null, payments);
@@ -141,9 +161,11 @@ module.exports = (args, cbk) => {
         {});
 
         return asyncMap(keys(fees), (key, cbk) => {
+          const [lnd] = args.lnds;
+
           return getNode({
+            lnd,
             is_omitting_channels: true,
-            lnd: args.lnd,
             public_key: key,
           },
           (err, res) => {
@@ -162,7 +184,7 @@ module.exports = (args, cbk) => {
 
           const sort = !!args.is_most_fees_table ? 'fees_paid' : 'forwarded';
 
-          const peerKeys = getChannels.channels.map(n => n.partner_public_key);
+          const peerKeys = getChannels.map(n => n.partner_public_key);
 
           const rows = sortBy({array, attribute: sort}).sorted
             .filter(n => {

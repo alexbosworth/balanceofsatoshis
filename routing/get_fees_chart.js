@@ -1,17 +1,17 @@
 const asyncAuto = require('async/auto');
-const {getChannels} = require('ln-service');
-const {getForwards} = require('ln-service');
+const asyncMap = require('async/map');
 const {getNode} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
-const forwardsViaPeer = require('./forwards_via_peer');
+const getForwards = require('./get_forwards');
 
+const asDate = n => n.toISOString();
 const daysPerWeek = 7;
 const {floor} = Math;
 const hoursPerDay = 24;
-const limit = 99999;
+const {isArray} = Array;
 const minChartDays = 4;
 const maxChartDays = 90;
 
@@ -20,7 +20,7 @@ const maxChartDays = 90;
   {
     days: <Fees Earned Over Days Count Number>
     is_count: <Return Only Count of Forwards Bool>
-    lnd: <Authenticated LND gRPC API Object>
+    lnds: [<Authenticated LND API Object>]
     via: <Via Public Key Hex String>
   }
 
@@ -40,21 +40,16 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedNumberOfDaysToGetFeesOverForChart']);
         }
 
-        if (!args.lnd) {
+        if (!isArray(args.lnds)) {
           return cbk([400, 'ExpectedLndToGetFeesChart']);
+        }
+
+        if (!args.lnds.length) {
+          return cbk([400, 'ExpectedAnLndToGetFeesChart']);
         }
 
         return cbk();
       },
-
-      // Get private channels
-      getPrivateChannels: ['validate', ({}, cbk) => {
-        return !args.via ? cbk() : getChannels({
-          is_private: true,
-          lnd: args.lnd,
-        },
-        cbk);
-      }],
 
       // Get node details
       getNode: ['validate', ({}, cbk) => {
@@ -63,7 +58,14 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return getNode({lnd: args.lnd, public_key: args.via}, cbk);
+        const [lnd] = args.lnds;
+
+        return getNode({
+          lnd,
+          is_omitting_channels: true,
+          public_key: args.via,
+        },
+        cbk);
       }],
 
       // Segment measure
@@ -84,34 +86,17 @@ module.exports = (args, cbk) => {
 
       // Get forwards
       getForwards: ['start', ({start}, cbk) => {
-        return getForwards({
-          limit,
-          after: start.toISOString(),
-          before: new Date().toISOString(),
-          lnd: args.lnd,
+        return asyncMap(args.lnds, (lnd, cbk) => {
+          return getForwards({lnd, after: asDate(start), via: args.via}, cbk);
         },
         cbk);
       }],
 
       // Filter the forwards
-      forwards: [
-        'getForwards',
-        'getNode',
-        'getPrivateChannels',
-        ({getForwards, getNode, getPrivateChannels}, cbk) =>
-      {
-        if (!args.via) {
-          return cbk(null, getForwards.forwards);
-        }
+      forwards: ['getForwards', ({getForwards}, cbk) => {
+        const forwards = getForwards.map(({forwards}) => forwards);
 
-        const {forwards} = forwardsViaPeer({
-          forwards: getForwards.forwards,
-          private_channels: getPrivateChannels.channels,
-          public_channels: getNode.channels,
-          via: args.via,
-        });
-
-        return cbk(null, forwards);
+        return cbk(null, forwards.reduce((sum, n) => sum.concat(n), []));
       }],
 
       // Total earnings

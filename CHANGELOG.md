@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.28.0
+
+- `chart-fees-earned`: Sum across nodes with multiple `--node` arguments
+- `chart-fees-paid`: Sum across nodes with multiple `--node` arguments
+
 ## Version 5.27.0
 
 - `chart-fees-paid`: Add `--peers` and `--network` to filter out peers/non-peers
