@@ -37,7 +37,7 @@ module.exports = ({os}) => {
     return {path: join(os.homedir(), 'Library', 'Application Support', 'Lnd')};
 
   case platforms.windows:
-    return {path: join(os.homedir(), 'Lnd')};
+    return {path: join(os.homedir(), 'AppData', 'Local', 'Lnd')};
 
   default:
     return {path: join(os.homedir(), '.lnd')};
