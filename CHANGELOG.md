@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.28.1
+## Version 5.28.2
 
 - Fix automatic detection of credentials on Windows
 

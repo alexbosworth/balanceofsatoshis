@@ -26,7 +26,7 @@ const tests = [
   {
     args: {os: {homedir: () => 'homedir', platform: () => 'win32'}},
     description: 'Windows directory is returned',
-    expected: {path: 'homedir/Lnd'},
+    expected: {path: 'homedir/AppData/Local/Lnd'},
   },
   {
     args: {os: {homedir: () => 'homedir', platform: () => 'linux'}},
