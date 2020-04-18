@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.28.3
+
+- `increase-outbound-liquidity`: Improve opening channels with connected peers
+
 ## Version 5.28.2
 
 - Fix automatic detection of credentials on Windows

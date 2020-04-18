@@ -254,7 +254,7 @@ module.exports = (args, cbk) => {
               const [socket] = !!res && res.sockets ? res.sockets : [];
 
               // Exit early when there is no socket to connect to
-              if (!socket) {
+              if (!socket && !hasPeer) {
                 return cbk(null, false);
               }
 
