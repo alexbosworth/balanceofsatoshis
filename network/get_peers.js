@@ -326,7 +326,7 @@ module.exports = (args, cbk) => {
           });
 
           const pendingChannels = getPending.pending_channels.filter(chan => {
-            return chan.partner_public_key === publicKey;
+            return !!chan.is_opening && chan.partner_public_key === publicKey;
           });
 
           const channels = [].concat(activeChannels).concat(pendingChannels);

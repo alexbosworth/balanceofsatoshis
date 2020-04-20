@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.28.4
+
+- `peers`: Avoid including liquidity from pending close channels
+
 ## Version 5.28.3
 
 - `increase-outbound-liquidity`: Improve opening channels with connected peers
