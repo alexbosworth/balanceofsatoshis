@@ -95,7 +95,7 @@ module.exports = ({channels, lnd, query}, cbk) => {
         const matching = getNodes.filter(n => !!n);
 
         if (!matching.length) {
-          return cbk([400, 'FailedToFindAliasMatch', {not_found: query}]);
+          return cbk([400, 'FailedToFindPeerAliasMatch', {not_found: query}]);
         }
 
         const [match, secondMatch] = matching;
