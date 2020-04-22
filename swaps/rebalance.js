@@ -11,17 +11,20 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
+const findKey = require('./find_key');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');
 
 const {ceil} = Math;
 const channelMatch = /^\d*x\d*x\d*$/;
 const cltvDelta = 144;
+const defaultCltvDelta = 40;
 const defaultMaxFee = 1337;
 const defaultMaxFeeRate = 250;
 const flatten = arr => [].concat(...arr);
 const highInbound = 4500000;
 const {isArray} = Array;
+const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
 const {max} = Math;
 const maxPaymentSize = 4294967;
 const maxRebalanceTokens = 4294967;
@@ -111,11 +114,33 @@ module.exports = (args, cbk) => {
       // Get public key
       getPublicKey: ['lnd', ({lnd}, cbk) => getWalletInfo({lnd}, cbk)],
 
-      // Ignore
-      ignore: ['getPublicKey', 'lnd', ({getPublicKey, lnd}, cbk) => {
+      // Figure out which public keys and channels to avoid
+      ignore: [
+        'getInitialLiquidity',
+        'getPublicKey',
+        'lnd',
+        ({getInitialLiquidity, getPublicKey, lnd}, cbk) =>
+      {
         return asyncMap(args.avoid || [], (id, cbk) => {
-          if (!channelMatch.test(id)) {
+          // Exit early when the id is a public key
+          if (isPublicKey(id)) {
             return cbk(null, {from_public_key: id});
+          }
+
+          // Exit early when the id is a peer query
+          if (!channelMatch.test(id)) {
+            return findKey({
+              lnd,
+              channels: getInitialLiquidity.channels,
+              query: id,
+            },
+            (err, res) => {
+              if (!!err) {
+                return cbk(err);
+              }
+
+              return cbk(null, {from_public_key: res.public_key});
+            });
           }
 
           return getChannel({id, lnd: args.lnd}, (err, res) => {
@@ -170,49 +195,17 @@ module.exports = (args, cbk) => {
         'lnd',
         ({getInitialLiquidity, lnd}, cbk) =>
       {
-        if (!args.in_through || args.in_through.length === pubKeyHexLength) {
-          return cbk(null, args.in_through);
-        }
-
-        const {channels} = getInitialLiquidity;
-        const query = args.in_through;
-
-        const keys = uniq(channels.map(n => n.partner_public_key));
-
-        return asyncMap(keys, (key, cbk) => {
-          return getNode({
-            lnd,
-            is_omitting_channels: true,
-            public_key: key,
-          },
-          (err, node) => {
-            // Suppress errors on matching lookup
-            if (!!err) {
-              return cbk();
-            }
-
-            // Exit early when the alias doesn't match the query
-            if (!node.alias.toLowerCase().includes(query.toLowerCase())) {
-              return cbk();
-            }
-
-            return cbk(null, {alias: node.alias, public_key: key});
-          });
+        return findKey({
+          lnd,
+          channels: getInitialLiquidity.channels,
+          query: args.in_through,
         },
         (err, res) => {
-          const matching = !res ? null : res.filter(n => !!n);
-
-          if (!!err || !matching.length) {
-            return cbk([400, 'FailedToFindAliasMatchForInboundPeer']);
+          if (!!err) {
+            return cbk(err);
           }
 
-          const [match, secondMatch] = matching.filter(n => !!n);
-
-          if (!!secondMatch) {
-            return cbk([400, 'AmbiguousInboundPeerSpecified', {matching}]);
-          }
-
-          return cbk(null, match.public_key);
+          return cbk(null, res.public_key);
         });
       }],
 
@@ -222,51 +215,17 @@ module.exports = (args, cbk) => {
         'lnd',
         ({getInitialLiquidity, lnd}, cbk) =>
       {
-        if (!args.out_through || args.out_through.length === pubKeyHexLength) {
-          return cbk(null, args.out_through);
-        }
-
-        const {channels} = getInitialLiquidity;
-        const query = args.out_through;
-
-        const keys = uniq(channels.map(n => n.partner_public_key));
-
-        return asyncMap(keys, (key, cbk) => {
-          return getNode({
-            lnd,
-            is_omitting_channels: true,
-            public_key: key,
-          },
-          (err, node) => {
-            // Suppress errors on lookup
-            if (!!err) {
-              return cbk();
-            }
-
-            const alias = node.alias || String();
-
-            // Exit early when the node doesn't match the query
-            if (!alias.toLowerCase().includes(query.toLowerCase())) {
-              return cbk();
-            }
-
-            return cbk(null, {alias: node.alias, public_key: key});
-          });
+        return findKey({
+          lnd,
+          channels: getInitialLiquidity.channels,
+          query: args.out_through,
         },
         (err, res) => {
-          const matching = res.filter(n => !!n);
-
-          if (!!err || !matching.length) {
-            return cbk([400, 'FailedToFindAliasMatchForOutboundPeer']);
+          if (!!err) {
+            return cbk(err);
           }
 
-          const [match, secondMatch] = matching;
-
-          if (!!secondMatch) {
-            return cbk([400, 'AmbiguousOutboundPeerSpecified', {matching}]);
-          }
-
-          return cbk(null, match.public_key);
+          return cbk(null, res.public_key);
         });
       }],
 
@@ -274,15 +233,16 @@ module.exports = (args, cbk) => {
       getOutbound: [
         'findOutKey',
         'getInitialLiquidity',
+        'ignore',
         'lnd',
         'tokens',
-        ({findOutKey, getInitialLiquidity, lnd, tokens}, cbk) =>
+        ({findOutKey, getInitialLiquidity, ignore, lnd, tokens}, cbk) =>
       {
-        const ignore = args.avoid || [];
+        const ban = ignore.filter(n => !n.channel).map(n => n.from_public_key);
 
         const active = getInitialLiquidity.channels
           .filter(n => !!n.is_active)
-          .filter(n => ignore.indexOf(n.partner_public_key) === notFoundIndex);
+          .filter(n => !ban.includes(n.partner_public_key));
 
         const channels = active
           .filter(n => n.local_balance - n.local_reserve > tokens)
@@ -346,16 +306,25 @@ module.exports = (args, cbk) => {
         'getFees',
         'getInitialLiquidity',
         'getOutbound',
+        'ignore',
         'lnd',
-        ({findInKey, getFees, getInitialLiquidity, getOutbound, lnd}, cbk) =>
+        ({
+          findInKey,
+          getFees,
+          getInitialLiquidity,
+          getOutbound,
+          ignore,
+          lnd,
+        },
+        cbk) =>
       {
+        const ban = ignore.filter(n => !n.channel).map(n => n.from_public_key);
         const hasInThrough = !!args.in_through;
-        const ignore = args.avoid || [];
 
         const activeChannels = getInitialLiquidity.channels
           .filter(n => !!n.is_active)
           .filter(n => n.partner_public_key !== getOutbound.public_key)
-          .filter(n => ignore.indexOf(n.partner_public_key) === notFoundIndex);
+          .filter(n => !ban.includes(n.partner_public_key));
 
         const remote = activeChannels.reduce((sum, channel) => {
           const key = channel.partner_public_key;
@@ -504,7 +473,7 @@ module.exports = (args, cbk) => {
       invoice: ['channels', 'findRoute', 'lnd', ({findRoute, lnd}, cbk) => {
         return createInvoice({
           lnd,
-          cltv_delta: 40,
+          cltv_delta: defaultCltvDelta,
           description: 'Rebalance',
           tokens: min(maxRebalanceTokens, findRoute.route_maximum),
         },

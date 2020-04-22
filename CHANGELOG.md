@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.29.0
+
+- `rebalance`: Allow specifying an alias to avoid, provided the alias is a peer
+
 ## Version 5.28.4
 
 - `peers`: Avoid including liquidity from pending close channels
