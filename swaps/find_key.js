@@ -74,6 +74,11 @@ module.exports = ({channels, lnd, query}, cbk) => {
               return cbk();
             }
 
+            // Exit early when there is no node alias or query
+            if (!node || !node.alias) {
+              return cbk();
+            }
+
             // Exit early when the alias doesn't match the query
             if (!node.alias.toLowerCase().includes(query.toLowerCase())) {
               return cbk();

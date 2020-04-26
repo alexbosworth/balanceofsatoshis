@@ -53,7 +53,7 @@ const tests = [
       },
     },
     description: 'Get balances',
-    expected: {balance: 4, channel_balance: 0},
+    expected: {balance: 3, channel_balance: 0},
   },
 ];
 

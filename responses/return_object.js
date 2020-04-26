@@ -58,7 +58,11 @@ module.exports = ({exit, file, logger, reject, resolve, table, write}) => {
       logger.info(res);
     }
 
-    notifier.notify({isGlobal: true});
+    try {
+      notifier.notify({isGlobal: true});
+    } catch (err) {
+      // Suppress errors on version notify issues
+    }
 
     if (!!exit) {
       exit();

@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.29.1
+
+- `balance`: Remove over-reporting of chain balance from closing channels
+
 ## Version 5.29.0
 
 - `rebalance`: Allow specifying an alias to avoid, provided the alias is a peer
