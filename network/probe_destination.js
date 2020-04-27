@@ -290,9 +290,11 @@ module.exports = (args, cbk) => {
         logger: args.logger,
         max_fee: args.max_fee,
         outgoing_channel: outgoingChannelId,
+        payment: to.payment,
         routes: inboundPath || to.routes,
         timeout_minutes: args.timeout_minutes || undefined,
         tokens: args.tokens || to.tokens || defaultTokens,
+        total_mtokens: !!to.payment ? to.mtokens : undefined,
       },
       cbk);
     }],

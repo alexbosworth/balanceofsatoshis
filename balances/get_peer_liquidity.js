@@ -71,8 +71,27 @@ module.exports = (args, cbk) => {
           return channel.partner_public_key === args.public_key;
         });
 
-        const inbound = channels.reduce((sum, n) => sum + n.remote_balance, 0);
-        const outbound = channels.reduce((sum, n) => sum + n.local_balance, 0);
+        const inbound = channels.reduce((sum, n) => {
+          const pending = n.pending_payments.reduce((sum, n) => {
+            // When the amount is outgoing, assume it will be added to remote
+            return sum + (n.is_outgoing ? n.tokens : -n.tokens);
+          },
+          Number());
+
+          return sum + n.remote_balance + pending;
+        },
+        Number());
+
+        const outbound = channels.reduce((sum, n) => {
+          const pending = n.pending_payments.reduce((sum, n) => {
+            // When the amount is outgoing, assume it will added to remote
+            return sum + (n.is_outgoing ? -n.tokens : n.tokens);
+          },
+          Number());
+
+          return sum + n.local_balance + pending;
+        },
+        Number());
 
         const pendingOpen = getPendingChannels.pending_channels.filter(n => {
           return !!n.is_opening && n.partner_public_key === args.public_key;

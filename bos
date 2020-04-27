@@ -839,10 +839,11 @@ prog
   // Rebalance between peers
   .command('rebalance', 'Rebalance funds between peers')
   .help('Change the liquidity profile of two peers')
-  .option('--amount <amount>', 'Maximum amount to rebalance', INT, 4294967)
+  .option('--amount <amount>', 'Maximum amount to rebalance', INT)
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--avoid-high-inbound', 'Avoid rebalancing when inbound is high')
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
+  .option('--in-target-outbound <amt>', 'Balance up to outbound amount', INT)
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
   .option('--minutes <minutes>', 'Time-out route search after N minutes', INT)
@@ -850,6 +851,7 @@ prog
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
   .option('--out-channel', 'Lock outbound rebalance to channels', REPEATABLE)
+  .option('--out-target-inbound <amount>', 'Balance up to inbound amount', INT)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -857,6 +859,7 @@ prog
           logger,
           avoid: flatten([options.avoid].filter(n => !!n)),
           in_through: options.in || undefined,
+          in_outbound: options.inTargetOutbound || undefined,
           is_avoiding_high_inbound: options.avoidHighInbound || undefined,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           max_fee: options.maxFee,
@@ -864,6 +867,7 @@ prog
           max_rebalance: options.amount,
           node: options.node || undefined,
           out_channels: flatten([options.outChannel].filter(n => !!n)),
+          out_inbound: options.outTargetInbound,
           out_through: options.out || undefined,
           timeout_minutes: options.minutes || undefined,
         },

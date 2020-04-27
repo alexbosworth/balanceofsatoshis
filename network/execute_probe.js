@@ -34,6 +34,7 @@ const pathTimeoutMs = 1000 * 60 * 5;
       value: <Message To Final Destination Raw Value Hex Encoded String>
     }]
     [outgoing_channel]: <Outgoing Channel Id String>
+    [payment]: <Payment Identifier Hex String>
     [routes]: [[{
       [base_fee_mtokens]: <Base Fee Millitokens String>
       [channel]: <Standard Format Channel Id String>
@@ -44,6 +45,7 @@ const pathTimeoutMs = 1000 * 60 * 5;
     }]]
     [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
     tokens: <Tokens To Probe Number>
+    [total_mtokens]: <Total Millitokens String>
   }
 
   @returns via cbk or Promise
@@ -122,9 +124,11 @@ module.exports = (args, cbk) => {
           messages: args.messages,
           outgoing_channel: args.outgoing_channel,
           path_timeout_ms: pathTimeoutMs,
+          payment: args.payment,
           probe_timeout_ms: minutesAsMs((args.timeout_minutes || Number())),
           routes: args.routes,
           tokens: args.tokens,
+          total_mtokens: args.total_mtokens,
         });
 
         const finished = (err, res) => {

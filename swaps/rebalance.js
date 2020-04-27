@@ -12,6 +12,7 @@ const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
 const findKey = require('./find_key');
+const {getPeerLiquidity} = require('./../balances');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');
 
@@ -21,6 +22,7 @@ const cltvDelta = 144;
 const defaultCltvDelta = 40;
 const defaultMaxFee = 1337;
 const defaultMaxFeeRate = 250;
+const defaultMaxFeeTotal = Math.floor(5e6 * 0.0025);
 const flatten = arr => [].concat(...arr);
 const highInbound = 4500000;
 const {isArray} = Array;
@@ -55,6 +57,7 @@ const uniq = arr => Array.from(new Set(arr));
     [node]: <Node Name String>
     [out_channels]: [<Exclusively Rebalance Through Channel Ids String>]
     out_through: <Pay Out Through Peer String>
+    [target]: <Target Tokens Number>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
   }
 
@@ -326,6 +329,7 @@ module.exports = (args, cbk) => {
           .filter(n => n.partner_public_key !== getOutbound.public_key)
           .filter(n => !ban.includes(n.partner_public_key));
 
+        // Sum up the remote balance of active channels
         const remote = activeChannels.reduce((sum, channel) => {
           const key = channel.partner_public_key;
 
@@ -359,6 +363,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'NoInboundChannelIsAvailableToReceiveRebalance']);
         }
 
+        // Filter out channels where the inbound fee rate is too expensive
         const array = channels.filter(chan => {
           const peerKey = chan.partner_public_key;
 
@@ -373,8 +378,9 @@ module.exports = (args, cbk) => {
           return feeRate < (args.max_fee_rate || defaultMaxFeeRate);
         });
 
+        // Exit early when there is no obvious inbound peer
         if (!array.length) {
-          return cbk([400, 'NoLowFeeInboundChannelToReceiveRebalance']);
+          return cbk([400, 'NoHighInboundLowFeeChannelToReceiveRebalance']);
         }
 
         const {sorted} = sortBy({array, attribute: 'remote'});
@@ -396,14 +402,55 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Calculate maximum amount to rebalance
+      max: ['getInbound', 'getOutbound', ({getInbound, getOutbound}, cbk) => {
+        if (!!args.max_rebalance && !!args.in_outbound) {
+          return cbk([400, 'CannotSpecifyBothDiscreteAmountAndTargetAmounts']);
+        }
+
+        if (!!args.max_rebalance && !!args.out_inbound) {
+          return cbk([400, 'CannotSpecifyBothDiscreteAmountAndTargetAmounts']);
+        }
+
+        if (!!args.in_outbound && !!args.out_inbound) {
+          return cbk([400, 'TargetingBothInAndOutAmountsNotSupported']);
+        }
+
+        if (!args.in_outbound && !args.out_inbound) {
+          return cbk(null, args.max_rebalance || maxPaymentSize);
+        }
+
+        const peer = !args.in_outbound ? getOutbound : getInbound;
+        const target = !args.in_outbound ? args.out_inbound : args.in_outbound;
+
+        return getPeerLiquidity({
+          lnd: args.lnd,
+          public_key: peer.public_key,
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const current = !args.in_outbound ? res.inbound : res.outbound;
+
+          if (current > target) {
+            return cbk([400, 'AlreadyEnoughLiquidityForPeer']);
+          }
+
+          return cbk(null, min(...[maxPaymentSize, target - current]));
+        });
+      }],
+
       // Find a route to the destination
       findRoute: [
         'getInbound',
         'getOutbound',
         'getPublicKey',
         'ignore',
+        'max',
         'tokens',
-        ({getInbound, getOutbound, getPublicKey, ignore, tokens}, cbk) =>
+        ({getInbound, getOutbound, getPublicKey, ignore, max, tokens}, cbk) =>
       {
         args.logger.info({
           outgoing_peer: {
@@ -416,18 +463,20 @@ module.exports = (args, cbk) => {
           },
         });
 
+        const immediateIgnore = [{
+          from_public_key: getPublicKey.public_key,
+          to_public_key: getInbound.public_key,
+        }];
+
         return probeDestination({
           tokens,
           destination: getPublicKey.public_key,
-          find_max: args.max_rebalance || maxPaymentSize,
-          ignore: [{
-            from_public_key: getPublicKey.public_key,
-            to_public_key: getInbound.public_key,
-          }].concat(ignore),
+          find_max: max,
+          ignore: [].concat(immediateIgnore).concat(ignore),
           in_through: getInbound.public_key,
           logger: args.logger,
           lnd: args.lnd,
-          max_fee: Math.floor(5e6 * 0.0025),
+          max_fee: defaultMaxFeeTotal,
           node: args.node,
           out_through: getOutbound.public_key,
           timeout_minutes: args.timeout_minutes,
@@ -562,45 +611,42 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Final rebalancing
+      // Get adjusted inbound liquidity after rebalance
+      getAdjustedInbound: ['getInbound', 'pay', ({getInbound, pay}, cbk) => {
+        return getPeerLiquidity({
+          lnd: args.lnd,
+          public_key: getInbound.public_key,
+        },
+        cbk);
+      }],
+
+      // Get adjusted outbound liquidity after rebalance
+      getAdjustedOutbound: ['getOutbound', 'pay', ({getOutbound, pay}, cbk) => {
+        return getPeerLiquidity({
+          lnd: args.lnd,
+          public_key: getOutbound.public_key,
+        },
+        cbk);
+      }],
+
+      // Final rebalancing outcome
       rebalance: [
-        'getInbound',
-        'getInitialLiquidity',
-        'getOutbound',
+        'getAdjustedInbound',
+        'getAdjustedOutbound',
         'pay',
-        ({getInbound, getInitialLiquidity, getOutbound, pay}, cbk) =>
+        ({getAdjustedInbound, getAdjustedOutbound, pay}, cbk) =>
       {
-        const inPeerInbound = getInitialLiquidity.channels
-          .filter(n => n.partner_public_key === getInbound.public_key)
-          .filter(n => !!n.is_active)
-          .reduce((sum, n) => sum + n.remote_balance, minTokens);
-
-        const inPeerOutbound = getInitialLiquidity.channels
-          .filter(n => n.partner_public_key === getInbound.public_key)
-          .filter(n => !!n.is_active)
-          .reduce((sum, n) => sum + n.local_balance, minTokens);
-
-        const outPeerInbound = getInitialLiquidity.channels
-          .filter(n => n.partner_public_key === getOutbound.public_key)
-          .filter(n => !!n.is_active)
-          .reduce((sum, n) => sum + n.remote_balance, minTokens);
-
-        const outPeerOutbound = getInitialLiquidity.channels
-          .filter(n => n.partner_public_key === getOutbound.public_key)
-          .filter(n => !!n.is_active)
-          .reduce((sum, n) => sum + n.local_balance, minTokens);
-
         args.logger.info({
           rebalance: [
             {
-              increased_inbound_on: getOutbound.alias,
-              liquidity_inbound: tokAsBigTok(outPeerInbound + pay.tokens),
-              liquidity_outbound: tokAsBigTok(outPeerOutbound - pay.tokens),
+              increased_inbound_on: getAdjustedOutbound.alias,
+              liquidity_inbound: tokAsBigTok(getAdjustedOutbound.inbound),
+              liquidity_outbound: tokAsBigTok(getAdjustedOutbound.outbound),
             },
             {
-              decreased_inbound_on: getInbound.alias,
-              liquidity_inbound: tokAsBigTok(inPeerInbound - pay.tokens),
-              liquidity_outbound: tokAsBigTok(inPeerOutbound + pay.tokens),
+              decreased_inbound_on: getAdjustedInbound.alias,
+              liquidity_inbound: tokAsBigTok(getAdjustedInbound.inbound),
+              liquidity_outbound: tokAsBigTok(getAdjustedInbound.outbound),
             },
             {
               rebalanced: tokAsBigTok(pay.tokens),

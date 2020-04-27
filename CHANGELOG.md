@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.30.0
+
+- `rebalance`: Fix final rebalance report output for concurrent rebalances
+- `rebalance`: Add `--in-target-outbound` to set outbound amount for --in peer
+- `rebalance`: Add `--out-target-inbound` to set inbound amount for --out peer
+
 ## Version 5.29.1
 
 - `balance`: Remove over-reporting of chain balance from closing channels
