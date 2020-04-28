@@ -760,8 +760,11 @@ prog
   .option('--private', 'Only private channels')
   .option('--public', 'Only peers with public channels')
   .option('--sort', 'Sort results by peer attribute')
+  .option('--table', 'Output peers in table')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
+      const table = !options.table ? undefined : 'rows';
+
       try {
         return getPeers({
           earnings_days: options.feeDays,
@@ -771,12 +774,13 @@ prog
           is_offline: !!options.offline,
           is_private: !!options.private,
           is_public: !!options.public,
+          is_table: !!options.table,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           omit: flatten([options.omit].filter(n => !!n)),
           outbound_liquidity_below: options.outboundBelow,
           sort_by: options.sort,
         },
-        returnObject({logger, reject, resolve}));
+        returnObject({logger, reject, resolve, table}));
       } catch (err) {
         return reject(err);
       }

@@ -88,6 +88,8 @@ module.exports = ({cltv, hops, lnd, logger, max}, cbk) => {
 
       // Find maximum
       findMax: ['channels', ({channels}, cbk) => {
+        let isPayable = false;
+
         return getMaximum({accuracy, from, to: to(max)}, ({cursor}, cbk) => {
           const tokens = cursor;
 
@@ -105,13 +107,25 @@ module.exports = ({cltv, hops, lnd, logger, max}, cbk) => {
               return cbk(err);
             }
 
+            isPayable = isPayable || true;
+
             return setTimeout(() => {
               return cbk(null, res.is_payable);
             },
             nextAttemptDelayMs);
           });
         },
-        cbk);
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          if (!isPayable) {
+            return cbk([503, 'FailedToFindRoute']);
+          }
+
+          return cbk(null, res);
+        });
       }],
     },
     returnResult({reject, resolve, of: 'findMax'}, cbk));

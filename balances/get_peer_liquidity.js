@@ -9,6 +9,7 @@ const {returnResult} = require('asyncjs-util');
   {
     lnd: <Authenticated LND gRPC API Object>
     public_key: <Peer Public Key Hex String>
+    [settled]: <Known Settled Payment Id String>
   }
 
   @returns via cbk or Promise
@@ -71,13 +72,37 @@ module.exports = (args, cbk) => {
           return channel.partner_public_key === args.public_key;
         });
 
-        const inbound = channels.reduce((sum, n) => {
-          return sum + n.remote_balance;
+        const inbound = channels.reduce((sum, channel) => {
+          const settled = channel.pending_payments.find(n => {
+            return !!args.settled && n.id === args.settled;
+          });
+
+          if (!!settled && settled.is_outgoing) {
+            return sum + channel.remote_balance + settled.tokens;
+          }
+
+          if (!!settled && !settled.is_outgoing) {
+            return sum + channel.remote_balance - settled.tokens;
+          }
+
+          return sum + channel.remote_balance;
         },
         Number());
 
-        const outbound = channels.reduce((sum, n) => {
-          return sum + n.local_balance;
+        const outbound = channels.reduce((sum, channel) => {
+          const settled = channel.pending_payments.find(n => {
+            return !!args.settled && n.id === args.settled;
+          });
+
+          if (!!settled && settled.is_outgoing) {
+            return sum + channel.local_balance - settled.tokens;
+          }
+
+          if (!!settled && !settled.is_outgoing) {
+            return sum + channel.local_balance + settled.tokens;
+          }
+
+          return sum + channel.local_balance;
         },
         Number());
 

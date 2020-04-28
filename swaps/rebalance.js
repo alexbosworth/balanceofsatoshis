@@ -403,7 +403,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Calculate maximum amount to rebalance
-      max: ['getInbound', 'getOutbound', ({getInbound, getOutbound}, cbk) => {
+      max: ['getInbound', 'getOutbound', 'tokens', ({getInbound, getOutbound, tokens}, cbk) => {
         if (!!args.max_rebalance && !!args.in_outbound) {
           return cbk([400, 'CannotSpecifyBothDiscreteAmountAndTargetAmounts']);
         }
@@ -434,7 +434,7 @@ module.exports = (args, cbk) => {
 
           const current = !args.in_outbound ? res.inbound : res.outbound;
 
-          if (current > target) {
+          if (current > target - tokens) {
             return cbk([400, 'AlreadyEnoughLiquidityForPeer']);
           }
 
@@ -607,7 +607,7 @@ module.exports = (args, cbk) => {
             return cbk([503, 'UnexpectedErrExecutingRebalance', {err}]);
           }
 
-          return cbk(null, {fee: res.fee, tokens: res.tokens});
+          return cbk(null, {fee: res.fee, id: invoice.id, tokens: res.tokens});
         });
       }],
 
@@ -616,6 +616,7 @@ module.exports = (args, cbk) => {
         return getPeerLiquidity({
           lnd: args.lnd,
           public_key: getInbound.public_key,
+          settled: pay.id,
         },
         cbk);
       }],
@@ -625,6 +626,7 @@ module.exports = (args, cbk) => {
         return getPeerLiquidity({
           lnd: args.lnd,
           public_key: getOutbound.public_key,
+          settled: pay.id,
         },
         cbk);
       }],

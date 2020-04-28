@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.31.0
+
+- `peers`: Add `--table` option to show peers in a tabular format
+- `rebalance`: Improve reporting of peer liquidity with respect to pending htlcs
+
 ## Version 5.30.1
 
 - `rebalance`: Fix final rebalance report output for concurrent rebalances
