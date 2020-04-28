@@ -72,24 +72,12 @@ module.exports = (args, cbk) => {
         });
 
         const inbound = channels.reduce((sum, n) => {
-          const pending = n.pending_payments.reduce((sum, n) => {
-            // When the amount is outgoing, assume it will be added to remote
-            return sum + (n.is_outgoing ? n.tokens : -n.tokens);
-          },
-          Number());
-
-          return sum + n.remote_balance + pending;
+          return sum + n.remote_balance;
         },
         Number());
 
         const outbound = channels.reduce((sum, n) => {
-          const pending = n.pending_payments.reduce((sum, n) => {
-            // When the amount is outgoing, assume it will added to remote
-            return sum + (n.is_outgoing ? -n.tokens : n.tokens);
-          },
-          Number());
-
-          return sum + n.local_balance + pending;
+          return sum + n.local_balance;
         },
         Number());
 

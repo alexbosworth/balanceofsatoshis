@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.30.0
+## Version 5.30.1
 
 - `rebalance`: Fix final rebalance report output for concurrent rebalances
 - `rebalance`: Add `--in-target-outbound` to set outbound amount for --in peer
