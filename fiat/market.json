@@ -73,5 +73,6 @@
     "xrpeur": ["bitstamp", "coinbase", "kraken"],
     "xrpusd": ["kraken"],
     "xrpusdt": ["binance"]
-  }
+  },
+  "price_providers": ["coindesk", "coingecko"]
 }

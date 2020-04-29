@@ -26,7 +26,7 @@ const {getBalance} = require('./balances');
 const {getCertValidityDays} = require('./lnd');
 const {getChainFees} = require('./chain');
 const {getChannelCloses} = require('./chain');
-const {getCoindeskRates} = require('./fiat');
+const {getPrices} = require('./fiat');
 const {getCredentials} = require('./lnd');
 const {getDepositAddress} = require('./chain');
 const {getFeesChart} = require('./routing');
@@ -44,6 +44,7 @@ const {ignoreFromAvoid} = require('./routing');
 const {lndCredentials} = require('./lnd');
 const marketPairs = require('./fiat').pairs;
 const {openChannel} = require('./network');
+const {priceProviders} = require('./fiat');
 const {probeDestination} = require('./network');
 const {rebalance} = require('./swaps');
 const {reconnect} = require('./network');
@@ -791,11 +792,13 @@ prog
   .command('price', 'Get the price')
   .argument('[symbols...]', 'Desired fiat tickers')
   .option('--file <path>', 'Write the output to a JSON file at desired path')
+  .option('--from <provider>', 'Rate provider', priceProviders, 'coindesk')
   .option('--no-color', 'Mute all colors')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
-      return getCoindeskRates({
+      return getPrices({
         request,
+        from: options.from,
         symbols: args.symbols.map(n => n.toUpperCase()),
       },
       returnObject({

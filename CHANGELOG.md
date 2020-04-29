@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.32.0
+
+- `price`: Add `--from` to specify rate provider
+
 ## Version 5.31.0
 
 - `peers`: Add `--table` option to show peers in a tabular format

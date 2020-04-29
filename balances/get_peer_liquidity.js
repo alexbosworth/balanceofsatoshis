@@ -106,6 +106,30 @@ module.exports = (args, cbk) => {
         },
         Number());
 
+        const pendingInHtlcs = channels.reduce((allPending, channel) => {
+          return allPending + channel.pending_payments.reduce((sum, n) => {
+            if (n.id === args.settled) {
+              return sum;
+            }
+
+            return sum + (n.is_outgoing ? n.tokens : Number());
+          },
+          Number());
+        },
+        Number());
+
+        const pendingOutHtlcs = channels.reduce((allPending, channel) => {
+          return allPending + channel.pending_payments.reduce((sum, n) => {
+            if (n.id === args.settled) {
+              return sum;
+            }
+
+            return sum + (n.is_outgoing ? Number() : n.tokens);
+          },
+          Number());
+        },
+        Number());
+
         const pendingOpen = getPendingChannels.pending_channels.filter(n => {
           return !!n.is_opening && n.partner_public_key === args.public_key;
         });
@@ -123,7 +147,9 @@ module.exports = (args, cbk) => {
         return cbk(null, {
           alias: getNode.alias,
           inbound: pendingInbound + inbound,
+          inbound_pending: pendingInHtlcs,
           outbound: pendingOutbound + outbound,
+          outbound_pending: pendingOutHtlcs,
         });
       }],
     },

@@ -39,7 +39,7 @@ const notFoundIndex = -1;
 const pubKeyHexLength = 66;
 const rateDivisor = 1e6;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
-const tokAsBigTok = tokens => (tokens / 1e8).toFixed(8);
+const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
 const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
 const uniq = arr => Array.from(new Set(arr));
 
@@ -638,17 +638,26 @@ module.exports = (args, cbk) => {
         'pay',
         ({getAdjustedInbound, getAdjustedOutbound, pay}, cbk) =>
       {
+        const inPendingIn = getAdjustedInbound.inbound_pending;
+        const inPendingOut = getAdjustedInbound.outbound_pending;
+        const outPendingIn = getAdjustedOutbound.inbound_pending;
+        const outPendingOut = getAdjustedOutbound.outbound_pending;
+
         args.logger.info({
           rebalance: [
             {
               increased_inbound_on: getAdjustedOutbound.alias,
               liquidity_inbound: tokAsBigTok(getAdjustedOutbound.inbound),
+              liquidity_inbound_pending: tokAsBigTok(outPendingIn),
               liquidity_outbound: tokAsBigTok(getAdjustedOutbound.outbound),
+              liquidity_outbound_pending: tokAsBigTok(outPendingOut),
             },
             {
               decreased_inbound_on: getAdjustedInbound.alias,
               liquidity_inbound: tokAsBigTok(getAdjustedInbound.inbound),
+              liquidity_inbound_pending: tokAsBigTok(inPendingIn),
               liquidity_outbound: tokAsBigTok(getAdjustedInbound.outbound),
+              liquidity_outbound_pending: tokAsBigTok(inPendingOut),
             },
             {
               rebalanced: tokAsBigTok(pay.tokens),
