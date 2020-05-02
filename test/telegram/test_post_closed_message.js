@@ -97,7 +97,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        `0.00000001 channel closed with alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
+        `0.00000001 channel closed with alias ${pubKey}. Inbound liquidity now: 0.00000001. Outbound liquidity now: 0.00000001.`,
       ],
     },
   },
@@ -107,7 +107,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        `Breach countered on 0.00000001 channel with alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
+        `Breach countered on 0.00000001 channel with alias ${pubKey}. Inbound liquidity now: 0.00000001. Outbound liquidity now: 0.00000001.`,
       ],
     },
   },
@@ -117,7 +117,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        `Cooperatively closed 0.00000001 channel with alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
+        `Cooperatively closed 0.00000001 channel with alias ${pubKey}. Inbound liquidity now: 0.00000001. Outbound liquidity now: 0.00000001.`,
       ],
     },
   },
@@ -127,7 +127,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        `Force-closed 0.00000001 channel with alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
+        `Force-closed 0.00000001 channel with alias ${pubKey}. Inbound liquidity now: 0.00000001. Outbound liquidity now: 0.00000001.`,
       ],
     },
   },
@@ -137,7 +137,7 @@ const tests = [
     expected: {
       text: [
         '🥀 node1',
-        `0.00000001 channel was force closed by alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
+        `0.00000001 channel was force closed by alias ${pubKey}. Inbound liquidity now: 0.00000001. Outbound liquidity now: 0.00000001.`,
       ],
     },
   },

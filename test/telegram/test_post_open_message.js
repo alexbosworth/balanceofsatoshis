@@ -80,7 +80,7 @@ const tests = [
     expected: {
       text: [
         '🌹 node1',
-        `Accepted new 0.00000001 private channel from alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
+        `Accepted new 0.00000001 private channel from alias ${pubKey}. Inbound liquidity now: 0.00000001. Outbound liquidity now: 0.00000001.`,
       ],
     },
   },
@@ -90,7 +90,7 @@ const tests = [
     expected: {
       text: [
         '🌹 node1',
-        `Opened new 0.00000001 channel to alias ${pubKey}. Inbound liquidity now: 0.00000002. Outbound liquidity now: 0.00000002.`,
+        `Opened new 0.00000001 channel to alias ${pubKey}. Inbound liquidity now: 0.00000001. Outbound liquidity now: 0.00000001.`,
       ],
     },
   },

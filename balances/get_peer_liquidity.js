@@ -4,6 +4,8 @@ const {getNode} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const peerLiquidity = require('./peer_liquidity');
+
 /** Get the rundown on liquidity with a specific peer
 
   {
@@ -16,7 +18,9 @@ const {returnResult} = require('asyncjs-util');
   {
     alias: <Alias String>
     inbound: <Inbound Liquidity Tokens Number>
+    inbound_pending: <Pending Inbound Liquidity Tokens Number>
     outbound: <Outbound Liquidity Tokens Number>
+    outbound_pending: <Pending Outbound Liquidity Tokens Number>
   }
 */
 module.exports = (args, cbk) => {
@@ -49,7 +53,7 @@ module.exports = (args, cbk) => {
         },
         (err, res) => {
           if (!!err) {
-            return cbk(null, {alias: '', public_key: args.public_key});
+            return cbk(null, {alias: String(), public_key: args.public_key});
           }
 
           return cbk(null, res);
@@ -72,84 +76,24 @@ module.exports = (args, cbk) => {
           return channel.partner_public_key === args.public_key;
         });
 
-        const inbound = channels.reduce((sum, channel) => {
-          const settled = channel.pending_payments.find(n => {
-            return !!args.settled && n.id === args.settled;
-          });
-
-          if (!!settled && settled.is_outgoing) {
-            return sum + channel.remote_balance + settled.tokens;
-          }
-
-          if (!!settled && !settled.is_outgoing) {
-            return sum + channel.remote_balance - settled.tokens;
-          }
-
-          return sum + channel.remote_balance;
-        },
-        Number());
-
-        const outbound = channels.reduce((sum, channel) => {
-          const settled = channel.pending_payments.find(n => {
-            return !!args.settled && n.id === args.settled;
-          });
-
-          if (!!settled && settled.is_outgoing) {
-            return sum + channel.local_balance - settled.tokens;
-          }
-
-          if (!!settled && !settled.is_outgoing) {
-            return sum + channel.local_balance + settled.tokens;
-          }
-
-          return sum + channel.local_balance;
-        },
-        Number());
-
-        const pendingInHtlcs = channels.reduce((allPending, channel) => {
-          return allPending + channel.pending_payments.reduce((sum, n) => {
-            if (n.id === args.settled) {
-              return sum;
-            }
-
-            return sum + (n.is_outgoing ? n.tokens : Number());
-          },
-          Number());
-        },
-        Number());
-
-        const pendingOutHtlcs = channels.reduce((allPending, channel) => {
-          return allPending + channel.pending_payments.reduce((sum, n) => {
-            if (n.id === args.settled) {
-              return sum;
-            }
-
-            return sum + (n.is_outgoing ? Number() : n.tokens);
-          },
-          Number());
-        },
-        Number());
-
-        const pendingOpen = getPendingChannels.pending_channels.filter(n => {
-          return !!n.is_opening && n.partner_public_key === args.public_key;
+        const opening = getPendingChannels.pending_channels.filter(chan => {
+          return chan.is_opening && chan.partner_public_key == args.public_key;
         });
 
-        const pendingInbound = pendingOpen.reduce((sum, channel) => {
-          return sum + channel.remote_balance;
-        },
-        Number());
-
-        const pendingOutbound = pendingOpen.reduce((sum, channel) => {
-          return sum + channel.local_balance;
-        },
-        Number());
+        const liquidity = peerLiquidity({
+          channels,
+          opening,
+          settled: args.settled,
+        });
 
         return cbk(null, {
           alias: getNode.alias,
-          inbound: pendingInbound + inbound,
-          inbound_pending: pendingInHtlcs,
-          outbound: pendingOutbound + outbound,
-          outbound_pending: pendingOutHtlcs,
+          inbound: liquidity.inbound,
+          inbound_opening: liquidity.inbound_opening,
+          inbound_pending: liquidity.inbound_pending,
+          outbound: liquidity.outbound,
+          outbound_opening: liquidity.outbound_opening,
+          outbound_pending: liquidity.outbound_pending,
         });
       }],
     },

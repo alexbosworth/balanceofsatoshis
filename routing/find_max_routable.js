@@ -107,7 +107,7 @@ module.exports = ({cltv, hops, lnd, logger, max}, cbk) => {
               return cbk(err);
             }
 
-            isPayable = isPayable || true;
+            isPayable = tokens;
 
             return setTimeout(() => {
               return cbk(null, res.is_payable);

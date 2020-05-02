@@ -40,7 +40,6 @@ const waitForDepositMs = 1000 * 60 * 60 * 24;
   {
     [api_key]: <API Key CBOR String>
     [in_through]: <Request Inbound Payment Public Key Hex String>
-    [is_free]: <Use Free Service Bool>
     [is_refund_test]: <Alter Swap Timeout To Have Short Refund Bool>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Logger Object>
@@ -104,7 +103,7 @@ module.exports = (args, cbk) => {
       try {
         const {service} = lightningLabsSwapService({
           network,
-          is_free: true,
+          is_free: false,
         });
 
         return cbk(null, service);
@@ -182,11 +181,6 @@ module.exports = (args, cbk) => {
       // Exit early when we're recovering an existing swap
       if (!!args.recovery) {
         return cbk();
-      }
-
-      // Exit early when unpaid service is requested
-      if (!!args.is_free) {
-        return cbk(null, {service});
       }
 
       return getPaidService({

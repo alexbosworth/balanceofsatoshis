@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.33.0
+
+- `chain-receive`: Require auth payment to initiate swap
+- `open`: Add method to open one or more channels funded by an external wallet
+
 ## Version 5.32.0
 
 - `price`: Add `--from` to specify rate provider

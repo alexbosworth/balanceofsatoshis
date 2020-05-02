@@ -44,6 +44,7 @@ const {ignoreFromAvoid} = require('./routing');
 const {lndCredentials} = require('./lnd');
 const marketPairs = require('./fiat').pairs;
 const {openChannel} = require('./network');
+const {openChannels} = require('./network');
 const {priceProviders} = require('./fiat');
 const {probeDestination} = require('./network');
 const {rebalance} = require('./swaps');
@@ -208,7 +209,6 @@ prog
   .option('--api-key <api_key>', 'Pre-paid API key to use', hexMatch)
   .option('--in <peer>', 'Request receiving through a specific peer')
   .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
-  .option('--no-auth', 'Avoid using authenticated service')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to receive funds on')
   .option('--recovery <refund_recovery>', 'Attempt refund of swap')
@@ -221,7 +221,6 @@ prog
           logger,
           api_key: options.apiKey || undefined,
           in_through: options.in || undefined,
-          is_free: options.noAuth || false,
           is_refund_test: options.testRefund,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           max_fee: options.maxFee,
@@ -687,6 +686,30 @@ prog
         node: args.node || undefined,
       },
       returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Open channels
+  .command('open', 'Open channels')
+  .help('Create channels from an external wallet. Note: do not self-broadcast')
+  .argument('<peer_public_keys...>', 'With nodes with public keys')
+  .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
+  .option('--node <node_name>', 'Node to open channels')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return openChannels({
+          logger,
+          request,
+          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          capacities: flatten([options.amount].filter(n => !!n)),
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          public_keys: args.peerPublicKeys,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
     });
   })
 

@@ -20,7 +20,7 @@ const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
 const asEarnings = (on, tok) => !!on ? (tok / 1e8).toFixed(8) : undefined;
-const asRate = n => n !== undefined ? (n / 1e4).toFixed(2) + '%' : undefined;
+const asRate = n => n !== undefined ? `${(n/1e4).toFixed(2)}% (${n})` : undefined;
 const defaultSort = 'first_connected';
 const fromNow = epoch => !epoch ? undefined : moment(epoch * 1e3).fromNow();
 const {isArray} = Array;

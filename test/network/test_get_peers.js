@@ -108,7 +108,7 @@ const tests = [
         alias: 'alias',
         fee_earnings: undefined,
         last_activity: undefined,
-        inbound_fee_rate: '0.00%',
+        inbound_fee_rate: '0.00% (2)',
         inbound_liquidity: '0.00000001',
         is_offline: true,
         outbound_liquidity: '0.00000001',

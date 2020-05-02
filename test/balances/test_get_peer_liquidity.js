@@ -30,7 +30,7 @@ const tests = [
       public_key: Buffer.alloc(33).toString('hex'),
     },
     description: 'Get peer liquidity',
-    expected: {alias: 'alias', inbound: 2, outbound: 2},
+    expected: {alias: 'alias', inbound: 1, outbound: 1},
   },
   {
     args: {
@@ -45,7 +45,7 @@ const tests = [
       public_key: Buffer.alloc(33).toString('hex'),
     },
     description: 'Get peer liquidity when node info returns an error',
-    expected: {alias: '', inbound: 2, outbound: 2},
+    expected: {alias: '', inbound: 1, outbound: 1},
   },
 ];
 

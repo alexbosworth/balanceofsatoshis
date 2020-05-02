@@ -6,6 +6,7 @@ const getPeers = require('./get_peers');
 const getScoredNodes = require('./get_scored_nodes');
 const networks = require('./networks');
 const openChannel = require('./open_channel');
+const openChannels = require('./open_channels');
 const probeDestination = require('./probe_destination');
 const reconnect = require('./reconnect');
 const removePeer = require('./remove_peer');
@@ -21,6 +22,7 @@ module.exports = {
   getScoredNodes,
   networks,
   openChannel,
+  openChannels,
   probeDestination,
   reconnect,
   removePeer,

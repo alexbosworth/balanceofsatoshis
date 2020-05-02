@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const asyncMapSeries = require('async/mapSeries');
+const asyncRetry = require('async/retry');
 const {createInvoice} = require('ln-service');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -403,7 +404,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Calculate maximum amount to rebalance
-      max: ['getInbound', 'getOutbound', 'tokens', ({getInbound, getOutbound, tokens}, cbk) => {
+      max: [
+        'getInbound',
+        'getOutbound',
+        'tokens',
+        ({getInbound, getOutbound, tokens}, cbk) =>
+      {
         if (!!args.max_rebalance && !!args.in_outbound) {
           return cbk([400, 'CannotSpecifyBothDiscreteAmountAndTargetAmounts']);
         }
@@ -602,13 +608,20 @@ module.exports = (args, cbk) => {
 
       // Execute the rebalance
       pay: ['invoice', 'lnd', 'routes', ({invoice, lnd, routes}, cbk) => {
-        return payViaRoutes({lnd, routes, id: invoice.id}, (err, res) => {
-          if (!!err) {
-            return cbk([503, 'UnexpectedErrExecutingRebalance', {err}]);
-          }
+        return asyncRetry({}, cbk => {
+          return payViaRoutes({lnd, routes, id: invoice.id}, (err, res) => {
+            if (!!err) {
+              return cbk([503, 'UnexpectedErrExecutingRebalance', {err}]);
+            }
 
-          return cbk(null, {fee: res.fee, id: invoice.id, tokens: res.tokens});
-        });
+            return cbk(null, {
+              fee: res.fee,
+              id: invoice.id,
+              tokens: res.tokens,
+            });
+          });
+        },
+        cbk);
       }],
 
       // Get adjusted inbound liquidity after rebalance
@@ -638,8 +651,12 @@ module.exports = (args, cbk) => {
         'pay',
         ({getAdjustedInbound, getAdjustedOutbound, pay}, cbk) =>
       {
+        const inOpeningIn = getAdjustedInbound.inbound_opening;
+        const inOpeningOut = getAdjustedInbound.outbound_opening;
         const inPendingIn = getAdjustedInbound.inbound_pending;
         const inPendingOut = getAdjustedInbound.outbound_pending;
+        const outOpeningIn = getAdjustedOutbound.inbound_opening;
+        const outOpeningOut = getAdjustedOutbound.outbound_opening;
         const outPendingIn = getAdjustedOutbound.inbound_pending;
         const outPendingOut = getAdjustedOutbound.outbound_pending;
 
@@ -648,15 +665,19 @@ module.exports = (args, cbk) => {
             {
               increased_inbound_on: getAdjustedOutbound.alias,
               liquidity_inbound: tokAsBigTok(getAdjustedOutbound.inbound),
+              liquidity_inbound_opening: tokAsBigTok(outOpeningIn),
               liquidity_inbound_pending: tokAsBigTok(outPendingIn),
               liquidity_outbound: tokAsBigTok(getAdjustedOutbound.outbound),
+              liquidity_outbound_opening: tokAsBigTok(outOpeningOut),
               liquidity_outbound_pending: tokAsBigTok(outPendingOut),
             },
             {
               decreased_inbound_on: getAdjustedInbound.alias,
               liquidity_inbound: tokAsBigTok(getAdjustedInbound.inbound),
+              liquidity_inbound_opening: tokAsBigTok(inOpeningIn),
               liquidity_inbound_pending: tokAsBigTok(inPendingIn),
               liquidity_outbound: tokAsBigTok(getAdjustedInbound.outbound),
+              liquidity_outbound_opening: tokAsBigTok(inOpeningOut),
               liquidity_outbound_pending: tokAsBigTok(inPendingOut),
             },
             {

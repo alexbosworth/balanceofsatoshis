@@ -3,16 +3,12 @@ const {getSwapInQuote} = require('goldengate');
 const {getSwapInTerms} = require('goldengate');
 const {getSwapOutQuote} = require('goldengate');
 const {getSwapOutTerms} = require('goldengate');
-const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const {balanceFromTokens} = require('./../balances');
 const {fastDelayMinutes} = require('./constants');
-const {feeRateDenominator} = require('./constants');
-const {getNetwork} = require('./../network');
 const {slowDelayMinutes} = require('./constants');
-const {swapTypes} = require('./constants');
 
 /** Get the cost of liquidity via swap
 
