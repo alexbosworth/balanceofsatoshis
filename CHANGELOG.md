@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.34.1
+
+- `remove-peer`: Improve support for force closing out on a disconnected peer
+
 ## Version 5.34.0
 
 - `telegram`: Post an update when a payment is sent (only on LND 0.10.0)

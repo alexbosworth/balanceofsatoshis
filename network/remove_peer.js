@@ -134,7 +134,8 @@ module.exports = (args, cbk) => {
         'getSlowFee',
         ({getFastFee, getMempool, getNormalFee, getSlowFee}, cbk) =>
       {
-        if (!!args.chain_fee_rate) {
+        // Exit early when force closing or closing with a set fee rate
+        if (!!args.is_forced || !!args.chain_fee_rate) {
           return cbk();
         }
 
@@ -170,7 +171,7 @@ module.exports = (args, cbk) => {
           })
           .filter(peer => {
             // Exit early when force closes are allowed
-            if (!args.is_force) {
+            if (!args.is_forced) {
               return true;
             }
 
@@ -190,6 +191,10 @@ module.exports = (args, cbk) => {
 
             return true;
           });
+
+        if (!peer && !!args.public_key) {
+          return cbk(null, {public_key: args.public_key});
+        }
 
         return cbk(null, peer);
       }],
@@ -215,7 +220,7 @@ module.exports = (args, cbk) => {
         args.logger.info({
           close_with_peer: selectPeer,
           channels_to_close: toClose.map(n => n.id),
-          fee_rate: feeRate,
+          fee_rate: !args.is_forced ? feeRate : undefined,
         });
 
         if (!!args.is_dry_run){
