@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.34.0
+
+- `telegram`: Post an update when a payment is sent (only on LND 0.10.0)
+
 ## Version 5.33.0
 
 - `chain-receive`: Require auth payment to initiate swap

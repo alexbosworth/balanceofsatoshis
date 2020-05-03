@@ -5,10 +5,13 @@ const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
+const {getPayments} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
+const {getWalletVersion} = require('ln-service');
 const inquirer = require('inquirer');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToChannels} = require('ln-service');
+const {subscribeToForwards} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const Telegraf = require('telegraf');
 
@@ -20,6 +23,7 @@ const postClosedMessage = require('./post_closed_message');
 const postForwardedPayments = require('./post_forwarded_payments');
 const postOpenMessage = require('./post_open_message');
 const postSettledInvoice = require('./post_settled_invoice');
+const postSettledPayment = require('./post_settled_payment');
 const postUpdatedBackups = require('./post_updated_backups');
 const sendMessage = require('./send_message');
 
@@ -53,7 +57,7 @@ const restartSubscriptionTimeMs = 1000 * 30;
 */
 module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
   let connectedId = id;
-  let paymentsLimit = !payments || !payments.limit ? 0 : payments.limit;
+  let paymentsLimit = !payments || !payments.limit ? Number() : payments.limit;
 
   return new Promise((resolve, reject) => {
     return asyncAuto({
@@ -117,6 +121,20 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
               from: fromName({alias: res.alias, public_key: res.public_key}),
               public_key: res.public_key,
             });
+          });
+        },
+        cbk);
+      }],
+
+      // Get node versions
+      getVersions: ['getNodes', ({getNodes}, cbk) => {
+        return asyncMap(getNodes, (node, cbk) => {
+          return getWalletVersion({lnd: node.lnd}, err => {
+            if (!!err) {
+              return cbk(null, {is_legacy: true, public_key: node.public_key});
+            }
+
+            return cbk(null, {is_legacy: false, public_key: node.public_key});
           });
         },
         cbk);
@@ -432,6 +450,88 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             });
           },
           cbk);
+        },
+        cbk);
+      }],
+
+      // Subscribe to payments
+      payments: [
+        'apiKey',
+        'getNodes',
+        'getVersions',
+        'userId',
+        ({apiKey, getNodes, getVersions}, cbk) =>
+      {
+        return asyncEach(getNodes, (node, cbk) => {
+          const key = node.public_key;
+
+          const version = getVersions.find(n => n.public_key === key);
+
+          // Legacy version LNDs do not have HTLC events
+          if (!!version.is_legacy) {
+            return cbk();
+          }
+
+          const knownPayments = [];
+
+          return getPayments({limit: 60, lnd: node.lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            res.payments.forEach(payment => knownPayments.push(payment.index));
+
+            return asyncForever(cbk => {
+              const sub = subscribeToForwards({lnd: node.lnd});
+
+              sub.on('forward', forward => {
+                if (!forward.is_confirmed || !forward.is_send) {
+                  return;
+                }
+
+                return setTimeout(() => {
+                  return getPayments({
+                    limit: 60,
+                    lnd: node.lnd,
+                  },
+                  (err, res) => {
+                    if (!!err) {
+                      return cbk(err);
+                    }
+
+                    const newPayments = res.payments
+                      .filter(n => n.destination !== node.public_key)
+                      .filter(n => !knownPayments.includes(n.index));
+
+                    res.payments.forEach(n => knownPayments.push(n.index));
+
+                    return asyncEach(newPayments, (payment, cbk) => {
+                      return postSettledPayment({
+                        payment,
+                        request,
+                        from: node.from,
+                        id: connectedId,
+                        key: apiKey,
+                        lnd: node.lnd,
+                      },
+                      cbk);
+                    },
+                    cbk);
+
+                    return;
+                  });
+                },
+                1000 * 5);
+              });
+
+              sub.on('error', err => {
+                logger.error({err});
+
+                return setTimeout(cbk, restartSubscriptionTimeMs);
+              });
+            },
+            cbk);
+          });
         },
         cbk);
       }],
