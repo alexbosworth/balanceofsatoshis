@@ -73,7 +73,6 @@ const tokensAsBigUnit = tokens => ((tokens || 0) / 1e8).toFixed(8);
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
     confs: <Confirmations to Wait for Deposit Number>
     [is_fast]: <Execute Swap Immediately Bool>
-    [is_free]: <Use Free Service Bool>
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
     [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
     lnd: <Authenticated LND gRPC API Object>
@@ -273,7 +272,7 @@ module.exports = (args, cbk) => {
       try {
         const {service} = lightningLabsSwapService({
           network,
-          is_free: args.is_free,
+          is_free: false,
         });
 
         return cbk(null, service);
@@ -382,11 +381,6 @@ module.exports = (args, cbk) => {
       // Exit early when the swap is already initiated
       if (!!args.recovery) {
         return cbk();
-      }
-
-      // Exit early when unpaid service is requested
-      if (!!args.is_free) {
-        return cbk(null, {service});
       }
 
       return getPaidService({

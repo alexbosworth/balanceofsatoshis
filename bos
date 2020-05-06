@@ -447,14 +447,18 @@ prog
   .option('--days <days>', 'Number of past days to evaluate', INT)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get forwards for')
+  .option('--table', 'Show forwarding peers in a table')
   .action((args, options, logger) => {
+    const table = !options.table ? undefined : 'rows';
+
     return new Promise(async (resolve, reject) => {
       try {
         return getForwards({
           days: options.days,
+          is_table: options.table,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
         },
-        returnObject({logger, reject, resolve}));
+        returnObject({logger, reject, resolve, table}));
       } catch (err) {
         return reject(err);
       }
@@ -542,7 +546,6 @@ prog
   .option('--fast', 'Request swap server avoid batching delay')
   .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 4000)
   .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 24)
-  .option('--no-auth', 'Avoid using authenticated service')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Increase inbound liquidity on saved node')
   .option('--recovery <recovery>', 'Recover in-progress swap')
@@ -559,7 +562,6 @@ prog
           avoid: flatten([options.avoid].filter(n => !!n)),
           confs: options.confs,
           is_fast: options.fast || false,
-          is_free: options.noAuth || false,
           is_raw_recovery_shown: options.showRawRecovery || undefined,
           is_dry_run: options.dryrun || false,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
@@ -786,9 +788,9 @@ prog
   .option('--sort', 'Sort results by peer attribute')
   .option('--table', 'Output peers in table')
   .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      const table = !options.table ? undefined : 'rows';
+    const table = !options.table ? undefined : 'rows';
 
+    return new Promise(async (resolve, reject) => {
       try {
         return getPeers({
           earnings_days: options.feeDays,

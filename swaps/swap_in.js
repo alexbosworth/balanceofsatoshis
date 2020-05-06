@@ -239,8 +239,10 @@ module.exports = (args, cbk) => {
       if (!!args.recovery) {
         const recovery = await decodeSwapRecovery({recovery: args.recovery});
 
+        const {address} = addressForScript({network, script: recovery.script});
+
         return {
-          address: addressForScript({network, script: recovery.script}).nested,
+          address,
           claim_public_key: recovery.claim_public_key,
           id: recovery.id,
           refund_private_key: recovery.refund_private_key,
@@ -262,11 +264,9 @@ module.exports = (args, cbk) => {
         timeout: cltv,
       });
 
-      const {nested} = addressForScript({network, script});
-
       return {
         script,
-        address: nested,
+        address: addressForScript({network, script}).address,
         claim_public_key: createSwap.service_public_key,
         id: createSwap.id,
         refund_private_key: createSwap.private_key,
@@ -388,6 +388,7 @@ module.exports = (args, cbk) => {
       const {transaction} = refundTransaction({
         block_height: swap.timeout,
         fee_tokens_per_vbyte: getFeeRate.tokens_per_vbyte,
+        is_nested: false,
         network: getNetwork.network,
         private_key: swap.refund_private_key,
         sweep_address: args.refund_address || chainAddress.address,

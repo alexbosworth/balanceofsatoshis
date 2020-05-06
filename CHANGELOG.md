@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.35.0
+
+- `chain-receive`: Use native segwit address instead of nested
+- `forwards`: Add `--table` option to show forwarding peers in a table
+- `increase-inbound-liquidity`: Remove `--no-auth` option
+
 ## Version 5.34.1
 
 - `remove-peer`: Improve support for force closing out on a disconnected peer

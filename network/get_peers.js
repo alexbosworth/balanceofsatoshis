@@ -435,15 +435,17 @@ module.exports = (args, cbk) => {
               'In Fee',
               'Outbound',
               !!args.earnings_days ? 'Earned' : null,
+              'Public Key',
             ])])
             .concat(peers.peers.map(peer => {
               return notNull([
                 peer.is_offline ? '💀' : '',
                 peer.alias.replace(isEmoji, '') || shortKey(peer.public_key),
-                peer.inbound_liquidity,
-                peer.inbound_fee_rate,
-                peer.outbound_liquidity,
-                !!args.earnings_days ? peer.fee_earnings : null
+                peer.inbound_liquidity || '',
+                peer.inbound_fee_rate || '',
+                peer.outbound_liquidity || '',
+                !!args.earnings_days ? peer.fee_earnings : null,
+                peer.public_key,
               ]);
             })),
         });
