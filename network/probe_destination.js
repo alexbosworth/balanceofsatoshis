@@ -10,6 +10,7 @@ const {getRoutes} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
+const {signBytes} = require('ln-service');
 
 const {authenticatedLnd} = require('./../lnd');
 const executeProbe = require('./execute_probe');
@@ -17,18 +18,24 @@ const {findMaxRoutable} = require('./../routing');
 const {getInboundPath} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
+const bufFromHex = hex => Buffer.from(hex, 'hex');
 const cltvBuffer = 3;
+const dateBytesLength = 8;
+const datePrecisionLength = 6;
+const dateType = '34349343';
 const defaultCltvDelta = 144;
 const defaultMaxFee = 1337;
-const defaultTokens = 10;
+const defaultTokens = 1;
 const {floor} = Math;
 const fromKeyType = '34349339';
 const {isArray} = Array;
 const keySendPreimageType = '5482373484';
 const messageType = '34349334';
+const nodeKeyFamily = 6;
 const preimageByteLength = 32;
 const {now} = Date;
 const reserveRatio = 0.01;
+const signatureType = '34349337';
 
 /** Determine if a destination can be paid by probing it
 
@@ -154,33 +161,54 @@ module.exports = (args, cbk) => {
       'getFeatures',
       'getInfo',
       'to',
-      ({getFeatures, getInfo, to}, cbk) =>
+      async ({getFeatures, getInfo, to}, cbk) =>
     {
       // Exit early when there are no messages
       if (!args.message && !args.is_push) {
-        return cbk();
+        return;
       }
 
       if (!getInfo.features) {
-        return cbk([400, 'SendingNodeDoesNotSupportSendingMessages']);
+        throw [400, 'SendingNodeDoesNotSupportSendingMessages'];
       }
 
+      const date = Buffer.alloc(dateBytesLength);
       const messages = []
 
+      date.writeUIntBE(now(), Number(), datePrecisionLength);
+
       if (!!args.message) {
+        messages.push({type: dateType, value: date.toString('hex')});
+
         messages.push({
           type: messageType,
           value: Buffer.from(args.message).toString('hex'),
         });
 
         messages.push({type: fromKeyType, value: getInfo.public_key});
+
+        const preimage = Buffer.concat([
+          bufFromHex(getInfo.public_key),
+          bufFromHex(to.destination),
+          date,
+          Buffer.from(args.message),
+        ]);
+
+        const {signature} = await signBytes({
+          preimage: preimage.toString('hex'),
+          key_family: nodeKeyFamily,
+          key_index: Number(),
+          lnd: args.lnd,
+        });
+
+        messages.push({type: signatureType, value: signature});
       }
 
       if (!!args.is_push) {
         messages.push({type: keySendPreimageType, value: to.secret});
       }
 
-      return cbk(null, messages);
+      return messages;
     }],
 
     // Get inbound path if an inbound restriction is specified

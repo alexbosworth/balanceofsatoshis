@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const asyncUntil = require('async/until');
+const {bold} = require('colorette');
 const {decodeChanId} = require('bolt07');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -15,6 +16,7 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');
+const {formatTokens} = require('./../display');
 const getNetwork = require('./get_network');
 const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');
@@ -54,12 +56,12 @@ const uniq = arr => Array.from(new Set(arr));
   {
     peers: [{
       alias: <Node Alias String>
-      [fee_earnings]: <Fees Earned Via Peer String>
+      [fee_earnings]: <Fees Earned Via Peer Tokens Number>
       first_connected: <Oldest Channel With Peer String>
       [last_activity]: <Last Activity String>
       inbound_fee_rate: <Inbound Fee Rate String>
-      inbound_liquidity: <Inbound Liquidity Amount String>
-      outbound_liquidity: <Outbound Liquidity Amount String>
+      inbound_liquidity: <Inbound Liquidity Amount Number>
+      outbound_liquidity: <Outbound Liquidity Amount Number>
       public_key: <Public Key Hex String>
     }]
   }
@@ -75,6 +77,10 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.omit)) {
           return cbk([400, 'ExpectedOmitArrayToGetPeers']);
+        }
+
+        if (!!isArray(args.sort_by)) {
+          return cbk([400, 'SortingByMultipleFieldsNotSupported']);
         }
 
         return cbk();
@@ -407,13 +413,13 @@ module.exports = (args, cbk) => {
             })
             .map(n => ({
               alias: n.alias,
-              fee_earnings: asEarnings(args.earnings_days, n.fee_earnings),
+              fee_earnings: n.fee_earnings,
               first_connected: moment(n.first_connected * 1000).fromNow(),
               last_activity: fromNow(n.last_activity),
               inbound_fee_rate: asRate(n.inbound_fee_rate),
-              inbound_liquidity: (n.inbound_liquidity / 1e8).toFixed(8),
+              inbound_liquidity: n.inbound_liquidity,
               is_offline: n.is_offline,
-              outbound_liquidity: (n.outbound_liquidity / 1e8).toFixed(8),
+              outbound_liquidity: n.outbound_liquidity,
               public_key: n.public_key,
             })),
         };
@@ -422,7 +428,19 @@ module.exports = (args, cbk) => {
       // Final peers and table
       allPeers: ['peers', ({peers}, cbk) => {
         if (!args.is_table) {
-          return cbk(null, {peers: peers.peers});
+          return cbk(null, {
+            peers: peers.peers.map(n => ({
+              alias: n.alias,
+              fee_earnings: n.fee_earnings || undefined,
+              first_connected: n.first_connected || undefined,
+              last_activity: n.last_activity || undefined,
+              inbound_fee_rate: n.inbound_fee_rate || undefined,
+              inbound_liquidity: n.inbound_liquidity || undefined,
+              is_offline: n.is_offline || undefined,
+              outbound_liquidity: n.outbound_liquidity || undefined,
+              public_key: n.public_key || undefined,
+            })),
+          });
         }
 
         return cbk(null, {
@@ -436,15 +454,15 @@ module.exports = (args, cbk) => {
               'Outbound',
               !!args.earnings_days ? 'Earned' : null,
               'Public Key',
-            ])])
+            ]).map(n => bold(n))])
             .concat(peers.peers.map(peer => {
               return notNull([
                 peer.is_offline ? '💀' : '',
                 peer.alias.replace(isEmoji, '') || shortKey(peer.public_key),
-                peer.inbound_liquidity || '',
+                formatTokens({tokens: peer.inbound_liquidity}).display,
                 peer.inbound_fee_rate || '',
-                peer.outbound_liquidity || '',
-                !!args.earnings_days ? peer.fee_earnings : null,
+                formatTokens({tokens: peer.outbound_liquidity}).display,
+                !!args.earnings_days ? formatTokens({tokens: peer.fee_earnings}).display : null,
                 peer.public_key,
               ]);
             })),

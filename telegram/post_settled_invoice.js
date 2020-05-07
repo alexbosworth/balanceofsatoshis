@@ -1,14 +1,20 @@
 const asyncAuto = require('async/auto');
+const {getNode} = require('ln-service');
 const {getPayment} = require('ln-service');
+const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToPastPayment} = require('ln-service');
+const {verifyBytesSignature} = require('ln-service');
 
 const sendMessage = require('./send_message');
 
+const bufFromHex = hex => Buffer.from(hex, 'hex');
+const dateType = '34349343';
 const earnEmoji = '💰';
 const fromKeyType = '34349339';
 const messageType = '34349334';
 const rebalanceEmoji = '☯️';
+const signatureType = '34349337';
 
 /** Post settled invoices
 
@@ -92,32 +98,87 @@ module.exports = ({from, id, invoice, key, lnd, request}, cbk) => {
         }
       }],
 
-      // Details for message
-      details: ['getPayment', ({getPayment}, cbk) => {
-        // Exit early when the invoice has yet to be confirmed
-        if (!invoice.is_confirmed) {
+      // Message
+      message: ['getPayment', async ({getPayment}, cbk) => {
+        if (!invoice.is_confirmed || !!getPayment) {
           return;
         }
 
+        if (!invoice.payments.length) {
+          return;
+        }
+
+        const [{messages}] = invoice.payments;
+
+        const messageRecord = messages.find(n => n.type === messageType);
+
+        if (!messageRecord) {
+          return;
+        }
+
+        const message = bufFromHex(messageRecord.value).toString();
+
+        const date = messages.find(n => n.type === dateType);
+        const from = messages.find(n => n.type === fromKeyType);
+        const signature = messages.find(n => n.type === signatureType);
+
+        if (!from || !signature || !date) {
+          return {message};
+        }
+
+        const preimage = Buffer.concat([
+          bufFromHex(from.value),
+          bufFromHex((await getWalletInfo({lnd})).public_key),
+          bufFromHex(date.value),
+          bufFromHex(messageRecord.value),
+        ]);
+
+        try {
+          const validity = await verifyBytesSignature({
+            lnd,
+            preimage: preimage.toString('hex'),
+            public_key: from.value,
+            signature: signature.value,
+          });
+
+          if (!validity.is_valid) {
+            throw new Error('ExpectedValidFromPublicKeySignature');
+          }
+        } catch (err) {
+          return {message};
+        }
+
+        try {
+          const node = await getNode({lnd, public_key: from.value});
+
+          return {message, from: `${node.alias} ${from.value}`};
+        } catch (err) {
+          return {message, from: from.value};
+        }
+      }],
+
+      // Details for message
+      details: ['getPayment', 'message', ({getPayment, message}, cbk) => {
+        // Exit early when the invoice has yet to be confirmed
+        if (!invoice.is_confirmed) {
+          return cbk();
+        }
+
         const {description} = invoice;
-        const {payments} = invoice;
         const {received} = invoice;
 
-        const [payment] = payments;
+        const quotedDescription = !description ? '' : `for “${description}”`;
 
-        const messages = !!payment ? payment.messages : [];
+        const receiveLine = `Received ${received} ${quotedDescription}`;
 
-        const [from] = messages.filter(n => n.type === fromKeyType);
-        const [message] = messages.filter(n => n.type === messageType);
+        if (!getPayment && !message) {
+          return cbk(null, receiveLine);
+        }
 
-        if (!getPayment) {
-          const msg = !message ? '' : Buffer.from(message.value, 'hex');
-          const quotedDescription = !description ? '' : `for “${description}”`;
+        if (!getPayment && !!message) {
+          const sender = `\nSender message: “${message.message}”`;
 
-          const receiveLine = `Received ${received} ${quotedDescription}`;
-          const sender = !msg ? '' : `\nSender message: “${msg.toString()}”`;
-
-          const replyTo = !from ? '' : `\nReply-to: ${from.value}`;
+          const replyTo = !message.from ? '' : `\nFrom: ${message.from}`;
 
           return cbk(null, `${receiveLine}${sender}${replyTo}`);
         }

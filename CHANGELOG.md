@@ -1,5 +1,12 @@
 # Versions
 
+## Version 5.35.1
+
+- `pay`: Allow specifying `--in` or `--out` direct peer aliases instead of keys
+- `probe`: Allow `--in` or `--out` direct peer aliases instead of public keys
+- `remove-peer`: Allow specifying an alias of a peer to remove instead of a key
+- `send`: Add public key, timestamp, signature when `--message` is specified
+
 ## Version 5.35.0
 
 - `chain-receive`: Use native segwit address instead of nested

@@ -482,53 +482,67 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             res.payments.forEach(payment => knownPayments.push(payment.index));
 
             return asyncForever(cbk => {
-              const sub = subscribeToForwards({lnd: node.lnd});
+              try {
+                const sub = subscribeToForwards({lnd: node.lnd});
 
-              sub.on('forward', forward => {
-                if (!forward.is_confirmed || !forward.is_send) {
-                  return;
-                }
+                sub.on('forward', forward => {
+                  if (!forward.is_confirmed || !forward.is_send) {
+                    return;
+                  }
 
-                return setTimeout(() => {
-                  return getPayments({
-                    limit: 60,
-                    lnd: node.lnd,
-                  },
-                  (err, res) => {
-                    if (!!err) {
-                      return cbk(err);
+                  let isGettingPayments = false;
+
+                  return setTimeout(() => {
+                    if (!!isGettingPayments) {
+                      return;
                     }
 
-                    const newPayments = res.payments
-                      .filter(n => n.destination !== node.public_key)
-                      .filter(n => !knownPayments.includes(n.index));
+                    isGettingPayments = true;
 
-                    res.payments.forEach(n => knownPayments.push(n.index));
+                    return getPayments({
+                      limit: 60,
+                      lnd: node.lnd,
+                    },
+                    (err, res) => {
+                      isGettingPayments = false;
 
-                    return asyncEach(newPayments, (payment, cbk) => {
-                      return postSettledPayment({
-                        payment,
-                        request,
-                        from: node.from,
-                        id: connectedId,
-                        key: apiKey,
-                        lnd: node.lnd,
+                      if (!!err) {
+                        return cbk(err);
+                      }
+
+                      const newPayments = res.payments
+                        .filter(n => n.destination !== node.public_key)
+                        .filter(n => !knownPayments.includes(n.index));
+
+                      res.payments.forEach(n => knownPayments.push(n.index));
+
+                      return asyncEach(newPayments, (payment, cbk) => {
+                        return postSettledPayment({
+                          payment,
+                          request,
+                          from: node.from,
+                          id: connectedId,
+                          key: apiKey,
+                          lnd: node.lnd,
+                        },
+                        cbk);
                       },
                       cbk);
-                    },
-                    cbk);
 
-                    return;
-                  });
-                },
-                1000 * 5);
-              });
+                      return;
+                    });
+                  },
+                  1000 * 5);
+                });
 
-              sub.on('error', err => {
-                logger.error({err});
+                sub.on('error', err => {
+                  logger.error({err});
 
+                  return setTimeout(cbk, restartSubscriptionTimeMs);
+                });
+              } catch (err) {
                 return setTimeout(cbk, restartSubscriptionTimeMs);
-              });
+              }
             },
             cbk);
           });

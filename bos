@@ -19,6 +19,7 @@ const {authenticatedLnd} = require('./lnd');
 const {encryptToNode} = require('./encryption');
 const {exchanges} = require('./fiat');
 const {decryptWithNode} = require('./encryption');
+const {findKey} = require('./peers');
 const {findRecord} = require('./lnd');
 const {gateway} = require('./lnd');
 const {getAccountingReport} = require('./balances');
@@ -753,16 +754,18 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const {lnd} = await authenticatedLnd({logger, node: options.node});
+
         return probeDestination({
+          lnd,
           logger,
           ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
-          in_through: options.in,
+          in_through: (await findKey({lnd, query: options.in})).public_key,
           is_real_payment: true,
-          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           max_fee: options.maxFee,
           message: options.message,
           node: options.node,
-          out_through: options.out,
+          out_through: (await findKey({lnd, query: options.out})).public_key,
           request: args.request,
         },
         returnObject({logger, reject, resolve}));
@@ -850,14 +853,16 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const {lnd} = await authenticatedLnd({logger, node: options.node});
+
         return probeDestination({
+          lnd,
           logger,
           destination: args.to.length === 66 ? args.to : undefined,
           find_max: !!options.findMax ? 4294967 : undefined,
           ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
-          in_through: options.in || undefined,
-          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
-          out_through: options.out || undefined,
+          in_through: (await findKey({lnd, query: options.in})).public_key,
+          out_through: (await findKey({lnd, query: options.out})).public_key,
           request: args.to.length !== 66 ? args.to : undefined,
           tokens: args.amount || undefined,
         },
@@ -948,7 +953,12 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const {lnd} = await authenticatedLnd({logger, node: options.node});
+
+        const getKey = await findKey({lnd, public_key: args.publicKey})
+
         return removePeer({
+          lnd,
           logger,
           request,
           address: options.address,
@@ -961,10 +971,9 @@ prog
           is_offline: !!options.offline,
           is_private: !!options.private,
           is_public: !!options.public,
-          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           omit: flatten([options.omit].filter(n => !!n)),
           outbound_liquidity_below: options.outboundBelow,
-          public_key: args.publicKey,
+          public_key: getKey.public_key,
         },
         returnObject({logger, reject, resolve}));
       } catch (err) {
@@ -997,12 +1006,14 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const {lnd} = await authenticatedLnd({logger, node: options.node});
+
         return probeDestination({
+          lnd,
           logger,
-          destination: args.to,
+          destination: (await findKey({lnd, query: args.to})).public_key,
           is_push: true,
           is_real_payment: true,
-          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           message: options.message,
           tokens: args.amount,
         },

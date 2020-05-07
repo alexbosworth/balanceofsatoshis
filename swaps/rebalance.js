@@ -12,7 +12,7 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
-const findKey = require('./find_key');
+const {findKey} = require('./../peers');
 const {getPeerLiquidity} = require('./../balances');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');

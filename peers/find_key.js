@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
@@ -10,7 +11,7 @@ const uniq = arr => Array.from(new Set(arr));
 /** Find a public key given a query
 
   {
-    channels: [{
+    [channels]: [{
       partner_public_key: <Partner Public Key Hex String>
     }]
     lnd: <Authenticated LND API Object>
@@ -27,16 +28,21 @@ module.exports = ({channels, lnd, query}, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!isArray(channels)) {
-          return cbk([400, 'ExpectedArrayOfChannelsToFindPublicKey']);
-        }
-
         if (!lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToFindPublicKey']);
         }
 
         return cbk();
       },
+
+      // Get channels if necessary
+      getChannels: ['validate', ({}, cbk) => {
+        if (!!channels) {
+          return cbk(null, {channels});
+        }
+
+        return getChannels({lnd}, cbk);
+      }],
 
       // Check arguments
       publicKey: ['validate', ({}, cbk) => {
@@ -54,13 +60,18 @@ module.exports = ({channels, lnd, query}, cbk) => {
       }],
 
       // Get nodes
-      getNodes: ['publicKey', ({publicKey}, cbk) => {
+      getNodes: [
+        'getChannels',
+        'publicKey',
+        ({getChannels, publicKey}, cbk) =>
+      {
         // Exit early when there is no query or the query is a public key
         if (!query || !!publicKey) {
           return cbk();
         }
 
-        const keys = uniq(channels.map(n => n.partner_public_key));
+        const keys = uniq(getChannels.channels.map(n => n.partner_public_key));
+        const q = query.toLowerCase();
 
         return asyncMap(keys, (key, cbk) => {
           return getNode({
@@ -74,17 +85,17 @@ module.exports = ({channels, lnd, query}, cbk) => {
               return cbk();
             }
 
-            // Exit early when there is no node alias or query
-            if (!node || !node.alias) {
+            const alias = node.alias || String();
+
+            const isAliasMatch = alias.toLowerCase().includes(q);
+            const isPublicKeyMatch = key.startsWith(q);
+
+            // Exit early when the node doesn't match the query
+            if (!isAliasMatch && !isPublicKeyMatch) {
               return cbk();
             }
 
-            // Exit early when the alias doesn't match the query
-            if (!node.alias.toLowerCase().includes(query.toLowerCase())) {
-              return cbk();
-            }
-
-            return cbk(null, {alias: node.alias, public_key: key});
+            return cbk(null, {alias, public_key: key});
           });
         },
         cbk);
