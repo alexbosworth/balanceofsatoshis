@@ -1,5 +1,12 @@
 # Versions
 
+## Version 5.35.2
+
+- `forwards`: Fix support for `--no-color` when using `--table`
+- `forwards`: Fix `--table` on systems that have issues with empty cells
+- `peers`: Fix support for `--no-color` when using `--table`
+- `peers`: Fix `--table` on systems that have issues with empty cells
+
 ## Version 5.35.1
 
 - `pay`: Allow specifying `--in` or `--out` direct peer aliases instead of keys

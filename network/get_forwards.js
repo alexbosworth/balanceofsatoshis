@@ -32,6 +32,7 @@ const tokensAsBigTokens = tokens => !!tokens ? (tokens / 1e8).toFixed(8) : '';
 
   {
     [days]: <Days Number>
+    [is_monochrome]: <Mute Colors Bool>
     [is_table]: <Return Results As Table Bool>
     lnd: <Authenticated LND gRPC API Object>
   }
@@ -242,14 +243,26 @@ module.exports = (args, cbk) => {
               'Inbound',
               'Outbound',
               'Public Key',
-            ]).map(n => bold(n))])
+            ]).map(n => !args.is_monochrome ? bold(n) : n)])
             .concat(forwards.peers.map(peer => {
               return notNull([
                 peer.alias.replace(isEmoji, '') || shortKey(peer.public_key),
-                formatTokens({tokens: peer.earned_inbound_fees}).display,
-                formatTokens({tokens: peer.earned_outbound_fees}).display,
-                formatTokens({tokens: peer.liquidity_inbound}).display,
-                formatTokens({tokens: peer.liquidity_outbound}).display,
+                formatTokens({
+                  is_monochrome: args.is_monochrome,
+                  tokens: peer.earned_inbound_fees
+                }).display,
+                formatTokens({
+                  is_monochrome: args.is_monochrome,
+                  tokens: peer.earned_outbound_fees,
+                }).display,
+                formatTokens({
+                  is_monochrome: args.is_monochrome,
+                  tokens: peer.liquidity_inbound,
+                }).display,
+                formatTokens({
+                  is_monochrome: args.is_monochrome,
+                  tokens: peer.liquidity_outbound,
+                }).display,
                 peer.public_key,
               ]);
             })),

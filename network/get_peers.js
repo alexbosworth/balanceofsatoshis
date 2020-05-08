@@ -42,6 +42,7 @@ const uniq = arr => Array.from(new Set(arr));
     [idle_days]: <Not Active For Days Number>
     [inbound_liquidity_below]: <Inbound Liquidity Below Tokens Number>
     [is_active]: <Active Channels Only Bool>
+    [is_monochrome]: <Mute Colors Bool>
     [is_offline]: <Offline Channels Only Bool>
     [is_private]: <Private Channels Only Bool>
     [is_public]: <Public Channels Only Bool>
@@ -454,15 +455,30 @@ module.exports = (args, cbk) => {
               'Outbound',
               !!args.earnings_days ? 'Earned' : null,
               'Public Key',
-            ]).map(n => bold(n))])
+            ]).map(n => !args.is_monochrome ? bold(n) : n)])
             .concat(peers.peers.map(peer => {
+              const earnings = formatTokens({
+                is_monochrome: args.is_monochrome,
+                tokens: peer.fee_earnings,
+              });
+
+              const inbound = formatTokens({
+                is_monochrome: args.is_monochrome,
+                tokens: peer.inbound_liquidity,
+              });
+
+              const outbound = formatTokens({
+                is_monochrome: args.is_monochrome,
+                tokens: peer.outbound_liquidity,
+              });
+
               return notNull([
-                peer.is_offline ? '💀' : '',
+                peer.is_offline ? '💀' : ' ',
                 peer.alias.replace(isEmoji, '') || shortKey(peer.public_key),
-                formatTokens({tokens: peer.inbound_liquidity}).display,
-                peer.inbound_fee_rate || '',
-                formatTokens({tokens: peer.outbound_liquidity}).display,
-                !!args.earnings_days ? formatTokens({tokens: peer.fee_earnings}).display : null,
+                inbound.display,
+                peer.inbound_fee_rate || ' ',
+                outbound.display,
+                !!args.earnings_days ? earnings.display : null,
                 peer.public_key,
               ]);
             })),

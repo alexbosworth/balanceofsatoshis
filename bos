@@ -456,6 +456,7 @@ prog
       try {
         return getForwards({
           days: options.days,
+          is_monochrome: !!options.noColor,
           is_table: options.table,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
         },
@@ -800,6 +801,7 @@ prog
           idle_days: options.idleDays || undefined,
           inbound_liquidity_below: options.inboundBelow,
           is_active: !!options.active,
+          is_monochrome: !!options.noColor,
           is_offline: !!options.offline,
           is_private: !!options.private,
           is_public: !!options.public,
