@@ -476,7 +476,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
           return getPayments({limit: 60, lnd: node.lnd}, (err, res) => {
             if (!!err) {
-              return cbk(err);
+              return args.logger.error(err);
             }
 
             res.payments.forEach(payment => knownPayments.push(payment.index));

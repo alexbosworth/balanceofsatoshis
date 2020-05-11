@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.35.3
+
+- `remove-peer`: Fix selection of peer using public key
+
 ## Version 5.35.2
 
 - `forwards`: Fix support for `--no-color` when using `--table`

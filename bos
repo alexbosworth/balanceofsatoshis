@@ -957,8 +957,6 @@ prog
       try {
         const {lnd} = await authenticatedLnd({logger, node: options.node});
 
-        const getKey = await findKey({lnd, public_key: args.publicKey})
-
         return removePeer({
           lnd,
           logger,
@@ -975,7 +973,7 @@ prog
           is_public: !!options.public,
           omit: flatten([options.omit].filter(n => !!n)),
           outbound_liquidity_below: options.outboundBelow,
-          public_key: getKey.public_key,
+          public_key: args.public_key,
         },
         returnObject({logger, reject, resolve}));
       } catch (err) {
