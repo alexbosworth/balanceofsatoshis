@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.35.3
+## Version 5.35.4
 
 - `remove-peer`: Fix selection of peer using public key
 

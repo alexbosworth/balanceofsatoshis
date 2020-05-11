@@ -973,7 +973,7 @@ prog
           is_public: !!options.public,
           omit: flatten([options.omit].filter(n => !!n)),
           outbound_liquidity_below: options.outboundBelow,
-          public_key: args.public_key,
+          public_key: args.publicKey,
         },
         returnObject({logger, reject, resolve}));
       } catch (err) {
