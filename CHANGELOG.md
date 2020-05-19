@@ -1,5 +1,15 @@
 # Versions
 
+## Version 5.36.0
+
+- `forwards`: Change output to table, view old output with `--complete`
+- `forwards`: Omit public keys from table when window size is not very wide
+- `increase-inbound-liquidity`: Add `--service-socket` to specify swap socket
+- `increase-inbound-liquidity`: Try and use multiple paths if possible
+- `peers`: Change output to table, view old output with `--complete`
+- `peers`: Omit public keys from table when window size is not very wide
+- `probe`: Change `--find-max` to try to find maximum across multiple routes
+
 ## Version 5.35.4
 
 - `remove-peer`: Fix selection of peer using public key

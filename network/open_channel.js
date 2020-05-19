@@ -323,7 +323,7 @@ module.exports = (args, cbk) => {
 
                   args.logger.info({
                     opening_with: node,
-                    chain_fee_tokens_per_vbyte: getNormalFee.tokens_per_vbyte,
+                    chain_fee_tokens_per_vbyte: feeRate,
                     transaction_id: res.transaction_id,
                     new_channel_size: asBigTok(args.tokens || channelTokens),
                     is_private: args.is_private || undefined,

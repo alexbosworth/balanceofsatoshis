@@ -53,7 +53,7 @@ const signatureType = '34349337';
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [message]: <Message String>
-    [out_through]: <Out through peer with Public Key Hex String>
+    [out_through]: <Out Through Peer With Public Key Hex String>
     [request]: <Payment Request String>
     [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
     [tokens]: <Tokens Number>
@@ -66,6 +66,7 @@ const signatureType = '34349337';
     [route_maximum]: <Maximum Sendable Tokens On Successful Probe Path Number>
     [paid]: <Paid Tokens Number>
     [preimage]: <Payment HTLC Preimage Hex String>
+    [relays]: [<Relaying Node Public Key Hex String]
     [success]: [<Standard Format Channel Id String>]
   }
 */
@@ -75,6 +76,10 @@ module.exports = (args, cbk) => {
     validate: cbk => {
       if (!args.lnd) {
         return cbk([400, 'ExpectedLndToProbeDestination']);
+      }
+
+      if (!args.logger) {
+        return cbk([400, "ExpectedLoggerToProbeDestination"]);
       }
 
       return cbk();
@@ -382,6 +387,7 @@ module.exports = (args, cbk) => {
         paid: !pay ? undefined : pay.tokens,
         preimage: !pay ? undefined : pay.secret,
         probed: !!pay ? undefined : route.tokens - route.fee,
+        relays: !route ? undefined : route.hops.map(n => n.public_key),
         success: !route ? undefined : route.hops.map(({channel}) => channel),
       });
     }],

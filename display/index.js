@@ -1,3 +1,4 @@
+const formatFeeRate = require('./format_fee_rate');
 const formatTokens = require('./format_tokens');
 
-module.exports = {formatTokens};
+module.exports = {formatFeeRate, formatTokens};

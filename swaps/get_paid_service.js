@@ -18,6 +18,7 @@ const maxRoutingFee = 100;
   {
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
+    [socket]: <Custom Backing Service Socket String>
     [token]: <Prepaid Service Token CBOR Encoded String>
   }
 
@@ -31,7 +32,7 @@ const maxRoutingFee = 100;
     token: <Authentication Token Hex String>
   }
 */
-module.exports = ({lnd, logger, token}, cbk) => {
+module.exports = ({lnd, logger, socket, token}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -77,12 +78,12 @@ module.exports = ({lnd, logger, token}, cbk) => {
         const {network} = getNetwork;
 
         try {
-          lightningLabsSwapService({network});
+          lightningLabsSwapService({network, socket});
         } catch (err) {
           return cbk([400, 'UnexpectedErrorInitiatingSwapService', {err}]);
         }
 
-        const {service} = lightningLabsSwapService({network});
+        const {service} = lightningLabsSwapService({network, socket});
 
         return getSwapMacaroon({service}, cbk);
       }],
@@ -123,12 +124,16 @@ module.exports = ({lnd, logger, token}, cbk) => {
         const {preimage} = payForMacaroon;
 
         try {
-          lightningLabsSwapService({macaroon, network});
+          lightningLabsSwapService({macaroon, network, socket});
         } catch (err) {
           return cbk([400, 'FailedToFindSupportedSwapService', {err}]);
         }
 
-        const {service} = lightningLabsSwapService({macaroon, network});
+        const {service} = lightningLabsSwapService({
+          macaroon,
+          network,
+          socket,
+        });
 
         const token = encodeCbor({
           macaroon: Buffer.from(macaroon, 'base64'),

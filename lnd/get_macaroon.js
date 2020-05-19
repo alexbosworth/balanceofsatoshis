@@ -2,12 +2,12 @@ const {join} = require('path');
 
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
-const {flatten} = require('lodash');
 const {returnResult} = require('asyncjs-util');
 
 const lndDirectory = require('./lnd_directory');
 
 const defaults = [['bitcoin', 'litecoin'], ['mainnet', 'testnet']];
+const flatten = arr => [].concat(...arr);
 const macDirs = ['data', 'chain'];
 const macName = 'admin.macaroon';
 

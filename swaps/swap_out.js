@@ -2,6 +2,7 @@ const {createHash} = require('crypto');
 
 const {addressForScript} = require('goldengate');
 const asyncAuto = require('async/auto');
+const asyncMap = require('async/map');
 const asyncTimesSeries = require('async/timesSeries');
 const {attemptSweep} = require('goldengate');
 const {checkSwapTiming} = require('goldengate');
@@ -36,8 +37,10 @@ const {executeProbe} = require('./../network');
 const {fastDelayMinutes} = require('./constants');
 const {feeRateDenominator} = require('./constants');
 const {fuzzBlocks} = require('./constants');
+const getRoutesForFunding = require('./get_routes_for_funding');
 const {getNetwork} = require('./../network');
 const getPaidService = require('./get_paid_service');
+const getRawRecoveries = require('./get_raw_recoveries');
 const {maxCltvExpiration} = require('./constants');
 const {maxExecutionFeeTokens} = require('./constants');
 const {maxFeeMultiplier} = require('./constants');
@@ -57,6 +60,7 @@ const {sweepProgressLogDelayMs} = require('./constants');
 const {ceil} = Math;
 const changeTokens = 1e4;
 const cltvBuffer = 3;
+const flatten = arr => [].concat(...arr);
 const {floor} = Math;
 const {max} = Math;
 const maxCltvDelta = 144 * 30;
@@ -83,6 +87,7 @@ const tokensAsBigUnit = tokens => ((tokens || 0) / 1e8).toFixed(8);
     [out_address]: <Out Address String>
     [peer]: <Peer Public Key Hex String>
     [recovery]: <Recover In-Progress Swap Hex String>
+    [socket]: <Custom Backing Service Host:Port String>
     [spend_address]: <Attempt Spend Out To Address String>
     [spend_tokens]: <Spend Address Exact Tokens Number>
     timeout: <Wait for Deposit Timeout Milliseconds Number>
@@ -273,6 +278,7 @@ module.exports = (args, cbk) => {
         const {service} = lightningLabsSwapService({
           network,
           is_free: false,
+          socket: args.socket,
         });
 
         return cbk(null, service);
@@ -387,6 +393,7 @@ module.exports = (args, cbk) => {
         network,
         lnd: args.lnd,
         logger: args.logger,
+        socket: args.socket,
         token: args.api_key,
       },
       cbk);
@@ -576,8 +583,8 @@ module.exports = (args, cbk) => {
       });
     }],
 
-    // Probe for funding
-    findRouteForFunding: [
+    // Probe for funding routes
+    findRoutesForFunding: [
       'channel',
       'currency',
       'decodeFundingRequest',
@@ -595,7 +602,7 @@ module.exports = (args, cbk) => {
 
       const hasFeatures = !!decodeFundingRequest.features.length;
 
-      return executeProbe({
+      return getRoutesForFunding({
         cltv_delta: decodeFundingRequest.cltv_delta + cltvBuffer,
         destination: decodeFundingRequest.destination,
         features: !!hasFeatures ? decodeFundingRequest.features : undefined,
@@ -603,29 +610,21 @@ module.exports = (args, cbk) => {
         lnd: args.lnd,
         logger: args.logger,
         max_fee: round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),
+        out_through: !!args.peer ? channel.public_key : undefined,
         outgoing_channel: channel.id,
+        payment: decodeFundingRequest.payment,
         routes: decodeFundingRequest.routes,
         tokens: decodeFundingRequest.tokens,
       },
-      (err, res) => {
-        if (!!err) {
-          return cbk([503, 'UnexpectedErrorFindingRouteToFundSwap', {err}]);
-        }
-
-        if (!res.route) {
-          return cbk([503, 'FailedToFindAPathToFundSwapOffchain']);
-        }
-
-        return cbk(null, res.route);
-      });
+      cbk);
     }],
 
     // Get info about the peer we are going to get inbound liquidity with
-    getSwapPeer: [
+    getSwapPeers: [
       'channel',
-      'findRouteForFunding',
+      'findRoutesForFunding',
       'getChannels',
-      ({channel, findRouteForFunding, getChannels}, cbk) =>
+      ({channel, findRoutesForFunding, getChannels}, cbk) =>
     {
       // Exit early when this is a recovery
       if (!!args.recovery) {
@@ -634,35 +633,34 @@ module.exports = (args, cbk) => {
 
       // Exit early when a peer is specified
       if (!!args.peer) {
-        return cbk(null, {
+        return cbk(null, [{
           alias: channel.alias,
           peer_channels: getChannels.channels.filter(channel => {
             return channel.partner_public_key === args.peer;
           }),
           public_key: channel.public_key,
-        });
+        }]);
       }
 
-      const [firstHop] = findRouteForFunding.hops;
+      return asyncMap(findRoutesForFunding.routes, (route, cbk) => {
+        const [firstHop] = route.hops;
 
-      return getNode({
-        is_omitting_channels: true,
-        lnd: args.lnd,
-        public_key: firstHop.public_key,
-      },
-      (err, res) => {
-        if (!!err) {
-          return cbk(err);
-        }
-
-        return cbk(null, {
-          alias: res.alias,
-          peer_channels: getChannels.channels.filter(channel => {
-            return channel.partner_public_key === firstHop.public_key;
-          }),
+        return getNode({
+          is_omitting_channels: true,
+          lnd: args.lnd,
           public_key: firstHop.public_key,
+        },
+        (err, res) => {
+          return cbk(null, {
+            alias: !!res ? res.alias : undefined,
+            peer_channels: getChannels.channels.filter(channel => {
+              return channel.partner_public_key === firstHop.public_key;
+            }),
+            public_key: firstHop.public_key,
+          });
         });
-      });
+      },
+      cbk);
     }],
 
     // Get fee estimate for sweep
@@ -671,16 +669,16 @@ module.exports = (args, cbk) => {
       'decodeExecutionRequest',
       'decodeFundingRequest',
       'findRouteForExecution',
-      'findRouteForFunding',
-      'getSwapPeer',
+      'findRoutesForFunding',
+      'getSwapPeers',
       'getQuote',
       ({
         currency,
         decodeExecutionRequest,
         decodeFundingRequest,
         findRouteForExecution,
-        findRouteForFunding,
-        getSwapPeer,
+        findRoutesForFunding,
+        getSwapPeers,
         getQuote,
       }, cbk) =>
     {
@@ -689,15 +687,16 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      const executionRoutingFee = findRouteForExecution.fee || 0;
+      const executionRoutingFee = findRouteForExecution.fee || Number();
       const executionSend = decodeExecutionRequest.tokens;
-      const fundingRoutingFee = findRouteForFunding.fee || 0;
+      const fundingRoutingFee = findRoutesForFunding.fee || Number();
       const fundingSend = decodeFundingRequest.tokens;
       const increase = `${tokensAsBigUnit(args.tokens)} ${currency}`;
-      const peerIn = getSwapPeer.peer_channels.map(n => n.remote_balance);
-      const peerOut = getSwapPeer.peer_channels.map(n => n.local_balance);
-      const sumOf = tokens => tokens.reduce((sum, n) => sum + n, 0);
+      const peerChannels = flatten(getSwapPeers.map(n => n.peer_channels));
+      const sumOf = tokens => tokens.reduce((sum, n) => sum + n, Number());
 
+      const peerIn = peerChannels.map(n => n.remote_balance);
+      const peerOut = peerChannels.map(n => n.local_balance);
       const routingFees = executionRoutingFee + fundingRoutingFee;
       const serviceFee = fundingSend + executionSend - args.tokens;
 
@@ -720,11 +719,11 @@ module.exports = (args, cbk) => {
 
         args.logger.info({
           inbound_liquidity_increase: increase,
-          with_peer: `${getSwapPeer.alias} ${getSwapPeer.public_key}`,
+          with_peers: getSwapPeers.map(n => `${n.alias} ${n.public_key}`),
           swap_service_fee: `${tokensAsBigUnit(serviceFee)} ${currency}`,
           estimated_total_fee: `${tokensAsBigUnit(allFees)} ${currency}`,
-          peer_inbound: `${tokensAsBigUnit(sumOf(peerIn))} ${currency}`,
-          peer_outbound: `${tokensAsBigUnit(sumOf(peerOut))} ${currency}`,
+          peers_inbound: `${tokensAsBigUnit(sumOf(peerIn))} ${currency}`,
+          peers_outbound: `${tokensAsBigUnit(sumOf(peerOut))} ${currency}`,
         });
 
         if (!!args.is_dry_run) {
@@ -741,8 +740,8 @@ module.exports = (args, cbk) => {
       'checkSwap',
       'decodeFundingRequest',
       'findRouteForExecution',
-      'findRouteForFunding',
-      ({decodeFundingRequest, findRouteForFunding}, cbk) =>
+      'findRoutesForFunding',
+      ({decodeFundingRequest, findRoutesForFunding}, cbk) =>
     {
       if (!!args.recovery) {
         return cbk();
@@ -750,10 +749,13 @@ module.exports = (args, cbk) => {
 
       args.logger.info({funding_swap: decodeFundingRequest.id});
 
-      return payViaRoutes({
-        id: decodeFundingRequest.id,
-        lnd: args.lnd,
-        routes: [findRouteForFunding],
+      return asyncMap(findRoutesForFunding.routes, (route, cbk) => {
+        return payViaRoutes({
+          id: decodeFundingRequest.id,
+          lnd: args.lnd,
+          routes: [route],
+        },
+        cbk);
       },
       cbk);
     }],
@@ -765,7 +767,7 @@ module.exports = (args, cbk) => {
       'checkSwap',
       'decodeExecutionRequest',
       'findRouteForExecution',
-      'findRouteForFunding',
+      'findRoutesForFunding',
       'getMinSweepFee',
       'getQuote',
       'getStartHeight',
@@ -969,51 +971,32 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      const blocksUntilTimeout = initiateSwap.timeout - startHeight;
-      const maxWaitBlocks = args.max_wait_blocks || Number.MAX_SAFE_INTEGER;
-      let minFeeRate;
-      const tokens = !recover ? args.tokens : recover.tokens;
-
-      const maxSafeHeight = initiateSwap.timeout - args.confs;
-      const maxWaitHeight = startHeight + maxWaitBlocks;
-
-      asyncTimesSeries(blocksUntilTimeout, (i, cbk) => {
-        return attemptSweep({
-          network,
-          sends,
-          tokens,
-          current_height: startHeight + i,
-          deadline_height: min(maxWaitHeight, maxSafeHeight),
-          is_dry_run: true,
-          lnd: args.lnd,
-          max_fee_multiplier: maxFeeMultiplier,
-          min_fee_rate: minFeeRate,
-          private_key: claim.private_key,
-          secret: claim.secret,
-          start_height: depositHeight || initiateSwap.start_height,
-          sweep_address: createAddress.address,
-          transaction_id: claim.transaction_id,
-          transaction_vout: claim.transaction_vout,
-          witness_script: claim.script,
-        },
-        (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          args.logger.info({
-            fee_rate: res.fee_rate,
-            min_fee_rate: res.min_fee_rate,
-            timelock_height: startHeight + i,
-            transaction: res.transaction,
-          });
-
-          minFeeRate = res.min_fee_rate;
-
-          return cbk();
-        });
+      return getRawRecoveries({
+        network,
+        sends,
+        confs: args.confs,
+        deposit_height: depositHeight,
+        lnd: args.lnd,
+        max_wait_blocks: args.max_wait_blocks,
+        private_key: claim.private_key,
+        script: claim.script,
+        secret: claim.secret,
+        start_height: startHeight,
+        sweep_address: createAddress.address,
+        timeout: initiateSwap.timeout,
+        tokens: !recover ? args.tokens : recover.tokens,
+        transaction_id: claim.transaction_id,
+        transaction_vout: claim.transaction_vout,
       },
-      cbk);
+      (err, res) => {
+        if (!!err) {
+          return cbk(err);
+        }
+
+        res.recoveries.forEach(recovery => args.logger.info(recovery));
+
+        return cbk();
+      });
     }],
 
     // Execute the sweep

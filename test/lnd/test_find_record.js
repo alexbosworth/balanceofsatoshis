@@ -25,6 +25,7 @@ const tests = [
     },
     description: 'Can find a graph node',
     expected: {
+      chain_transaction: undefined,
       channels: undefined,
       nodes: [{
         alias: 'alias',
@@ -48,6 +49,7 @@ const tests = [
     },
     description: 'Can find a graph channel',
     expected: {
+      chain_transaction: undefined,
       channels: [{
         capacity: 1,
         id: '0x0x1',

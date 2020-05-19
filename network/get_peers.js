@@ -14,15 +14,15 @@ const {getPendingChannels} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
+const size = require('window-size');
 
 const {authenticatedLnd} = require('./../lnd');
+const {formatFeeRate} = require('./../display');
 const {formatTokens} = require('./../display');
 const getNetwork = require('./get_network');
 const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
-const asEarnings = (on, tok) => !!on ? (tok / 1e8).toFixed(8) : undefined;
-const asRate = n => n !== undefined ? `${(n/1e4).toFixed(2)}% (${n})` : undefined;
 const defaultSort = 'first_connected';
 const fromNow = epoch => !epoch ? undefined : moment(epoch * 1e3).fromNow();
 const {isArray} = Array;
@@ -31,9 +31,11 @@ const {max} = Math;
 const minutesPerBlock = network => network === 'ltcmainnet' ? 10 / 4 : 10;
 const notNull = array => array.filter(n => n !== null);
 const notFoundIndex = -1;
+const offlineEmoji = '💀';
 const shortKey = key => key.substring(0, 16);
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
 const uniq = arr => Array.from(new Set(arr));
+const wideSizeCols = 150;
 
 /** Get channel-connected peers
 
@@ -412,17 +414,21 @@ module.exports = (args, cbk) => {
 
               return true;
             })
-            .map(n => ({
-              alias: n.alias,
-              fee_earnings: n.fee_earnings,
-              first_connected: moment(n.first_connected * 1000).fromNow(),
-              last_activity: fromNow(n.last_activity),
-              inbound_fee_rate: asRate(n.inbound_fee_rate),
-              inbound_liquidity: n.inbound_liquidity,
-              is_offline: n.is_offline,
-              outbound_liquidity: n.outbound_liquidity,
-              public_key: n.public_key,
-            })),
+            .map(peer => {
+              const rate = peer.inbound_fee_rate;
+
+              return {
+                alias: peer.alias,
+                fee_earnings: peer.fee_earnings,
+                first_connected: fromNow(peer.first_connected),
+                last_activity: fromNow(peer.last_activity),
+                inbound_fee_rate: formatFeeRate({rate}).display,
+                inbound_liquidity: peer.inbound_liquidity,
+                is_offline: peer.is_offline,
+                outbound_liquidity: peer.outbound_liquidity,
+                public_key: peer.public_key,
+              };
+            }),
         };
       }],
 
@@ -444,6 +450,8 @@ module.exports = (args, cbk) => {
           });
         }
 
+        const isWideSize = size.get().width > wideSizeCols;
+
         return cbk(null, {
           peers: peers.peers,
           rows: []
@@ -454,7 +462,7 @@ module.exports = (args, cbk) => {
               'In Fee',
               'Outbound',
               !!args.earnings_days ? 'Earned' : null,
-              'Public Key',
+              !!isWideSize ? 'Public Key' : null,
             ]).map(n => !args.is_monochrome ? bold(n) : n)])
             .concat(peers.peers.map(peer => {
               const earnings = formatTokens({
@@ -473,13 +481,13 @@ module.exports = (args, cbk) => {
               });
 
               return notNull([
-                peer.is_offline ? '💀' : ' ',
+                peer.is_offline ? offlineEmoji : ' ',
                 peer.alias.replace(isEmoji, '') || shortKey(peer.public_key),
                 inbound.display,
                 peer.inbound_fee_rate || ' ',
                 outbound.display,
                 !!args.earnings_days ? earnings.display : null,
-                peer.public_key,
+                !!isWideSize ? peer.public_key : null,
               ]);
             })),
         });

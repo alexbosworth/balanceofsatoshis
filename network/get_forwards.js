@@ -9,7 +9,7 @@ const {getPendingChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
-const {uniq} = require('lodash');
+const size = require('window-size');
 
 const {formatTokens} = require('./../display');
 const {lndCredentials} = require('./../lnd');
@@ -27,6 +27,8 @@ const {parse} = Date;
 const shortKey = key => key.substring(0, 16);
 const sort = (a, b) => a > b ? 1 : ((b > a) ? -1 : 0);
 const tokensAsBigTokens = tokens => !!tokens ? (tokens / 1e8).toFixed(8) : '';
+const uniq = arr => Array.from(new Set(arr));
+const wideSizeCols = 155;
 
 /** Get recent forwarding activity
 
@@ -233,6 +235,8 @@ module.exports = (args, cbk) => {
           return cbk(null, {peers: forwards.peers});
         }
 
+        const isWideSize = size.get().width > wideSizeCols;
+
         return cbk(null, {
           peers: forwards.peers,
           rows: []
@@ -242,7 +246,7 @@ module.exports = (args, cbk) => {
               'Earned Out',
               'Inbound',
               'Outbound',
-              'Public Key',
+              !!isWideSize ? 'Public Key' : null,
             ]).map(n => !args.is_monochrome ? bold(n) : n)])
             .concat(forwards.peers.map(peer => {
               return notNull([
@@ -263,7 +267,7 @@ module.exports = (args, cbk) => {
                   is_monochrome: args.is_monochrome,
                   tokens: peer.liquidity_outbound,
                 }).display,
-                peer.public_key,
+                !!isWideSize ? peer.public_key : null,
               ]);
             })),
         });

@@ -1,15 +1,13 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
-const {authenticatedLndGrpc} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
-const {take} = require('lodash');
 
-const {authenticatedLnd} = require('./../lnd');
 const getChannelResolution = require('./get_channel_resolution');
 const getNetwork = require('./../network/get_network');
+const {getNodeAlias} = require('./../peers');
 
 const defaultLimit = 20;
 
@@ -17,7 +15,8 @@ const defaultLimit = 20;
 
   {
     [limit]: <Limit Number>
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
+    request: <Request Function>
   }
 
   @returns via cbk
@@ -40,13 +39,17 @@ const defaultLimit = 20;
     }]
   }
 */
-module.exports = ({limit, lnd}, cbk) => {
+module.exports = ({limit, lnd, request}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
         if (!lnd) {
           return cbk([400, 'ExpectedLndToGetChannelCloses']);
+        }
+
+        if (!request) {
+          return cbk([400, 'ExpectedRequestFunctionToGetChannelCloses']);
         }
 
         return cbk();
@@ -66,56 +69,45 @@ module.exports = ({limit, lnd}, cbk) => {
         'getClosed',
         'getHeight',
         'getNetwork',
-        ({getClosed, getHeight, getNetwork}, cbk) =>
+        async ({getClosed, getHeight, getNetwork}) =>
       {
         const closedChannels = getClosed.channels
           .reverse()
           .filter(channel => !channel.is_funding_cancel);
 
-        const num = limit || defaultLimit;
+        const channels = closedChannels.slice(Number(), limit || defaultLimit);
 
-        return asyncMapSeries(take(closedChannels, num), (channel, cbk) => {
-          return getChannelResolution({
+        return await asyncMapSeries(channels, async channel => {
+          const {resolutions} = await getChannelResolution({
+            request,
             close_transaction_id: channel.close_transaction_id,
             is_cooperative_close: channel.is_cooperative_close,
             network: getNetwork.network,
-          },
-          async (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            let alias;
-            const currentHeight = getHeight.current_block_height;
-            const isRemoteForceClose = channel.is_remote_force_close;
-
-            try {
-              const node = await getNode({
-                lnd,
-                is_omitting_channels: true,
-                public_key: channel.partner_public_key,
-              });
-
-              alias = node.alias;
-            } catch (err) {}
-
-            return cbk(null, {
-              alias: alias || undefined,
-              blocks_since_close: currentHeight - channel.close_confirm_height,
-              capacity: channel.capacity,
-              close_transaction_id: channel.close_transaction_id,
-              is_breach_close: channel.is_breach_close || undefined,
-              is_cooperative_close: channel.is_cooperative_close || undefined,
-              is_local_force_close: channel.is_local_force_close || undefined,
-              is_remote_force_close: isRemoteForceClose || undefined,
-              output_resolutions: res.resolutions || undefined,
-              partner_public_key: channel.partner_public_key,
-              transaction_id: channel.transaction_id,
-              transaction_vout: channel.transaction_vout,
-            });
           });
-        },
-        cbk);
+
+          const {alias} = await getNodeAlias({
+            lnd,
+            id: channel.partner_public_key,
+          });
+
+          const currentHeight = getHeight.current_block_height;
+          const isRemoteForceClose = channel.is_remote_force_close;
+
+          return {
+            alias: alias || undefined,
+            blocks_since_close: currentHeight - channel.close_confirm_height,
+            capacity: channel.capacity,
+            close_transaction_id: channel.close_transaction_id,
+            is_breach_close: channel.is_breach_close || undefined,
+            is_cooperative_close: channel.is_cooperative_close || undefined,
+            is_local_force_close: channel.is_local_force_close || undefined,
+            is_remote_force_close: isRemoteForceClose || undefined,
+            output_resolutions: resolutions || undefined,
+            partner_public_key: channel.partner_public_key,
+            transaction_id: channel.transaction_id,
+            transaction_vout: channel.transaction_vout,
+          };
+        });
       }],
 
       // Channel closes

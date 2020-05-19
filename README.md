@@ -97,7 +97,7 @@ bos market
 # View and adjust list of saved nodes
 bos nodes
 
-# Open channesl to public keys using external funding
+# Open channels to public keys using external funding
 bos open "public_keys..."
 
 # Outputs the sum total of local channel liquidity
