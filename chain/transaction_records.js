@@ -48,6 +48,7 @@ const idFromHash = hash => hash.reverse().toString('hex');
       tokens: <Tokens Including Fee Number>
       [transaction]: <Raw Transaction Hex String>
     }]
+    vout: <Spent Transaction Output Index>
   }
 
   @returns
@@ -64,13 +65,13 @@ const idFromHash = hash => hash.reverse().toString('hex');
     }]
   }
 */
-module.exports = ({ended, id, original, pending, txs}) => {
+module.exports = ({ended, id, original, pending, txs, vout}) => {
   const records = [];
   const spendClosing = pending.find(n => n.close_transaction_id === id);
   const spendTx = txs.find(tx => tx.id === id);
 
   const spendPending = pending.filter(chan => {
-    return chan.transaction_id === id && chan.transaction_vout === index;
+    return chan.transaction_id === id && chan.transaction_vout === vout;
   });
 
   if (!!spendPending.length) {

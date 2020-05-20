@@ -90,8 +90,21 @@ module.exports = ({id, lnd}, cbk) => {
           return channel.transaction_id === id;
         });
 
+        const openingChans = getPending.pending_channels.filter(channel => {
+          return channel.is_opening && channel.transaction_id === id;
+        });
+
         const tx = getTx.transactions.find(transaction => {
           return transaction.id === id;
+        });
+
+        openingChans.forEach(channel => {
+          return records.push({
+            action: 'opening_channel',
+            balance: channel.local_balance,
+            open_tx: channel.transaction_id,
+            with: channel.partner_public_key,
+          });
         });
 
         if (!!closingChans.length) {
@@ -181,6 +194,7 @@ module.exports = ({id, lnd}, cbk) => {
               original: id,
               pending: getPending.pending_channels,
               txs: getTx.transactions,
+              vout: index,
             });
 
             txRecords.records.forEach(record => records.push(record));
@@ -219,8 +233,8 @@ module.exports = ({id, lnd}, cbk) => {
           chain_fee: hasFee ? tx.fee : undefined,
           received: isIncoming ? tx.tokens : undefined,
           related_channels: relatedChannels,
-          sent: !records.length ? tx.tokens : undefined,
-          sent_to: !records.length ? tx.output_addresses : undefined,
+          sent: !records.length && !!tx ? tx.tokens : undefined,
+          sent_to: !records.length && !!tx ? tx.output_addresses : undefined,
           tx: !!tx ? tx.id : undefined,
         };
       }],

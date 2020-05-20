@@ -267,7 +267,9 @@ module.exports = (args, cbk) => {
                 socket: !!socket ? socket.socket : undefined,
               };
 
-              args.logger.info({evaluating: node.public_key});
+              args.logger.info({
+                evaluating: `${node.alias || String()} ${node.public_key}`,
+              });
 
               return asyncTimeout(addPeer, connectTimeout)({
                 lnd: args.lnd,

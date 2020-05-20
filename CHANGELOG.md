@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.37.0
+
+- `telegram`: Remove reporting of payments due to excessive mem usage
+- `telegram`: Add reporting of on-chain transactions
+
 ## Version 5.36.0
 
 - `forwards`: Change output to table, view old output with `--complete`
