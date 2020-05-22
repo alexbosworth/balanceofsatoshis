@@ -57,7 +57,7 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
       checkNodes: ['validate', async () => {
         const {lnds} = await getLnds({logger, nodes});
 
-        const withName = lnds.map((lnd, i) => ({lnd, node: nodes[i]}));
+        const withName = lnds.map((lnd, i) => ({lnd, node: (nodes || [])[i]}));
 
         return await asyncMap(withName, async ({lnd, node}) => {
           try {
