@@ -1,3 +1,3 @@
-const startTelegramBot = require('./start_telegram_bot');
+const connectToTelegram = require('./connect_to_telegram');
 
-module.exports = {startTelegramBot};
+module.exports = {connectToTelegram};

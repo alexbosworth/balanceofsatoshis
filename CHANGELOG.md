@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.37.1
+
+- `telegram`: Improve reliability of long-running operation
+
 ## Version 5.37.0
 
 - `telegram`: Remove reporting of payments due to excessive mem usage

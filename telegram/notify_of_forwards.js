@@ -145,7 +145,7 @@ module.exports = ({forwards, from, id, key, lnd, request}, cbk) => {
           const forwardFrom = `from ${fromPeer}`;
           const to = `to ${toPeer}`;
 
-          return `- Earned ${fee} forwarding ${tokens} ${forwardFrom} ${to}`;
+          return `Earned ${fee} forwarding ${tokens} ${forwardFrom} ${to}`;
         });
 
         const text = `💰 *${from}*\n${allForwards.join('\n')}`;

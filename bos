@@ -16,6 +16,7 @@ const request = require('@alexbosworth/request');
 const {accountingCategories} = require('./balances');
 const {adjustSavedNodes} = require('./nodes');
 const {authenticatedLnd} = require('./lnd');
+const {connectToTelegram} = require('./telegram');
 const {encryptToNode} = require('./encryption');
 const {exchanges} = require('./fiat');
 const {decryptWithNode} = require('./encryption');
@@ -59,7 +60,6 @@ const {returnOutput} = require('./responses');
 const {sendGift} = require('./network');
 const {setAutopilot} = require('./network');
 const {splitUtxos} = require('./chain');
-const {startTelegramBot} = require('./telegram');
 const {swapApiKey} = require('./swaps');
 const {swapIn} = require('./swaps');
 const {swapOut} = require('./swaps');
@@ -1058,21 +1058,20 @@ prog
   .command('telegram', 'Post updates to a Telegram bot')
   .help('Connect to a Telegram bot. Create bot: tg://resolve?domain=botfather')
   .help('Supported updates: forwards, received payments')
-  .option('--budget <amount>', 'Spending amount to allow', INT, 0)
+  .option('--budget <amount>', 'Spending amount to allow', INT, Number())
   .option('--connect <connect_code>', 'Connection code', INT)
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        return startTelegramBot({
+        return connectToTelegram({
           logger,
           request,
           fs: {writeFile, getFile: readFile, makeDirectory: mkdir},
           id: options.connect,
-          lnds: (await getLnds({logger, nodes: options.node})).lnds,
+          nodes: options.node,
           payments: {limit: options.budget}
-        },
-        returnObject({logger, reject, resolve}));
+        });
       } catch (err) {
         return reject(err);
       }

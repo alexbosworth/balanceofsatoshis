@@ -26,6 +26,7 @@ const postSettledInvoice = require('./post_settled_invoice');
 const postUpdatedBackups = require('./post_updated_backups');
 const sendMessage = require('./send_message');
 
+let bot;
 const botKeyFile = 'telegram_bot_api_key';
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const home = '.bos';
@@ -144,9 +145,14 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
       // Setup the bot start action
       initBot: ['apiKey', 'getNodes', ({apiKey, getNodes}, cbk) => {
-        const bot = new Telegraf(apiKey);
+        // Exit early when bot is already instantiated
+        if (!!bot) {
+          return cbk();
+        }
 
-        bot.catch(err => logger.error({err}));
+        bot = new Telegraf(apiKey);
+
+        bot.catch(err => logger.error({telegram_error: err}));
 
         bot.use((ctx, next) => {
           // Ignore messages that are old
@@ -297,7 +303,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           },
           err => {
             if (!!err) {
-              logger.error({err});
+              logger.error({backups_err: err});
             }
 
             return setTimeout(cbk, restartSubscriptionTimeMs);
@@ -330,7 +336,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                 key: apiKey,
                 partner_public_key: update.partner_public_key,
               },
-              err => !!err ? logger.error({err}) : null);
+              err => !!err ? logger.error({closed_err: err}) : null);
             });
 
             sub.on('channel_opened', update => {
@@ -345,7 +351,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                 key: apiKey,
                 partner_public_key: update.partner_public_key,
               },
-              err => !!err ? logger.error({err}) : null);
+              err => !!err ? logger.error({open_err: err}) : null);
             });
 
             sub.once('error', err => {
@@ -395,7 +401,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           },
           err => {
             if (!!err) {
-              logger.error({err});
+              logger.error({forwards_err: err});
             }
 
             return setTimeout(cbk, restartSubscriptionTimeMs);
@@ -425,13 +431,15 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                 },
                 key: apiKey,
               },
-              err => !!err ? logger.error({err}) : null);
+              err => !!err ? logger.error({settled_err: err}) : null);
             });
 
             sub.on('error', err => {
-              logger.error({err});
+              sub.removeAllListeners();
 
-              return setTimeout(cbk, restartSubscriptionTimeMs);
+              logger.error({invoices_err: err});
+
+              return cbk([503, 'InvoicesSubscriptionFailed', {err, from}]);
             });
           },
           cbk);
@@ -446,6 +454,8 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         'userId',
         ({apiKey, getNodes}, cbk) =>
       {
+        let isFinished = false;
+
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
           return asyncForever(cbk => {
             const sub = subscribeToTransactions({lnd});
@@ -460,7 +470,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                   return;
                 }
 
-                await postChainTransaction({
+                return await postChainTransaction({
                   from,
                   lnd,
                   request,
@@ -469,14 +479,32 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                   transaction: record,
                 });
               } catch (err) {
-                return logger.error({err});
+                logger.error({chain_tx_err: err});
+
+                if (!!isFinished) {
+                  return;
+                }
+
+                isFinished = true;
+
+                sub.removeAllListeners({});
+
+                return cbk(err);
               }
             });
 
             sub.on('error', err => {
-              logger.error({err});
+              sub.removeAllListeners();
 
-              return setTimeout(cbk, restartSubscriptionTimeMs);
+              if (!!isFinished) {
+                return;
+              }
+
+              isFinished = true;
+
+              logger.error({chain_subscription_err: err});
+
+              return cbk(err);
             });
           },
           cbk);
