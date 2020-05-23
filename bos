@@ -1069,7 +1069,7 @@ prog
           request,
           fs: {writeFile, getFile: readFile, makeDirectory: mkdir},
           id: options.connect,
-          nodes: options.node,
+          nodes: flatten([options.node].filter(n => !!n)),
           payments: {limit: options.budget}
         });
       } catch (err) {

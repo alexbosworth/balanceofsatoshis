@@ -23,7 +23,7 @@ module.exports = ({logger, nodes}, cbk) => {
     return asyncAuto({
       // Default lnd
       getLnd: cbk => {
-        if (!!nodes) {
+        if (!!nodes && !!nodes.length) {
           return cbk();
         }
 
@@ -32,7 +32,7 @@ module.exports = ({logger, nodes}, cbk) => {
 
       // Authenticated LND Objects
       getLnds: cbk => {
-        if (!nodes) {
+        if (!nodes || !nodes.length) {
           return cbk();
         }
 
@@ -44,7 +44,7 @@ module.exports = ({logger, nodes}, cbk) => {
 
       // Final lnds
       lnds: ['getLnd', 'getLnds', ({getLnd, getLnds}, cbk) => {
-        if (!nodes) {
+        if (!nodes || !nodes.length) {
           return cbk(null, {lnds: [getLnd.lnd]});
         }
 
