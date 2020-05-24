@@ -1,9 +1,12 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
+const {decodePaymentRequest} = require('ln-service');
 const {getChannel} = require('ln-service');
 const {getMaximum} = require('asyncjs-util');
+const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const channelsFromHints = require('./channels_from_hints');
 const isRoutePayable = require('./is_route_payable');
 
 const accuracy = 10000;
@@ -24,6 +27,7 @@ const to = tokens => tokens - Math.round(Math.random() * 1000);
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     max: <Max Attempt Tokens Number>
+    [request]: <BOLT 11 Payment Request String>
   }
 
   @returns via cbk or Promise
@@ -31,7 +35,7 @@ const to = tokens => tokens - Math.round(Math.random() * 1000);
     maximum: <Maximum Routeable Tokens Number>
   }
 */
-module.exports = ({cltv, hops, lnd, logger, max}, cbk) => {
+module.exports = ({cltv, hops, lnd, logger, max, request}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -69,8 +73,15 @@ module.exports = ({cltv, hops, lnd, logger, max}, cbk) => {
 
       // Get channels
       channels: ['validate', ({}, cbk) => {
+        const {channels} = channelsFromHints({request});
+
         return asyncMapSeries(hops, (hop, cbk) => {
           return getChannel({lnd, id: hop.channel}, (err, channel) => {
+            // Avoid returning an error when channel is known from hops
+            if (!!err && !!channels.find(n => n.id === hop.channel)) {
+              return cbk(null, channels.find(n => n.id === hop.channel));
+            }
+
             if (!!err) {
               return cbk(err);
             }

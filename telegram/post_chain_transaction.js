@@ -121,7 +121,7 @@ module.exports = ({from, id, key, lnd, request, transaction}, cbk) => {
           const sentTo = transaction.sent_to;
 
           const elements = [
-            `Sent ${tokAsBig(transaction.received)}`,
+            `Sent ${tokAsBig(transaction.sent)}`,
             fee,
             !sentTo ? `Sent to ${sentTo.join(', ')}` : '',
             !!relatedChannels.length ? `Related: ${relatedChannels}` : '',

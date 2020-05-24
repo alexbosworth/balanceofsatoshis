@@ -91,11 +91,9 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
             limit = Number();
           } catch (err) {
             logger.error({err});
-          } finally {
-            await delay(restartDelayMs);
-
-            return;
           }
+
+          return await delay(restartDelayMs);
         });
       }],
     },

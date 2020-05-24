@@ -8,7 +8,6 @@ const {parsePaymentRequest} = require('invoices');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const multiPathPayment = require('./multi_path_payment');
 const multiPathProbe = require('./multi_path_probe');
 const probeDestination = require('./probe_destination');
 
@@ -93,7 +92,6 @@ module.exports = (args, cbk) => {
           },
           cbk => {
             return multiPathProbe({
-              probes,
               destination: args.destination,
               find_max: args.find_max,
               ignore: args.ignore,
@@ -101,6 +99,7 @@ module.exports = (args, cbk) => {
               lnd: args.lnd,
               logger: args.logger,
               out_through: args.out_through,
+              probes: probes.filter(n => !!n),
               request: args.request,
               timeout_minutes: args.timeout_minutes,
               tokens: args.tokens,
@@ -110,12 +109,10 @@ module.exports = (args, cbk) => {
                 return cbk(err);
               }
 
-              if (!!res.probe) {
-                probes.push(res.probe);
-              }
-
               if (!!res.error) {
                 error = res.error;
+              } else {
+                probes.push(res.probe || null);
               }
 
               return cbk();
@@ -126,21 +123,23 @@ module.exports = (args, cbk) => {
               return cbk(err);
             }
 
-            if (!probes.length) {
+            const completed = probes.filter(n => !!n);
+
+            if (!completed.length) {
               return cbk(error);
             }
 
-            const latencyMs = probes
+            const latencyMs = completed
               .map(n => n.latency_ms)
               .reduce((sum, n) => sum + n, Number());
 
-            const max = probes
+            const max = completed
               .map(n => n.route_maximum)
               .reduce((sum, n) => sum + n, Number());
 
             return cbk(null, {
               latency_ms: latencyMs,
-              probes: probes.map(probe => {
+              probes: completed.map(probe => {
                 return {
                   channels: probe.success,
                   liquidity: probe.route_maximum,

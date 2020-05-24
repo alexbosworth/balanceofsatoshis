@@ -344,6 +344,7 @@ module.exports = (args, cbk) => {
         lnd: args.lnd,
         logger: args.logger,
         max: args.find_max,
+        request: args.request,
       },
       cbk);
     }],

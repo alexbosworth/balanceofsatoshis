@@ -319,51 +319,48 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         ({apiKey, getNodes, userId}, cbk) =>
       {
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
-          return asyncForever(cbk => {
-            const sub = subscribeToChannels({lnd});
+          const sub = subscribeToChannels({lnd});
 
-            sub.on('channel_closed', update => {
-              return postClosedMessage({
-                from,
-                lnd,
-                request,
-                capacity: update.capacity,
-                id: connectedId,
-                is_breach_close: update.is_breach_close,
-                is_cooperative_close: update.is_cooperative_close,
-                is_local_force_close: update.is_local_force_close,
-                is_remote_force_close: update.is_remote_force_close,
-                key: apiKey,
-                partner_public_key: update.partner_public_key,
-              },
-              err => !!err ? logger.error({closed_err: err}) : null);
-            });
+          sub.on('channel_closed', update => {
+            return postClosedMessage({
+              from,
+              lnd,
+              request,
+              capacity: update.capacity,
+              id: connectedId,
+              is_breach_close: update.is_breach_close,
+              is_cooperative_close: update.is_cooperative_close,
+              is_local_force_close: update.is_local_force_close,
+              is_remote_force_close: update.is_remote_force_close,
+              key: apiKey,
+              partner_public_key: update.partner_public_key,
+            },
+            err => !!err ? logger.error({closed_err: err}) : null);
+          });
 
-            sub.on('channel_opened', update => {
-              return postOpenMessage({
-                from,
-                lnd,
-                request,
-                capacity: update.capacity,
-                id: connectedId,
-                is_partner_initiated: update.is_partner_initiated,
-                is_private: update.is_private,
-                key: apiKey,
-                partner_public_key: update.partner_public_key,
-              },
-              err => !!err ? logger.error({open_err: err}) : null);
-            });
+          sub.on('channel_opened', update => {
+            return postOpenMessage({
+              from,
+              lnd,
+              request,
+              capacity: update.capacity,
+              id: connectedId,
+              is_partner_initiated: update.is_partner_initiated,
+              is_private: update.is_private,
+              key: apiKey,
+              partner_public_key: update.partner_public_key,
+            },
+            err => !!err ? logger.error({open_err: err}) : null);
+          });
 
-            sub.once('error', err => {
-              // Terminate subscription and restart after a delay
-              sub.removeAllListeners();
+          sub.once('error', err => {
+            // Terminate subscription and restart after a delay
+            sub.removeAllListeners();
 
-              return setTimeout(cbk, restartSubscriptionTimeMs);
-            });
+            return cbk([503, 'UnexpectedErrorInChannelsSubscription', {err}]);
+          });
 
-            return;
-          },
-          cbk);
+          return;
         },
         cbk);
       }],
@@ -413,36 +410,33 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
       // Subscribe to invoices
       invoices: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
-          return asyncForever(cbk => {
-            const sub = subscribeToInvoices({lnd});
+          const sub = subscribeToInvoices({lnd});
 
-            sub.on('invoice_updated', invoice => {
-              return postSettledInvoice({
-                from,
-                lnd,
-                request,
-                id: connectedId,
-                invoice: {
-                  description: invoice.description,
-                  id: invoice.id,
-                  is_confirmed: invoice.is_confirmed,
-                  payments: invoice.payments,
-                  received: invoice.received,
-                },
-                key: apiKey,
+          sub.on('invoice_updated', invoice => {
+            return postSettledInvoice({
+              from,
+              lnd,
+              request,
+              id: connectedId,
+              invoice: {
+                description: invoice.description,
+                id: invoice.id,
+                is_confirmed: invoice.is_confirmed,
+                payments: invoice.payments,
+                received: invoice.received,
               },
-              err => !!err ? logger.error({settled_err: err}) : null);
-            });
+              key: apiKey,
+            },
+            err => !!err ? logger.error({settled_err: err}) : null);
+          });
 
-            sub.on('error', err => {
-              sub.removeAllListeners();
+          sub.on('error', err => {
+            sub.removeAllListeners();
 
-              logger.error({invoices_err: err});
+            logger.error({invoices_err: err});
 
-              return cbk([503, 'InvoicesSubscriptionFailed', {err, from}]);
-            });
-          },
-          cbk);
+            return cbk([503, 'InvoicesSubscriptionFailed', {err, from}]);
+          });
         },
         cbk);
       }],
@@ -457,44 +451,28 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         let isFinished = false;
 
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
-          return asyncForever(cbk => {
-            const sub = subscribeToTransactions({lnd});
+          const sub = subscribeToTransactions({lnd});
 
-            sub.on('chain_transaction', async transaction => {
-              const {id} = transaction;
+          sub.on('chain_transaction', async transaction => {
+            const {id} = transaction;
 
-              try {
-                const record = await getTransactionRecord({lnd, id});
+            try {
+              const record = await getTransactionRecord({lnd, id});
 
-                if (!record || !record.tx) {
-                  return;
-                }
-
-                return await postChainTransaction({
-                  from,
-                  lnd,
-                  request,
-                  id: connectedId,
-                  key: apiKey,
-                  transaction: record,
-                });
-              } catch (err) {
-                logger.error({chain_tx_err: err});
-
-                if (!!isFinished) {
-                  return;
-                }
-
-                isFinished = true;
-
-                sub.removeAllListeners({});
-
-                return cbk(err);
+              if (!record || !record.tx) {
+                return;
               }
-            });
 
-            sub.on('error', err => {
-              sub.removeAllListeners();
+              return await postChainTransaction({
+                from,
+                lnd,
+                request,
+                id: connectedId,
+                key: apiKey,
+                transaction: record,
+              });
+            } catch (err) {
+              logger.error({chain_tx_err: err});
 
               if (!!isFinished) {
                 return;
@@ -502,12 +480,27 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
               isFinished = true;
 
-              logger.error({chain_subscription_err: err});
+              sub.removeAllListeners({});
 
               return cbk(err);
-            });
-          },
-          cbk);
+            }
+          });
+
+          sub.on('error', err => {
+            sub.removeAllListeners();
+
+            if (!!isFinished) {
+              return;
+            }
+
+            isFinished = true;
+
+            logger.error({chain_subscription_err: err});
+
+            return cbk(err);
+          });
+
+          return;
         },
         cbk);
       }],

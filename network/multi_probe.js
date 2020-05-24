@@ -31,6 +31,9 @@ const uniq = arr => Array.from(new Set(arr));
     tokens: <Starting Tokens Number>
   }
 
+  @throws
+  <Error>
+
   @returns
   {
     ignore: [{

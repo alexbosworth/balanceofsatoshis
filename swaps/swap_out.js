@@ -589,11 +589,13 @@ module.exports = (args, cbk) => {
       'currency',
       'decodeFundingRequest',
       'getStartHeight',
+      'initiateSwap',
       ({
         channel,
         currency,
         decodeFundingRequest,
         getStartHeight,
+        initiateSwap,
       }, cbk) =>
     {
       if (!!args.recovery) {
@@ -613,6 +615,7 @@ module.exports = (args, cbk) => {
         out_through: !!args.peer ? channel.public_key : undefined,
         outgoing_channel: channel.id,
         payment: decodeFundingRequest.payment,
+        request: initiateSwap.swap_fund_request,
         routes: decodeFundingRequest.routes,
         tokens: decodeFundingRequest.tokens,
       },
@@ -730,7 +733,7 @@ module.exports = (args, cbk) => {
           return cbk([500, 'InboundLiquidityIncreaseDryRun']);
         }
 
-        return cbk();
+        return cbk(null, res.tokens_per_vbyte);
       });
     }],
 
@@ -1004,6 +1007,7 @@ module.exports = (args, cbk) => {
       'claim',
       'createAddress',
       'depositHeight',
+      'getMinSweepFee',
       'initiateSwap',
       'network',
       'rawRecovery',
@@ -1014,6 +1018,7 @@ module.exports = (args, cbk) => {
         claim,
         createAddress,
         depositHeight,
+        getMinSweepFee,
         initiateSwap,
         network,
         recover,
@@ -1036,6 +1041,8 @@ module.exports = (args, cbk) => {
       blocksSubscription.on('error', () => {});
       blocksSubscription.on('status', () => {});
 
+      const startingHeight = depositHeight || initiateSwap.start_height;
+
       // On every block, attempt a sweep
       blocksSubscription.on('block', ({height}) => {
         return attemptSweep({
@@ -1047,9 +1054,10 @@ module.exports = (args, cbk) => {
           deadline_height: initiateSwap.timeout - args.confs,
           lnd: args.lnd,
           max_fee_multiplier: maxFeeMultiplier,
+          min_fee_rate: getMinSweepFee,
           private_key: claim.private_key,
           secret: claim.secret,
-          start_height: depositHeight || initiateSwap.start_height,
+          start_height: startingHeight - fuzzBlocks,
           sweep_address: createAddress.address,
           transaction_id: claim.transaction_id,
           transaction_vout: claim.transaction_vout,

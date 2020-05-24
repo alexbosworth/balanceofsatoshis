@@ -7,6 +7,7 @@ const {getWalletVersion} = require('ln-service');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const {channelsFromHints} = require('./../routing');
 const {executeProbe} = require('./../network');
 const {multiPathPayment} = require('./../network');
 const {multiPathProbe} = require('./../network');
@@ -35,7 +36,8 @@ const uniq = arr => Array.from(new Set(arr));
     [max_paths]: <Maximum Paths To Use for Multi-Path Number>
     [out_through]: <Out Through Peer With Public Key Hex String>
     [outgoing_channel]: <Outgoing Standard Format Channel Id String>
-    [payment]: <Payment 
+    [payment]: <Payment Identifier Hex String>
+    request: <Payment Request String>
     routes: [[{
       [base_fee_mtokens]: <Base Routing Fee In Millitokens String>
       [channel]: <Standard Format Channel Id String>
@@ -93,6 +95,10 @@ module.exports = (args, cbk) => {
 
         if (!args.logger) {
           return cbk([400, 'ExpectedLoggerToGetRoutesForFunding']);
+        }
+
+        if (!args.request) {
+          return cbk([400, 'ExpectedFundingRequestToGetRoutesForFunding']);
         }
 
         if (!args.tokens) {
@@ -163,7 +169,7 @@ module.exports = (args, cbk) => {
           },
           cbk => {
             return multiPathProbe({
-              probes,
+              probes: probes.filter(n => !!n),
               destination: args.destination,
               find_max: Math.floor(16777215 * 0.99),
               ignore: args.ignore,
@@ -177,12 +183,10 @@ module.exports = (args, cbk) => {
                 return cbk(err);
               }
 
-              if (!!res.probe) {
-                probes.push(res.probe);
-              }
-
               if (!!res.error) {
                 error = res.error;
+              } else {
+                probes.push(res.probe);
               }
 
               return cbk();
@@ -193,21 +197,23 @@ module.exports = (args, cbk) => {
               return cbk(err);
             }
 
-            if (!probes.length) {
+            const complete = probes.filter(n => !!n);
+
+            if (!complete.length) {
               return cbk(error);
             }
 
-            const latencyMs = probes
+            const latencyMs = complete
               .map(n => n.latency_ms)
               .reduce((sum, n) => sum + n, Number());
 
-            const max = probes
+            const max = complete
               .map(n => n.route_maximum)
               .reduce((sum, n) => sum + n, Number());
 
             return cbk(null, {
               latency_ms: latencyMs,
-              probes: probes.map(probe => {
+              probes: complete.map(probe => {
                 return {
                   channels: probe.success,
                   liquidity: probe.route_maximum,
@@ -226,9 +232,15 @@ module.exports = (args, cbk) => {
           return;
         }
 
+        const hintChans = channelsFromHints({request: args.request}).channels;
         const ids = flatten(getMultiLimits.probes.map(n => n.channels));
 
         const channels = await asyncMap(uniq(ids), async id => {
+          // Exit early when channel is known from hints
+          if (!!hintChans.find(n => n.id === id)) {
+            return hintChans.find(n => n.id === id);
+          }
+
           return await getChannel({id, lnd: args.lnd});
         });
 

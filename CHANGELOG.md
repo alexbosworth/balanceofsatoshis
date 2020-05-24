@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.37.3
+## Version 5.37.4
 
 - `telegram`: Improve reliability of long-running operation
 

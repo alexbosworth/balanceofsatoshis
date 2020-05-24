@@ -1,4 +1,5 @@
 const channelForGift = require('./channel_for_gift');
+const channelsFromHints = require('./channels_from_hints');
 const describeConfidence = require('./describe_confidence');
 const findMaxRoutable = require('./find_max_routable');
 const getFeesChart = require('./get_fees_chart');
@@ -10,6 +11,7 @@ const ignoreFromAvoid = require('./ignore_from_avoid');
 
 module.exports = {
   channelForGift,
+  channelsFromHints,
   describeConfidence,
   findMaxRoutable,
   getFeesChart,
