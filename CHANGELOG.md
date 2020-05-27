@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.37.5
+
+- `rebalance`: Avoid auto-selecting an out peer equal to the in peer
+
 ## Version 5.37.4
 
 - `telegram`: Improve reliability of long-running operation

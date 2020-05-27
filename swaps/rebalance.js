@@ -235,12 +235,21 @@ module.exports = (args, cbk) => {
 
       // Get outbound node details
       getOutbound: [
+        'findInKey',
         'findOutKey',
         'getInitialLiquidity',
         'ignore',
         'lnd',
         'tokens',
-        ({findOutKey, getInitialLiquidity, ignore, lnd, tokens}, cbk) =>
+        ({
+          findInKey,
+          findOutKey,
+          getInitialLiquidity,
+          ignore,
+          lnd,
+          tokens,
+        },
+        cbk) =>
       {
         const ban = ignore.filter(n => !n.channel).map(n => n.from_public_key);
 
@@ -249,6 +258,7 @@ module.exports = (args, cbk) => {
           .filter(n => !ban.includes(n.partner_public_key));
 
         const channels = active
+          .filter(n => n.partner_public_key !== findInKey.public_key)
           .filter(n => n.local_balance - n.local_reserve > tokens)
           .map(channel => {
             const remote = active
