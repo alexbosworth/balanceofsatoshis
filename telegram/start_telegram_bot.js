@@ -495,7 +495,10 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
             isFinished = true;
 
-            logger.error({chain_subscription_err: err});
+            logger.error({
+              chain_subscription_err: err,
+              node: from,
+            });
 
             return cbk(err);
           });

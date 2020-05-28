@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.38.0
+
+- `chart-payments-received`: Add method to chart received amounts vs time
+
 ## Version 5.37.5
 
 - `rebalance`: Avoid auto-selecting an out peer equal to the in peer

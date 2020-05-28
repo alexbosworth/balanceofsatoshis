@@ -38,6 +38,7 @@ const {getLiquidity} = require('./balances');
 const {getLnds} = require('./lnd');
 const {getPeers} = require('./network');
 const {getPriceChart} = require('./fiat');
+const {getReceivedChart} = require('./wallets');
 const {getReport} = require('./wallets');
 const {getSwapCost} = require('./swaps');
 const {getSwapService} = require('./swaps');
@@ -295,7 +296,7 @@ prog
   .option('--most-fees', 'View table of fees paid per node')
   .option('--most-forwarded', 'View table of forwarded per node')
   .option('--network', 'Show only non-peers in table view')
-  .option('--node <node_name>', 'Get fees paid chart for saved node')
+  .option('--node <node_name>', 'Get fees chart for saved node(s)', REPEATABLE)
   .option('--peers', 'Show only peers in table view')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -312,6 +313,25 @@ prog
           lnds: (await getLnds({logger, nodes: options.node})).lnds,
         },
         (options.mostFees || options.mostForwarded) ? table : chart);
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
+  // Chart earnings from payments received
+  .command('chart-payments-received', 'Get a chart of received payments')
+  .help('Show chart for settled invoices from external parties')
+  .option('--days <days>', 'Chart over the past number of days', INT, 60)
+  .option('--node <node_name>', 'Get payments from saved node(s)', REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getReceivedChart({
+          days: options.days,
+          lnds: (await getLnds({logger, nodes: options.node})).lnds,
+        },
+        returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
         return reject(err);
       }

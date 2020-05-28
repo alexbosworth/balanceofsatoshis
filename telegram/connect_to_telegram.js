@@ -71,29 +71,34 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
       }],
 
       // Start bot
-      start: ['checkNodes', async ({}) => {
+      start: ['checkNodes', ({}, cbk) => {
         let {limit} = payments;
 
-        return await asyncForever(async () => {
-          const {lnds} = await getLnds({logger, nodes});
+        return asyncForever(cbk => {
+          return getLnds({logger, nodes}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
 
-          try {
-            await startTelegramBot({
+            const {lnds} = res;
+
+            return startTelegramBot({
               fs,
               id,
               lnds,
               logger,
               request,
-              payments: {limit}
+              payments: {limit},
+            },
+            err => {
+              logger.error(err || [503, 'TelegramBotFailed']);
+
+              // Reset payment budget
+              limit = Number();
+
+              return setTimeout(() => cbk(), restartDelayMs);
             });
-
-            // Reset payment budget
-            limit = Number();
-          } catch (err) {
-            logger.error({err});
-          }
-
-          return await delay(restartDelayMs);
+          });
         });
       }],
     },

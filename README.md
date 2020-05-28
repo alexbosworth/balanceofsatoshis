@@ -64,6 +64,9 @@ bos chart-fees-earned
 # Show routing fees paid
 bos chart-fees-paid
 
+# Show a chart of payments received
+bos chart-payments-received
+
 # See details on how closed channels resolved on-chain
 bos closed
 
