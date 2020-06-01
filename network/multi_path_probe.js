@@ -6,6 +6,7 @@ const {returnResult} = require('asyncjs-util');
 const multiProbe = require('./multi_probe');
 const probeDestination = require('./probe_destination');
 
+const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
 
 /** Execute a probe but with multi-path payments in mind
@@ -27,6 +28,13 @@ const {isArray} = Array;
       [success]: [[<Standard Format Channel Id String>]]
     }]
     [request]: <BOLT 11 Encoded Payment Request String>
+    [routes]: [[{
+      [base_fee_mtokens]: <Base Routing Fee In Millitokens String>
+      [channel]: <Standard Format Channel Id String>
+      [cltv_delta]: <CLTV Blocks Delta Number>
+      [fee_rate]: <Fee Rate In Millitokens Per Million Number>
+      public_key: <Forward Edge Public Key Hex String>
+    }]]
     [timeout_minutes]: <Stop Searching For Routes After N Minutes Number>
     [tokens]: <Tokens Number>
   }
@@ -73,12 +81,37 @@ module.exports = (args, cbk) => {
 
       // Run probe with ignore list
       probe: ['getChannels', 'getKey', ({getChannels, getKey}, cbk) => {
-        const {ignore} = multiProbe({
+        const multiProbeIgnores = multiProbe({
           channels: getChannels.channels,
           from: getKey.public_key,
           ignore: args.ignore,
           probes: args.probes,
           tokens: args.tokens,
+        });
+
+        const antiIgnores = flatten((args.routes || []).map(route => {
+          return route.map(n => n.public_key).map((hop, i, hops) => {
+            if (!i) {
+              return {};
+            }
+
+            const nextHop = hops[i + [hop].length];
+            const prevHop = hops[i - [hop].length];
+
+            return {
+              from_public_key: !!prevHop ? prevHop : getKey.public_key,
+              to_public_key: !!nextHop ? nextHop : args.destination,
+            };
+          });
+        }));
+
+        const ignore = multiProbeIgnores.ignore.filter(ignore => {
+          return !antiIgnores.find(anti => {
+            const from = ignore.from_public_key;
+            const to = ignore.to_public_key;
+
+            return anti.from_public_key === from && anti.to_public_key === to;
+          });
         });
 
         return probeDestination({
@@ -91,6 +124,7 @@ module.exports = (args, cbk) => {
           out_through: args.out_through,
           request: args.request,
           timeout_minutes: args.timeout_minutes,
+          tokens: args.tokens,
         },
         (error, probe) => {
           if (!!error) {

@@ -28,6 +28,9 @@ const uniq = arr => Array.from(new Set(arr));
       relays: [<Public Key Hex String>]
       route_maximum: <Route Maximum Number>
     }]
+    routes: [{
+      public_key: <Hop Public Key Hex String>
+    }]
     tokens: <Starting Tokens Number>
   }
 

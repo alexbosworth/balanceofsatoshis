@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.38.1
+
+- `increase-inbound-liquidity`: Improve support for large swaps on LND 0.10.0
+- `increase-inbound-liquidity`: Add support to `--avoid` for channels, aliases
+
 ## Version 5.38.0
 
 - `chart-payments-received`: Add method to chart received amounts vs time

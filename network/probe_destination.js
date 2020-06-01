@@ -110,7 +110,7 @@ module.exports = (args, cbk) => {
         });
       }
 
-      if (!!args.destination) {
+      if (!args.request && !!args.destination) {
         return cbk(null, {destination: args.destination, routes: []});
       }
 

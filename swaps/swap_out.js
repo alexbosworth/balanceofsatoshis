@@ -30,6 +30,7 @@ const {subscribeToPayViaRequest} = require('ln-service');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {authenticatedLnd} = require('./../lnd');
+const avoidsAsIgnores = require('./avoids_as_ignores');
 const {chains} = require('./../network/networks');
 const {currencySymbols} = require('./../network/networks');
 const {estimatedSweepVbytes} = require('./constants');
@@ -176,6 +177,16 @@ module.exports = (args, cbk) => {
         address: args.spend_address,
         tokens: Number(args.spend_tokens),
       }]);
+    }],
+
+    // Get the ignore list
+    getIgnores: ['getChannels', ({getChannels}, cbk) => {
+      return avoidsAsIgnores({
+        avoid: args.avoid,
+        channels: getChannels.channels,
+        lnd: args.lnd,
+      },
+      cbk);
     }],
 
     // Create a sweep address
@@ -548,8 +559,9 @@ module.exports = (args, cbk) => {
     findRouteForExecution: [
       'channel',
       'decodeExecutionRequest',
+      'getIgnores',
       'getStartHeight',
-      ({channel, decodeExecutionRequest, getStartHeight}, cbk) =>
+      ({channel, decodeExecutionRequest, getIgnores, getStartHeight}, cbk) =>
     {
       // Exit early when there is a swap recovery
       if (!!args.recovery) {
@@ -562,7 +574,7 @@ module.exports = (args, cbk) => {
         cltv_delta: decodeExecutionRequest.cltv_delta + cltvBuffer,
         destination: decodeExecutionRequest.destination,
         features: !!hasFeatures ? decodeExecutionRequest.features : undefined,
-        ignore: (args.avoid || []).map(n => ({from_public_key: n})),
+        ignore: getIgnores.ignore,
         lnd: args.lnd,
         logger: args.logger,
         max_fee: maxExecutionFeeTokens,
@@ -588,12 +600,14 @@ module.exports = (args, cbk) => {
       'channel',
       'currency',
       'decodeFundingRequest',
+      'getIgnores',
       'getStartHeight',
       'initiateSwap',
       ({
         channel,
         currency,
         decodeFundingRequest,
+        getIgnores,
         getStartHeight,
         initiateSwap,
       }, cbk) =>
@@ -608,7 +622,7 @@ module.exports = (args, cbk) => {
         cltv_delta: decodeFundingRequest.cltv_delta + cltvBuffer,
         destination: decodeFundingRequest.destination,
         features: !!hasFeatures ? decodeFundingRequest.features : undefined,
-        ignore: (args.avoid || []).map(n => ({from_public_key: n})),
+        ignore: getIgnores.ignore,
         lnd: args.lnd,
         logger: args.logger,
         max_fee: round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),

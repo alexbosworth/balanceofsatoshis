@@ -14,8 +14,14 @@ const {multiPathProbe} = require('./../network');
 
 const defaultMaxPaths = 7;
 const flatten = arr => [].concat(...arr);
+const {isArray} = Array;
+const legacyMax = 4294967;
+const {max} = Math;
+const minShardTokens = 1e5;
+const normalMax = 16777215;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const tokensAsMtokens = tokens => (BigInt(tokens) * BigInt(1e3)).toString();
+const tooLargeError = 'PaymentTooLargeToFindRoute';
 const uniq = arr => Array.from(new Set(arr));
 
 /** Get routes for funding a swap
@@ -132,6 +138,11 @@ module.exports = (args, cbk) => {
           total_mtokens: tokensAsMtokens(args.tokens),
         },
         (err, res) => {
+          // Exit with no route when the amount is too big for a single path
+          if (!!isArray(err) && err.includes(tooLargeError)) {
+            return cbk(null, {is_size_limited: true});
+          }
+
           if (!!err) {
             return cbk([503, 'UnexpectedErrorFindingRouteToFundSwap', {err}]);
           }
@@ -169,14 +180,16 @@ module.exports = (args, cbk) => {
           },
           cbk => {
             return multiPathProbe({
-              probes: probes.filter(n => !!n),
               destination: args.destination,
-              find_max: Math.floor(16777215 * 0.99),
+              find_max: !getSinglePath.is_size_limited ? normalMax : legacyMax,
               ignore: args.ignore,
               in_through: args.in_through,
               lnd: args.lnd,
               logger: args.logger,
-              out_through: args.out_through,
+              probes: probes.filter(n => !!n),
+              request: args.request,
+              routes: args.routes,
+              tokens: minShardTokens,
             },
             (err, res) => {
               if (!!err) {
