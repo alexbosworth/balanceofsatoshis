@@ -258,7 +258,7 @@ module.exports = (args, cbk) => {
           .filter(n => !ban.includes(n.partner_public_key));
 
         const channels = active
-          .filter(n => n.partner_public_key !== findInKey.public_key)
+          .filter(n => n.partner_public_key !== findInKey)
           .filter(n => n.local_balance - n.local_reserve > tokens)
           .map(channel => {
             const remote = active

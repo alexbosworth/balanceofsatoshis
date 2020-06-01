@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.38.2
+
+- `rebalance`: Fix issue with checking when `--in` key is not present
+- `telegram`: Eliminate redundant on-chain tx messages
+
 ## Version 5.38.1
 
 - `increase-inbound-liquidity`: Improve support for large swaps on LND 0.10.0

@@ -26,6 +26,7 @@ const getNetwork = require('./../network/get_network');
 const base64AsHex = n => Buffer.from(n, 'base64').toString('hex');
 const defaultChannelCapacity = 5e6;
 const format = 'p2wpkh';
+const interrogationSeparator = ' and \n  ';
 const {isArray} = Array;
 const isHex = n => !!n && !(n.length % 2) && /^[0-9A-F]*$/i.test(n);
 const makeId = () => randomBytes(32).toString('hex');
@@ -269,7 +270,7 @@ module.exports = (args, cbk) => {
           .map(channel => {
             return `${tokAsBigUnit(channel.tokens)} to ${channel.address}`;
           })
-          .join(', ');
+          .join(interrogationSeparator);
 
         const funding = {
           message: `Enter signed transaction or PSBT that pays ${payTo}`,

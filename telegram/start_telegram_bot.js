@@ -452,9 +452,17 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
           const sub = subscribeToTransactions({lnd});
+          const transactions = [];
 
           sub.on('chain_transaction', async transaction => {
             const {id} = transaction;
+
+            // Exit early when this transaction has already been seen
+            if (transactions.includes(id)) {
+              return;
+            }
+
+            transactions.push(id);
 
             try {
               const record = await getTransactionRecord({lnd, id});

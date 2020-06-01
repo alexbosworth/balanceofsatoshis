@@ -66,5 +66,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "5.38.1"
+  "version": "5.38.2"
 }
