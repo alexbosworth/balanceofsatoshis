@@ -23,6 +23,7 @@ const getNetwork = require('./get_network');
 const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
+const defaultInvoicesLimit = 100;
 const defaultSort = 'first_connected';
 const fromNow = epoch => !epoch ? undefined : moment(epoch * 1e3).fromNow();
 const {isArray} = Array;
@@ -131,7 +132,12 @@ module.exports = (args, cbk) => {
         return asyncUntil(
           cbk => cbk(null, token === false),
           cbk => {
-            return getInvoices({token, lnd: args.lnd}, (err, res) => {
+            return getInvoices({
+              token,
+              limit: !token ? defaultInvoicesLimit : undefined,
+              lnd: args.lnd,
+            },
+            (err, res) => {
               if (!!err) {
                 return cbk(err);
               }

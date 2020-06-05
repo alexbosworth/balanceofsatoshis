@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.38.3
+
+- Fixed issue where invoice results parsing caused intermittent errors
+
 ## Version 5.38.2
 
 - `rebalance`: Fix issue with checking when `--in` key is not present
