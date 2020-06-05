@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.38.3
+## Version 5.38.4
 
 - Fixed issue where invoice results parsing caused intermittent errors
 
