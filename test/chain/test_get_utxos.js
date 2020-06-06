@@ -19,7 +19,10 @@ const tests = [
   },
   {
     args: {
-      lnd: {default: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})}},
+      lnd: {
+        default: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})},
+        wallet: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})},
+      },
     },
     description: 'Utxos are returned',
     expected: {
@@ -35,7 +38,10 @@ const tests = [
   {
     args: {
       count_below: 1,
-      lnd: {default: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})}},
+      lnd: {
+        default: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})},
+        wallet: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})},
+      },
     },
     description: 'No count below',
     expected: {count: 0},
@@ -46,6 +52,22 @@ const tests = [
       is_confirmed: true,
       lnd: {
         default: {
+          listUnspent: ({}, cbk) => cbk(null, {
+            utxos: [{
+              address: 'address',
+              address_type: 'NESTED_PUBKEY_HASH',
+              amount_sat: '2',
+              confirmations: '1',
+              outpoint: {
+                bytes: Buffer.alloc(1),
+                output_index: 0,
+                txid_str: '00',
+              },
+              pk_script: '00',
+            }],
+          }),
+        },
+        wallet: {
           listUnspent: ({}, cbk) => cbk(null, {
             utxos: [{
               address: 'address',
@@ -72,6 +94,22 @@ const tests = [
       is_count: 1,
       lnd: {
         default: {
+          listUnspent: ({}, cbk) => cbk(null, {
+            utxos: [{
+              address: 'address',
+              address_type: 'NESTED_PUBKEY_HASH',
+              amount_sat: '2',
+              confirmations: '1',
+              outpoint: {
+                bytes: Buffer.alloc(1),
+                output_index: 0,
+                txid_str: '00',
+              },
+              pk_script: '00',
+            }],
+          }),
+        },
+        wallet: {
           listUnspent: ({}, cbk) => cbk(null, {
             utxos: [{
               address: 'address',

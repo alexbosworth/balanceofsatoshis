@@ -4,7 +4,6 @@ const asyncWhilst = require('async/whilst');
 const {getChannel} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
-const {parsePaymentRequest} = require('invoices');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
