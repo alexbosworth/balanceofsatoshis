@@ -4,6 +4,8 @@ const {returnResult} = require('asyncjs-util');
 
 const {getInvoices} = require('ln-service');
 
+const defaultInvoicesLimit = 100;
+
 /** Get all invoices
 
   {
@@ -79,7 +81,12 @@ module.exports = (args, cbk) => {
         return asyncUntil(
           cbk => cbk(null, token === false),
           cbk => {
-            return getInvoices({token, lnd: args.lnd}, (err, res) => {
+            return getInvoices({
+              token,
+              limit: !token ? defaultInvoicesLimit : undefined,
+              lnd: args.lnd,
+            },
+            (err, res) => {
               if (!!err) {
                 return cbk(err);
               }
