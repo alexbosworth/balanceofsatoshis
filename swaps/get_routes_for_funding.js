@@ -167,6 +167,11 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
+        // Exit early when the path limit is a single path
+        if (args.max_paths === [getSinglePath].length) {
+          return cbk();
+        }
+
         let error;
         const probes = [];
 

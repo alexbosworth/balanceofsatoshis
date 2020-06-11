@@ -22,6 +22,7 @@ const {getWalletInfo} = require('ln-service');
 const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
 const {payViaRoutes} = require('ln-service');
+const {releaseSwapOutSecret} = require('goldengate');
 const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToBlocks} = require('ln-service');
@@ -83,6 +84,7 @@ const tokensAsBigUnit = tokens => ((tokens || 0) / 1e8).toFixed(8);
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
+    [max_paths]: <Maximum Paths For Funding Number>
     [max_wait_blocks]: <Maximum Wait Blocks Number>
     [node]: <Node Name String>
     [out_address]: <Out Address String>
@@ -626,6 +628,7 @@ module.exports = (args, cbk) => {
         lnd: args.lnd,
         logger: args.logger,
         max_fee: round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),
+        max_paths: args.max_paths || undefined,
         out_through: !!args.peer ? channel.public_key : undefined,
         outgoing_channel: channel.id,
         payment: decodeFundingRequest.payment,
@@ -774,7 +777,13 @@ module.exports = (args, cbk) => {
         },
         cbk);
       },
-      cbk);
+      (err, res) => {
+        if (!!err) {
+          return cbk([503, 'UnexpectedErrorFundingSwap', {err}]);
+        }
+
+        return cbk(null, res);
+      });
     }],
 
     // Pay to swap execution
@@ -834,16 +843,11 @@ module.exports = (args, cbk) => {
       sub.once('confirmed', ({mtokens}) => finished(null, {mtokens}));
 
       sub.once('failed', failed => {
-        switch (failed.is_pathfinding_timeout) {
-        case false:
-          return finished([503, 'InsufficientOutboundLiquidityToSwapService']);
-
-        case true:
+        if (!!failed.is_pathfinding_timeout) {
           return finished([503, 'TimedOutFindingALightningRoute']);
-
-        default:
-          return finished([500, 'UnexpectedOutcomeOfSwapFailure']);
         }
+
+        return finished([503, 'UnexpectedOutcomeOfSwapFailure', {failed}]);
       });
     }],
 
@@ -1022,6 +1026,7 @@ module.exports = (args, cbk) => {
       'createAddress',
       'depositHeight',
       'getMinSweepFee',
+      'getService',
       'initiateSwap',
       'network',
       'rawRecovery',
@@ -1033,6 +1038,7 @@ module.exports = (args, cbk) => {
         createAddress,
         depositHeight,
         getMinSweepFee,
+        getService,
         initiateSwap,
         network,
         recover,
@@ -1091,9 +1097,20 @@ module.exports = (args, cbk) => {
               });
             }
 
-            return args.logger.info({
+            args.logger.info({
               attempting_sweep_fee_rate: res.fee_rate,
               attempt_tx_id: Transaction.fromHex(res.transaction).getId(),
+            });
+
+            return releaseSwapOutSecret({
+              auth_macaroon: getService.macaroon,
+              auth_preimage: getService.preimage,
+              secret: claim.secret,
+              service: getService.service,
+            },
+            err => {
+              // Suppress errors releasing secret
+              return;
             });
           },
           sweepProgressLogDelayMs);
@@ -1141,7 +1158,15 @@ module.exports = (args, cbk) => {
         return cbk(err, res);
       };
 
-      sub.once('confirmed', payment => finished(null, {payment}));
+      sub.once('confirmed', payment => {
+        if (!!fundingRequest.id) {
+          args.logger.info({
+            inbound_liquidity_increased: tokensAsBigUnit(payment.safe_tokens),
+          });
+        }
+
+        return finished(null, {payment});
+      });
 
       sub.once('failed', failed => {
         if (!!failed.is_pathfinding_timeout) {
@@ -1213,11 +1238,14 @@ module.exports = (args, cbk) => {
       const increase = tokensAsBigUnit(Number(liquidityIncrease));
       const swapFee = Number(swapFeeMtokens / mtokPerTok);
 
+      const serviceFee = swapFee - routingFeeTokens - chainFee;
+
       args.logger.info({
-        inbound_liquidity_increase: `${increase} ${currency}`,
-        swap_completed_at: moment().calendar(),
+        completed: moment().calendar(),
+        inbound_increased: `${increase} ${currency}`,
         chain_fee_paid: `${tokensAsBigUnit(chainFee)} ${currency}`,
         routing_fee_paid: `${tokensAsBigUnit(routingFeeTokens)} ${currency}`,
+        service_fee_paid: `${tokensAsBigUnit(serviceFee)} ${currency}`,
         total_fee_paid: `${tokensAsBigUnit(swapFee)} ${currency}`,
       });
 

@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.39.0
+
+- `increase-inbound-liquidity`: Add `--max-paths` to limit routing paths taken
+
 ## Version 5.38.6
 
 - Fixed issue where invoice results parsing caused intermittent errors

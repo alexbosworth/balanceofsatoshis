@@ -570,6 +570,7 @@ prog
   .option('--fast', 'Request swap server avoid batching delay')
   .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 4000)
   .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 24)
+  .option('--max-paths <max_paths>', 'Maximum paths to attempt', INT, 3)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Increase inbound liquidity on saved node')
   .option('--recovery <recovery>', 'Recover in-progress swap')
@@ -591,6 +592,7 @@ prog
           is_dry_run: options.dryrun || false,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           max_fee: options.maxFee,
+          max_paths: options.maxPaths || undefined,
           max_wait_blocks: Math.ceil((options.maxHours) * 60 / 10),
           node: options.node || undefined,
           out_address: options.address || undefined,
