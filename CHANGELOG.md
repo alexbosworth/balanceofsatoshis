@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.39.2
+
+- `probe`: Fix probing destinations that advertised unrecognized features
+
 ## Version 5.39.1
 
 - `increase-inbound-liquidity`: Improve reliability of multi-path routes

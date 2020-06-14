@@ -12,7 +12,7 @@ const isRoutePayable = require('./is_route_payable');
 const accuracy = 10000;
 const {isArray} = Array;
 const from = 0;
-const nextAttemptDelayMs = 1000 * 2;
+const nextAttemptDelayMs = 1000 * 1;
 const slowPaymentMs = 1000 * 60 * 4.5;
 const to = tokens => tokens - Math.round(Math.random() * 1000);
 

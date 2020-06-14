@@ -158,7 +158,10 @@ module.exports = (args, cbk) => {
         return cbk(null, {features: to.features});
       }
 
-      return cbk(null, getDestinationNode);
+      const {features} = getDestinationNode;
+
+      // Only known features may be passed to find routes
+      return cbk(null, {features: features.filter(n => !!n.is_known)});
     }],
 
     // Determine messages to attach
