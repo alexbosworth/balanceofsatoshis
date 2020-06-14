@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.39.1
+
+- `increase-inbound-liquidity`: Improve reliability of multi-path routes
+
 ## Version 5.39.0
 
 - `increase-inbound-liquidity`: Add `--max-paths` to limit routing paths taken

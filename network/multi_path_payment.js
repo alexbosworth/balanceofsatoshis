@@ -2,6 +2,7 @@ const {routeFromChannels} = require('ln-service');
 
 const {sortBy} = require('./../arrays');
 
+const cltvDeltaBuffer = 3;
 const {floor} = Math;
 const mtokAsTok = mtokens => Number(BigInt(mtokens) / BigInt(1e3));
 const tokensAsMtokens = tokens => BigInt(tokens) * BigInt(1e3);
@@ -76,7 +77,7 @@ module.exports = args => {
   const routesToCreate = args.probes.map(probe => {
     return {
       channels: probe.channels.map(id => args.channels.find(n => n.id === id)),
-      cltv_delta: args.cltv_delta,
+      cltv_delta: args.cltv_delta + cltvDeltaBuffer,
       destination: args.destination,
       height: args.height,
       payment: args.payment,
