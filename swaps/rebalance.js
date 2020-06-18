@@ -697,7 +697,6 @@ module.exports = (args, cbk) => {
           ],
         }
 
-        args.logger.info(rebalanceResult);
         return cbk(null, rebalanceResult);
       }],
     },
