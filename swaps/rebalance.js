@@ -670,7 +670,7 @@ module.exports = (args, cbk) => {
         const outPendingIn = getAdjustedOutbound.inbound_pending;
         const outPendingOut = getAdjustedOutbound.outbound_pending;
 
-        const rebalanceResult = {
+        return cbk(null, {
           rebalance: [
             {
               increased_inbound_on: getAdjustedOutbound.alias,
@@ -695,9 +695,7 @@ module.exports = (args, cbk) => {
               rebalance_fees_spent: tokAsBigTok(pay.fee),
             },
           ],
-        }
-
-        return cbk(null, rebalanceResult);
+        });
       }],
     },
     returnResult({reject, resolve, of: 'rebalance'}, cbk));

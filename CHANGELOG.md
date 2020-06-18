@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.39.3
+
+- `probe`: Fix probing destinations that are not known in the graph
+
 ## Version 5.39.2
 
 - `probe`: Fix probing destinations that advertised unrecognized features

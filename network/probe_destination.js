@@ -158,7 +158,7 @@ module.exports = (args, cbk) => {
         return cbk(null, {features: to.features});
       }
 
-      const {features} = getDestinationNode;
+      const features = getDestinationNode.features || [];
 
       // Only known features may be passed to find routes
       return cbk(null, {features: features.filter(n => !!n.is_known)});
