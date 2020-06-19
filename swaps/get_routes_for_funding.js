@@ -284,8 +284,14 @@ module.exports = (args, cbk) => {
       {
         const paths = getMultiPaths || [getSinglePath.route].filter(n => !!n);
 
-        if (!paths.length || sumOf(paths.map(n => n.fee)) > args.max_fee) {
-          return cbk([503, 'FailedToFindAPathToFundSwapOffchain']);
+        if (!paths.length) {
+          return cbk([503, 'PathfindingFailedToFullyFundSwapOffchain']);
+        }
+
+        const fee = sumOf(paths.map(n => n.fee));
+
+        if (fee > args.max_fee) {
+          return cbk([503, 'MaxFeeSettingExceeded', {needed_max_fee: fee}]);
         }
 
         return cbk(null, {fee: sumOf(paths.map(n => n.fee)), routes: paths});

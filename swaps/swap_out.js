@@ -211,36 +211,23 @@ module.exports = (args, cbk) => {
       return cbk(null, getWalletInfo.current_block_height);
     }],
 
-    // Figure out which channel to use when swapping
+    // Figure out which channel to use when swapping with a peer
     channel: ['getChannels', ({getChannels}, cbk) => {
-      if (!!args.recovery) {
+      // Exit early when this is a recovery, or there is no peer selected
+      if (!!args.recovery || !args.peer) {
         return cbk();
       }
 
-      const [channel] = getChannels.channels.filter(channel => {
-        if (channel.local_balance < args.tokens) {
-          return false;
-        }
-
-        // Without a peer specified, a channel from any peer is ok
-        return !args.peer ? true : channel.partner_public_key === args.peer;
+      const peerChans = getChannels.channels.filter(chan => {
+        return chan.partner_public_key === args.peer;
       });
+
+      const [channel] = peerChans.filter(n => n.local_balance > args.tokens);
 
       // There was no channel found to use for the swap
       if (!channel) {
         return cbk([400, 'InsufficientOutboundLiquidityToConvertToInbound']);
       }
-
-      const {id} = channel;
-
-      // There is no channel with sufficient liquidity for the swap
-      if (!id) {
-        return cbk([400, 'InsufficientOutboundLiquidityToConvertToInbound']);
-      }
-
-      const peerChannels = getChannels.channels.filter(chan => {
-        return chan.partner_public_key === channel.partner_public_key;
-      });
 
       return getNode({
         is_omitting_channels: true,
@@ -254,8 +241,8 @@ module.exports = (args, cbk) => {
 
         return cbk(null, {
           alias: res.alias,
-          id: !!args.peer ? id : undefined,
-          peer_channels: peerChannels,
+          id: channel.id,
+          peer_channels: peerChans,
           public_key: channel.partner_public_key,
         });
       });
@@ -285,31 +272,6 @@ module.exports = (args, cbk) => {
       return cbk(null, currencySymbols[network]);
     }],
 
-    // Swap service
-    service: ['network', ({network}, cbk) => {
-      try {
-        const {service} = lightningLabsSwapService({
-          network,
-          is_free: false,
-          socket: args.socket,
-        });
-
-        return cbk(null, service);
-      } catch (err) {
-        return cbk([400, 'FailedToFindSupportedSwapService', {err}]);
-      }
-    }],
-
-    // Get limits
-    getLimits: ['service', ({service}, cbk) => {
-      // Exit early when in recovery
-      if (!!args.recovery) {
-        return cbk();
-      }
-
-      return getSwapOutTerms({service}, cbk);
-    }],
-
     // Recover address
     recoverAddress: ['network', 'recover', ({network, recover}, cbk) => {
       if (!args.recovery) {
@@ -327,7 +289,7 @@ module.exports = (args, cbk) => {
     }],
 
     // Get the quote for swaps
-    getQuote: ['getLimits', 'service', ({getLimits, service}, cbk) => {
+    getQuote: ['getLimits', 'getService', ({getLimits, getService}, cbk) => {
       // Exit early when this is a recovery of an existing swap
       if (!!args.recovery) {
         return cbk();
@@ -341,7 +303,13 @@ module.exports = (args, cbk) => {
         return cbk([400, 'SwapSizeTooSmall', {min: getLimits.min_tokens}]);
       }
 
-      return getSwapOutQuote({service, tokens: args.tokens}, cbk);
+      return getSwapOutQuote({
+        macaroon: getService.macaroon,
+        preimage: getService.preimage,
+        service: getService.service,
+        tokens: args.tokens,
+      },
+      cbk);
     }],
 
     // Check quote to validate parameters of the swap
@@ -389,14 +357,7 @@ module.exports = (args, cbk) => {
     }],
 
     // Upgrade service object to a paid service if necessary
-    getService: [
-      'checkQuote',
-      'network',
-      'recover',
-      'recoverAddress',
-      'service',
-      ({network, service}, cbk) =>
-    {
+    getService: ['network', 'recover', 'recoverAddress', ({network}, cbk) => {
       // Exit early when the swap is already initiated
       if (!!args.recovery) {
         return cbk();
@@ -412,8 +373,24 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
+    // Get limits
+    getLimits: ['getService', ({getService}, cbk) => {
+      // Exit early when in recovery
+      if (!!args.recovery) {
+        return cbk();
+      }
+
+      return getSwapOutTerms({
+        macaroon: getService.macaroon,
+        preimage: getService.preimage,
+        service: getService.service,
+      },
+      cbk);
+    }],
+
     // Make sweep
     initiateSwap: [
+      'checkQuote',
       'getService',
       'network',
       'recover',
@@ -432,7 +409,7 @@ module.exports = (args, cbk) => {
         });
       }
 
-      if (!!getService.token) {
+      if (!!getService.paid && !!getService.token) {
         args.logger.info({
           amount_paid_for_api_key: tokensAsBigUnit(getService.paid),
           service_api_key: getService.token,
@@ -580,7 +557,7 @@ module.exports = (args, cbk) => {
         lnd: args.lnd,
         logger: args.logger,
         max_fee: maxExecutionFeeTokens,
-        outgoing_channel: channel.id,
+        outgoing_channel: !!channel ? channel.id : undefined,
         routes: decodeExecutionRequest.routes,
         tokens: decodeExecutionRequest.tokens,
       },
@@ -630,7 +607,7 @@ module.exports = (args, cbk) => {
         max_fee: round(decodeFundingRequest.tokens / maxRoutingFeeDenominator),
         max_paths: args.max_paths || undefined,
         out_through: !!args.peer ? channel.public_key : undefined,
-        outgoing_channel: channel.id,
+        outgoing_channel: !!channel ? channel.id : undefined,
         payment: decodeFundingRequest.payment,
         request: initiateSwap.swap_fund_request,
         routes: decodeFundingRequest.routes,
@@ -823,7 +800,7 @@ module.exports = (args, cbk) => {
         lnd: args.lnd,
         max_fee: maxExecutionFeeTokens,
         max_timeout_height: getStartHeight + maxCltvExpiration,
-        outgoing_channel: channel.id || undefined,
+        outgoing_channel: !!channel ? channel.id : undefined,
         pathfinding_timeout: maxPathfindingMs,
         request: initiateSwap.swap_execute_request,
       });

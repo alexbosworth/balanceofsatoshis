@@ -8,13 +8,17 @@ const {returnResult} = require('asyncjs-util');
 
 const {balanceFromTokens} = require('./../balances');
 const {fastDelayMinutes} = require('./constants');
+const getPaidService = require('./get_paid_service');
 const {slowDelayMinutes} = require('./constants');
 
 /** Get the cost of liquidity via swap
 
   {
     [above]: <Cost Above Tokens Number>
+    [api_key]: <CBOR API Key Hex Encoded String>
     [is_fast]: <Swap Out Is Immediate Bool>
+    lnd: <Authenticated LND API Object>
+    logger: <Winston Logger Object>
     service: <Swap Service API Object>
     tokens: <Liquidity Tokens Number>
     type: <Liquidity Type String>
@@ -30,6 +34,14 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!args.lnd) {
+          return cbk([400, 'ExpectedLndToGetSwapCost']);
+        }
+
+        if (!args.logger) {
+          return cbk([400, 'ExpectedLoggerToGetSwapCost']);
+        }
+
         if (!args.service) {
           return cbk([400, 'ExpectedSwapServiceToGetSwapCost']);
         }
@@ -38,25 +50,48 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedTokensCountToGetSwapCost']);
         }
 
+        if (!args.type) {
+          return cbk([400, 'ExpectedLiquidityTypeToGetSwapCost']);
+        }
+
         return cbk();
       },
 
+      // Get paid service
+      getService: ['validate', ({}, cbk) => {
+        // Exit early when there is no API key with the vanilla service
+        if (!args.api_key) {
+          return cbk(null, {service: args.service});
+        }
+
+        return getPaidService({
+          lnd: args.lnd,
+          logger: args.logger,
+          token: args.api_key,
+        },
+        cbk);
+      }],
+
       // Get a swap quote
-      getQuote: ['validate', ({}, cbk) => {
+      getQuote: ['getService', ({getService}, cbk) => {
         const swapDelay = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
 
         switch (args.type) {
         case 'inbound':
           return getSwapOutQuote({
             delay: moment().add(swapDelay, 'minutes').toISOString(),
-            service: args.service,
+            macaroon: getService.macaroon,
+            preimage: getService.preimage,
+            service: getService.service,
             tokens: args.tokens,
           },
           cbk);
 
         case 'outbound':
           return getSwapInQuote({
-            service: args.service,
+            macaroon: getService.macaroon,
+            preimage: getService.preimage,
+            service: getService.service,
             tokens: args.tokens,
           },
           cbk);
@@ -67,13 +102,23 @@ module.exports = (args, cbk) => {
       }],
 
       // Get swap terms
-      getTerms: ['validate', ({}, cbk) => {
+      getTerms: ['getService', ({getService}, cbk) => {
         switch (args.type) {
         case 'inbound':
-          return getSwapOutTerms({service: args.service}, cbk);
+          return getSwapOutTerms({
+            macaroon: getService.macaroon,
+            preimage: getService.preimage,
+            service: getService.service,
+          },
+          cbk);
 
         case 'outbound':
-          return getSwapInTerms({service: args.service}, cbk);
+          return getSwapInTerms({
+            macaroon: getService.macaroon,
+            preimage: getService.preimage,
+            service: getService.service,
+          },
+          cbk);
 
         default:
           return cbk([400, 'GotUnexpectedSwapTypeWhenGettingSwapCost']);

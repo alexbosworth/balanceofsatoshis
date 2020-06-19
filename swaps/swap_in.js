@@ -38,7 +38,7 @@ const waitForDepositMs = 1000 * 60 * 60 * 24;
 /** Receive funds on-chain
 
   {
-    [api_key]: <API Key CBOR String>
+    [api_key]: <API Key CBOR Hex String>
     [in_through]: <Request Inbound Payment Public Key Hex String>
     [is_refund_test]: <Alter Swap Timeout To Have Short Refund Bool>
     lnd: <Authenticated LND gRPC API Object>
@@ -75,7 +75,7 @@ module.exports = (args, cbk) => {
       return cbk();
     },
 
-    // Get wallet info
+    // Get the best block height at the start of the swap
     getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
 
     // Get channels
@@ -93,37 +93,15 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
-    // Get network
+    // Get the network this swap takes place on
     getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
-    // Swap service
-    service: ['getNetwork', ({getNetwork}, cbk) => {
-      const {network} = getNetwork;
-
-      try {
-        const {service} = lightningLabsSwapService({
-          network,
-          is_free: false,
-        });
-
-        return cbk(null, service);
-      } catch (err) {
-        return cbk([500, 'FailedToInitiateSwapServiceConnection', {err}]);
-      }
-    }],
-
-    // Get the limits for a swap
-    getLimits: ['service', ({service}, cbk) => {
-      // Exit early when recovering an existing swap
-      if (!!args.recovery) {
-        return cbk();
-      }
-
-      return getSwapInTerms({service}, cbk);
-    }],
-
     // Get quote for a swap
-    getQuote: ['getLiquidity', 'service', ({getLiquidity, service}, cbk) => {
+    getQuote: [
+      'getLiquidity',
+      'getService',
+      ({getLiquidity, getService}, cbk) =>
+    {
       // Exit early when recovering an existing swap
       if (!!args.recovery) {
         return cbk();
@@ -134,7 +112,11 @@ module.exports = (args, cbk) => {
         return cbk([400, 'InsufficientInboundLiquidityToReceiveSwapOffchain']);
       }
 
-      return getSwapInQuote({service, tokens: args.tokens}, cbk);
+      return getSwapInQuote({
+        service: getService.service,
+        tokens: args.tokens,
+      },
+      cbk);
     }],
 
     // Create an invoice
@@ -191,6 +173,16 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
+    // Get the limits for a swap
+    getLimits: ['getService', ({getService}, cbk) => {
+      // Exit early when recovering an existing swap
+      if (!!args.recovery) {
+        return cbk();
+      }
+
+      return getSwapInTerms({service: getService.service}, cbk);
+    }],
+
     // Initiate the swap
     createSwap: [
       'createInvoice',
@@ -203,7 +195,7 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      if (!!getService.token) {
+      if (!!getService.paid && !!getService.token) {
         args.logger.info({
           amount_paid_for_api_key: bigFormat(getService.paid),
           service_api_key: getService.token,

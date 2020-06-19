@@ -646,15 +646,21 @@ prog
   .argument('<type>', 'Liquidity direction', swapTypes)
   .argument('<amount>', 'Amount of liquidity to get quote for', INT)
   .option('--above <tokens>', 'Return amount above watermark', INT)
+  .option('--api-key <api_key>', 'Pre-paid API key to use', hexMatch)
   .option('--fast', 'Avoid any server batching wait time')
   .option('--node <node_name>', 'Node to get liquidity cost')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const {service} = await getSwapService({logger, node: options.node});
+
         return getSwapCost({
+          logger,
+          service,
           above: options.above,
+          api_key: options.apiKey || undefined,
           is_fast: options.fast || undefined,
-          service: (await getSwapService({logger, node: options.node})).service,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           tokens: args.amount,
           type: args.type,
         },

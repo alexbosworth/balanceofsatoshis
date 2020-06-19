@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.39.4
+
+- `increase-inbound-liquidity`: Reduce failures when specifying large amounts
+
 ## Version 5.39.3
 
 - `probe`: Fix probing destinations that are not known in the graph
