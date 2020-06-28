@@ -6,6 +6,7 @@ const pkg = require('./../package.json');
 const writeJsonFile = require('./write_json_file');
 
 const border = getBorderCharacters('norc');
+const emptyCell = ' ';
 const notifier = updateNotifier({pkg});
 
 /** Return an object result to a logger in a promise
@@ -43,6 +44,15 @@ module.exports = ({exit, file, logger, reject, resolve, table, write}) => {
 
         return resolve();
       });
+    }
+
+    // Exit early when the table is empty
+    if (!!table && res[table].length === [table].length) {
+      const [header] = res[table];
+
+      logger.info(renderTable([header, header.map(n => emptyCell)], {border}));
+
+      return resolve();
     }
 
     // Exit early when a table output is requested

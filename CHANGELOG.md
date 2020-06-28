@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.39.5
+
+- `accounting`: Fix potential race condition in report generation
+- `chain-receive`: Fix dependency issue relating to API token changes
+- `peers`: Fix issue when there are no results to a peers query
+
 ## Version 5.39.4
 
 - `increase-inbound-liquidity`: Reduce failures when specifying large amounts

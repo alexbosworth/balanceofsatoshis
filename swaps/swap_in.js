@@ -96,6 +96,21 @@ module.exports = (args, cbk) => {
     // Get the network this swap takes place on
     getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
+    // Upgrade service object to a paid service if necessary
+    getService: ['getLiquidity', 'getNetwork', ({}, cbk) => {
+      // Exit early when we're recovering an existing swap
+      if (!!args.recovery) {
+        return cbk();
+      }
+
+      return getPaidService({
+        lnd: args.lnd,
+        logger: args.logger,
+        token: args.api_key,
+      },
+      cbk);
+    }],
+
     // Get quote for a swap
     getQuote: [
       'getLiquidity',
@@ -154,21 +169,6 @@ module.exports = (args, cbk) => {
         is_including_private_channels: true,
         lnd: args.lnd,
         tokens: args.tokens - fee,
-      },
-      cbk);
-    }],
-
-    // Upgrade service object to a paid service if necessary
-    getService: ['createInvoice', 'getQuote', 'service', ({service}, cbk) => {
-      // Exit early when we're recovering an existing swap
-      if (!!args.recovery) {
-        return cbk();
-      }
-
-      return getPaidService({
-        lnd: args.lnd,
-        logger: args.logger,
-        token: args.api_key,
       },
       cbk);
     }],

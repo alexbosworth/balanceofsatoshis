@@ -489,9 +489,9 @@ module.exports = (args, cbk) => {
               return notNull([
                 peer.is_offline ? offlineEmoji : ' ',
                 peer.alias.replace(isEmoji, '') || shortKey(peer.public_key),
-                inbound.display,
+                inbound.display || ' ',
                 peer.inbound_fee_rate || ' ',
-                outbound.display,
+                outbound.display || ' ',
                 !!args.earnings_days ? earnings.display : null,
                 !!isWideSize ? peer.public_key : null,
               ]);
