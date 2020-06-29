@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.39.7
+
+- `market`: Remove method from help due to API unreliability
+- `probe`: Fix probing non-legacy requests when amount is zero
+- `report`: Fix unit reporting of inbound and outbound liquidity
+
 ## Version 5.39.6
 
 - `telegram`: Add background sync with backing LND nodes

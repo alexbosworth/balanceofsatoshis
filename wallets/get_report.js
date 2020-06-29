@@ -375,13 +375,13 @@ module.exports = ({node, style}, cbk) => {
           });
         }
 
-        const inbound = peer.liquidity_inbound;
+        const inbound = formatAsBigUnit(peer.liquidity_inbound);
 
         elements.push({
           details: `Inbound liquidity: ${inbound} ${currency}`,
         });
 
-        const outbound = peer.liquidity_outbound;
+        const outbound = formatAsBigUnit(peer.liquidity_outbound);
 
         elements.push({
           details: `Outbound liquidity: ${outbound} ${currency}`,

@@ -674,6 +674,7 @@ prog
 
   // Get the history of prices
   .command('market', 'Get the history of prices on a market')
+  .visible(false)
   .help('A chart of historic prices. Note: SuredBits price history has a fee!')
   .help(`Pairs: ${Array.from(new Set(marketPairs.map(n => n.toUpperCase())))}`)
   .help(`Markets: ${Array.from(new Set(exchanges.map(n => n.toLowerCase())))}`)

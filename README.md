@@ -94,9 +94,6 @@ bos increase-inbound-liquidity
 # Increase the outbound liquidity of the node
 bos increase-outbound-liquidity
 
-# See market price history
-bos market
-
 # View and adjust list of saved nodes
 bos nodes
 

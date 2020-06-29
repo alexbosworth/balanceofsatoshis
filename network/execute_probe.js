@@ -10,6 +10,7 @@ const {describeConfidence} = require('./../routing');
 const {now} = Date;
 const minutesAsMs = minutes => 1000 * 60 * minutes;
 const pathTimeoutMs = 1000 * 60 * 5;
+const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
 
 /** Execute a probe
 
@@ -103,8 +104,17 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Determine total mtokens
+      mtokens: ['validate', ({}, cbk) => {
+        if (!!args.mtokens || !args.payment || !args.tokens) {
+          return cbk(null, args.mtokens);
+        }
+
+        return cbk(null, tokensAsMillitokens(args.tokens));
+      }],
+
       // Probe
-      probe: ['validate', ({}, cbk) => {
+      probe: ['mtokens', ({mtokens}, cbk) => {
         const attemptedPaths = [];
         const {features} = args;
         const start = now();
@@ -128,7 +138,7 @@ module.exports = (args, cbk) => {
           probe_timeout_ms: minutesAsMs((args.timeout_minutes || Number())),
           routes: args.routes,
           tokens: args.tokens,
-          total_mtokens: args.total_mtokens,
+          total_mtokens: mtokens,
         });
 
         const finished = (err, res) => {
