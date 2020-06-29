@@ -5,6 +5,7 @@ const {readdir} = require('fs');
 const {readFile} = require('fs');
 const {rmdir} = require('fs');
 const {spawn} = require('child_process');
+const {statSync} = require('fs');
 const {unlink} = require('fs');
 const {writeFile} = require('fs');
 
@@ -1095,7 +1096,12 @@ prog
         return connectToTelegram({
           logger,
           request,
-          fs: {writeFile, getFile: readFile, makeDirectory: mkdir},
+          fs: {
+            writeFile,
+            getFile: readFile,
+            getFileStatus: statSync,
+            makeDirectory: mkdir,
+          },
           id: options.connect,
           nodes: flatten([options.node].filter(n => !!n)),
           payments: {limit: options.budget}

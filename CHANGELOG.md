@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.39.6
+
+- `telegram`: Add background sync with backing LND nodes
+
 ## Version 5.39.5
 
 - `accounting`: Fix potential race condition in report generation

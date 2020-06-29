@@ -1,13 +1,19 @@
+const {homedir} = require('os');
+const {join} = require('path');
+
 const asyncAuto = require('async/auto');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
 const {getWalletInfo} = require('ln-service');
+const {lmdbDatabase} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const {getLnds} = require('./../lnd');
 const startTelegramBot = require('./start_telegram_bot');
+const watch = require('./watch');
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const home = '.bos';
 const restartDelayMs = 1000 * 5;
 
 /** Connect nodes to Telegram
@@ -15,6 +21,7 @@ const restartDelayMs = 1000 * 5;
   {
     fs: {
       getFile: <Get File Contents Function>
+      getFileStatus: <Get File Status Function>
       makeDirectory: <Make Directory Function>
       writeFile: <Write File Function>
     }
@@ -70,8 +77,13 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
         });
       }],
 
+      // Home directory path
+      path: ['checkNodes', ({}, cbk) => {
+        return cbk(null, join(...[homedir(), home]));
+      }],
+
       // Start bot
-      start: ['checkNodes', ({}, cbk) => {
+      startTelegram: ['checkNodes', ({}, cbk) => {
         let {limit} = payments;
 
         return asyncForever(cbk => {
@@ -100,6 +112,14 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
             });
           });
         });
+      }],
+
+      // Init database
+      lmdbDb: ['path', ({path}, cbk) => lmdbDatabase({fs, path}, cbk)],
+
+      // Start syncing nodes with the database
+      startSync: ['lmdbDb', ({lmdbDb}, cbk) => {
+        return watch({logger, nodes, db: lmdbDb.db}, cbk)
       }],
     },
     returnResult({reject, resolve}, cbk));
