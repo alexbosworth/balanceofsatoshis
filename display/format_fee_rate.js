@@ -1,6 +1,6 @@
 const asDisplay = rate => `${(rate / 1e4).toFixed(2)}% (${rate})`;
 const asPercent = rate => `${(rate / 1e4).toFixed()}%`;
-const highRate = 5e6;
+const highRate = 5e5;
 
 /** Format fee rate for display
 

@@ -399,6 +399,10 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
+        args.logger.info({
+          canceling_pending_channels: openChannels.pending.map(n => n.id),
+        });
+
         // Cancel outstanding pending channels when there is an error
         return asyncEach(openChannels.pending, (channel, cbk) => {
           return cancelPendingChannel({id: channel.id, lnd: args.lnd}, () => {

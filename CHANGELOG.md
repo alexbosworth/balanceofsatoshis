@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.39.8
+
+- `bos open`: Log cancel pending channel actions
+- `bos report`: Show decrease liquidity side on rebalances
+
 ## Version 5.39.7
 
 - `market`: Remove method from help due to API unreliability

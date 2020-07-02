@@ -8,6 +8,7 @@ const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getRouteThroughHops} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
+const {getWalletVersion} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
@@ -28,9 +29,11 @@ const flatten = arr => [].concat(...arr);
 const highInbound = 4500000;
 const {isArray} = Array;
 const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
+const legacyMaxRebalanceTokens = 4294967;
+const legacyVersion = '0.10.0-beta';
 const {max} = Math;
 const maxPaymentSize = 4294967;
-const maxRebalanceTokens = 4294967;
+const maxRebalanceTokens = 16777215;
 const {min} = Math;
 const minInboundBalance = 4294967 * 2;
 const minRemoteBalance = 4294967;
@@ -117,6 +120,17 @@ module.exports = (args, cbk) => {
 
       // Get public key
       getPublicKey: ['lnd', ({lnd}, cbk) => getWalletInfo({lnd}, cbk)],
+
+      // Determine the maximum tokens that can be rebalanced
+      maxRebalanceTokens: ['lnd', ({lnd}, cbk) => {
+        return getWalletVersion({lnd}, (err, res) => {
+          if (!!err || res.version === legacyVersion) {
+            return cbk(null, legacyMaxRebalanceTokens);
+          }
+
+          return cbk(null, maxRebalanceTokens);
+        });
+      }],
 
       // Figure out which public keys and channels to avoid
       ignore: [
@@ -535,7 +549,13 @@ module.exports = (args, cbk) => {
       }],
 
       // Create local invoice
-      invoice: ['channels', 'findRoute', 'lnd', ({findRoute, lnd}, cbk) => {
+      invoice: [
+        'channels',
+        'findRoute',
+        'lnd',
+        'maxRebalanceTokens',
+        ({findRoute, lnd, maxRebalanceTokens}, cbk) =>
+      {
         return createInvoice({
           lnd,
           cltv_delta: defaultCltvDelta,

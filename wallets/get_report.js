@@ -1,11 +1,14 @@
 const asyncAuto = require('async/auto');
+const asyncMap = require('async/map');
 const {bolden} = require('@alexbosworth/html2unicode');
 const {decodeChanId} = require('bolt07');
 const {getAutopilot} = require('ln-service');
 const {getBackups} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
+const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
+const {getInvoice} = require('ln-service');
 const {getInvoices} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
 const {getPayments} = require('ln-service');
@@ -142,6 +145,67 @@ module.exports = ({node, style}, cbk) => {
       return cbk(null, currency);
     }],
 
+    // Get rebalances
+    getRebalances: [
+      'getInfo',
+      'getLnd',
+      'getPayments',
+      ({getInfo, getLnd, getPayments}, cbk) =>
+    {
+      const rebalances = getPayments.payments.slice().reverse()
+        .filter(payment => now() - Date.parse(payment.created_at) < afterMs)
+        .filter(payment => payment.destination === getInfo.public_key);
+
+      return asyncMap(rebalances, (rebalance, cbk) => {
+        return getInvoice({id: rebalance.id, lnd: getLnd.lnd}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const [outHop] = rebalance.hops;
+
+          const [payment] = res.payments;
+
+          if (!payment) {
+            return cbk(null, {
+              created_at: rebalance.created_at,
+              fee: rebalance.fee,
+              out_peer: outHop,
+              tokens: rebalance.tokens,
+            });
+          }
+
+          return getChannel({
+            id: payment.in_channel,
+            lnd: getLnd.lnd,
+          },
+          (err, channel) => {
+            if (!!err) {
+              return cbk(null, {
+                created_at: rebalance.created_at,
+                fee: rebalance.fee,
+                out_peer: outHop,
+                tokens: rebalance.tokens,
+              });
+            }
+
+            const inPeer = channel.policies.find(policy => {
+              return policy.public_key !== getInfo.public_key;
+            });
+
+            return cbk(null, {
+              created_at: rebalance.created_at,
+              fee: rebalance.fee,
+              in_peer: inPeer.public_key,
+              out_peer: outHop,
+              tokens: rebalance.tokens,
+            });
+          });
+        });
+      },
+      cbk);
+    }],
+
     report: [
       'currency',
       'getAutopilot',
@@ -156,6 +220,7 @@ module.exports = ({node, style}, cbk) => {
       'getNetwork',
       'getPayments',
       'getRate',
+      'getRebalances',
       ({
         currency,
         getAutopilot,
@@ -171,6 +236,7 @@ module.exports = ({node, style}, cbk) => {
         getNetwork,
         getPayments,
         getRate,
+        getRebalances,
       }, cbk) =>
     {
       const activity = [];
@@ -238,24 +304,24 @@ module.exports = ({node, style}, cbk) => {
           return activity.push({elements, date: invoice.confirmed_at});
         });
 
-      getPayments.payments.slice().reverse()
-        .filter(payment => now() - Date.parse(payment.created_at) < afterMs)
-        .filter(payment => payment.destination === getInfo.public_key)
-        .forEach(payment => {
+      getRebalances.forEach(rebalance => {
           const elements = [];
-          const {fee} = payment;
-          const {tokens} = payment;
+          const {fee} = rebalance;
+          const {tokens} = rebalance;
 
           const amount = `${formatAsBigUnit(tokens)} ${currency}`;
 
-          const [outHop] = payment.hops;
+          const inHop = rebalance.in_peer;
+          const outHop = rebalance.out_peer;
 
+          const inNode = getGraph.nodes.find(n => n.public_key === inHop);
           const outNode = getGraph.nodes.find(n => n.public_key === outHop);
 
+          const inbound = (inNode || {}).alias || (inNode || {}).public_key;
           const outbound = (outNode || {}).alias || (outNode || {}).public_key;
 
           elements.push({
-            subtitle: moment(payment.created_at).fromNow(),
+            subtitle: moment(rebalance.created_at).fromNow(),
             title: getInfo.alias || getInfo.public_key,
           });
 
@@ -265,11 +331,17 @@ module.exports = ({node, style}, cbk) => {
             details: `Increased inbound liquidity on ${outbound} by ${amount}`,
           });
 
+          if (!!inbound) {
+            elements.push({
+              details: `Decreased inbound liquidity on ${inbound}`,
+            });
+          }
+
           elements.push({
             details: `Fee: ${formatAsBigUnit(fee)} ${currency}`,
           });
 
-          return activity.push({elements, date: payment.created_at});
+          return activity.push({elements, date: rebalance.created_at});
         });
 
       getPayments.payments.slice().reverse()
