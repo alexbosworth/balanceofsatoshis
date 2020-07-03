@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.39.9
+
+- `bos open`: Fix open with unconnected peer, improve reliability
+
 ## Version 5.39.8
 
 - `bos open`: Log cancel pending channel actions

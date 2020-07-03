@@ -5,6 +5,7 @@ const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncDetectSeries = require('async/detectSeries');
 const asyncMap = require('async/map');
+const asyncMapSeries = require('async/mapSeries');
 const asyncRetry = require('async/retry');
 const {cancelPendingChannel} = require('ln-service');
 const {decodePsbt} = require('psbt');
@@ -26,6 +27,7 @@ const getNetwork = require('./../network/get_network');
 const base64AsHex = n => Buffer.from(n, 'base64').toString('hex');
 const defaultChannelCapacity = 5e6;
 const format = 'p2wpkh';
+const getTxRetryCount = 10;
 const interrogationSeparator = ' and \n  ';
 const {isArray} = Array;
 const isHex = n => !!n && !(n.length % 2) && /^[0-9A-F]*$/i.test(n);
@@ -143,7 +145,7 @@ module.exports = (args, cbk) => {
             connecting_to: {alias: node.alias, public_key: node.public_key},
           });
 
-          return asyncDetectSeries(node.sockets, (socket, cbk) => {
+          return asyncDetectSeries(node.sockets, ({socket}, cbk) => {
             return addPeer({socket, lnd: args.lnd, public_key: key}, err => {
               return cbk(null, !err);
             });
@@ -212,11 +214,12 @@ module.exports = (args, cbk) => {
               .map(n => Buffer.from(n, 'hex').reverse())
               .map(n => n.toString('hex'));
 
-            return asyncMap(spendIds, (id, cbk) => {
+            return asyncMapSeries(spendIds, (id, cbk) => {
               return getRawTransaction({
                 id,
                 network: getNetwork.network,
                 request: args.request,
+                retries: getTxRetryCount,
               },
               cbk);
             },
@@ -330,11 +333,12 @@ module.exports = (args, cbk) => {
 
         const ids = ins.map(n => n.hash.reverse().toString('hex'));
 
-        return asyncMap(ids, (id, cbk) => {
+        return asyncMapSeries(ids, (id, cbk) => {
           return getRawTransaction({
             id,
             network: getNetwork.network,
             request: args.request,
+            retries: getTxRetryCount,
           },
           cbk);
         },
