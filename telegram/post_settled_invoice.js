@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPayment} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
@@ -6,6 +7,7 @@ const {returnResult} = require('asyncjs-util');
 const {subscribeToPastPayment} = require('ln-service');
 const {verifyBytesSignature} = require('ln-service');
 
+const {getNodeAlias} = require('./../peers');
 const sendMessage = require('./send_message');
 
 const bufFromHex = hex => Buffer.from(hex, 'hex');
@@ -185,10 +187,44 @@ module.exports = ({from, id, invoice, key, lnd, request}, cbk) => {
 
         const sub = subscribeToPastPayment({lnd, id: invoice.id});
 
-        sub.on('confirmed', payment => {
+        sub.on('confirmed', async payment => {
           sub.removeAllListeners();
 
-          return cbk(null, `Rebalanced ${received}, paid fee: ${payment.fee}`);
+          const [firstHop] = payment.hops;
+          const paidFee = `Paid fee: ${payment.fee}`;
+          const [inPayment] = invoice.payments;
+
+          const outNode = await getNodeAlias({lnd, id: firstHop.public_key});
+
+          const withNode = `with ${outNode.alias || outNode.id}`;
+
+          const increase = `Increased inbound liquidity ${withNode}`;
+
+          const rebalance = `${increase} by ${received}. ${paidFee}`;
+
+          // Exit early when there is no payment to be found
+          if (!inPayment) {
+            return cbk(null, rebalance);
+          }
+
+          // Figure out who the channel is with
+          const {channels} = await getChannels({lnd});
+
+          const inChannel = channels.find(n => n.id === inPayment.in_channel);
+
+          // Exit early if there is no channel with this peer
+          if (!inChannel) {
+            return cbk(null, rebalance);
+          }
+
+          const inNode = await getNodeAlias({
+            lnd,
+            id: inChannel.partner_public_key,
+          });
+
+          const decrease = `Decreased inbound on ${inNode.alias || inNode.id}`;
+
+          return cbk(null, `${rebalance}. ${decrease}`);
         });
 
         sub.on('error', err => cbk());

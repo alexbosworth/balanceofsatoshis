@@ -1,13 +1,18 @@
 # Versions
 
+## Version 5.40.0
+
+- `telegram`: Fix add more context to rebalance reports
+- `telegram`: Add `/mempool` command to show mempool.space details
+
 ## Version 5.39.9
 
-- `bos open`: Fix open with unconnected peer, improve reliability
+- `open`: Fix open with unconnected peer, improve reliability
 
 ## Version 5.39.8
 
-- `bos open`: Log cancel pending channel actions
-- `bos report`: Show decrease liquidity side on rebalances
+- `open`: Log cancel pending channel actions
+- `report`: Show decrease liquidity side on rebalances
 
 ## Version 5.39.7
 

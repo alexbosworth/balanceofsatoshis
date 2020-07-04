@@ -15,6 +15,7 @@ const Telegraf = require('telegraf');
 
 const backupCommand = require('./backup_command');
 const {getTransactionRecord} = require('./../chain');
+const handleMempoolCommand = require('./handle_mempool_command');
 const interaction = require('./interaction');
 const invoiceCommand = require('./invoice_command');
 const payCommand = require('./pay_command');
@@ -217,6 +218,13 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           return;
         });
 
+        bot.command('mempool', async ({replyWithMarkdown}) => {
+          return await handleMempoolCommand({
+            request,
+            reply: replyWithMarkdown,
+          });
+        });
+
         bot.command('pay', async ({message, reply}) => {
           const budget = paymentsLimit;
 
@@ -256,6 +264,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             '/backup - Get node backup file',
             '/connect - Connect bot',
             '/invoice - Make an invoice',
+            '/mempool - BTC mempool report',
             '/pay - Pay an invoice',
           ];
 
