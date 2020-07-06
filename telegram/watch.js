@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
+const asyncMap = require('async/map');
 const {describeAttemptPaymentFail} = require('ln-sync');
 const {describeAttemptPaymentSent} = require('ln-sync');
 const {describeAttemptingPayment} = require('ln-sync');
@@ -25,6 +26,7 @@ const {describePolicyCltvUpdated} = require('ln-sync');
 const {describePolicyDisabled} = require('ln-sync');
 const {describePolicyEnabled} = require('ln-sync');
 const {describeProbeReceived} = require('ln-sync');
+const {getWalletInfo} = require('ln-service');
 const {logLineForChangeEvent} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToChanges} = require('ln-sync');
@@ -68,6 +70,14 @@ module.exports = ({db, logger, nodes}, cbk) => {
       // Get LNDs
       getLnds: ['validate', ({}, cbk) => getLnds({logger, nodes}, cbk)],
 
+      // Get the public keys of the nodes
+      getKeys: ['getLnds', ({getLnds}, cbk) => {
+        return asyncMap(getLnds.lnds, (lnd, cbk) => {
+          return getWalletInfo({lnd}, cbk);
+        },
+        cbk);
+      }],
+
       // Backfill records
       syncRecords: ['getLnds', ({getLnds}, cbk) => {
         return asyncEach(getLnds.lnds, (lnd, cbk) => {
@@ -77,7 +87,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
       }],
 
       // Start watching for new records
-      syncChanges: ['getLnds', ({getLnds}, cbk) => {
+      syncChanges: ['getKeys', 'getLnds', ({getKeys, getLnds}, cbk) => {
         const fromNodes = nodes.map((node, i) => {
           return {node, lnd: getLnds.lnds[i]};
         });
@@ -349,6 +359,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
               const {description} = await describeBaseFeeUpdated({
                 db,
                 id: policy.id,
+                local_keys: getKeys.map(n => n.public_key),
                 previous: policy.previous,
                 public_key: policy.public_key,
                 updated: policy.updated,
@@ -367,6 +378,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
               const {description} = await describePolicyCltvUpdated({
                 db,
                 id: policy.id,
+                local_keys: getKeys.map(n => n.public_key),
                 previous: policy.previous,
                 public_key: policy.public_key,
                 updated: policy.updated,
@@ -387,6 +399,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
               const {description} = await describePolicyDisabled({
                 db,
                 id: policy.id,
+                local_keys: getKeys.map(n => n.public_key),
                 public_key: policy.public_key,
               });
 
@@ -405,6 +418,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
               const {description} = await describePolicyEnabled({
                 db,
                 id: policy.id,
+                local_keys: getKeys.map(n => n.public_key),
                 public_key: policy.public_key,
               });
 
@@ -425,6 +439,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
               const {description} = await describeFeeRateUpdated({
                 db,
                 id: policy.id,
+                local_keys: getKeys.map(n => n.public_key),
                 previous: policy.previous,
                 public_key: policy.public_key,
                 updated: policy.updated,
@@ -445,6 +460,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
               const {description} = await describeMaxHtlcUpdated({
                 db,
                 id: policy.id,
+                local_keys: getKeys.map(n => n.public_key),
                 previous: policy.previous,
                 public_key: policy.public_key,
                 updated: policy.updated,
@@ -465,6 +481,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
               const {description} = await describeMinHtlcUpdated({
                 db,
                 id: policy.id,
+                local_keys: getKeys.map(n => n.public_key),
                 previous: policy.previous,
                 public_key: policy.public_key,
                 updated: policy.updated,

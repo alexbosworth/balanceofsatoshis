@@ -32,6 +32,7 @@ const interrogationSeparator = ' and \n  ';
 const {isArray} = Array;
 const isHex = n => !!n && !(n.length % 2) && /^[0-9A-F]*$/i.test(n);
 const makeId = () => randomBytes(32).toString('hex');
+const times = 10;
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const uniq = arr => Array.from(new Set(arr));
 const utxoPollingIntervalMs = 1000 * 30;
@@ -145,22 +146,25 @@ module.exports = (args, cbk) => {
             connecting_to: {alias: node.alias, public_key: node.public_key},
           });
 
-          return asyncDetectSeries(node.sockets, ({socket}, cbk) => {
-            return addPeer({socket, lnd: args.lnd, public_key: key}, err => {
-              return cbk(null, !err);
+          return asyncRetry({times}, cbk => {
+            return asyncDetectSeries(node.sockets, ({socket}, cbk) => {
+              return addPeer({socket, lnd: args.lnd, public_key: key}, err => {
+                return cbk(null, !err);
+              });
+            },
+            (err, res) => {
+              if (!!err) {
+                return cbk(err);
+              }
+
+              if (!res) {
+                return cbk([503, 'FailedToConnectToPeer', ({peer: key})]);
+              }
+
+              return cbk(null, true);
             });
           },
-          (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            if (!res) {
-              return cbk([503, 'FailedToConnectToPeer', ({public_key: key})]);
-            }
-
-            return cbk(null, true);
-          });
+          cbk);
         },
         cbk);
       }],

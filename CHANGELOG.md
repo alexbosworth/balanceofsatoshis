@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.40.0
+## Version 5.40.1
 
 - `telegram`: Fix add more context to rebalance reports
 - `telegram`: Add `/mempool` command to show mempool.space details
