@@ -3,8 +3,6 @@ const {authenticatedLndGrpc} = require('ln-service');
 const {getUtxos} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const {lndCredentials} = require('./../lnd');
-
 const none = 0;
 
 /** Get UTXOs

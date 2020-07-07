@@ -14,6 +14,7 @@ const isPublicKey = n => !!n && /^[0-9A-F]{66}$/i.test(n);
   @returns via cbk or Promise
   {
     alias: <Node Alias String>
+    id: <Node Identity Public Key Hex String>
   }
 */
 module.exports = ({id, lnd}, cbk) => {
@@ -41,10 +42,10 @@ module.exports = ({id, lnd}, cbk) => {
         },
         (err, res) => {
           if (!!err || !res || !res.alias) {
-            return cbk(null, {alias: String()});
+            return cbk(null, {id, alias: String()});
           }
 
-          return cbk(null, {alias: res.alias});
+          return cbk(null, {id, alias: res.alias});
         });
       }],
     },

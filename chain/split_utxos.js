@@ -6,8 +6,6 @@ const {getUtxos} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {sendToChainAddresses} = require('ln-service');
 
-const {lndCredentials} = require('./../lnd');
-
 const consumedUtxoCount = 1;
 const decBase = 10;
 const format ='p2wpkh';
@@ -23,20 +21,21 @@ const newArrayOfSize = n => Array.from(Array(n));
     count: <Count of UTXOs Number>
     [is_confirmed]: <Only Consider Confirmed Utxos Bool>
     [is_dry_run]: <Do Not Execute Split Bool>
-    [node]: <Node String>
+    lnd: <Authenticated LND API Object>
     size: <UTXO Minimum Tokens Number>
     [tokens_per_vbyte]: <Fee Tokens Per Virtual Byte Number>
   }
 */
 module.exports = (args, cbk) => {
   return asyncAuto({
-    // Credentials
-    credentials: cbk => lndCredentials({node: args.node}, cbk),
-
     // Check arguments
     validate: cbk => {
       if (!args.count) {
         return cbk([400, 'ExpectedSplitUtxosCountNumber']);
+      }
+
+      if (!args.lnd) {
+        return cbk([400, 'ExpectedAuthenticatedLndToSplitUtxos']);
       }
 
       if (!args.size || args.size < minimumUtxoTokens) {
@@ -46,17 +45,8 @@ module.exports = (args, cbk) => {
       return cbk();
     },
 
-    // Lnd
-    lnd: ['credentials', ({credentials}, cbk) => {
-      return cbk(null, authenticatedLndGrpc({
-        cert: credentials.cert,
-        macaroon: credentials.macaroon,
-        socket: credentials.socket,
-      }).lnd);
-    }],
-
     // Get all the current confirmed UTXOs
-    getUtxos: ['lnd', 'validate', ({lnd}, cbk) => getUtxos({lnd}, cbk)],
+    getUtxos: ['validate', ({}, cbk) => getUtxos({lnd: args.lnd}, cbk)],
 
     // Determine the missing count of utxos
     outputCount: ['getUtxos', ({getUtxos}, cbk) => {
@@ -96,18 +86,13 @@ module.exports = (args, cbk) => {
     }],
 
     // Generate addresses
-    getAddresses: [
-      'checkFunds',
-      'lnd',
-      'outputCount',
-      ({lnd, outputCount}, cbk) =>
-    {
+    getAddresses: ['checkFunds', 'outputCount', ({outputCount}, cbk) => {
       if (!!args.is_dry_run) {
         return cbk(null, []);
       }
 
       return asyncMapSeries(newArrayOfSize(outputCount), (_, cbk) => {
-       return createChainAddress({format, lnd}, cbk);
+       return createChainAddress({format, lnd: args.lnd}, cbk);
       },
       cbk);
     }],
@@ -115,9 +100,8 @@ module.exports = (args, cbk) => {
     // Send to multiple outputs
     splitUtxos: [
       'getAddresses',
-      'lnd',
       'outputCount',
-      ({getAddresses, lnd, outputCount}, cbk) =>
+      ({getAddresses, outputCount}, cbk) =>
     {
       if (!!args.is_dry_run) {
         return cbk(null, {});
@@ -126,8 +110,8 @@ module.exports = (args, cbk) => {
       const tokens = args.size;
 
       return sendToChainAddresses({
-        lnd,
         fee_tokens_per_vbyte: args.tokens_per_vbyte || undefined,
+        lnd: args.lnd,
         send_to: getAddresses.map(({address}) => ({address, tokens})),
       },
       cbk);

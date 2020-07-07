@@ -4,8 +4,6 @@ const {getChainFeeRate} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const {authenticatedLnd} = require('./../lnd');
-
 const bytesPerKb = 1e3;
 const {ceil} = Math;
 const defaultBlockCount = 144;

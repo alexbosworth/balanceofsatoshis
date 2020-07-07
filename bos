@@ -432,17 +432,21 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to do fan out for')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return splitUtxos({
-        count: args.count,
-        is_confirmed: !!options.confirmed,
-        is_dry_run: !!options.dryrun,
-        node: options.node,
-        size: args.size,
-        tokens_per_vbyte: options.feerate,
-      },
-      returnObject({logger, reject, resolve}));
-    });
+    try {
+      return new Promise(async (resolve, reject) => {
+        return splitUtxos({
+          count: args.count,
+          is_confirmed: !!options.confirmed,
+          is_dry_run: !!options.dryrun,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          size: args.size,
+          tokens_per_vbyte: options.feerate,
+        },
+        returnObject({logger, reject, resolve}));
+      });
+    } catch (err) {
+      return reject(err);
+    }
   })
 
   // Query the node to search for something
@@ -1090,6 +1094,7 @@ prog
   .help('Supported updates: forwards, received payments')
   .option('--budget <amount>', 'Spending amount to allow', INT, Number())
   .option('--connect <connect_code>', 'Connection code', INT)
+  .option('--disable-sync', 'Disable backend syncing')
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -1104,6 +1109,7 @@ prog
             makeDirectory: mkdir,
           },
           id: options.connect,
+          is_sync_disabled: options.disableSync,
           nodes: flatten([options.node].filter(n => !!n)),
           payments: {limit: options.budget}
         });

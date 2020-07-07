@@ -1,5 +1,12 @@
 # Versions
 
+## Version 5.40.2
+
+Fix compatibility issues with node version 14
+
+- `telegram`: Add `--disable-sync` flag to turn of background db sync
+- `telegram`: Improve reliability when backing node is disconnected
+
 ## Version 5.40.1
 
 - `telegram`: Fix add more context to rebalance reports

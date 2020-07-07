@@ -26,6 +26,7 @@ const restartDelayMs = 1000 * 5;
       writeFile: <Write File Function>
     }
     [id]: <Authorized User Id Number>
+    [is_sync_disabled]: <Database Sync Disabled Bool>
     logger: <Winston Logger Object>
     [nodes]: [<Node Name String>]
     payments: {
@@ -36,24 +37,24 @@ const restartDelayMs = 1000 * 5;
 
   @returns via cbk or Promise
 */
-module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
+module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!fs) {
+        if (!args.fs) {
           return cbk([400, 'ExpectedFsToConnectToTelegram']);
         }
 
-        if (!logger) {
+        if (!args.logger) {
           return cbk([400, 'ExpectedLoggerToConnectToTelegram']);
         }
 
-        if (!payments) {
+        if (!args.payments) {
           return cbk([400, 'ExpectedPaymentInstructionsToConnectToTelegram']);
         }
 
-        if (!request) {
+        if (!args.request) {
           return cbk([400, 'ExpectedRequestFunctionToConnectToTelegram']);
         }
 
@@ -62,7 +63,9 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
 
       // Check nodes
       checkNodes: ['validate', async () => {
-        const {lnds} = await getLnds({logger, nodes});
+        const {nodes} = args;
+
+        const {lnds} = await getLnds({nodes, logger: args.logger});
 
         const withName = lnds.map((lnd, i) => ({lnd, node: (nodes || [])[i]}));
 
@@ -70,7 +73,7 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
           try {
             return await getWalletInfo({lnd});
           } catch (err) {
-            logger.error({node, err: 'failed_to_connect'});
+            args.logger.error({node, err: 'failed_to_connect'});
           }
 
           return;
@@ -84,10 +87,14 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
 
       // Start bot
       startTelegram: ['checkNodes', ({}, cbk) => {
-        let {limit} = payments;
+        let {limit} = args.payments;
 
         return asyncForever(cbk => {
-          return getLnds({logger, nodes}, (err, res) => {
+          return getLnds({
+            logger: args.logger,
+            nodes: args.nodes
+          },
+          (err, res) => {
             if (!!err) {
               return cbk(err);
             }
@@ -95,15 +102,15 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
             const {lnds} = res;
 
             return startTelegramBot({
-              fs,
-              id,
               lnds,
-              logger,
-              request,
+              fs: args.fs,
+              id: args.id,
+              logger: args.logger,
               payments: {limit},
+              request: args.request,
             },
             err => {
-              logger.error(err || [503, 'TelegramBotFailed']);
+              args.logger.error(err || [503, 'TelegramBotFailed']);
 
               // Reset payment budget
               limit = Number();
@@ -115,11 +122,28 @@ module.exports = ({fs, id, logger, nodes, payments, request}, cbk) => {
       }],
 
       // Init database
-      lmdbDb: ['path', ({path}, cbk) => lmdbDatabase({fs, path}, cbk)],
+      lmdbDb: ['path', ({path}, cbk) => {
+        // Exit early when there is no need for a database
+        if (!!args.is_sync_disabled) {
+          return cbk();
+        }
+
+        return lmdbDatabase({fs: args.fs, path}, cbk);
+      }],
 
       // Start syncing nodes with the database
       startSync: ['lmdbDb', ({lmdbDb}, cbk) => {
-        return watch({logger, nodes, db: lmdbDb.db}, cbk)
+        // Exit early when there is no database
+        if (!lmdbDb) {
+          return cbk();
+        }
+
+        return watch({
+          db: lmdbDb.db,
+          logger: args.logger,
+          nodes: args.nodes,
+        },
+        cbk);
       }],
     },
     returnResult({reject, resolve}, cbk));
