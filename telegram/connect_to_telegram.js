@@ -12,7 +12,6 @@ const {getLnds} = require('./../lnd');
 const startTelegramBot = require('./start_telegram_bot');
 const watch = require('./watch');
 
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const home = '.bos';
 const restartDelayMs = 1000 * 5;
 
@@ -101,6 +100,8 @@ module.exports = (args, cbk) => {
 
             const {lnds} = res;
 
+            args.logger.info({connecting_to_telegram: args.nodes});
+
             return startTelegramBot({
               lnds,
               fs: args.fs,
@@ -115,10 +116,11 @@ module.exports = (args, cbk) => {
               // Reset payment budget
               limit = Number();
 
-              return setTimeout(() => cbk(), restartDelayMs);
+              return setTimeout(cbk, restartDelayMs);
             });
           });
-        });
+        },
+        cbk);
       }],
 
       // Init database
@@ -138,10 +140,17 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return watch({
-          db: lmdbDb.db,
-          logger: args.logger,
-          nodes: args.nodes,
+        return asyncForever(cbk => {
+          return watch({
+            db: lmdbDb.db,
+            logger: args.logger,
+            nodes: args.nodes,
+          },
+          err => {
+            args.logger.error(err || [503, 'WatchDatabaseFailed', {err}]);
+
+            return setTimeout(cbk, restartDelayMs);
+          });
         },
         cbk);
       }],

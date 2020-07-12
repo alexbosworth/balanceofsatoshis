@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncRetry = require('async/retry');
 const {returnResult} = require('asyncjs-util');
 
 const api = 'https://api.telegram.org';
@@ -45,32 +46,35 @@ module.exports = ({filename, hex, id, key, request}, cbk) => {
 
       // Send document
       send: ['validate', ({}, cbk) => {
-        return request({
-          formData: {
-            document: {
-              value: Buffer.from(hex, 'hex'),
-              options: {contentType, filename},
+        return asyncRetry({}, cbk => {
+          return request({
+            formData: {
+              document: {
+                value: Buffer.from(hex, 'hex'),
+                options: {contentType, filename},
+              },
             },
+            method: 'POST',
+            qs: {chat_id: id},
+            url: `${api}/bot${key}/sendDocument`,
           },
-          method: 'POST',
-          qs: {chat_id: id},
-          url: `${api}/bot${key}/sendDocument`,
+          (err, r, body) => {
+            if (!!err) {
+              return cbk([503, 'FailedToConnectToTelegramToSendFile', {err}]);
+            }
+
+            if (!r) {
+              return cbk([503, 'ExpectedResponseFromTelegramSendDocument']);
+            }
+
+            if (r.statusCode !== ok) {
+              return cbk([503, 'UnexpectedStatusCodeSendingFileToTelegram']);
+            }
+
+            return cbk();
+          });
         },
-        (err, r, body) => {
-          if (!!err) {
-            return cbk([503, 'FailedToConnectToTelegramApiToSendDocument']);
-          }
-
-          if (!r) {
-            return cbk([503, 'ExpectedResponseFromTelegramSendDocument']);
-          }
-
-          if (r.statusCode !== ok) {
-            return cbk([503, 'UnexpectedStatusCodeSendingDocumentToTelegram']);
-          }
-
-          return cbk();
-        });
+        cbk);
       }],
     },
     returnResult({reject, resolve}, cbk));

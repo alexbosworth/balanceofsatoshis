@@ -76,6 +76,9 @@ bos credentials
 # Create a utxo fan-out with on-chain funds
 bos fanout "amount" "count"
 
+# View outbound fee rates and update outbound fee rates to peers
+bos fees
+
 # Query the node to find something like a payment, channel or node
 bos find "query"
 

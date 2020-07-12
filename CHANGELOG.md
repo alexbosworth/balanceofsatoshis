@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.41.0
+
+- `fees`: Add command to list outgoing fee rates and to set fee rates to a peer
+- `open`: Show more details regarding deadline and opening process, addresses
+- `telegram`: Improve reliability when local connection is interrupted
+
 ## Version 5.40.2
 
 Fix compatibility issues with node version 14

@@ -15,7 +15,9 @@ const {fundPendingChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
+const {green} = require('colorette');
 const {openChannels} = require('ln-service');
+const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
 const {transactionAsPsbt} = require('psbt');
@@ -24,6 +26,7 @@ const {getAddressUtxo} = require('./../chain');
 const {getRawTransaction} = require('./../chain');
 const getNetwork = require('./../network/get_network');
 
+const addressesHeader = green('Addresses');
 const base64AsHex = n => Buffer.from(n, 'base64').toString('hex');
 const defaultChannelCapacity = 5e6;
 const format = 'p2wpkh';
@@ -130,6 +133,20 @@ module.exports = (args, cbk) => {
 
       // Connect up to the peers
       connect: ['getNodes', 'getPeers', ({getNodes, getPeers}, cbk) => {
+        const channels = args.public_keys.map((key, i) => {
+          const total = args.capacities[i] || defaultChannelCapacity;
+
+          return {total, public_key: key};
+        });
+
+        const openingTo = getNodes.map(node => {
+          const {total} = channels.find(n => n.public_key === node.public_key);
+
+          return `${node.alias || node.public_key}: ${tokAsBigUnit(total)}`;
+        });
+
+        args.logger.info({opening_to: openingTo});
+
         return asyncEach(args.public_keys, (key, cbk) => {
           // Exit early when the peer is already connected
           if (getPeers.peers.map(n => n.public_key).includes(key)) {
@@ -273,14 +290,26 @@ module.exports = (args, cbk) => {
 
       // Prompt for a PSBT or a signed transaction
       getFunding: ['openChannels', ({openChannels}, cbk) => {
+        args.logger.info({
+          funding_deadline: moment().add(10, 'minutes').calendar(),
+        });
+
+        const commaSends = openChannels.pending.map(channel => {
+          return `${channel.address}, ${tokAsBigUnit(channel.tokens)}`;
+        });
+
+        args.logger.info(`\n${addressesHeader}:\n${commaSends.join('\n')}\n`);
+
         const payTo = openChannels.pending
           .map(channel => {
             return `${tokAsBigUnit(channel.tokens)} to ${channel.address}`;
           })
           .join(interrogationSeparator);
 
+        const or = 'or press enter to cancel funding.\n';
+
         const funding = {
-          message: `Enter signed transaction or PSBT that pays ${payTo}`,
+          message: `Enter signed transaction or PSBT that pays ${payTo} ${or}`,
           name: 'fund',
         };
 

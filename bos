@@ -15,6 +15,7 @@ const {rateProviders} = require('ln-accounting');
 const request = require('@alexbosworth/request');
 
 const {accountingCategories} = require('./balances');
+const {adjustFees} = require('./routing');
 const {adjustSavedNodes} = require('./nodes');
 const {authenticatedLnd} = require('./lnd');
 const {connectToTelegram} = require('./telegram');
@@ -443,6 +444,29 @@ prog
           tokens_per_vbyte: options.feerate,
         },
         returnObject({logger, reject, resolve}));
+      });
+    } catch (err) {
+      return reject(err);
+    }
+  })
+
+  // Show and set outbound fee rates
+  .command('fees', 'Show and adjust outbound fee rates')
+  .help('List out fee rates, fix problems with routing policies, set out fees')
+  .help('When setting fee, if channels pending, will wait for confirm to set')
+  .option('--node <node_name>', 'Node to find record on')
+  .option('--set-fee-rate <rate>', 'Forward fee in parts per million', INT)
+  .option('--to <peer>', 'Peer public key or alias to set fees', REPEATABLE)
+  .action((args, options, logger) => {
+    try {
+      return new Promise(async (resolve, reject) => {
+        return adjustFees({
+          logger,
+          fee_rate: options.setFeeRate,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          to: flatten([options.to].filter(n => !!n)),
+        },
+        returnObject({logger, reject, resolve, table: 'rows'}));
       });
     } catch (err) {
       return reject(err);
