@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.41.1
+
+- `probe`: Add `--max-paths` option to inform `--find-max` probing
+- `telegram` Improve database-sync reliability
+
 ## Version 5.41.0
 
 - `fees`: Add command to list outgoing fee rates and to set fee rates to a peer

@@ -13,7 +13,7 @@ const startTelegramBot = require('./start_telegram_bot');
 const watch = require('./watch');
 
 const home = '.bos';
-const restartDelayMs = 1000 * 5;
+const restartDelayMs = 1000 * 30;
 
 /** Connect nodes to Telegram
 
@@ -116,7 +116,7 @@ module.exports = (args, cbk) => {
               // Reset payment budget
               limit = Number();
 
-              return setTimeout(cbk, restartDelayMs);
+              return setTimeout(() => cbk(), restartDelayMs);
             });
           });
         },
@@ -130,7 +130,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return lmdbDatabase({fs: args.fs, path}, cbk);
+        return lmdbDatabase({path, fs: args.fs}, cbk);
       }],
 
       // Start syncing nodes with the database
@@ -147,9 +147,15 @@ module.exports = (args, cbk) => {
             nodes: args.nodes,
           },
           err => {
-            args.logger.error(err || [503, 'WatchDatabaseFailed', {err}]);
+            if (!!err) {
+              args.logger.error(err);
 
-            return setTimeout(cbk, restartDelayMs);
+              return setTimeout(() => cbk(), restartDelayMs);
+            }
+
+            args.logger.error({restarting_sync: true});
+
+            return setTimeout(() => cbk(), restartDelayMs);
           });
         },
         cbk);

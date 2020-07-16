@@ -911,6 +911,7 @@ prog
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--find-max', 'Find the maximum routeable amount on success route')
   .option('--in <public_key>', 'Route through specific peer of destination')
+  .option('--max-paths <max>', 'Maximum paths to use for find-max', INT, 1)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <public_key>', 'Make first hop through specific peer')
@@ -926,6 +927,7 @@ prog
           find_max: !!options.findMax ? 4294967 : undefined,
           ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
           in_through: (await findKey({lnd, query: options.in})).public_key,
+          max_paths: options.maxPaths,
           out_through: (await findKey({lnd, query: options.out})).public_key,
           request: args.to.length !== 66 ? args.to : undefined,
           tokens: args.amount || undefined,

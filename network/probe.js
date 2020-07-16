@@ -25,6 +25,7 @@ const uniq = arr => Array.from(new Set(arr));
     [in_through]: <Pay In Through Public Key Hex String>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
+    [max_paths]: <Maximum Probe Paths Number>
     [out_through]: <Out Through Peer With Public Key Hex String>
     [request]: <BOLT 11 Encoded Payment Request String>
     [timeout_minutes]: <Stop Searching For Routes After N Minutes Number>
@@ -141,6 +142,7 @@ module.exports = (args, cbk) => {
               probes: completed.map(probe => {
                 return {
                   channels: probe.success,
+                  fee: probe.fee,
                   liquidity: probe.route_maximum,
                   relays: probe.relays,
                 };

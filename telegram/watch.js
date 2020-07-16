@@ -98,7 +98,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
           try {
             sub = subscribeToChanges({db, lnd});
           } catch (err) {
-            return cbk(err);
+            return cbk([503, 'FailedToSubscribeToChanges', {err}]);
           }
 
           sub.on('attempt_payment_sent', async payment => {
@@ -251,9 +251,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
             }
           });
 
-          sub.on('error', err => {
-            return logger.error({err, node});
-          });
+          sub.on('error', err => logger.error({err, node}));
 
           sub.on('failed_forward', async forward => {
             try {

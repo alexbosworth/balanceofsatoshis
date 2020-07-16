@@ -1,4 +1,4 @@
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const {getNodeInfoResponse} = require('./../fixtures');
 const {listChannelsResponse} = require('./../fixtures');

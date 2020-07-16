@@ -1,5 +1,5 @@
 const {encode} = require('cbor');
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const {getInfoResponse} = require('./../fixtures');
 const getPaidService = require('./../../swaps/get_paid_service');
