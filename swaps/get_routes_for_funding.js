@@ -223,6 +223,7 @@ module.exports = (args, cbk) => {
 
             const latencyMs = complete
               .map(n => n.latency_ms)
+              .filter(n => !!n)
               .reduce((sum, n) => sum + n, Number());
 
             const max = complete

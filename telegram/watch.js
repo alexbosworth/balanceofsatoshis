@@ -78,21 +78,13 @@ module.exports = ({db, logger, nodes}, cbk) => {
         cbk);
       }],
 
-      // Backfill records
-      syncRecords: ['getLnds', ({getLnds}, cbk) => {
-        return asyncEach(getLnds.lnds, (lnd, cbk) => {
-          return syncCurrentRecords({db, lnd}, cbk);
-        },
-        cbk);
-      }],
-
       // Start watching for new records
       syncChanges: ['getKeys', 'getLnds', ({getKeys, getLnds}, cbk) => {
         const fromNodes = nodes.map((node, i) => {
           return {node, lnd: getLnds.lnds[i]};
         });
 
-        return asyncEach(fromNodes, async ({lnd, node}, cbk) => {
+        asyncEach(fromNodes, ({lnd, node}, cbk) => {
           let sub;
 
           try {
@@ -251,7 +243,7 @@ module.exports = ({db, logger, nodes}, cbk) => {
             }
           });
 
-          sub.on('error', err => logger.error({err, node}));
+          sub.on('error', err => logger.error(err));
 
           sub.on('failed_forward', async forward => {
             try {

@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.41.1
+## Version 5.41.2
 
 - `probe`: Add `--max-paths` option to inform `--find-max` probing
 - `telegram` Improve database-sync reliability

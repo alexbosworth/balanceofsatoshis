@@ -1,4 +1,5 @@
 const flatten = arr => [].concat(...arr);
+const {isArray} = Array;
 const uniq = arr => Array.from(new Set(arr));
 
 /** Calculate multi-probe adjustments
@@ -46,7 +47,21 @@ const uniq = arr => Array.from(new Set(arr));
   }
 */
 module.exports = ({channels, from, ignore, probes, tokens}) => {
-  const msSpent = probes.reduce((sum, n) => sum + n.latency_ms, Number());
+  if (!isArray(probes)) {
+    throw new Error('ExpectedArrayOfProbesToGenerateMultiProbeIgnores');
+  }
+
+  if (probes.filter(n => !!n).length !== probes.length) {
+    throw new Error('ExpectedProbeDetailsToGenerateMultiProbeIgnores');
+  }
+
+  if (!!probes.find(n => !isArray(n.relays))) {
+    throw new Error('ExpectedArrayOfRelaysToGenerateMultiProbeIgnores');
+  }
+
+  const latencies = probes.map(n => n.latency_ms).filter(n => !!n);
+
+  const msSpent = latencies.reduce((sum, n) => sum + n, Number());
 
   const pairs = probes.map(probe => {
     const [out, ...network] = probe.relays.map((to, i, arr) => {

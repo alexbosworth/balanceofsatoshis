@@ -131,10 +131,11 @@ module.exports = (args, cbk) => {
 
             const latencyMs = completed
               .map(n => n.latency_ms)
+              .filter(n => !!n)
               .reduce((sum, n) => sum + n, Number());
 
             const max = completed
-              .map(n => n.route_maximum)
+              .map(n => n.route_maximum || Number())
               .reduce((sum, n) => sum + n, Number());
 
             return cbk(null, {

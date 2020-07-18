@@ -1,0 +1,11 @@
+{
+  "peerSortOptions": [
+    "alias",
+    "fee_earnings",
+    "first_connected",
+    "inbound_fee_rate",
+    "inbound_liquidity",
+    "outbound_liquidity",
+    "public_key"
+  ]
+}

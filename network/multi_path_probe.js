@@ -85,7 +85,7 @@ module.exports = (args, cbk) => {
           channels: getChannels.channels,
           from: getKey.public_key,
           ignore: args.ignore,
-          probes: args.probes,
+          probes: args.probes.filter(n => !!n.relays),
           tokens: args.tokens,
         });
 
@@ -129,10 +129,6 @@ module.exports = (args, cbk) => {
         (error, probe) => {
           if (!!error) {
             return cbk(null, {error});
-          }
-
-          if (!probe.route_maximum) {
-            return cbk(null, {});
           }
 
           return cbk(null, {probe});

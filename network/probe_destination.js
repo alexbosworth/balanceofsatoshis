@@ -11,10 +11,10 @@ const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {signBytes} = require('ln-service');
+const {subscribeToFindMaxPayable} = require('probing');
 
 const {authenticatedLnd} = require('./../lnd');
 const executeProbe = require('./execute_probe');
-const {findMaxRoutable} = require('./../routing');
 const {getInboundPath} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
@@ -338,18 +338,26 @@ module.exports = (args, cbk) => {
     // Get maximum value of the successful route
     getMax: ['probe', 'to', ({probe, to}, cbk) => {
       if (!args.find_max || !probe.route) {
-        return cbk();
+        return cbk(null, {});
       }
 
-      return findMaxRoutable({
+      const sub = subscribeToFindMaxPayable({
         cltv: to.cltv_delta || defaultCltvDelta,
         hops: probe.route.hops,
         lnd: args.lnd,
-        logger: args.logger,
         max: args.find_max,
         request: args.request,
-      },
-      cbk);
+      });
+
+      sub.on('evaluating', ({tokens}) => {
+        return args.logger.info({evaluating_amount: tokens});
+      });
+
+      sub.once('error', err => cbk(err));
+      sub.once('failure', () => cbk(null, {maximum: Number()}));
+      sub.once('success', ({maximum}) => cbk(null, {maximum}));
+
+      return;
     }],
 
     // If there is a successful route, pay it
@@ -387,7 +395,7 @@ module.exports = (args, cbk) => {
       return cbk(null, {
         fee: !route ? undefined : route.fee,
         latency_ms: !route ? undefined : probe.latency_ms,
-        route_maximum: !getMax ? undefined : getMax.maximum,
+        route_maximum: getMax.maximum,
         paid: !pay ? undefined : pay.tokens,
         preimage: !pay ? undefined : pay.secret,
         probed: !!pay ? undefined : route.tokens - route.fee,

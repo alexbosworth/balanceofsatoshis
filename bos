@@ -50,6 +50,7 @@ const {lndCredentials} = require('./lnd');
 const marketPairs = require('./fiat').pairs;
 const {openChannel} = require('./network');
 const {openChannels} = require('./network');
+const {peerSortOptions} = require('./network');
 const {priceProviders} = require('./fiat');
 const {probe} = require('./network');
 const {probeDestination} = require('./network');
@@ -840,6 +841,7 @@ prog
 
   // Get a list of channel-connected peers
   .command('peers', 'Get a list of channel-connected peers')
+  .help(`Sort options: ${peerSortOptions.join(', ')}`)
   .option('--active', 'Only active peer channels')
   .option('--complete', 'Show complete set of records in non table view')
   .option('--fee-days <past_days>', 'Include fees earned over n days', INT)
@@ -852,7 +854,7 @@ prog
   .option('--outbound-below <amount>', 'Outbound liquidity below amount', INT)
   .option('--private', 'Only private channels')
   .option('--public', 'Only peers with public channels')
-  .option('--sort', 'Sort results by peer attribute')
+  .option('--sort <by>', 'Sort results by peer attribute', peerSortOptions)
   .action((args, options, logger) => {
     const table = !!options.complete ? undefined : 'rows';
 
