@@ -21,6 +21,7 @@ const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToBlocks} = require('goldengate');
 const {subscribeToInvoice} = require('ln-service');
+const {subscribeToSwapInStatus} = require('goldengate');
 const {swapInFee} = require('goldengate');
 const {swapScript} = require('goldengate');
 
@@ -99,7 +100,7 @@ module.exports = (args, cbk) => {
     // Upgrade service object to a paid service if necessary
     getService: ['getLiquidity', 'getNetwork', ({}, cbk) => {
       // Exit early when we're recovering an existing swap
-      if (!!args.recovery) {
+      if (!!args.recovery && !args.api_key) {
         return cbk();
       }
 

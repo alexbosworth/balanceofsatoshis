@@ -28,6 +28,7 @@ const {returnResult} = require('asyncjs-util');
 const {subscribeToBlocks} = require('ln-service');
 const {subscribeToPastPayment} = require('ln-service');
 const {subscribeToPayViaRequest} = require('ln-service');
+const {subscribeToSwapOutStatus} = require('goldengate');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {authenticatedLnd} = require('./../lnd');
@@ -278,8 +279,50 @@ module.exports = (args, cbk) => {
         return cbk(null, address);
       }],
 
+      // Get a paid service object, or convert prepaid token to service object
+      getService: [
+        'network',
+        'recover',
+        'recoverAddress',
+        ({network}, cbk) =>
+      {
+        // Exit early when the swap is already initiated
+        if (!!args.recovery) {
+          return cbk();
+        }
+
+        return getPaidService({
+          network,
+          lnd: args.lnd,
+          logger: args.logger,
+          socket: args.socket,
+          token: args.api_key,
+        },
+        cbk);
+      }],
+
+      // Get swap out limits
+      getLimits: ['getService', ({getService}, cbk) => {
+        // Exit early when in recovery
+        if (!!args.recovery) {
+          return cbk();
+        }
+
+        return getSwapOutTerms({
+          macaroon: getService.macaroon,
+          preimage: getService.preimage,
+          service: getService.service,
+        },
+        cbk);
+      }],
+
       // Get the quote for swaps
-      getQuote: ['getLimits', 'getService', ({getLimits, getService}, cbk) => {
+      getQuote: [
+        'getLimits',
+        'getService',
+        'startHeight',
+        ({getLimits, getService, startHeight}, cbk) =>
+      {
         // Exit early when this is a recovery of an existing swap
         if (!!args.recovery) {
           return cbk();
@@ -297,6 +340,7 @@ module.exports = (args, cbk) => {
           macaroon: getService.macaroon,
           preimage: getService.preimage,
           service: getService.service,
+          timeout: getLimits.max_cltv_delta + startHeight,
           tokens: args.tokens,
         },
         cbk);
@@ -346,51 +390,33 @@ module.exports = (args, cbk) => {
         return cbk(null, {deposit: getQuote.deposit, service_fee: allFees});
       }],
 
-      // Get a paid service object, or convert prepaid token to service object
-      getService: [
-        'network',
-        'recover',
-        'recoverAddress',
-        ({network}, cbk) =>
+      // Get the ultimate timeout height to request for the swap
+      getTimeout: [
+        'getLimits',
+        'startHeight',
+        ({getLimits, startHeight}, cbk) =>
       {
-        // Exit early when the swap is already initiated
-        if (!!args.recovery) {
+        // Exit early when the swap is already started
+        if (!!args.recover) {
           return cbk();
         }
 
-        return getPaidService({
-          network,
-          lnd: args.lnd,
-          logger: args.logger,
-          socket: args.socket,
-          token: args.api_key,
-        },
-        cbk);
-      }],
-
-      // Get swap out limits
-      getLimits: ['getService', ({getService}, cbk) => {
-        // Exit early when in recovery
-        if (!!args.recovery) {
-          return cbk();
+        if (getLimits.max_cltv_delta < minCltvDelta) {
+          return cbk([503, 'ServerMaxCltvDeltaTooLow']);
         }
 
-        return getSwapOutTerms({
-          macaroon: getService.macaroon,
-          preimage: getService.preimage,
-          service: getService.service,
-        },
-        cbk);
+        return cbk(null, startHeight + getLimits.max_cltv_delta);
       }],
 
-      // Make sweep
+      // Request a new swap out
       initiateSwap: [
         'checkQuote',
         'getService',
+        'getTimeout',
         'network',
         'recover',
         'recoverAddress',
-        ({getService, network, recover, recoverAddress}, cbk) =>
+        ({getService, getTimeout, network, recover, recoverAddress}, cbk) =>
       {
         // Exit early when the swap is already initiated
         if (!!args.recovery) {
@@ -420,6 +446,7 @@ module.exports = (args, cbk) => {
           macaroon: getService.macaroon,
           preimage: getService.preimage,
           service: getService.service,
+          timeout: getTimeout,
           tokens: args.tokens,
         },
         cbk);
@@ -503,6 +530,43 @@ module.exports = (args, cbk) => {
           request: initiateSwap.swap_fund_request,
         },
         cbk);
+      }],
+
+      // Track server swap status
+      trackStatus: [
+        'decodeFundingRequest',
+        'getService',
+        ({decodeFundingRequest, getService}, cbk) =>
+      {
+        if (!!args.recovery) {
+          return cbk();
+        }
+
+        const sub = subscribeToSwapOutStatus({
+          id: decodeFundingRequest.id,
+          macaroon: getService.macaroon,
+          preimage: getService.preimage,
+          service: getService.service,
+        });
+
+        const swap = {};
+
+        sub.on('status_update', update => {
+          // Server reports swap broadcast
+          if (!swap.is_broadcast && !!update.is_broadcast) {
+            swap.is_broadcast = true;
+
+            args.logger.info({
+              server_update: 'On-chain transaction published',
+            });
+          }
+
+          if (!!update.is_claimed) {
+            sub.removeAllListeners();
+
+            return cbk();
+          }
+        });
       }],
 
       // Check that the payment requests match the validated quote

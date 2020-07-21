@@ -95,6 +95,7 @@ module.exports = (args, cbk) => {
 
       // Raw recovery transactions
       getAttempts: ['validate', ({}, cbk) => {
+        let cursor;
         let minFeeRate;
         const maxWaitBlocks = args.max_wait_blocks || defaultMaxWaitBlocks;
 
@@ -126,6 +127,12 @@ module.exports = (args, cbk) => {
               return cbk(err);
             }
 
+            if (!!cursor && cursor === res.fee_rate) {
+              return cbk();
+            }
+
+            cursor = res.fee_rate;
+
             return cbk(null, {
               fee_rate: res.fee_rate,
               min_fee_rate: res.min_fee_rate,
@@ -139,7 +146,7 @@ module.exports = (args, cbk) => {
 
       // Return the set of recoveries
       recoveries: ['getAttempts', ({getAttempts}, cbk) => {
-        return cbk(null, {recoveries: getAttempts});
+        return cbk(null, {recoveries: getAttempts.filter(n => !!n)});
       }],
     },
     returnResult({reject, resolve, of: 'recoveries'}, cbk));

@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.41.3
+
+- `increase-inbound-liquidity`: Support longer swap timeouts
+
 ## Version 5.41.2
 
 - `probe`: Add `--max-paths` option to inform `--find-max` probing

@@ -3,6 +3,7 @@ const {getSwapInQuote} = require('goldengate');
 const {getSwapInTerms} = require('goldengate');
 const {getSwapOutQuote} = require('goldengate');
 const {getSwapOutTerms} = require('goldengate');
+const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
@@ -72,35 +73,6 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Get a swap quote
-      getQuote: ['getService', ({getService}, cbk) => {
-        const swapDelay = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
-
-        switch (args.type) {
-        case 'inbound':
-          return getSwapOutQuote({
-            delay: moment().add(swapDelay, 'minutes').toISOString(),
-            macaroon: getService.macaroon,
-            preimage: getService.preimage,
-            service: getService.service,
-            tokens: args.tokens,
-          },
-          cbk);
-
-        case 'outbound':
-          return getSwapInQuote({
-            macaroon: getService.macaroon,
-            preimage: getService.preimage,
-            service: getService.service,
-            tokens: args.tokens,
-          },
-          cbk);
-
-        default:
-          return cbk([400, 'GotUnexpectedSwapTypeWhenGettingSwapCost']);
-        }
-      }],
-
       // Get swap terms
       getTerms: ['getService', ({getService}, cbk) => {
         switch (args.type) {
@@ -117,6 +89,46 @@ module.exports = (args, cbk) => {
             macaroon: getService.macaroon,
             preimage: getService.preimage,
             service: getService.service,
+          },
+          cbk);
+
+        default:
+          return cbk([400, 'GotUnexpectedSwapTypeWhenGettingSwapCost']);
+        }
+      }],
+
+      // Get the current height
+      getHeight: ['getTerms', ({}, cbk) => {
+        return getWalletInfo({lnd: args.lnd}, cbk);
+      }],
+
+      // Get a swap quote
+      getQuote: [
+        'getHeight',
+        'getService',
+        'getTerms',
+        ({getHeight, getService, getTerms}, cbk) =>
+      {
+        const swapDelay = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
+
+        switch (args.type) {
+        case 'inbound':
+          return getSwapOutQuote({
+            delay: moment().add(swapDelay, 'minutes').toISOString(),
+            macaroon: getService.macaroon,
+            preimage: getService.preimage,
+            service: getService.service,
+            timeout: getTerms.max_cltv_delta + getHeight.current_block_height,
+            tokens: args.tokens,
+          },
+          cbk);
+
+        case 'outbound':
+          return getSwapInQuote({
+            macaroon: getService.macaroon,
+            preimage: getService.preimage,
+            service: getService.service,
+            tokens: args.tokens,
           },
           cbk);
 

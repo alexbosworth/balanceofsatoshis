@@ -1,6 +1,15 @@
 const {test} = require('@alexbosworth/tap');
 
+const {getInfoResponse} = require('./../fixtures');
 const {getSwapCost} = require('./../../swaps');
+
+const makeLnd = ({}) => {
+  return {
+    default: {
+      getInfo: ({}, cbk) => cbk(null, getInfoResponse),
+    },
+  };
+};
 
 const makeQuote = ({}) => ({
   cltv_delta: 1,
@@ -17,7 +26,9 @@ const makeService = ({}) => {
 };
 
 const makeTerms = ({max, min}) => ({
+  max_cltv_delta: 2,
   max_swap_amount: max || 1,
+  min_cltv_delta: 1,
   min_swap_amount: min || 1,
 });
 
@@ -50,7 +61,7 @@ const tests = [
   },
   {
     args: {
-      lnd: {},
+      lnd: makeLnd({}),
       logger: {},
       service: {
         loopOutQuote: ({}, {}, cbk) => cbk(null, makeQuote({})),
@@ -64,7 +75,7 @@ const tests = [
   },
   {
     args: {
-      lnd: {},
+      lnd: makeLnd({}),
       logger: {},
       service: {
         loopInQuote: ({}, {}, cbk) => cbk(null, makeQuote({})),
@@ -80,7 +91,7 @@ const tests = [
   },
   {
     args: {
-      lnd: {},
+      lnd: makeLnd({}),
       logger: {},
       service: makeService({}),
       tokens: 1e6,
