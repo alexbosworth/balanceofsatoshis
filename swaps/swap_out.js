@@ -1118,6 +1118,11 @@ module.exports = (args, cbk) => {
                 attempt_tx_id: Transaction.fromHex(res.transaction).getId(),
               });
 
+              // Exit early when the swap service is not available
+              if (!getService) {
+                return;
+              }
+
               return releaseSwapOutSecret({
                 auth_macaroon: getService.macaroon,
                 auth_preimage: getService.preimage,

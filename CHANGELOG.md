@@ -1,6 +1,6 @@
 # Versions
 
-## Version 5.41.4
+## Version 5.41.5
 
 - `increase-inbound-liquidity`: Fix `--recovery` option
 - `probe`: Rework `--find-max` methodology

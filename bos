@@ -828,7 +828,6 @@ prog
           is_real_payment: true,
           max_fee: options.maxFee,
           message: options.message,
-          node: options.node,
           out_through: (await findKey({lnd, query: options.out})).public_key,
           request: args.request,
         },
