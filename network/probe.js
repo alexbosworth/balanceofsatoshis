@@ -2,16 +2,23 @@ const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const asyncWhilst = require('async/whilst');
 const {getChannel} = require('ln-service');
+const {getNode} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
+const {parsePaymentRequest} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
+const {subscribeToMultiPathProbe} = require('probing');
 
+const {describeRoute} = require('./../display');
+const {describeRoutingFailure} = require('./../display');
 const multiPathProbe = require('./multi_path_probe');
 const probeDestination = require('./probe_destination');
 
+const defaultFinalCltvDelta = 144;
 const defaultMaxPaths = 5;
 const flatten = arr => [].concat(...arr);
+const pathTimeoutMs = 1000 * 60 * 5;
 const uniq = arr => Array.from(new Set(arr));
 
 /** Probe a destination, looking for multiple non-overlapping paths
@@ -53,6 +60,14 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerObjectToStartProbe']);
         }
 
+        if (!!args.request) {
+          try {
+            parsePaymentRequest({request: args.request});
+          } catch (err) {
+            return cbk([400, 'ExpectedValidPaymentRequestToProbe', {err}]);
+          }
+        }
+
         return cbk();
       },
 
@@ -72,86 +87,107 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Probe iteratively through multiple paths
-      multiProbe: ['checkLegacy', ({}, cbk) => {
+      // Decode payment request
+      decodeRequest: ['validate', ({}, cbk) => {
         // Exit early and only single probe when not finding maximum
         if (!args.find_max) {
           return cbk();
         }
 
-        let error;
-        const probes = [];
+        if (!args.request) {
+          return cbk(null, {});
+        }
 
-        return asyncWhilst(
-          cbk => {
-            if ((args.max_paths || defaultMaxPaths) === probes.length) {
-              return cbk(null, false);
-            }
+        const decoded = parsePaymentRequest({request: args.request});
 
-            return cbk(null, !error);
-          },
-          cbk => {
-            return multiPathProbe({
-              destination: args.destination,
-              find_max: args.find_max,
-              ignore: args.ignore,
-              in_through: args.in_through,
-              lnd: args.lnd,
-              logger: args.logger,
-              out_through: args.out_through,
-              probes: probes.filter(n => !!n),
-              request: args.request,
-              timeout_minutes: args.timeout_minutes,
-              tokens: args.tokens,
-            },
-            (err, res) => {
-              if (!!err) {
-                return cbk(err);
-              }
+        return cbk(null, {
+          cltv_delta: decodeRequest.cltv_delta,
+          destination: decodeRequest.destination,
+          features: decodeRequest.features,
+          routes: decodeRequest.routes,
+        });
+      }],
 
-              if (!!res.error) {
-                error = res.error;
-              } else {
-                probes.push(res.probe || null);
-              }
+      // Get probe destination name
+      getDestination: ['decodeRequest', ({decodeRequest}, cbk) => {
+        const publicKey = decodeRequest.destination || args.destination;
 
-              return cbk();
-            });
-          },
-          err => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            const completed = probes.filter(n => !!n);
-
-            if (!completed.length) {
-              return cbk(error);
-            }
-
-            const latencyMs = completed
-              .map(n => n.latency_ms)
-              .filter(n => !!n)
-              .reduce((sum, n) => sum + n, Number());
-
-            const max = completed
-              .map(n => n.route_maximum || Number())
-              .reduce((sum, n) => sum + n, Number());
-
-            return cbk(null, {
-              latency_ms: latencyMs,
-              probes: completed.map(probe => {
-                return {
-                  channels: probe.success,
-                  fee: probe.fee,
-                  liquidity: probe.route_maximum,
-                  relays: probe.relays,
-                };
-              }),
-              routes_max: max,
-            });
+        return getNode({
+          is_omitting_channels: true,
+          lnd: args.lnd,
+          public_key: publicKey,
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(null, publicKey);
           }
-        );
+
+          return cbk(null, `${res.alias} ${publicKey}`.trim());
+        });
+      }],
+
+      // Probe iteratively through multiple paths
+      multiProbe: [
+        'checkLegacy',
+        'decodeRequest',
+        'getDestination',
+        ({decodeRequest, getDestination}, cbk) =>
+      {
+        // Exit early and only single probe when not finding maximum
+        if (!args.find_max) {
+          return cbk();
+        }
+
+        if (!!args.out_through) {
+          return cbk([501, 'FindMaxThroughOutPeerNotSupported']);
+        }
+
+        args.logger.info({probing: getDestination});
+
+        const sub = subscribeToMultiPathProbe({
+          cltv_delta: decodeRequest.cltv_delta || defaultFinalCltvDelta,
+          destination: decodeRequest.destination || args.destination,
+          features: decodeRequest.features,
+          ignore: args.ignore,
+          incoming_peer: args.in_through,
+          lnd: args.lnd,
+          max_paths: args.max_paths,
+          path_timeout_ms: pathTimeoutMs,
+          routes: decodeRequest.routes,
+        });
+
+        sub.on('error', err => cbk(err));
+
+        sub.on('evaluating', ({tokens}) => {
+          return args.logger.info({evaluating: tokens});
+        });
+
+        sub.on('failure', () => {
+          return cbk([503, 'FailedToFindAnyPathsToDestination']);
+        });
+
+        sub.on('probing', async ({route}) => {
+          const {description} = await describeRoute({route, lnd: args.lnd});
+
+          return args.logger.info({probing: description});
+        });
+
+        sub.on('routing_failure', async failure => {
+          const {description} = await describeRoutingFailure({
+            index: failure.index,
+            lnd: args.lnd,
+            reason: failure.reason,
+            route: failure.route,
+          });
+
+          return args.logger.info({failure: description});
+        });
+
+        sub.on('success', ({paths}) => {
+          return args.logger.info({paths});
+        });
+
+        return;
       }],
 
       // Probe just through a single path

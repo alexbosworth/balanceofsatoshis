@@ -13,7 +13,6 @@ const {returnResult} = require('asyncjs-util');
 const {signBytes} = require('ln-service');
 const {subscribeToFindMaxPayable} = require('probing');
 
-const {authenticatedLnd} = require('./../lnd');
 const executeProbe = require('./execute_probe');
 const {getInboundPath} = require('./../routing');
 const {sortBy} = require('./../arrays');

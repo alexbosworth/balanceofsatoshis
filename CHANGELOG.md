@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.41.4
+
+- `increase-inbound-liquidity`: Fix `--recovery` option
+- `probe`: Rework `--find-max` methodology
+
 ## Version 5.41.3
 
 - `increase-inbound-liquidity`: Support longer swap timeouts

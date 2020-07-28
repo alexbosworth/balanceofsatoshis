@@ -70,6 +70,10 @@ module.exports = ({channels, lnd, query}, cbk) => {
           return cbk();
         }
 
+        if (!query.toLowerCase) {
+          return cbk([400, 'InvalidEmptyQuerySpecifiedForMatchSearchQuery']);
+        }
+
         const keys = uniq(getChannels.channels.map(n => n.partner_public_key));
         const q = query.toLowerCase();
 

@@ -5,7 +5,7 @@ const {returnResult} = require('asyncjs-util');
 const {subscribeToProbe} = require('ln-service');
 const {subscribeToProbeForRoute} = require('ln-service');
 
-const {describeConfidence} = require('./../routing');
+const {describeConfidence} = require('./../display');
 
 const {now} = Date;
 const minutesAsMs = minutes => 1000 * 60 * minutes;

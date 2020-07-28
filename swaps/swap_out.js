@@ -397,7 +397,7 @@ module.exports = (args, cbk) => {
         ({getLimits, startHeight}, cbk) =>
       {
         // Exit early when the swap is already started
-        if (!!args.recover) {
+        if (!!args.recovery) {
           return cbk();
         }
 

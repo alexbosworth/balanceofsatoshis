@@ -1,6 +1,6 @@
 const {test} = require('@alexbosworth/tap');
 
-const {describeConfidence} = require('./../../routing');
+const {describeConfidence} = require('./../../display');
 
 const tests = [
   {

@@ -129,7 +129,7 @@ module.exports = (args, cbk) => {
         const rate = getUpdated.policies.find(n => n.public_key === args.from);
 
         if (rate.fee_rate !== args.fee_rate) {
-          return cbk([503, 'FailedToUpdateChannelPolicyToNewFeeRate']);
+          return cbk([503, 'FailedToUpdateChannelPolicyToNewFeeRate', {rate}]);
         }
 
         return cbk();
