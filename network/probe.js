@@ -12,7 +12,6 @@ const {subscribeToMultiPathProbe} = require('probing');
 
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
-const multiPathProbe = require('./multi_path_probe');
 const probeDestination = require('./probe_destination');
 
 const defaultFinalCltvDelta = 144;
@@ -91,9 +90,10 @@ module.exports = (args, cbk) => {
       decodeRequest: ['validate', ({}, cbk) => {
         // Exit early and only single probe when not finding maximum
         if (!args.find_max) {
-          return cbk();
+          return cbk(null, {});
         }
 
+        // Exit early when there is no request to decode
         if (!args.request) {
           return cbk(null, {});
         }
@@ -101,10 +101,10 @@ module.exports = (args, cbk) => {
         const decoded = parsePaymentRequest({request: args.request});
 
         return cbk(null, {
-          cltv_delta: decodeRequest.cltv_delta,
-          destination: decodeRequest.destination,
-          features: decodeRequest.features,
-          routes: decodeRequest.routes,
+          cltv_delta: decoded.cltv_delta,
+          destination: decoded.destination,
+          features: decoded.features,
+          routes: decoded.routes,
         });
       }],
 

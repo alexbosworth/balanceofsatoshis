@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.41.6
+
+- `probe`: Fix probing payment requests
+
 ## Version 5.41.5
 
 - `increase-inbound-liquidity`: Fix `--recovery` option
