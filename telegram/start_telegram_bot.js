@@ -12,6 +12,7 @@ const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const {subscribeToTransactions} = require('ln-service');
 const Telegraf = require('telegraf');
+const Telegram = require('telegraf/telegram')
 
 const backupCommand = require('./backup_command');
 const {getTransactionRecord} = require('./../chain');
@@ -152,6 +153,16 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         }
 
         bot = new Telegraf(apiKey);
+
+        const telegram = new Telegram(apiKey)
+
+        telegram.setMyCommands([
+          {command: 'backup', description: 'Get node backup file'},
+          {command: 'connect', description: 'Get connect code for the bot'},
+          {command: 'invoice', description: 'Create an invoice'},
+          {command: 'mempool', description: 'Get info about the mempool'},
+          {command: 'pay', description: 'Pay a payment request'},
+        ]);
 
         bot.catch(err => logger.error({telegram_error: err}));
 

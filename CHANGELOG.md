@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.42.1
+
+- `telegram`: Add command hinting autocomplete registration on bot start
+
 ## Version 5.42.0
 
 - `pay`: Add `--max-paths` option to attempt paying through multiple paths
