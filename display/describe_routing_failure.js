@@ -49,7 +49,7 @@ module.exports = ({index, lnd, reason, route}, cbk) => {
       getAlias: ['validate', ({}, cbk) => {
         const source = route.hops[index - [index].length];
 
-        if (!source) {
+        if (!source || !source.public_key) {
           return cbk();
         }
 

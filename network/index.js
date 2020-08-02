@@ -9,6 +9,7 @@ const multiPathProbe = require('./multi_path_probe');
 const networks = require('./networks');
 const openChannel = require('./open_channel');
 const openChannels = require('./open_channels');
+const pay = require('./pay');
 const {peerSortOptions} = require('./constants');
 const probe = require('./probe');
 const probeDestination = require('./probe_destination');
@@ -29,6 +30,7 @@ module.exports = {
   networks,
   openChannel,
   openChannels,
+  pay,
   peerSortOptions,
   probe,
   probeDestination,

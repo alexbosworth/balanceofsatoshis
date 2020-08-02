@@ -3,7 +3,7 @@ const asyncMap = require('async/map');
 const asyncWhilst = require('async/whilst');
 const {getChannel} = require('ln-service');
 const {getNode} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
+const {getSyntheticOutIgnores} = require('probing');
 const {getWalletVersion} = require('ln-service');
 const {parsePaymentRequest} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
@@ -12,13 +12,18 @@ const {subscribeToMultiPathProbe} = require('probing');
 
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
+const {formatTokens} = require('./../display');
+const {findKey} = require('./../peers');
 const probeDestination = require('./probe_destination');
 
 const defaultFinalCltvDelta = 144;
 const defaultMaxPaths = 5;
 const flatten = arr => [].concat(...arr);
+const {isArray} = Array;
 const pathTimeoutMs = 1000 * 60 * 5;
+const singlePath = 1;
 const uniq = arr => Array.from(new Set(arr));
+const unsupported = 501;
 
 /** Probe a destination, looking for multiple non-overlapping paths
 
@@ -32,7 +37,7 @@ const uniq = arr => Array.from(new Set(arr));
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [max_paths]: <Maximum Probe Paths Number>
-    [out_through]: <Out Through Peer With Public Key Hex String>
+    out: [<Out Through Peer With Public Key Hex String>]
     [request]: <BOLT 11 Encoded Payment Request String>
     [timeout_minutes]: <Stop Searching For Routes After N Minutes Number>
     [tokens]: <Tokens Number>
@@ -59,6 +64,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerObjectToStartProbe']);
         }
 
+        if (!isArray(args.out)) {
+          return cbk([400, 'ExpectedArrayOfOutPeersToStartProbe']);
+        }
+
         if (!!args.request) {
           try {
             parsePaymentRequest({request: args.request});
@@ -71,28 +80,22 @@ module.exports = (args, cbk) => {
       },
 
       // Determine if this wallet is a legacy
-      checkLegacy: ['validate', ({}, cbk) => {
-        // Exit early, only check legacy when finding max routable
-        if (!args.find_max) {
-          return cbk();
-        }
-
+      isLegacy: ['validate', ({}, cbk) => {
         return getWalletVersion({lnd: args.lnd}, err => {
-          if (!!err) {
-            return cbk([400, 'BackingLndDoesNotSupportMultiPathPayments']);
+          if (!!err && err.slice().shift === unsupported) {
+            return cbk(null, true);
           }
 
-          return cbk();
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, false);
         });
       }],
 
       // Decode payment request
       decodeRequest: ['validate', ({}, cbk) => {
-        // Exit early and only single probe when not finding maximum
-        if (!args.find_max) {
-          return cbk(null, {});
-        }
-
         // Exit early when there is no request to decode
         if (!args.request) {
           return cbk(null, {});
@@ -106,6 +109,61 @@ module.exports = (args, cbk) => {
           features: decoded.features,
           routes: decoded.routes,
         });
+      }],
+
+      // Find public keys to pay out through
+      getOuts: ['validate', ({}, cbk) => {
+        return asyncMap(args.out, (query, cbk) => {
+          return findKey({query, lnd: args.lnd}, cbk);
+        },
+        cbk);
+      }],
+
+      // Get synthetic ignores to approximate out
+      getIgnores: ['getOuts', ({getOuts}, cbk) => {
+        // Exit early when not doing a multi-path
+        if (!args.find_max && args.max_paths === singlePath) {
+          return cbk();
+        }
+
+        // Exit early when there is no outbound restriction
+        if (!getOuts.length) {
+          return cbk(null, {ignore: args.ignore});
+        }
+
+        return getSyntheticOutIgnores({
+          ignore: args.ignore,
+          lnd: args.lnd,
+          out: getOuts.map(n => n.public_key),
+        },
+        cbk);
+      }],
+
+      // Probe just through a single path
+      singleProbe: ['getOuts', ({getOuts}, cbk) => {
+        // Exit early when not finding max
+        if (!!args.find_max || args.max_paths !== singlePath) {
+          return cbk();
+        }
+
+        // Exit early when probing on a single path
+        if (getOuts.length > singlePath) {
+          return cbk([501, 'MultipleOutPeersNotSupportedWithSinglePath']);
+        }
+
+        const [outThrough] = getOuts.map(n => n.public_key);
+
+        return probeDestination({
+          destination: args.destination,
+          ignore: args.ignore,
+          in_through: args.in_through,
+          lnd: args.lnd,
+          logger: args.logger,
+          out_through: outThrough,
+          request: args.request,
+          tokens: args.tokens,
+        },
+        cbk);
       }],
 
       // Get probe destination name
@@ -128,19 +186,24 @@ module.exports = (args, cbk) => {
 
       // Probe iteratively through multiple paths
       multiProbe: [
-        'checkLegacy',
         'decodeRequest',
         'getDestination',
-        ({decodeRequest, getDestination}, cbk) =>
+        'getIgnores',
+        'getOuts',
+        'isLegacy',
+        ({decodeRequest, getDestination, getIgnores, isLegacy}, cbk) =>
       {
-        // Exit early and only single probe when not finding maximum
-        if (!args.find_max) {
+        // Exit early when not doing a multi-path
+        if (!args.find_max && args.max_paths === singlePath) {
           return cbk();
         }
 
-        if (!!args.out_through) {
-          return cbk([501, 'FindMaxThroughOutPeerNotSupported']);
+        // Exit with error when the backing LND is below 0.10.0
+        if (!!isLegacy) {
+          return cbk([501, 'BackingLndDoesNotSupportMultiPathPayments']);
         }
+
+        const paths = [];
 
         args.logger.info({probing: getDestination});
 
@@ -148,7 +211,7 @@ module.exports = (args, cbk) => {
           cltv_delta: decodeRequest.cltv_delta || defaultFinalCltvDelta,
           destination: decodeRequest.destination || args.destination,
           features: decodeRequest.features,
-          ignore: args.ignore,
+          ignore: getIgnores.ignore,
           incoming_peer: args.in_through,
           lnd: args.lnd,
           max_paths: args.max_paths,
@@ -164,6 +227,17 @@ module.exports = (args, cbk) => {
 
         sub.on('failure', () => {
           return cbk([503, 'FailedToFindAnyPathsToDestination']);
+        });
+
+        sub.on('path', path => {
+          paths.push(path);
+
+          const liquidity = paths.reduce((m, n) => m + n.liquidity, Number());
+
+          return args.logger.info({
+            found_liquidity: formatTokens({tokens: liquidity}).display,
+            found_paths: paths.length,
+          });
         });
 
         sub.on('probing', async ({route}) => {
@@ -184,30 +258,19 @@ module.exports = (args, cbk) => {
         });
 
         sub.on('success', ({paths}) => {
-          return args.logger.info({paths});
+          const liquidity = paths.reduce((m, n) => m + n.liquidity, Number());
+          const target = !args.find_max ? decodeRequest.tokens : undefined;
+
+          return args.logger.info({
+            target_amount: !!target ? formatTokens({tokens: target}) : target,
+            total_liquidity: formatTokens({tokens: liquidity}).display,
+            total_paths: paths.filter(n => !!n).length,
+          });
+
+          return cbk();
         });
 
         return;
-      }],
-
-      // Probe just through a single path
-      singleProbe: ['validate', ({}, cbk) => {
-        // Exit early when not finding max
-        if (!!args.find_max) {
-          return cbk();
-        }
-
-        return probeDestination({
-          destination: args.destination,
-          ignore: args.ignore,
-          in_through: args.in_through,
-          lnd: args.lnd,
-          logger: args.logger,
-          out_through: args.out_through,
-          request: args.request,
-          tokens: args.tokens,
-        },
-        cbk);
       }],
 
       // Results of probe

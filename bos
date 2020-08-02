@@ -50,6 +50,7 @@ const {lndCredentials} = require('./lnd');
 const marketPairs = require('./fiat').pairs;
 const {openChannel} = require('./network');
 const {openChannels} = require('./network');
+const {pay} = require('./network');
 const {peerSortOptions} = require('./network');
 const {priceProviders} = require('./fiat');
 const {probe} = require('./network');
@@ -811,24 +812,26 @@ prog
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT, 1337)
+  .option('--max-paths <paths>', 'Maximum paths to use', INT, 1)
   .option('--message <message>', 'Attach text message to payment')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use to pay payment request')
-  .option('--out <public_key>', 'Make first hop through specific peer')
+  .option('--out <public_key>', 'Make first hop through peer', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         const {lnd} = await authenticatedLnd({logger, node: options.node});
 
-        return probeDestination({
+        return pay({
           lnd,
           logger,
           ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
           in_through: (await findKey({lnd, query: options.in})).public_key,
           is_real_payment: true,
           max_fee: options.maxFee,
+          max_paths: options.maxPaths,
           message: options.message,
-          out_through: (await findKey({lnd, query: options.out})).public_key,
+          out: flatten([options.out].filter(n => !!n)),
           request: args.request,
         },
         returnObject({logger, reject, resolve}));
@@ -915,7 +918,7 @@ prog
   .option('--max-paths <max>', 'Maximum paths to use for find-max', INT, 1)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for payment request check')
-  .option('--out <public_key>', 'Make first hop through specific peer')
+  .option('--out <public_key>', 'Make first hop through peer', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -925,11 +928,11 @@ prog
           lnd,
           logger,
           destination: args.to.length === 66 ? args.to : undefined,
-          find_max: !!options.findMax ? 4294967 : undefined,
+          find_max: !!options.findMax ? 16777215 : undefined,
           ignore: ignoreFromAvoid({avoid: options.avoid}).ignore,
           in_through: (await findKey({lnd, query: options.in})).public_key,
           max_paths: options.maxPaths,
-          out_through: (await findKey({lnd, query: options.out})).public_key,
+          out: flatten([options.out].filter(n => !!n)),
           request: args.to.length !== 66 ? args.to : undefined,
           tokens: args.amount || undefined,
         },

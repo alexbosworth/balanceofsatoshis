@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.42.0
+
+- `pay`: Add `--max-paths` option to attempt paying through multiple paths
+- `pay`: Allow paying through multiple out peers when multiple paths specified
+- `probe`: Allow probe through multiple out peers when multiple paths specified
+
 ## Version 5.41.6
 
 - `probe`: Fix probing payment requests
