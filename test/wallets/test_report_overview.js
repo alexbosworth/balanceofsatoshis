@@ -1,4 +1,4 @@
-const {test} = require('@alexbosworth/tap');
+const {test} = require('tap');
 
 const method = require('./../../wallets/report_overview');
 

@@ -1,5 +1,5 @@
 const {encode} = require('cbor');
-const {test} = require('@alexbosworth/tap');
+const {test} = require('tap');
 
 const registerNode = require('./../../nodes/register_node');
 

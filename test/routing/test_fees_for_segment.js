@@ -1,4 +1,4 @@
-const {test} = require('@alexbosworth/tap');
+const {test} = require('tap');
 
 const feesForSegment = require('./../../routing/fees_for_segment');
 

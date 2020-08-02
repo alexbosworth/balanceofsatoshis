@@ -1,4 +1,4 @@
-const {test} = require('@alexbosworth/tap');
+const {test} = require('tap');
 
 const {chanInfoResponse} = require('./../fixtures');
 const channels = require('./../fixtures').liquidityChannelsResponse;

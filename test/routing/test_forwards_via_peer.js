@@ -1,4 +1,4 @@
-const {test} = require('@alexbosworth/tap');
+const {test} = require('tap');
 
 const forwardsViaPeer = require('./../../routing/forwards_via_peer');
 

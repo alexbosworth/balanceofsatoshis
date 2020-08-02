@@ -1,4 +1,4 @@
-const {test} = require('@alexbosworth/tap');
+const {test} = require('tap');
 
 const tableRowsFromCsv = require('./../../balances/table_rows_from_csv');
 

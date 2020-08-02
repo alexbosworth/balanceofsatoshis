@@ -1,4 +1,4 @@
-const {test} = require('@alexbosworth/tap');
+const {test} = require('tap');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {getRawTransaction} = require('./../../chain');
