@@ -15,7 +15,7 @@ const topPercentile = 0.9;
 
 /** Get the channel available liquidity
 
-  A request function is requried
+  A request function is required when min_node_score is specified
 
   {
     [above]: <Tokens Above Tokens Number>

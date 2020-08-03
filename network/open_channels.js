@@ -107,8 +107,17 @@ module.exports = (args, cbk) => {
               return cbk(null, {public_key: key, sockets: []});
             }
 
+            const peers = res.channels.map(({policies}) => {
+              return policies.find(n => n.public_key !== key).public_key;
+            });
+
+            const isBig = res.features.find(n => n.type === 'large_channels');
+
             return cbk(null, {
               alias: res.alias,
+              channels_count: res.channels.length,
+              is_accepting_large_channels: !!isBig || undefined,
+              peers_count: uniq(peers).length,
               public_key: key,
               sockets: res.sockets,
             });
@@ -138,6 +147,16 @@ module.exports = (args, cbk) => {
 
           return {total, public_key: key};
         });
+
+        const nodes = getNodes.filter(n => !!n.channels_count).map(node => {
+          return {
+            node: `${node.alias || node.public_key}`,
+            channels_per_peer: `${node.channels_count / node.peers_count}`,
+            is_accepting_large_channels: node.is_accepting_large_channels,
+          };
+        });
+
+        args.logger.info(nodes);
 
         const openingTo = getNodes.map(node => {
           const {total} = channels.find(n => n.public_key === node.public_key);

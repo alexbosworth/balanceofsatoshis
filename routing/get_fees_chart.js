@@ -5,6 +5,7 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
+const {formatTokens} = require('./../display');
 const getForwards = require('./get_forwards');
 
 const asDate = n => n.toISOString();
@@ -104,6 +105,13 @@ module.exports = (args, cbk) => {
         return cbk(null, forwards.reduce((sum, {fee}) => sum + fee, Number()));
       }],
 
+      // Total forwarded
+      totalForwarded: ['forwards', ({forwards}, cbk) => {
+        const total = forwards.reduce((sum, n) => sum + n.tokens, Number());
+
+        return cbk(null, total);
+      }],
+
       // Total number of segments
       segments: ['measure', ({measure}, cbk) => {
         switch (measure) {
@@ -135,7 +143,8 @@ module.exports = (args, cbk) => {
         'start',
         'sum',
         'totalEarned',
-        ({forwards, measure, start, totalEarned, sum}, cbk) =>
+        'totalForwarded',
+        ({forwards, measure, start, totalEarned, totalForwarded, sum}, cbk) =>
       {
         const since = `since ${start.calendar().toLowerCase()}`;
 
@@ -144,6 +153,12 @@ module.exports = (args, cbk) => {
           const forwarded = `Total: ${forwards.length} forwards`;
 
           return cbk(null, `${duration} ${since}. ${forwarded}`);
+        } else if (!!args.is_forwarded) {
+          const duration = `Forwarded in ${sum.count.length} ${measure}s`;
+
+          const {display} = formatTokens({tokens: totalForwarded});
+
+          return cbk(null, `${duration} ${since}. Total: ${display}`);
         } else {
           const duration = `Earned in ${sum.fees.length} ${measure}s`;
           const earned = (totalEarned / 1e8).toFixed(8);
@@ -152,10 +167,21 @@ module.exports = (args, cbk) => {
         }
       }],
 
-      // Summary title of the fees earned
-      title: ['getNode', ({getNode}, cbk) => {
-        const head = !args.is_count ? 'Routing fees earned' : 'Forwards count';
+      // Heading
+      head: ['validate', ({}, cbk) => {
+        if (!!args.is_count) {
+          return cbk(null, 'Forwards count');
+        }
 
+        if (!!args.is_forwarded) {
+          return cbk(null, 'Forwarded amount');
+        }
+
+        return cbk(null, 'Routing fees earned');
+      }],
+
+      // Summary title of the fees earned
+      title: ['getNode', 'head', ({getNode, head}, cbk) => {
         if (!args.via) {
           return cbk(null, head);
         }
@@ -172,9 +198,15 @@ module.exports = (args, cbk) => {
         'title',
         ({description, sum, title}, cbk) =>
       {
-        const data = !args.is_count ? sum.fees : sum.count;
+        if (!!args.is_count) {
+          return cbk(null, {description, title, data: sum.count});
+        }
 
-        return cbk(null, {data, description, title});
+        if (!!args.is_forwarded) {
+          return cbk(null, {description, title, data: sum.forwarded});
+        }
+
+        return cbk(null, {description, title, data: sum.fees});
       }],
     },
     returnResult({reject, resolve, of: 'data'}, cbk));

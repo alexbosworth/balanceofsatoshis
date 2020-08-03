@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.43.0
+
+- `chart-fees-earned`: Add `--forwarded` option to show total amount forwarded
+- `telegram`: Add `/liquidity` command to show overall liquidity, or with a peer
+
 ## Version 5.42.1
 
 - `telegram`: Add command hinting autocomplete registration on bot start

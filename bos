@@ -276,6 +276,7 @@ prog
   .help('Show the routing fees earned')
   .option('--count', 'Show count of forwards instead of fees earned')
   .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
+  .option('--forwarded', 'Show amount forwarded instead of fees earned')
   .option('--node <node_name>', 'Get saved node fees earned', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -283,6 +284,7 @@ prog
         return getFeesChart({
           days: options.days,
           is_count: options.count,
+          is_forwarded: options.forwarded,
           lnds: (await getLnds({logger, nodes: options.node})).lnds,
           via: args.viaPeer,
         },

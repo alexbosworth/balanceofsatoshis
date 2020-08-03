@@ -45,11 +45,13 @@ module.exports = ({forwards, measure, segments}) => {
     return {
       count: segmentForwards.reduce((sum, {}) => ++sum, Number()),
       fees: segmentForwards.reduce((sum, {fee}) => sum + fee, Number()),
+      forwarded: segmentForwards.reduce((sum, n) => sum + n.tokens, Number()),
     };
   });
 
   return {
     count: fees.map(({count}) => count).slice().reverse(),
     fees: fees.map(({fees}) => fees).slice().reverse(),
+    forwarded: fees.map(({forwarded}) => forwarded).slice().reverse(),
   };
 };

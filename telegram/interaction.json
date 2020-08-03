@@ -12,6 +12,7 @@
   "pay_budget_depleted": "⚠️ No budget for payments",
   "pay_syntax": "/pay <payment request> \\[max payment amount]",
   "payment_is_stuck": "⚠️ Payment is pending",
+  "peer_not_found": "🤖 Peer not found",
   "requesting_mempool": "🤖 Generating mempool report...",
   "requesting_mempool_failed": "🤖 Getting mempool from mempool.space failed ☹️",
   "select_node_for_invoice": "Node to make invoice on?",

@@ -19,6 +19,7 @@ const {getTransactionRecord} = require('./../chain');
 const handleMempoolCommand = require('./handle_mempool_command');
 const interaction = require('./interaction');
 const invoiceCommand = require('./invoice_command');
+const liquidityCommand = require('./liquidity_command');
 const payCommand = require('./pay_command');
 const postChainTransaction = require('./post_chain_transaction');
 const postClosedMessage = require('./post_closed_message');
@@ -160,6 +161,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           {command: 'backup', description: 'Get node backup file'},
           {command: 'connect', description: 'Get connect code for the bot'},
           {command: 'invoice', description: 'Create an invoice'},
+          {command: 'liquidity', description: 'Get liquidity [with-peer]'},
           {command: 'mempool', description: 'Get info about the mempool'},
           {command: 'pay', description: 'Pay a payment request'},
         ]);
@@ -233,6 +235,25 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           return await handleMempoolCommand({
             request,
             reply: replyWithMarkdown,
+          });
+        });
+
+        bot.command('liquidity', ({message, reply}) => {
+          liquidityCommand({
+            reply,
+            request,
+            from: message.from.id,
+            id: connectedId,
+            key: apiKey,
+            nodes: getNodes,
+            text: message.text,
+          },
+          err => {
+            if (!!err) {
+              return logger.error(err);
+            }
+
+            return;
           });
         });
 
