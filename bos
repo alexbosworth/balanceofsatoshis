@@ -531,6 +531,7 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return gateway({
+          logger,
           credentials: await lndCredentials({node: options.node}),
           port: options.port,
         });

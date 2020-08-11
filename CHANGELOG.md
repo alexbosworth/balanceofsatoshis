@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.43.1
+
+- `open`: Fix signature validity in some native segwit signing scenarios
+
 ## Version 5.43.0
 
 - `chart-fees-earned`: Add `--forwarded` option to show total amount forwarded

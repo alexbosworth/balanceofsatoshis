@@ -12,7 +12,7 @@ const makeLnd = ({}) => {
 };
 
 const makeQuote = ({}) => ({
-  cltv_delta: 1,
+  cltv_delta: 10,
   prepay_amt: 1,
   swap_fee: 2,
   swap_payment_dest: Buffer.alloc(33).toString('hex'),
@@ -26,9 +26,9 @@ const makeService = ({}) => {
 };
 
 const makeTerms = ({max, min}) => ({
-  max_cltv_delta: 2,
+  max_cltv_delta: 20,
   max_swap_amount: max || 1,
-  min_cltv_delta: 1,
+  min_cltv_delta: 10,
   min_swap_amount: min || 1,
 });
 

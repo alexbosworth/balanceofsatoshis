@@ -8,6 +8,7 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const {balanceFromTokens} = require('./../balances');
+const {cltvDeltaBuffer} = require('./constants');
 const {fastDelayMinutes} = require('./constants');
 const getPaidService = require('./get_paid_service');
 const {slowDelayMinutes} = require('./constants');
@@ -109,6 +110,7 @@ module.exports = (args, cbk) => {
         'getTerms',
         ({getHeight, getService, getTerms}, cbk) =>
       {
+        const cltv = getTerms.max_cltv_delta + getHeight.current_block_height;
         const swapDelay = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
 
         switch (args.type) {
@@ -118,7 +120,7 @@ module.exports = (args, cbk) => {
             macaroon: getService.macaroon,
             preimage: getService.preimage,
             service: getService.service,
-            timeout: getTerms.max_cltv_delta + getHeight.current_block_height,
+            timeout: cltv - cltvDeltaBuffer,
             tokens: args.tokens,
           },
           cbk);

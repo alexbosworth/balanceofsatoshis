@@ -74,7 +74,7 @@ module.exports = ({from, id, key, lnd, request}, cbk) => {
               request,
               forwards: res.forwards,
             },
-            () => setTimeout(cbk, pollingIntervalMs));
+            cbk);
           });
         },
         cbk);

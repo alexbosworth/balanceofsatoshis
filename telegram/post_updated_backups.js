@@ -82,7 +82,7 @@ module.exports = ({id, key, lnd, logger, node, request}, cbk) => {
           return;
         });
 
-        sub.on('error', err => cbk(null, err));
+        sub.on('error', err => cbk([503, 'ErrorInBackupsSub', {err}]));
 
         return;
       }],

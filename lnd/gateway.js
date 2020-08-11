@@ -1,6 +1,9 @@
 const {grpcProxyServer} = require('ln-service/routers');
+const {restrictMacaroon} = require('ln-service');
 
-const {log} = console;
+const base64AsHex = base64 => Buffer.from(base64, 'base64').toString('hex');
+const defaultExpireMs = 1000 * 60 * 60 * 24 * 7;
+const {now} = Date;
 const path = '/v0/grpc/';
 
 /** Start an LND gateway server
@@ -16,7 +19,7 @@ const path = '/v0/grpc/';
   @returns
   {}
 */
-module.exports = ({credentials, port}) => {
+module.exports = ({credentials, logger, port}) => {
   if (!credentials) {
     throw new Error('ExpectedCredentialsForLndGateway');
   }
@@ -25,12 +28,31 @@ module.exports = ({credentials, port}) => {
     throw new Error('ExpectedCertToStartLndGateway');
   }
 
+  if (!logger) {
+    throw new Error('ExpectedLoggerToStartLndGateway');
+  }
+
   if (!port) {
     throw new Error('ExpectedPortToStartLndGateway');
   }
 
   if (!credentials.socket) {
     throw new Error('ExpectedLndRpcSocketToStartLndGateway');
+  }
+
+  const {macaroon} = restrictMacaroon({
+    expires_at: new Date(now() + defaultExpireMs).toISOString(),
+    macaroon: credentials.macaroon,
+  });
+
+  logger.info({macaroon: base64AsHex(macaroon)});
+
+  const log = (err, line) => {
+    if (!!err) {
+      return logger.err({gateway: err});
+    }
+
+    return logger.info({gateway: line})
   }
 
   const {app, server, wss} = grpcProxyServer({

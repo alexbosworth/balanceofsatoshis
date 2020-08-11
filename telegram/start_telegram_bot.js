@@ -60,6 +60,7 @@ const restartSubscriptionTimeMs = 1000 * 30;
 */
 module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
   let connectedId = id;
+  let isStopped = false;
   let paymentsLimit = !payments || !payments.limit ? Number() : payments.limit;
 
   return new Promise((resolve, reject) => {
@@ -331,25 +332,17 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
       // Subscribe to backups
       backups: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
         return asyncEach(getNodes, (node, cbk) => {
-          return asyncForever(cbk => {
-            return postUpdatedBackups({
-              logger,
-              request,
-              id: connectedId,
-              key: apiKey,
-              lnd: node.lnd,
-              node: {alias: node.alias, public_key: node.public_key},
-            },
-            cbk);
+          return postUpdatedBackups({
+            logger,
+            request,
+            id: connectedId,
+            key: apiKey,
+            lnd: node.lnd,
+            node: {alias: node.alias, public_key: node.public_key},
           },
-          err => {
-            if (!!err) {
-              logger.error({backups_err: err});
-            }
-
-            return setTimeout(cbk, restartSubscriptionTimeMs);
-          });
-        });
+          cbk);
+        },
+        cbk);
       }],
 
       // Channel status changes
@@ -427,23 +420,14 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
       // Poll for forwards
       forwards: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
-          return asyncForever(cbk => {
-            return postForwardedPayments({
-              from,
-              lnd,
-              request,
-              id: connectedId,
-              key: apiKey,
-            },
-            cbk);
+          return postForwardedPayments({
+            from,
+            lnd,
+            request,
+            id: connectedId,
+            key: apiKey,
           },
-          err => {
-            if (!!err) {
-              logger.error({forwards_err: err});
-            }
-
-            return setTimeout(cbk, restartSubscriptionTimeMs);
-          });
+          cbk);
         },
         cbk);
       }],
@@ -557,6 +541,10 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         cbk);
       }],
     },
-    returnResult({reject, resolve}, cbk));
+    (err, res) => {
+      isStopped = true;
+
+      return returnResult({reject, resolve})(err, res);
+    });
   });
 };

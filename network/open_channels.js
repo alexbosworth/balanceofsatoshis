@@ -35,6 +35,7 @@ const interrogationSeparator = ' and \n  ';
 const {isArray} = Array;
 const isHex = n => !!n && !(n.length % 2) && /^[0-9A-F]*$/i.test(n);
 const makeId = () => randomBytes(32).toString('hex');
+const per = (a, b) => (a / b).toFixed(2);
 const times = 10;
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const uniq = arr => Array.from(new Set(arr));
@@ -151,7 +152,7 @@ module.exports = (args, cbk) => {
         const nodes = getNodes.filter(n => !!n.channels_count).map(node => {
           return {
             node: `${node.alias || node.public_key}`,
-            channels_per_peer: `${node.channels_count / node.peers_count}`,
+            channels_per_peer: `${per(node.channels_count, node.peers_count)}`,
             is_accepting_large_channels: node.is_accepting_large_channels,
           };
         });

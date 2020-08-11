@@ -1,4 +1,5 @@
 {
+  "cltvDeltaBuffer": 3,
   "estimatedSweepVbytes": 153,
   "fastDelayMinutes": 1,
   "feeRateDenominator": 1000000,
