@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.43.2
+
+- `pay`: Fix pay not working when both --out and --max-paths were specified
+
 ## Version 5.43.1
 
 - `open`: Fix signature validity in some native segwit signing scenarios

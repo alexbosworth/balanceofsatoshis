@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {getChannels} = require('ln-service');
+const {getSyntheticOutIgnores} = require('probing');
 const {getWalletInfo} = require('ln-service');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -205,18 +206,7 @@ module.exports = (args, cbk) => {
             return cbk([503, 'FailedToFindEnoughLiquidityOnPathsToPay']);
           }
 
-          const filteredPaths = paths.filter(path => {
-            // Exit early when there is no outbound restriction
-            if (!args.out.length) {
-              return true;
-            }
-
-            const [out] = path.relays;
-
-            return args.out.includes(out);
-          });
-
-          return cbk(null, {paths: filteredPaths});
+          return cbk(null, {paths});
         });
 
         return;
