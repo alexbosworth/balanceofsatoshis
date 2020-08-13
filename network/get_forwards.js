@@ -235,7 +235,7 @@ module.exports = (args, cbk) => {
           return cbk(null, {peers: forwards.peers});
         }
 
-        const isWideSize = size.get().width > wideSizeCols;
+        const isWideSize = !size || size.get().width > wideSizeCols;
 
         return cbk(null, {
           peers: forwards.peers,

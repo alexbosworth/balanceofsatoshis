@@ -17,7 +17,7 @@
   ],
   "nodes": [
     {
-      "addresses": [{"addr": "127.0.0.1:9735"}],
+      "addresses": [{"addr": "127.0.0.1:9735", "network": "tcp"}],
       "alias": "alias",
       "color": "#000000",
       "features": [],

@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.43.3
+
+- `forwards`: Correct issue displaying forwards when window size is unknown
+- `peers`: Correct issue displaying peers when window size is unknown
+
 ## Version 5.43.2
 
 - `pay`: Fix pay not working when both --out and --max-paths were specified

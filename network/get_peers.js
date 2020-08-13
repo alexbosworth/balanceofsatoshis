@@ -456,7 +456,7 @@ module.exports = (args, cbk) => {
           });
         }
 
-        const isWideSize = size.get().width > wideSizeCols;
+        const isWideSize = !size || size.get().width > wideSizeCols;
 
         return cbk(null, {
           peers: peers.peers,

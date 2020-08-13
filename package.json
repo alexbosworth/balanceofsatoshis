@@ -29,7 +29,7 @@
     "ini": "1.3.5",
     "inquirer": "7.3.3",
     "ln-accounting": "4.1.7",
-    "ln-service": "49.5.1",
+    "ln-service": "49.6.0",
     "ln-sync": "0.0.9",
     "moment": "2.27.0",
     "probing": "1.2.0",
@@ -67,5 +67,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "5.43.2"
+  "version": "5.43.3"
 }
