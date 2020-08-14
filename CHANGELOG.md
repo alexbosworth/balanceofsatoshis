@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.43.4
+
+- `fanout`: Correct error reporting
+- `fees`: Correct error reporting
+- `find`: Correct error reporting
+
 ## Version 5.43.3
 
 - `forwards`: Correct issue displaying forwards when window size is unknown

@@ -437,8 +437,8 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to do fan out for')
   .action((args, options, logger) => {
-    try {
-      return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+      try {
         return splitUtxos({
           count: args.count,
           is_confirmed: !!options.confirmed,
@@ -448,10 +448,10 @@ prog
           tokens_per_vbyte: options.feerate,
         },
         returnObject({logger, reject, resolve}));
-      });
-    } catch (err) {
-      return reject(err);
-    }
+      } catch (err) {
+        return reject(err);
+      }
+    });
   })
 
   // Show and set outbound fee rates
@@ -462,8 +462,8 @@ prog
   .option('--set-fee-rate <rate>', 'Forward fee in parts per million', INT)
   .option('--to <peer>', 'Peer public key or alias to set fees', REPEATABLE)
   .action((args, options, logger) => {
-    try {
-      return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+      try {
         return adjustFees({
           logger,
           fee_rate: options.setFeeRate,
@@ -471,10 +471,10 @@ prog
           to: flatten([options.to].filter(n => !!n)),
         },
         returnObject({logger, reject, resolve, table: 'rows'}));
-      });
-    } catch (err) {
-      return reject(err);
-    }
+      } catch (err) {
+        return reject(err);
+      }
+    });
   })
 
   // Query the node to search for something
@@ -484,17 +484,17 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to find record on')
   .action((args, options, logger) => {
-    try {
-      return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+      try {
         return findRecord({
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           query: args.query,
         },
         returnObject({logger, reject, resolve}));
-      });
-    } catch (err) {
-      return reject(err);
-    }
+      } catch (err) {
+        return reject(err);
+      }
+    });
   })
 
   // Get forwards
