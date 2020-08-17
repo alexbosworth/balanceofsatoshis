@@ -8,6 +8,7 @@ const asyncMap = require('async/map');
 const {getWalletInfo} = require('ln-service');
 const inquirer = require('inquirer');
 const {returnResult} = require('asyncjs-util');
+const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const {subscribeToTransactions} = require('ln-service');
@@ -31,12 +32,14 @@ const sendMessage = require('./send_message');
 
 let bot;
 const botKeyFile = 'telegram_bot_api_key';
+const delay = 1000 * 60;
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const home = '.bos';
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
 const maxCommandDelayMs = 1000 * 10;
 const msSince = epoch => Date.now() - (epoch * 1e3);
+const network = 'btc';
 const restartSubscriptionTimeMs = 1000 * 30;
 
 /** Start a Telegram bot
@@ -160,6 +163,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
         telegram.setMyCommands([
           {command: 'backup', description: 'Get node backup file'},
+          {command: 'blocknotify', description: 'Get notified on next block'},
           {command: 'connect', description: 'Get connect code for the bot'},
           {command: 'invoice', description: 'Create an invoice'},
           {command: 'liquidity', description: 'Get liquidity [with-peer]'},
@@ -205,6 +209,34 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             nodes: getNodes,
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
+
+          return;
+        });
+
+        bot.command('blocknotify', ({replyWithMarkdown}) => {
+          let currentHeight;
+          const sub = subscribeToBlocks({delay, network, request});
+
+          sub.on('block', ({height}) => {
+            // Exit early when there is no current height
+            if (!currentHeight) {
+              currentHeight = height;
+
+              return replyWithMarkdown([
+                interaction.requesting_block_notification,
+                `Chain height is currently ${height}`,
+              ].join('. '));
+            }
+
+            replyWithMarkdown([
+              interaction.block_notification,
+              `Chain height is now ${height}`,
+            ].join('. '));
+
+            return sub.removeAllListeners();
+          });
+
+          sub.on('error', err => logger.error(err));
 
           return;
         });
@@ -295,6 +327,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         bot.help(ctx => {
           const commands = [
             '/backup - Get node backup file',
+            '/blocknotify - Notification on next block',
             '/connect - Connect bot',
             '/invoice - Make an invoice',
             '/mempool - BTC mempool report',
