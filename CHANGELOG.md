@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.44.0
+
+- `telegram`: Add `blocknotify` command to be notified on the next block
+
 ## Version 5.43.4
 
 - `fanout`: Correct error reporting
