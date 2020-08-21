@@ -41,7 +41,12 @@ module.exports = ({id, key, request, text}, cbk) => {
       // Send message
       send: ['validate', ({}, cbk) => {
         return request({
-          qs: {text, chat_id: id, parse_mode: parseMode},
+          qs: {
+            text,
+            chat_id: id,
+            parse_mode: parseMode,
+            disable_web_page_preview: true,
+          },
           url: `${api}/bot${key}/sendMessage`,
         },
         (err, r, body) => {
@@ -69,7 +74,7 @@ module.exports = ({id, key, request, text}, cbk) => {
         }
 
         return request({
-          qs: {text, chat_id: id},
+          qs: {text, chat_id: id, disable_web_page_preview: true},
           url: `${api}/bot${key}/sendMessage`,
         },
         (err, r, body) => {

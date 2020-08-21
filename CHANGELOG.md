@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.44.1
+
+- `increase-inbound-liquidity`: Add error checking for server create swap errors
+- `telegram`: Disable web previews triggered by aliases
+
 ## Version 5.44.0
 
 - `telegram`: Add `blocknotify` command to be notified on the next block

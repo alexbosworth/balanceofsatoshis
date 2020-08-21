@@ -112,16 +112,21 @@ module.exports = ({lnd, logger, socket, token}, cbk) => {
 
       // Get the paid service object
       service: [
+        'decodeToken',
         'getNetwork',
         'getUnpaidMacaroon',
         'payForMacaroon',
-        ({getNetwork, getUnpaidMacaroon, payForMacaroon}, cbk) =>
+        ({decodeToken, getNetwork, getUnpaidMacaroon, payForMacaroon}, cbk) =>
       {
         const {id} = getUnpaidMacaroon;
         const {macaroon} = getUnpaidMacaroon;
         const {network} = getNetwork;
         const {paid} = payForMacaroon;
         const {preimage} = payForMacaroon;
+
+        if (!decodeToken && !paid) {
+          return cbk([400, 'FailedToPurchasePaidServiceTokens']);
+        }
 
         try {
           lightningLabsSwapService({macaroon, network, socket});
