@@ -43,6 +43,7 @@ module.exports = ({id, key, request, text}, cbk) => {
         return request({
           qs: {text, chat_id: id, parse_mode: parseMode},
           url: `${api}/bot${key}/sendMessage`,
+          disable_web_page_preview: false,
         },
         (err, r, body) => {
           if (!!err) {
