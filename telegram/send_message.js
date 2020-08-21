@@ -48,6 +48,7 @@ module.exports = ({id, key, request, text}, cbk) => {
             disable_web_page_preview: true,
           },
           url: `${api}/bot${key}/sendMessage`,
+          disable_web_page_preview: false,
         },
         (err, r, body) => {
           if (!!err) {
