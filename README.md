@@ -222,7 +222,7 @@ Some commands are designed to return outputs that can be piped or used in other 
 ### Summarize Numbers
 
 ```shell
-expr $(bos balance --node=savedNode1) + $(bos balance --node=savedNode1)
+expr $(bos balance --node=savedNode1) + $(bos balance --node=savedNode2)
 # outputs the combined balance of both nodes
 ```
 
