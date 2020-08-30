@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.45.0
+
+- `gateway`: Add gateway service to allow connecting web applications
+
 ## Version 5.44.1
 
 - `increase-inbound-liquidity`: Add error checking for server create swap errors

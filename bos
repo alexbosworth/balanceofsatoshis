@@ -522,9 +522,8 @@ prog
     });
   })
 
-  // Start a REST gateway
-  .command('gateway', 'Start REST request gateway')
-  .visible(false)
+  // Start a gateway service
+  .command('gateway', 'Start request gateway')
   .option('--node <node_name>', 'Node for gateway')
   .option('--port <port>', 'Port for gateway', INT, 4805)
   .action((args, options, logger) => {

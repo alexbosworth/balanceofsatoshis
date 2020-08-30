@@ -1,8 +1,10 @@
+const {encode} = require('cbor');
 const {grpcProxyServer} = require('ln-service/routers');
+const moment = require('moment');
 const {restrictMacaroon} = require('ln-service');
 
-const base64AsHex = base64 => Buffer.from(base64, 'base64').toString('hex');
-const defaultExpireMs = 1000 * 60 * 60 * 24 * 7;
+const base64AsBuf = base64 => Buffer.from(base64, 'base64');
+const defaultExpireMs = 1000 * 60 * 10;
 const {now} = Date;
 const path = '/v0/grpc/';
 
@@ -40,12 +42,16 @@ module.exports = ({credentials, logger, port}) => {
     throw new Error('ExpectedLndRpcSocketToStartLndGateway');
   }
 
+  const expiry = new Date(now() + defaultExpireMs);
+
   const {macaroon} = restrictMacaroon({
-    expires_at: new Date(now() + defaultExpireMs).toISOString(),
+    expires_at: expiry.toISOString(),
     macaroon: credentials.macaroon,
   });
 
-  logger.info({macaroon: base64AsHex(macaroon)});
+  const code = encode({port, macaroon: base64AsBuf(macaroon)}).toString('hex');
+
+  logger.info({connection_code: code, expires_at: moment(expiry).calendar()});
 
   const log = (err, line) => {
     if (!!err) {
@@ -53,7 +59,7 @@ module.exports = ({credentials, logger, port}) => {
     }
 
     return logger.info({gateway: line})
-  }
+  };
 
   const {app, server, wss} = grpcProxyServer({
     log,
