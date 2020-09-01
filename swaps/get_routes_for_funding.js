@@ -114,7 +114,7 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Determine if the backing wallet is capabile of multi-path
+      // Determine if the backing wallet is capable of multi-path
       getMultiSupport: ['validate', ({}, cbk) => {
         return getWalletVersion({lnd: args.lnd}, (err, res) => {
           return cbk(null, {is_multi_supported: !err});

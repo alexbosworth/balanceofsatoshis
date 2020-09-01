@@ -37,7 +37,7 @@
     "qrcode-terminal": "0.12.0",
     "sanitize-filename": "1.6.3",
     "stats-lite": "2.2.0",
-    "table": "5.4.6",
+    "table": "6.0.1",
     "telegraf": "3.38.0",
     "update-notifier": "4.1.1",
     "window-size": "1.1.1"
@@ -67,5 +67,5 @@
   "scripts": {
     "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "5.45.0"
+  "version": "5.46.0"
 }

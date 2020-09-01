@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.46.0
+
+- `forwards`: Add `--in` to show forwards from a specified peer
+- `forwards`: Add `--out` to show forwards to a specified peer
+- `increase-inbound-liquidity`: Reenable swap final output logging
+
 ## Version 5.45.0
 
 - `gateway`: Add gateway service to allow connecting web applications

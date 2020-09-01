@@ -1271,6 +1271,6 @@ module.exports = (args, cbk) => {
         });
       }],
     },
-    returnResult({reject, resolve, /**of: 'summary'**/}, cbk));
+    returnResult({reject, resolve, of: 'summary'}, cbk));
   });
 };
