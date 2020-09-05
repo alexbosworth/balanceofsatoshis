@@ -13,7 +13,7 @@ const startTelegramBot = require('./start_telegram_bot');
 const watch = require('./watch');
 
 const home = '.bos';
-const restartDelayMs = 1000 * 30;
+const restartDelayMs = 1000 * 60 * 3;
 
 /** Connect nodes to Telegram
 

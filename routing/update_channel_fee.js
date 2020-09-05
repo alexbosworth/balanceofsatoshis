@@ -5,7 +5,9 @@ const {getPendingChannels} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {updateRoutingFees} = require('ln-service');
 
+const {abs} = Math;
 const asOut = n => `${n.transaction_id}:${n.transaction_vout}`;
+const feeRateBuffer = 1;
 
 /** Update the fee for an individual channel
 
@@ -128,7 +130,7 @@ module.exports = (args, cbk) => {
       checkUpdated: ['getUpdated', ({getUpdated}, cbk) => {
         const rate = getUpdated.policies.find(n => n.public_key === args.from);
 
-        if (rate.fee_rate !== args.fee_rate) {
+        if (abs(rate.fee_rate - args.fee_rate) > feeRateBuffer) {
           return cbk([503, 'FailedToUpdateChannelPolicyToNewFeeRate', {rate}]);
         }
 

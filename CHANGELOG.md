@@ -1,5 +1,12 @@
 # Versions
 
+## Version 5.46.1
+
+- `fees`: Tolerate LND setting fees inaccurately by 1 ppm
+- `gateway`: Allow generating credentials for a remote URL
+- `increase-inbound-liquidity`: Increase default confirmation target time
+- `telegram`: Improve stability of long-running bot
+
 ## Version 5.46.0
 
 - `forwards`: Add `--in` to show forwards from a specified peer
