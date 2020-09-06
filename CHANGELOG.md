@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.46.2
+
+Added additional instructions for Docker usage in README.md
+
+- `nodes`: Show empty nodes list if there is no home directory
+
 ## Version 5.46.1
 
 - `fees`: Tolerate LND setting fees inaccurately by 1 ppm

@@ -6,13 +6,16 @@ Commands for working with LND balances.
 [![Coverage Status](https://coveralls.io/repos/github/alexbosworth/balanceofsatoshis/badge.svg?branch=master)](https://coveralls.io/github/alexbosworth/balanceofsatoshis?branch=master)
 [![Build Status](https://travis-ci.org/alexbosworth/balanceofsatoshis.svg?branch=master)](https://travis-ci.org/alexbosworth/balanceofsatoshis)
 
-## Install 
+## Install
 
 - Requires an [installation of Node v10.12.0+](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 - Have a RaspiBlitz? Check out [this install guide](https://gist.github.com/openoms/823f99d1ab6e1d53285e489f7ba38602)
 
 If you want to try out any command without npm install, you can also do `npx
 balanceofsatoshis` to run a command directly.
+
+If you have [Docker](https://docs.docker.com/get-docker/) installed, you can
+[run through Docker](#Docker) instead.
 
 ```shell
 npm install -g balanceofsatoshis
@@ -287,15 +290,66 @@ Examples of shell scripts that could be executed by crontab:
 # sends email if the inbound liquidity drops below a 1,000,000 sats
 ```
 
-## Docker Usage
+## Docker
 
-Potentially this can be used with Docker with a simple docker file
+### Docker Load
+
+Install the Docker image:
+
+```
+docker pull alexbosworth/balanceofatoshis
+```
+
+You can also build the image yourself: `npm run build-docker`, this will make
+`balanceofsatoshis.tar.gz` that you can rsync or scp somewhere else and then
+do `docker load < balanceofsatoshis.tar.gz`.
+
+Once the image is installed, you can "docker run" commands for all the commands:
+
+```
+# Make sure you have a home directory created to give Docker access to
+mkdir $HOME/.bos
+
+docker run -it --rm -v $HOME/.bos:/home/node/.bos alexbosworth/balanceofsatoshis --version
+# Should output the version
+```
+
+This maps your home directory to the docker home directory to enable
+persistence of credentials.
+
+If you want it to automatically detect your local node, also pass the LND home
+dir as an additional -v argument to docker run:
+
+If you are on MacOS:
+
+```
+-v $HOME/Library/Application\ Support/Lnd/:/home/node/.lnd
+```
+
+Or on Linux:
+
+```
+-v $HOME/.lnd:/home/node/.lnd
+```
+
+Otherwise you can just pass the local node credentials as shown above using the
+saved nodes.
+
+### Build Your Own
+
+If you don't want to use the Dockerfile, you can build a docker file for
+yourself
 
 ```dockerfile
 FROM node:latest
 RUN npm install balanceofsatoshis
 ENTRYPOINT [ "/node_modules/balanceofsatoshis/bos" ]
 ```
+
+### Run Shell Script
+
+If you don't want to type out "docker run", and don't have an alias for it, you
+can create a simple shell script to fill that part in:
 
 ```shell
 #! /usr/bin/env bash

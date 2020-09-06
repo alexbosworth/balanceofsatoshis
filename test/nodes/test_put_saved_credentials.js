@@ -40,7 +40,10 @@ const tests = [
   },
   {
     args: {
-      fs: {writeFile: (path, file, cbk) => cbk('err')},
+      fs: {
+        makeDirectory: (path, cbk) => cbk(),
+        writeFile: (path, file, cbk) => cbk('err'),
+      },
       macaroon: 'macaroon',
       node: 'node',
       socket: 'socket',
@@ -50,7 +53,10 @@ const tests = [
   },
   {
     args: {
-      fs: {writeFile: (path, file, cbk) => cbk()},
+      fs: {
+        makeDirectory: (path, cbk) => cbk(),
+        writeFile: (path, file, cbk) => cbk(),
+      },
       encrypted_macaroon: 'encrypted_macaroon',
       encrypted_to: [],
       node: 'node',

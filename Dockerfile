@@ -1,6 +1,7 @@
 FROM node:latest AS build
 
-# UID / GID 1000 is default for user `node` in the `node:latest` image, this way the process wil run as a non-root user
+# UID / GID 1000 is default for user `node` in the `node:latest` image, this
+# way the process will run as a non-root user
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 ENV USER_ID=$USER_ID

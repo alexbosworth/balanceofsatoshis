@@ -1,5 +1,5 @@
-const {join} = require('path');
 const {homedir} = require('os');
+const {join} = require('path');
 
 const asyncAuto = require('async/auto');
 const asyncFilter = require('async/filter');
@@ -32,9 +32,6 @@ const {home} = require('./constants');
 module.exports = ({fs}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
-      // Data directory
-      dataDir: cbk => cbk(null, join(...[homedir(), home])),
-
       // Check arguments
       validate: cbk => {
         if (!fs) {
@@ -55,6 +52,11 @@ module.exports = ({fs}, cbk) => {
 
         return cbk();
       },
+
+      // Data directory
+      dataDir: ['validate', ({}, cbk) => {
+        return cbk(null, join(...[homedir(), home]));
+      }],
 
       // Check that the data directory exists
       checkDataDir: ['dataDir', ({dataDir}, cbk) => {

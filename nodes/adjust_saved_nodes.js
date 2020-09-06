@@ -1,3 +1,6 @@
+const {homedir} = require('os');
+const {join} = require('path');
+
 const asyncAuto = require('async/auto');
 const {generateKeyPair} = require('crypto');
 const {privateDecrypt} = require('crypto');
@@ -8,6 +11,7 @@ const deleteNodeCredentials = require('./delete_node_credentials');
 const encryptSavedMacaroons = require('./encrypt_saved_macaroons');
 const getSavedCredentials = require('./get_saved_credentials');
 const getSavedNodes = require('./get_saved_nodes');
+const {home} = require('./constants');
 const registerNode = require('./register_node');
 
 const {isArray} = Array;
@@ -87,8 +91,16 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Make sure the home directory is there
+      registerHomeDir: ['validate', ({}, cbk) => {
+        return args.fs.makeDirectory(join(...[homedir(), home]), err => {
+          // Ignore errors, the directory may already be there
+          return cbk();
+        });
+      }],
+
       // Register node
-      register: ['validate', ({}, cbk) => {
+      register: ['registerHomeDir', ({}, cbk) => {
         if (!args.is_registering) {
           return cbk();
         }

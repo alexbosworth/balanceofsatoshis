@@ -17,6 +17,7 @@ const stringify = obj => JSON.stringify(obj, null, 2);
     [encrypted_macaroon]: <Encrypted Macaroon String>
     [encrypted_to]: [<Macaroon Encrypted To Recipient Id String>]
     fs: {
+      makeDirectory: <Make Directory Function>
       writeFile: <Write File Contents Function> (path, contents, cbk) => {}
     }
     [macaroon]: <Base64 Encoded Macaroon String>
@@ -58,8 +59,18 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Make sure the node directory is there
+      registerDirectory: ['validate', ({}, cbk) => {
+        const nodeDirectory = join(...[homedir(), home, args.node]);
+
+        return args.fs.makeDirectory(nodeDirectory, err => {
+          // Ignore errors, the directory may already be there
+          return cbk();
+        });
+      }],
+
       // Write credentials
-      writeCredentials: ['validate', ({}, cbk) => {
+      writeCredentials: ['registerDirectory', ({}, cbk) => {
         const file = stringify({
           cert: args.cert || undefined,
           encrypted_macaroon: args.encrypted_macaroon || undefined,
