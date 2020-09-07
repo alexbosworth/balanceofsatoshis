@@ -292,12 +292,16 @@ Examples of shell scripts that could be executed by crontab:
 
 ## Docker
 
+This presumes you have Docker installed.
+
+- [Iinstructions for installing Docker on Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-18-04)
+
 ### Docker Load
 
 Install the Docker image:
 
 ```
-docker pull alexbosworth/balanceofatoshis
+docker pull alexbosworth/balanceofsatoshis
 ```
 
 You can also build the image yourself: `npm run build-docker`, this will make
@@ -323,13 +327,13 @@ dir as an additional -v argument to docker run:
 If you are on MacOS:
 
 ```
--v $HOME/Library/Application\ Support/Lnd/:/home/node/.lnd
+--network="host" -v $HOME/Library/Application\ Support/Lnd/:/home/node/.lnd:ro
 ```
 
 Or on Linux:
 
 ```
--v $HOME/.lnd:/home/node/.lnd
+--network="host" -v $HOME/.lnd:/home/node/.lnd:ro
 ```
 
 Otherwise you can just pass the local node credentials as shown above using the
