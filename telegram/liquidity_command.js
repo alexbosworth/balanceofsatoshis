@@ -1,13 +1,13 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {findKey} = require('ln-sync');
+const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
+const {getNodeAlias} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const checkAccess = require('./check_access');
-const {findKey} = require('./../peers');
-const {formatTokens} = require('./../display');
 const {getLiquidity} = require('./../balances');
-const {getNodeAlias} = require('./../peers');
 const interaction = require('./interaction');
 const sendMessage = require('./send_message');
 

@@ -9,6 +9,7 @@ const {statSync} = require('fs');
 const {unlink} = require('fs');
 const {writeFile} = require('fs');
 
+const {findKey} = require('ln-sync');
 const inquirer = require('inquirer');
 const prog = require('caporal');
 const {rateProviders} = require('ln-accounting');
@@ -22,7 +23,6 @@ const {connectToTelegram} = require('./telegram');
 const {encryptToNode} = require('./encryption');
 const {exchanges} = require('./fiat');
 const {decryptWithNode} = require('./encryption');
-const {findKey} = require('./peers');
 const {findRecord} = require('./lnd');
 const {gateway} = require('./lnd');
 const {getAccountingReport} = require('./balances');

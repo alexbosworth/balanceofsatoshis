@@ -3,6 +3,7 @@ const asyncMap = require('async/map');
 const asyncMapSeries = require('async/mapSeries');
 const asyncRetry = require('async/retry');
 const {createInvoice} = require('ln-service');
+const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
@@ -13,7 +14,6 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
-const {findKey} = require('./../peers');
 const {getPeerLiquidity} = require('./../balances');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');

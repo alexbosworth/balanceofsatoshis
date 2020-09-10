@@ -3,6 +3,7 @@ const asyncMap = require('async/map');
 const asyncUntil = require('async/until');
 const {bold} = require('colorette');
 const {decodeChanId} = require('bolt07');
+const {formatTokens} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
@@ -18,7 +19,6 @@ const size = require('window-size');
 
 const {authenticatedLnd} = require('./../lnd');
 const {formatFeeRate} = require('./../display');
-const {formatTokens} = require('./../display');
 const getNetwork = require('./get_network');
 const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');

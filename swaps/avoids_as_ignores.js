@@ -1,9 +1,8 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
-
-const {findKey} = require('./../peers');
 
 const channelMatch = /^\d*x\d*x\d*$/;
 const flatten = arr => [].concat(...arr);

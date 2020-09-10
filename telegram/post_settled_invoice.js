@@ -1,13 +1,13 @@
 const asyncAuto = require('async/auto');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
+const {getNodeAlias} = require('ln-sync');
 const {getPayment} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToPastPayment} = require('ln-service');
 const {verifyBytesSignature} = require('ln-service');
 
-const {getNodeAlias} = require('./../peers');
 const sendMessage = require('./send_message');
 
 const bufFromHex = hex => Buffer.from(hex, 'hex');

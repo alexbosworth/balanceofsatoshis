@@ -1,6 +1,8 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const asyncWhilst = require('async/whilst');
+const {findKey} = require('ln-sync');
+const {formatTokens} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getSyntheticOutIgnores} = require('probing');
@@ -12,8 +14,6 @@ const {subscribeToMultiPathProbe} = require('probing');
 
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
-const {formatTokens} = require('./../display');
-const {findKey} = require('./../peers');
 const probeDestination = require('./probe_destination');
 
 const defaultFinalCltvDelta = 144;

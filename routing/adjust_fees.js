@@ -2,9 +2,11 @@ const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncMap = require('async/map');
 const asyncRetry = require('async/retry');
+const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getFeeRates} = require('ln-service');
+const {getNodeAlias} = require('ln-sync');
 const {getPendingChannels} = require('ln-service');
 const {gray} = require('colorette');
 const {green} = require('colorette');
@@ -13,9 +15,7 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 const {updateRoutingFees} = require('ln-service');
 
-const {findKey} = require('./../peers');
 const {formatFeeRate} = require('./../display');
-const {getNodeAlias} = require('./../peers');
 const updateChannelFee = require('./update_channel_fee');
 
 const asTxOut = n => `${n.transaction_id}:${n.transaction_vout}`;

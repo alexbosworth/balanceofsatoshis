@@ -2,6 +2,7 @@ const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {authenticatedLndGrpc} = require('ln-service');
 const {bold} = require('colorette');
+const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getForwards} = require('ln-service');
@@ -11,7 +12,6 @@ const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const size = require('window-size');
 
-const {formatTokens} = require('./../display');
 const isRelevantForward = require('./is_relevant_forward');
 const isRelevantSource = require('./is_relevant_source');
 const {lndCredentials} = require('./../lnd');

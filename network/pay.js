@@ -1,5 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {findKey} = require('ln-sync');
+const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
 const {getSyntheticOutIgnores} = require('probing');
 const {getWalletInfo} = require('ln-service');
@@ -10,8 +12,6 @@ const {subscribeToMultiPathProbe} = require('probing');
 
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
-const {findKey} = require('./../peers');
-const {formatTokens} = require('./../display');
 const probeDestination = require('./probe_destination');
 
 const cltvDeltaBuffer = 3;

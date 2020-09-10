@@ -330,6 +330,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             '/blocknotify - Notification on next block',
             '/connect - Connect bot',
             '/invoice - Make an invoice',
+            '/liquidity [with] - View node liquidity',
             '/mempool - BTC mempool report',
             '/pay - Pay an invoice',
           ];

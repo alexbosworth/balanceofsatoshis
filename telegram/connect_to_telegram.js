@@ -94,6 +94,7 @@ module.exports = (args, cbk) => {
             nodes: args.nodes
           },
           (err, res) => {
+            // Exit the loop when the backing LNDs cannot be found
             if (!!err) {
               return cbk(err);
             }

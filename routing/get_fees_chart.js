@@ -1,11 +1,11 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {formatTokens} = require('ln-sync');
 const {getNode} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
-const {formatTokens} = require('./../display');
 const getForwards = require('./get_forwards');
 
 const asDate = n => n.toISOString();

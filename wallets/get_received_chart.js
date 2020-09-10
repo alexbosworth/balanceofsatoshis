@@ -2,11 +2,11 @@ const asyncAuto = require('async/auto');
 const asyncDetect = require('async/detect');
 const asyncFilterLimit = require('async/filterLimit');
 const asyncMap = require('async/map');
+const {formatTokens} = require('ln-sync');
 const {getPayment} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
-const {formatTokens} = require('./../display');
 const getAllInvoices = require('./get_all_invoices');
 const {segmentMeasure} = require('./../display');
 const {sumsForSegment} = require('./../display');

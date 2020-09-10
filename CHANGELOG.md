@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.46.3
+
+- `telegram`: Updated /help to include /liquidity command
+
 ## Version 5.46.2
 
 Added additional instructions for Docker usage in README.md
