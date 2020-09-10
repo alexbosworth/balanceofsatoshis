@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.46.4
+
+- `increase-inbound-liquidity`: Allow for higher deposit percentage requirement
+
 ## Version 5.46.3
 
 - `telegram`: Updated /help to include /liquidity command
