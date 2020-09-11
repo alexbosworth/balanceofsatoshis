@@ -294,7 +294,7 @@ Examples of shell scripts that could be executed by crontab:
 
 This presumes you have Docker installed.
 
-- [Iinstructions for installing Docker on Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-18-04)
+- [Instructions for installing Docker on Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-18-04)
 
 ### Docker Load
 
