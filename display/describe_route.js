@@ -73,7 +73,7 @@ module.exports = ({lnd, route}, cbk) => {
           },
           (err, res) => {
             if (!!err) {
-              return cbk(null, {alias: Strig(), id: hop.public_key});
+              return cbk(null, {alias: String(), id: hop.public_key});
             }
 
             return cbk(null, {alias: res.alias, id: hop.public_key});
