@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.46.5
+
+- `probe`: Fix issue describing route
+
 ## Version 5.46.4
 
 - `increase-inbound-liquidity`: Allow for higher deposit percentage requirement
