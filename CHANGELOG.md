@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.46.7
+
+- `accounting`: Add fix for a regression in `accounting payments` causing error
+
 ## Version 5.46.6
 
 - `accounting`: Switch default rate provider to coincap
