@@ -23,7 +23,6 @@ const {subscribeToBlocks} = require('goldengate');
 const {subscribeToInvoice} = require('ln-service');
 const {subscribeToSwapInStatus} = require('goldengate');
 const {swapInFee} = require('goldengate');
-const {swapScript} = require('goldengate');
 
 const {authenticatedLnd} = require('./../lnd');
 const {getLiquidity} = require('./../balances');
@@ -243,6 +242,7 @@ module.exports = (args, cbk) => {
           start_height: recovery.start_height,
           timeout: recovery.timeout,
           tokens: recovery.tokens,
+          version: recovery.version,
         };
       }
 
@@ -250,22 +250,16 @@ module.exports = (args, cbk) => {
 
       const cltv = !isTest ? createSwap.timeout : getInfo.current_block_height;
 
-      const {script} = swapScript({
-        claim_public_key: createSwap.service_public_key,
-        hash: createSwap.id,
-        refund_private_key: createSwap.private_key,
-        timeout: cltv,
-      });
-
       return {
-        script,
-        address: addressForScript({network, script}).address,
+        address: createSwap.address,
         claim_public_key: createSwap.service_public_key,
         id: createSwap.id,
         refund_private_key: createSwap.private_key,
+        script: createSwap.script,
         start_height: getInfo.current_block_height,
         timeout: cltv,
         tokens: createSwap.tokens,
+        version: createSwap.version,
       };
     }],
 
@@ -293,6 +287,7 @@ module.exports = (args, cbk) => {
           start_height: getInfo.current_block_height,
           timeout: swap.timeout,
           tokens: swap.tokens,
+          version: swap.version,
         });
 
         return cbk(null, recovery);

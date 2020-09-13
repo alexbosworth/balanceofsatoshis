@@ -1,5 +1,11 @@
 # Versions
 
+## Version 5.46.6
+
+- `accounting`: Switch default rate provider to coincap
+- `chain-receive`: Upgrade to v2 on-chain swap script
+- `increase-inbound-liquidity`: Upgrade to v2 on-chain swap script
+
 ## Version 5.46.5
 
 - `probe`: Fix issue describing route

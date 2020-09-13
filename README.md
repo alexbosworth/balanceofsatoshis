@@ -339,6 +339,10 @@ Or on Linux:
 Otherwise you can just pass the local node credentials as shown above using the
 saved nodes.
 
+Note: if you are used to using ctrl+c to terminate the process, that doesn't work on Docker.
+Instead, you can use ctrl+p and then ctrl+q to background the interactive mode, then do
+`docker ps` and `docker rm` to kill the instance.
+
 ### Build Your Own
 
 If you don't want to use the Dockerfile, you can build a docker file for
@@ -358,4 +362,19 @@ can create a simple shell script to fill that part in:
 ```shell
 #! /usr/bin/env bash
 docker run -it --rm -v=$HOME/.bos:/root/.bos bos:latest ${@:1}
+```
+
+You can also define an alias for placing in `~/.profile` or `~/.bash_profile`:
+
+```shell
+alias bos="docker run -it --rm -v $HOME/.bos:/home/node/.bos alexbosworth/balanceofsatoshis"
+```
+
+Adjust this alias to however you run the full Docker command. Remember to execute the ~/.profile
+to install the alias into your current session: `. ~/.profile`
+
+You can also create an alias to run a command in the background
+
+```shell
+alias bosd="docker run -d --rm -v $HOME/.bos:/home/node/.bos alexbosworth/balanceofsatoshis"
 ```

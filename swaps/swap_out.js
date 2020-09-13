@@ -427,6 +427,7 @@ module.exports = (args, cbk) => {
             secret: recover.secret,
             start_height: recover.start_height,
             timeout: recover.timeout,
+            version: recover.version,
           });
         }
 
@@ -495,6 +496,7 @@ module.exports = (args, cbk) => {
             sweep_address: createAddress.address,
             timeout: initiateSwap.timeout,
             tokens: args.tokens,
+            version: initiateSwap.version,
           });
 
           args.logger.info({
