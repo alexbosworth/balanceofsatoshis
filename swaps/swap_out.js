@@ -47,6 +47,7 @@ const {getNetwork} = require('./../network');
 const getPaidService = require('./get_paid_service');
 const getRawRecoveries = require('./get_raw_recoveries');
 const {maxCltvExpiration} = require('./constants');
+const {maxDepositTokens} = require('./constants');
 const {maxExecutionFeeTokens} = require('./constants');
 const {maxFeeMultiplier} = require('./constants');
 const {maxFeeRate} = require('./constants');
@@ -88,6 +89,7 @@ const tokensAsBigUnit = tokens => ((tokens || 0) / 1e8).toFixed(8);
     [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
+    [max_deposit]: <Maximum Swap Deposit Tokens Number>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_paths]: <Maximum Paths For Funding Number>
     [max_wait_blocks]: <Maximum Wait Blocks Number>
@@ -336,7 +338,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'SwapSizeTooSmall', {min: getLimits.min_tokens}]);
         }
 
+        const fundAt = moment().add(swapDelayMinutes(args.is_fast), 'minutes');
+
         return getSwapOutQuote({
+          delay: !args.is_fast ? fundAt.toISOString() : undefined,
           macaroon: getService.macaroon,
           preimage: getService.preimage,
           service: getService.service,
@@ -352,8 +357,8 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        if (getQuote.deposit > round(args.tokens * maxFeeRate)) {
-          return cbk([400, 'DepositExceedsMaxFeeRate']);
+        if (getQuote.deposit > (args.max_deposit || maxDepositTokens)) {
+          return cbk([400, 'SwapDepositExceedsMaxDepositLimit']);
         }
 
         if (getQuote.fee > round(args.tokens * maxFeeRate)) {

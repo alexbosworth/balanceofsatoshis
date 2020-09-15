@@ -529,9 +529,9 @@ prog
   })
 
   // Gateway service
-  .command('gateway', 'Request gateway')
-  .help('Start LND gateway server for https://ln-operator.github.io/')
-  .help('Using the remote command generates credentials for a remote gateway')
+  .command('gateway', 'Request gateway for https://ln-operator.github.io/')
+  .help('Start LND gateway server listening for Web UI access')
+  .help('Using the --remote option generates credentials for a remote gateway')
   .option('--node <node_name>', 'Node for gateway')
   .option('--port <port>', 'Port for gateway', INT, 4805)
   .option('--remote <url>', 'Output credentials for a remote gateway')
@@ -611,7 +611,8 @@ prog
   .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
   .option('--dryrun', 'Only show cost estimate for increase')
   .option('--fast', 'Request swap server avoid batching delay')
-  .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 13370)
+  .option('--max-deposit <max_deposit>', 'Maximum deposit amount', INT, 5e4)
+  .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 2e4)
   .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 60)
   .option('--max-paths <max_paths>', 'Maximum paths to attempt', INT, 1)
   .option('--no-color', 'Mute all colors')
@@ -634,6 +635,7 @@ prog
           is_raw_recovery_shown: options.showRawRecovery || undefined,
           is_dry_run: options.dryrun || false,
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+          max_deposit: options.maxDeposit,
           max_fee: options.maxFee,
           max_paths: options.maxPaths || undefined,
           max_wait_blocks: Math.ceil((options.maxHours) * 60 / 10),
@@ -655,7 +657,7 @@ prog
   })
 
   // Increase outbound liquidity
-  .command('increase-outbound-liquidity')
+  .command('increase-outbound-liquidity', 'Move on-chain funds off-chain')
   .help('Open a new channel to add more off-chain liquidity')
   .option('--amount <amount>', 'Amount to assign to new channel capacity', INT)
   .option('--dryrun', 'Avoid actually opening a channel')

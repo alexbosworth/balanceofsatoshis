@@ -1,7 +1,7 @@
 const asyncAuto = require('async/auto');
+const {getPeerLiquidity} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
-const {getPeerLiquidity} = require('./../balances');
 const sendMessage = require('./send_message');
 
 const detailsJoiner = ' ';

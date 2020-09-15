@@ -1,5 +1,10 @@
 # Versions
 
+## Version 5.46.8
+
+- `increase-inbound-liquidity`: Add `max-deposit` to adjust max allowed deposit
+- `increase-inbound-liquidity`: Show accurate service fee estimate for non-fast swaps
+
 ## Version 5.46.7
 
 - `accounting`: Add fix for a regression in `accounting payments` causing error
