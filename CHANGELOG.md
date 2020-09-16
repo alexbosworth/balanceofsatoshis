@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.46.9
+
+- `accounting`: Add fix for a regression in `accounting chain-fees` causing error
+
 ## Version 5.46.8
 
 - `increase-inbound-liquidity`: Add `max-deposit` to adjust max allowed deposit
