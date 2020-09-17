@@ -1,5 +1,9 @@
 # Versions
 
+## Version 5.47.0
+
+- `open`: Add the option to gift funds to the peer on channel open
+
 ## Version 5.46.9
 
 - `accounting`: Add fix for a regression in `accounting chain-fees` causing error

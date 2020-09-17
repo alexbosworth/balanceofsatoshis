@@ -47,6 +47,7 @@ const utxoPollingTimes = 20;
   {
     ask: <Ask For Input Function>
     capacities: [<New Channel Capacity Tokens Number>]
+    gives: [<New Channel Give Tokens Number>]
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     public_keys: [<Public Key Hex String>]
@@ -71,6 +72,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedChannelCapacitiesToOpenChannels']);
         }
 
+        if (!isArray(args.gives)) {
+          return cbk([400, 'ExpectedArrayOfGivesToOpenChannels']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToInitiateOpenChannelRequests']);
         }
@@ -84,10 +89,15 @@ module.exports = (args, cbk) => {
         }
 
         const hasCapacities = !!args.capacities.length;
+        const hasGives = !!args.gives.length;
         const publicKeysLength = args.public_keys.length;
 
         if (!!hasCapacities && publicKeysLength !== args.capacities.length) {
           return cbk([400, 'CapacitiesMustBeSpecifiedForEveryPublicKey']);
+        }
+
+        if (!!hasGives && publicKeysLength !== args.gives.length) {
+          return cbk([400, 'GivesMustBeSpecifiedForEveryPublicKey']);
         }
 
         if (!args.request) {
@@ -210,8 +220,9 @@ module.exports = (args, cbk) => {
       openChannels: ['connect', 'getWalletVersion', ({}, cbk) => {
         const channels = args.public_keys.map((key, i) => {
           const capacity = args.capacities[i] || defaultChannelCapacity;
+          const give = args.gives[i] || undefined;
 
-          return {capacity, partner_public_key: key};
+          return {capacity, give_tokens: give, partner_public_key: key};
         });
 
         return openChannels({channels, lnd: args.lnd}, cbk);
