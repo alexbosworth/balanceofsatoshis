@@ -1,5 +1,13 @@
 # Versions
 
+## Version 6.0.0
+
+- `telegram`: Remove the option to sync LND to a local database
+
+### Breaking Changes
+
+- `telegram` no longer accepts the `--disable-sync` option
+
 ## Version 5.47.0
 
 - `open`: Add the option to gift funds to the peer on channel open

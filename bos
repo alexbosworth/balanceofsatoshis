@@ -1140,7 +1140,6 @@ prog
   .help('Supported updates: forwards, received payments')
   .option('--budget <amount>', 'Spending amount to allow', INT, Number())
   .option('--connect <connect_code>', 'Connection code', INT)
-  .option('--disable-sync', 'Disable backend syncing')
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -1155,7 +1154,6 @@ prog
             makeDirectory: mkdir,
           },
           id: options.connect,
-          is_sync_disabled: options.disableSync,
           nodes: flatten([options.node].filter(n => !!n)),
           payments: {limit: options.budget}
         });

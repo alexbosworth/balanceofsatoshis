@@ -59,7 +59,7 @@ module.exports = (args, cbk) => {
       // Check that the channel is not pending
       checkPending: ['getPending', ({getPending}, cbk) => {
         const channel = args.transaction_id;
-        const pending = getPending.pending_channels;
+        const pending = getPending.pending_channels.filter(n => n.is_opening);
 
         if (!!pending.find(n => asOut(n) === asOut(args))) {
           return cbk([503, 'ChannelToSetFeeRateForIsStillPending', {channel}]);

@@ -1,13 +1,13 @@
 const asyncAuto = require('async/auto');
-const {authenticatedLndGrpc} = require('ln-service');
 const {getChannels} = require('ln-service');
+const {getLiquidity} = require('ln-sync');
+const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
+const {getScoredNodes} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const balanceFromTokens = require('./balance_from_tokens');
-const {getNetwork} = require('./../network');
-const {getScoredNodes} = require('./../network');
 const liquidityTokens = require('./liquidity_tokens');
 
 const {round} = Math;
@@ -54,73 +54,26 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get the channels
-      getChannels: ['validate', ({}, cbk) => {
-        return getChannels({lnd: args.lnd}, cbk);
-      }],
-
-      // Determine which network the node is on
-      getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
-
-      // Get the node's public key
-      getNodeKey: ['validate', ({}, cbk) => {
-        return getWalletInfo({lnd: args.lnd}, cbk);
-      }],
-
-      // Get policies
-      getPolicies: ['getNodeKey', ({getNodeKey}, cbk) => {
-        if (args.max_fee_rate === undefined) {
-          return cbk(null, {channels: []});
-        }
-
-        return getNode({
-          lnd: args.lnd,
-          public_key: getNodeKey.public_key,
-        },
-        cbk);
-      }],
-
-      // Get node scores
-      getScores: ['getNetwork', ({getNetwork}, cbk) => {
-        if (!args.min_node_score) {
-          return cbk(null, {});
-        }
-
-        return getScoredNodes({
-          network: getNetwork.network,
-          request: args.request,
-        },
-        cbk);
-      }],
-
-      // List of tokens to sum
-      tokens: [
-        'getChannels',
-        'getNodeKey',
-        'getPolicies',
-        'getScores',
-        ({getChannels, getNodeKey, getPolicies, getScores}, cbk) =>
-      {
-        return cbk(null, liquidityTokens({
-          channels: getChannels.channels,
+      // Get liquidity
+      getLiquidity: ['validate', ({}, cbk) => {
+        return getLiquidity({
           is_outbound: args.is_outbound,
           is_top: args.is_top,
-          max_fee_rate: args.max_fee_rate,
+          lnd: args.lnd,
           min_node_score: args.min_node_score,
-          nodes: getScores.nodes,
-          policies: getPolicies.channels.map(n => n.policies),
-          public_key: getNodeKey.public_key,
+          request: args.request,
           with: args.with,
-        }));
+        },
+        cbk);
       }],
 
       // Total balances
-      total: ['tokens', ({tokens}, cbk) => {
+      total: ['getLiquidity', ({getLiquidity}, cbk) => {
         return cbk(null, {
           balance: balanceFromTokens({
-            tokens,
             above: args.above,
             below: args.below,
+            tokens: getLiquidity.tokens,
           }),
         });
       }],

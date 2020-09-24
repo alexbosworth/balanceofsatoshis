@@ -3,10 +3,10 @@ const asyncEachSeries = require('async/eachSeries');
 const {closeChannel} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
+const {getNetwork} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const {getMempoolSize} = require('./../chain');
-const getNetwork = require('./get_network');
 
 const fastConf = 6;
 const {floor} = Math;

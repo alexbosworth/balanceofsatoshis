@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const {encode} = require('cbor');
+const {getNetwork} = require('ln-sync');
 const {getSwapMacaroon} = require('goldengate');
 const {lightningLabsSwapService} = require('goldengate');
 const {paidMacaroon} = require('goldengate');
@@ -7,7 +8,6 @@ const {returnResult} = require('asyncjs-util');
 const {swapUserId} = require('goldengate');
 
 const decodeSwapApiKey = require('./decode_swap_api_key');
-const {getNetwork} = require('./../network');
 const {probeDestination} = require('./../network');
 
 const encodeCbor = json => encode(json).toString('hex');

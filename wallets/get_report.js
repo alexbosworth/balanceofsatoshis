@@ -10,6 +10,7 @@ const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getInvoice} = require('ln-service');
 const {getInvoices} = require('ln-service');
+const {getNetwork} = require('ln-sync');
 const {getNetworkGraph} = require('ln-service');
 const {getPayments} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
@@ -25,7 +26,6 @@ const {currencyForNetwork} = require('./../network');
 const {getBalance} = require('./../balances');
 const {getCoindeskCurrentPrice} = require('./../fiat');
 const {getForwards} = require('./../network');
-const {getNetwork} = require('./../network');
 const reportOverview = require('./report_overview');
 
 const afterMs = 1000 * 60 * 60 * 24;

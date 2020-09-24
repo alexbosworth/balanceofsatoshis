@@ -168,6 +168,7 @@ module.exports = (args, cbk) => {
         'getTransactions',
         ({getCloseSpends, getCommitmentTransaction, getTransactions}, cbk) =>
       {
+        // Exit early when the channel was closed cooperatively
         if (!!args.is_cooperative_close) {
           return cbk(null, {});
         }
@@ -176,14 +177,17 @@ module.exports = (args, cbk) => {
 
         const resolutions = getCloseSpends.map(({txid, vin}, i) => {
           const {transaction} = getTransactions.find(n => txid === n.id) || {};
-
           const {value} = tx.outs[i];
 
           if (!transaction) {
             return {value, type: 'unspent'};
           }
 
-          return {value, type: resolutionType({vin, transaction}).type};
+          return {
+            value,
+            transaction_id: Transaction.fromHex(transaction).getId(),
+            type: resolutionType({vin, transaction}).type,
+          };
         });
 
         if (!resolutions.length) {

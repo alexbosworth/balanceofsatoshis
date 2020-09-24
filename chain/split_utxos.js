@@ -1,6 +1,5 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
-const {authenticatedLndGrpc} = require('ln-service');
 const {createChainAddress} = require('ln-service');
 const {getUtxos} = require('ln-service');
 const {returnResult} = require('asyncjs-util');

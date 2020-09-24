@@ -1,5 +1,4 @@
 const asyncAuto = require('async/auto');
-const {authenticatedLndGrpc} = require('ln-service');
 const {getUtxos} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 

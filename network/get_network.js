@@ -10,7 +10,7 @@ const reversedBytes = hex => Buffer.from(hex, 'hex').reverse().toString('hex');
 /** Get network name for lnd
 
   {
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
   }
 
   @returns via cbk or Promise

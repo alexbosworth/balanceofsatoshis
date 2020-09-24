@@ -125,6 +125,7 @@ const tests = [
             timeout: 41,
           },
         ],
+        messages: undefined,
         mtokens: '2000',
         payment: undefined,
         timeout: 42,

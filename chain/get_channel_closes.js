@@ -1,13 +1,13 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
 const {getClosedChannels} = require('ln-service');
+const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const getChannelResolution = require('./get_channel_resolution');
-const getNetwork = require('./../network/get_network');
 
 const defaultLimit = 20;
 

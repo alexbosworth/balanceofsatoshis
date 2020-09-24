@@ -10,7 +10,7 @@ const flatten = arr => [].concat(...arr);
 
   {
     [days]: <Past Days To Get Forwards Over Number>
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
   }
 
   @returns via cbk

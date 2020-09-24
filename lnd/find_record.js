@@ -3,10 +3,9 @@ const {chanFormat} = require('bolt07');
 const {getChannel} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
 const {getPayment} = require('ln-service');
+const {getTransactionRecord} = require('ln-sync');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
-
-const {getTransactionRecord} = require('./../chain');
 
 const asBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const {isArray} = Array;

@@ -12,6 +12,7 @@ const {decodePsbt} = require('psbt');
 const {extractTransaction} = require('psbt');
 const {finalizePsbt} = require('psbt');
 const {fundPendingChannels} = require('ln-service');
+const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
@@ -24,7 +25,6 @@ const {transactionAsPsbt} = require('psbt');
 
 const {getAddressUtxo} = require('./../chain');
 const {getRawTransaction} = require('./../chain');
-const getNetwork = require('./../network/get_network');
 
 const addressesHeader = green('Addresses');
 const base64AsHex = n => Buffer.from(n, 'base64').toString('hex');

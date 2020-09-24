@@ -5,12 +5,10 @@ const asyncAuto = require('async/auto');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
 const {getWalletInfo} = require('ln-service');
-const {lmdbDatabase} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const {getLnds} = require('./../lnd');
 const startTelegramBot = require('./start_telegram_bot');
-const watch = require('./watch');
 
 const home = '.bos';
 const restartDelayMs = 1000 * 60 * 3;
@@ -25,7 +23,6 @@ const restartDelayMs = 1000 * 60 * 3;
       writeFile: <Write File Function>
     }
     [id]: <Authorized User Id Number>
-    [is_sync_disabled]: <Database Sync Disabled Bool>
     logger: <Winston Logger Object>
     [nodes]: [<Node Name String>]
     payments: {
@@ -119,44 +116,6 @@ module.exports = (args, cbk) => {
 
               return setTimeout(() => cbk(), restartDelayMs);
             });
-          });
-        },
-        cbk);
-      }],
-
-      // Init database
-      lmdbDb: ['path', ({path}, cbk) => {
-        // Exit early when there is no need for a database
-        if (!!args.is_sync_disabled) {
-          return cbk();
-        }
-
-        return lmdbDatabase({path, fs: args.fs}, cbk);
-      }],
-
-      // Start syncing nodes with the database
-      startSync: ['lmdbDb', ({lmdbDb}, cbk) => {
-        // Exit early when there is no database
-        if (!lmdbDb) {
-          return cbk();
-        }
-
-        return asyncForever(cbk => {
-          return watch({
-            db: lmdbDb.db,
-            logger: args.logger,
-            nodes: args.nodes,
-          },
-          err => {
-            if (!!err) {
-              args.logger.error(err);
-
-              return setTimeout(() => cbk(), restartDelayMs);
-            }
-
-            args.logger.error({restarting_sync: true});
-
-            return setTimeout(() => cbk(), restartDelayMs);
           });
         },
         cbk);

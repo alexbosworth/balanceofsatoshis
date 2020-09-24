@@ -5,17 +5,17 @@ const asyncTimeout = require('async/timeout');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
+const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
+const {getScoredNodes} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
 const {openChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const getNetwork = require('./../network/get_network');
 const {getMempoolSize} = require('./../chain');
 const {getPastForwards} = require('./../routing');
-const getScoredNodes = require('./get_scored_nodes');
 const peersWithActivity = require('./peers_with_activity');
 const {shuffle} = require('./../arrays');
 

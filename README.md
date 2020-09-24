@@ -92,6 +92,9 @@ bos forwards
 # See help about a command
 bos help "command"
 
+# Run gateway service for https://ln-operator.github.io/ UI
+bos gateway
+
 # Output the sum total of remote channel liquidity
 bos inbound-liquidity
 

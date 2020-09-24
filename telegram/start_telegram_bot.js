@@ -5,9 +5,24 @@ const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
+const {getTransactionRecord} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
+const {handleBackupCommand} = require('ln-telegram');
+const {handleBlocknotifyCommand} = require('ln-telegram');
+const {handleConnectCommand} = require('ln-telegram');
+const {handleInvoiceCommand} = require('ln-telegram');
+const {handleLiquidityCommand} = require('ln-telegram');
+const {handleMempoolCommand} = require('ln-telegram');
+const {handlePayCommand} = require('ln-telegram');
 const inquirer = require('inquirer');
+const {postChainTransaction} = require('ln-telegram');
+const {postClosedMessage} = require('ln-telegram');
+const {postForwardedPayments} = require('ln-telegram');
+const {postOpenMessage} = require('ln-telegram');
+const {postSettledInvoice} = require('ln-telegram');
+const {postUpdatedBackups} = require('ln-telegram');
 const {returnResult} = require('asyncjs-util');
+const {sendMessage} = require('ln-telegram');
 const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
@@ -15,20 +30,7 @@ const {subscribeToTransactions} = require('ln-service');
 const Telegraf = require('telegraf');
 const Telegram = require('telegraf/telegram')
 
-const backupCommand = require('./backup_command');
-const {getTransactionRecord} = require('./../chain');
-const handleMempoolCommand = require('./handle_mempool_command');
 const interaction = require('./interaction');
-const invoiceCommand = require('./invoice_command');
-const liquidityCommand = require('./liquidity_command');
-const payCommand = require('./pay_command');
-const postChainTransaction = require('./post_chain_transaction');
-const postClosedMessage = require('./post_closed_message');
-const postForwardedPayments = require('./post_forwarded_payments');
-const postOpenMessage = require('./post_open_message');
-const postSettledInvoice = require('./post_settled_invoice');
-const postUpdatedBackups = require('./post_updated_backups');
-const sendMessage = require('./send_message');
 
 let bot;
 const botKeyFile = 'telegram_bot_api_key';
@@ -51,7 +53,7 @@ const restartSubscriptionTimeMs = 1000 * 30;
       writeFile: <Write File Function>
     }
     [id]: <Authorized User Id Number>
-    lnds: [<Authenticated LND gRPC API Object>]
+    lnds: [<Authenticated LND API Object>]
     logger: <Winston Logger Object>
     payments: {
       [limit]: <Total Spendable Budget Tokens Limit Number>
@@ -199,7 +201,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         });
 
         bot.command('backup', ({message, reply}) => {
-          backupCommand({
+          handleBackupCommand({
             logger,
             reply,
             request,
@@ -213,44 +215,30 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           return;
         });
 
-        bot.command('blocknotify', ({replyWithMarkdown}) => {
-          let currentHeight;
-          const sub = subscribeToBlocks({delay, network, request});
-
-          sub.on('block', ({height}) => {
-            // Exit early when there is no current height
-            if (!currentHeight) {
-              currentHeight = height;
-
-              return replyWithMarkdown([
-                interaction.requesting_block_notification,
-                `Chain height is currently ${height}`,
-              ].join('. '));
+        bot.command('blocknotify', ({message, replyWithMarkdown}) => {
+          return handleBlocknotifyCommand({
+            request,
+            reply: replyWithMarkdown,
+          },
+          err => {
+            if (!!err) {
+              return logger.error({err});
             }
 
-            replyWithMarkdown([
-              interaction.block_notification,
-              `Chain height is now ${height}`,
-            ].join('. '));
-
-            return sub.removeAllListeners();
+            return;
           });
-
-          sub.on('error', err => logger.error(err));
-
-          return;
         });
 
         bot.command('connect', ({from, replyWithMarkdown}) => {
-          if (!!connectedId) {
-            return replyWithMarkdown(interaction.bot_is_connected);
-          }
-
-          return replyWithMarkdown(`Connection code is: *${from.id}*`);
+          return handleConnectCommand({
+            from: from.id,
+            id: connectedId,
+            reply: replyWithMarkdown,
+          });
         });
 
         bot.command('invoice', ({message, reply}) => {
-          invoiceCommand({
+          handleInvoiceCommand({
             reply,
             request,
             from: message.from.id,
@@ -272,7 +260,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         });
 
         bot.command('liquidity', ({message, reply}) => {
-          liquidityCommand({
+          handleLiquidityCommand({
             reply,
             request,
             from: message.from.id,
@@ -300,7 +288,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           // Stop budget while payment is in flight
           paymentsLimit = 0;
 
-          payCommand({
+          handlePayCommand({
             budget,
             reply,
             request,

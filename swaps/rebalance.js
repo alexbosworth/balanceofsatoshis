@@ -163,7 +163,7 @@ module.exports = (args, cbk) => {
 
           return getChannel({id, lnd: args.lnd}, (err, res) => {
             if (!!err) {
-              return cbk([404, 'FailedToFindChannelToAvoid', {err}]);
+              return cbk([404, 'FailedToFindChannelToAvoid', {err, id}]);
             }
 
             const [node1, node2] = res.policies.map(n => n.public_key);

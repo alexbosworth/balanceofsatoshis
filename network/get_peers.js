@@ -8,6 +8,7 @@ const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getInvoices} = require('ln-service');
+const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPayments} = require('ln-service');
 const {getPeers} = require('ln-service');
@@ -19,7 +20,6 @@ const size = require('window-size');
 
 const {authenticatedLnd} = require('./../lnd');
 const {formatFeeRate} = require('./../display');
-const getNetwork = require('./get_network');
 const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');
 

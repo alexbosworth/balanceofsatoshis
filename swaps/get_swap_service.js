@@ -1,9 +1,9 @@
 const asyncAuto = require('async/auto');
+const {getNetwork} = require('ln-sync');
 const {lightningLabsSwapService} = require('goldengate');
 const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');
-const {getNetwork} = require('./../network');
 
 /** Get swap service
 

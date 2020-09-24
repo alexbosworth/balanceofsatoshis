@@ -10,6 +10,7 @@ const {findDeposit} = require('goldengate');
 const {findSecret} = require('goldengate');
 const {getChainFeeRate} = require('goldengate');
 const {getInvoice} = require('ln-service');
+const {getNetwork} = require('ln-sync');
 const {getSwapInQuote} = require('goldengate');
 const {getSwapInTerms} = require('goldengate');
 const {getWalletInfo} = require('ln-service');
@@ -26,7 +27,6 @@ const {swapInFee} = require('goldengate');
 
 const {authenticatedLnd} = require('./../lnd');
 const {getLiquidity} = require('./../balances');
-const {getNetwork} = require('./../network');
 const getPaidService = require('./get_paid_service');
 
 const bigFormat = tokens => ((tokens || 0) / 1e8).toFixed(8);

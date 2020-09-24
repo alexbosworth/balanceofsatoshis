@@ -1,6 +1,5 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
-const {authenticatedLndGrpc} = require('ln-service');
 const {bold} = require('colorette');
 const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
