@@ -27,6 +27,7 @@ const defaultMaxFeeRate = 250;
 const defaultMaxFeeTotal = Math.floor(5e6 * 0.0025);
 const flatten = arr => [].concat(...arr);
 const highInbound = 4500000;
+const initialProbeTokens = size => Math.round((Math.random() * size) + size);
 const {isArray} = Array;
 const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
 const legacyMaxRebalanceTokens = 4294967;
@@ -36,10 +37,14 @@ const maxPaymentSize = 4294967;
 const maxRebalanceTokens = 16777215;
 const {min} = Math;
 const minInboundBalance = 4294967 * 2;
+const minRebalanceAmount = 5e4;
 const minRemoteBalance = 4294967;
 const minTokens = 0;
+const minimalRebalanceAmount = 2e5;
 const mtokensPerToken = BigInt(1e3);
 const notFoundIndex = -1;
+const probeSizeMinimal = 1e2;
+const probeSizeRegular = 2e5
 const pubKeyHexLength = 66;
 const rateDivisor = 1e6;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
@@ -72,7 +77,11 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Starting tokens to rebalance
       tokens: cbk => {
-        return cbk(null, Math.round((Math.random() * 1e5) + 1e5));
+        if (!!args.max_rebalance && args.max_rebalance < minRebalanceAmount) {
+          return cbk(null, initialProbeTokens(probeSizeMinimal));
+        }
+
+        return cbk(null, initialProbeTokens(probeSizeRegular));
       },
 
       // Check arguments
@@ -99,6 +108,10 @@ module.exports = (args, cbk) => {
 
         if (args.max_fee_rate === 0) {
           return cbk([400, 'ExpectedNonZeroMaxFeeRateForRebalance']);
+        }
+
+        if (!!args.max_rebalance && args.max_rebalance < minRebalanceAmount) {
+          return cbk([400, 'LowRebalanceAmount', {min: minRebalanceAmount}]);
         }
 
         if (isArray(args.out_through)) {
@@ -595,7 +608,16 @@ module.exports = (args, cbk) => {
         'getPublicKey',
         'getRoute',
         'invoice',
-        ({channels, getHeight, getPublicKey, getRoute, invoice}, cbk) =>
+        'tokens',
+        ({
+          channels,
+          getHeight,
+          getPublicKey,
+          getRoute,
+          invoice,
+          tokens,
+        },
+        cbk) =>
       {
         try {
           const {route} = routeFromChannels({
@@ -609,6 +631,10 @@ module.exports = (args, cbk) => {
           const endRoute = getRoute.route || route;
           const maxFee = args.max_fee || defaultMaxFee;
           const maxFeeRate = args.max_fee_rate || defaultMaxFeeRate;
+
+          if (endRoute.tokens < minRebalanceAmount) {
+            return cbk([503, 'EncounteredUnexpectedRouteLiquidityFailure']);
+          }
 
           // Exit early when a max fee is specified and exceeded
           if (!!maxFee && endRoute.fee > maxFee) {

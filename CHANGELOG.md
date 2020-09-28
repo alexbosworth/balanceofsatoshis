@@ -1,5 +1,10 @@
 # Versions
 
+## Version 6.1.0
+
+- `rebalance`: Improve support for very small rebalances, validate too-small rebalances
+- `telegram`: Add `/earnings` command to show weekly forward and invoice earnings
+
 ## Version 6.0.0
 
 - `telegram`: Remove the option to sync LND to a local database

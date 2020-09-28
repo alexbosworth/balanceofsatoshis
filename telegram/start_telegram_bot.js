@@ -167,6 +167,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           {command: 'backup', description: 'Get node backup file'},
           {command: 'blocknotify', description: 'Get notified on next block'},
           {command: 'connect', description: 'Get connect code for the bot'},
+          {command: 'earnings', description: 'Show earnings over the week'},
           {command: 'invoice', description: 'Create an invoice'},
           {command: 'liquidity', description: 'Get liquidity [with-peer]'},
           {command: 'mempool', description: 'Get info about the mempool'},
@@ -235,6 +236,21 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             id: connectedId,
             reply: replyWithMarkdown,
           });
+        });
+
+        bot.command('earnings', ({message, replyWithMarkdown}) => {
+          const {handleEarningsCommand} = require('ln-telegram');
+          handleEarningsCommand({
+            from: message.from.id,
+            id: connectedId,
+            key: apiKey,
+            nodes: getNodes,
+            reply: replyWithMarkdown,
+            text: message.text,
+          },
+          err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
+
+          return;
         });
 
         bot.command('invoice', ({message, reply}) => {
@@ -317,6 +333,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             '/backup - Get node backup file',
             '/blocknotify - Notification on next block',
             '/connect - Connect bot',
+            '/earnings - View earnings over the past week',
             '/invoice - Make an invoice',
             '/liquidity [with] - View node liquidity',
             '/mempool - BTC mempool report',

@@ -341,7 +341,7 @@ module.exports = (args, cbk) => {
       }
 
       const sub = subscribeToFindMaxPayable({
-        cltv: to.cltv_delta || defaultCltvDelta,
+        cltv: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
         hops: probe.route.hops,
         lnd: args.lnd,
         max: args.find_max,
