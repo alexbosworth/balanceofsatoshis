@@ -12,6 +12,7 @@ const {gray} = require('colorette');
 const {green} = require('colorette');
 const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
+const {Parser} = require('hot-formula-parser');
 const {returnResult} = require('asyncjs-util');
 const {updateRoutingFees} = require('ln-service');
 
@@ -19,6 +20,7 @@ const {formatFeeRate} = require('./../display');
 const updateChannelFee = require('./update_channel_fee');
 
 const asTxOut = n => `${n.transaction_id}:${n.transaction_vout}`;
+const {ceil} = Math;
 const flatten = arr => [].concat(...arr);
 const interval = 1000 * 60 * 2;
 const {isArray} = Array;
@@ -120,8 +122,8 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Set the fee rates of the specified channels
-      updateFees: [
+      // Figure out updated fee rates of the specified channels for adjustments
+      feeUpdates: [
         'getChannels',
         'getFeeRates',
         'getPeers',
@@ -145,11 +147,72 @@ module.exports = (args, cbk) => {
         const ownKey = getPublicKey.public_key;
         const peerKeys = getPeers.map(n => n.public_key).filter(n => !!n);
 
-        const updates = peerKeys.map(key => {
+        return asyncMap(peerKeys, (key, cbk) => {
           const channels = []
             .concat(getChannels.channels)
             .concat(getPending.pending_channels)
             .filter(channel => channel.partner_public_key === key);
+
+          const inboundLiquidity = channels.reduce((sum, n) => {
+            return sum + n.remote_balance;
+          },
+          Number());
+
+          const outboundLiquidity = channels.reduce((sum, n) => {
+            return sum + n.local_balance;
+          },
+          Number());
+
+          const peerPolicies = getPolicies
+            .filter(n => !!n)
+            .filter(n => channels.find(chan => asTxOut(chan) === asTxOut(n)))
+            .map(n => n.policies.find(p => p.public_key !== ownKey))
+            .filter(n => !!n);
+
+          const inboundFeeRate = max(...peerPolicies.map(n => n.fee_rate));
+
+          const parser = new Parser();
+
+          parser.setVariable('INBOUND', inboundLiquidity);
+          parser.setVariable('INBOUND_FEE_RATE', inboundFeeRate);
+          parser.setVariable('OUTBOUND', outboundLiquidity);
+
+          parser.setFunction('BIPS', params => {
+            const [param] = params;
+
+            return params * 1e2;
+          });
+
+          parser.setFunction('PERCENT', params => {
+            const [param] = params;
+
+            return params * 1e4;
+          });
+
+          const parsedRate = parser.parse(args.fee_rate);
+
+          switch (parsedRate.error) {
+          case '#DIV/0!':
+            return cbk([503, 'FeeRateCalculationCannotDivideByZeroFormula']);
+
+          case '#ERROR!':
+            return cbk([503, 'FailedToParseFeeRateFormula']);
+
+          case '#N/A':
+          case '#NAME?':
+            return cbk([503, 'UnrecognizedVariableOrFunctionInFeeRateFormula']);
+
+          case '#NUM':
+            return cbk([503, 'InvalidNumberFoundInFeeRateFormula']);
+
+          case '#VALUE!':
+            return cbk([503, 'UnexpectedValueTypeInFeeRateFormula']);
+
+          default:
+            break;
+          }
+
+          const feeRate = ceil(parsedRate.result);
 
           const feeRates = getFeeRates.channels.filter(rate => {
             return channels.find(n => asTxOut(n) === asTxOut(rate));
@@ -165,11 +228,11 @@ module.exports = (args, cbk) => {
             .map(n => BigInt(n.base_fee_mtokens))
             .reduce((sum, fee) => fee > sum ? fee : sum, BigInt(Number()));
 
-          return channels.map(channel => {
+          return cbk(null, channels.map(channel => {
             // Exit early when there is no known policy
             if (!currentPolicies.length) {
               return {
-                fee_rate: args.fee_rate,
+                fee_rate: feeRate,
                 transaction_id: channel.transaction_id,
                 transaction_vout: channel.transaction_vout,
               };
@@ -178,14 +241,26 @@ module.exports = (args, cbk) => {
             return {
               base_fee_mtokens: baseFeeMillitokens.toString(),
               cltv_delta: max(...currentPolicies.map(n => n.cltv_delta)),
-              fee_rate: args.fee_rate,
+              fee_rate: feeRate,
               transaction_id: channel.transaction_id,
               transaction_vout: channel.transaction_vout,
             };
-          });
-        });
+          }));
+        },
+        cbk);
+      }],
 
-        return asyncEach(flatten(updates), (update, cbk) => {
+      // Execute fee updates
+      updateFees: [
+        'feeUpdates',
+        'getPublicKey',
+        ({feeUpdates, getPublicKey}, cbk) =>
+      {
+        if (!feeUpdates) {
+          return cbk();
+        }
+
+        return asyncEach(flatten(feeUpdates), (update, cbk) => {
           return asyncRetry({interval, times}, cbk => {
             return updateChannelFee({
               base_fee_mtokens: update.base_fee_mtokens,

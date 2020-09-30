@@ -1,5 +1,9 @@
 # Versions
 
+## Version 6.2.0
+
+- `fees`: Allow specifying formulas with `--set-fee-rate`, including INBOUND_FEE_RATE
+
 ## Version 6.1.0
 
 - `rebalance`: Improve support for very small rebalances, validate too-small rebalances
