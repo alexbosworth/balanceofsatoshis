@@ -84,6 +84,7 @@ const tokensAsBigUnit = tokens => ((tokens || 0) / 1e8).toFixed(8);
     [api_key]: <API Key CBOR String>
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
     confs: <Confirmations to Wait for Deposit Number>
+    fetch: <Fetch Function>
     [is_fast]: <Execute Swap Immediately Bool>
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
     [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
@@ -114,6 +115,10 @@ module.exports = (args, cbk) => {
       validate: cbk => {
         if (args.confs === undefined) {
           return cbk([400, 'ExpectedConfirmationsCountToConsiderReorgSafe']);
+        }
+
+        if (!args.fetch) {
+          return cbk([400, 'ExpectedFetchFunctionToInitiateSwapOut']);
         }
 
         if (!args.lnd) {
@@ -295,6 +300,7 @@ module.exports = (args, cbk) => {
 
         return getPaidService({
           network,
+          fetch: args.fetch,
           lnd: args.lnd,
           logger: args.logger,
           socket: args.socket,
@@ -795,6 +801,7 @@ module.exports = (args, cbk) => {
         'decodeFundingRequest',
         'findRouteForExecution',
         'findRoutesForFunding',
+        'getMinSweepFee',
         ({decodeFundingRequest, findRoutesForFunding}, cbk) =>
       {
         if (!!args.recovery) {

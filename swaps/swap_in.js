@@ -14,7 +14,6 @@ const {getNetwork} = require('ln-sync');
 const {getSwapInQuote} = require('goldengate');
 const {getSwapInTerms} = require('goldengate');
 const {getWalletInfo} = require('ln-service');
-const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
 const qrcode = require('qrcode-terminal');
 const {refundTransaction} = require('goldengate');
@@ -39,6 +38,7 @@ const waitForDepositMs = 1000 * 60 * 60 * 24;
 
   {
     [api_key]: <API Key CBOR Hex String>
+    fetch: <Fetch Function>
     [in_through]: <Request Inbound Payment Public Key Hex String>
     [is_refund_test]: <Alter Swap Timeout To Have Short Refund Bool>
     lnd: <Authenticated LND gRPC API Object>
@@ -46,6 +46,7 @@ const waitForDepositMs = 1000 * 60 * 60 * 24;
     [max_fee]: <Maximum Fee Tokens to Pay Number>
     [recovery]: <Recover In-Progress Swap String>
     [refund_address]: <Refund Address String>
+    [socket]: <Swap Socket String>
     [tokens]: <Tokens Number>
   }
 
@@ -60,6 +61,10 @@ module.exports = (args, cbk) => {
   return asyncAuto({
     // Check arguments
     validate: cbk => {
+      if (!args.fetch) {
+        return cbk([400, 'ExpectedFetchFunctionToReceiveOnChain']);
+      }
+
       if (!args.logger) {
         return cbk([400, 'ExpectedLoggerToReceiveOnChain']);
       }
@@ -104,8 +109,10 @@ module.exports = (args, cbk) => {
       }
 
       return getPaidService({
+        fetch: args.fetch,
         lnd: args.lnd,
         logger: args.logger,
+        socket: args.socket,
         token: args.api_key,
       },
       cbk);

@@ -1,4 +1,5 @@
 const {encode} = require('cbor');
+const fetch = require('node-fetch');
 const {test} = require('tap');
 
 const {getInfoResponse} = require('./../fixtures');
@@ -9,6 +10,7 @@ const makeToken = (m, p) => encode({macaroon: m, preimage: p}).toString('hex');
 
 const makeArgs = override => {
   const args = {
+    fetch,
     lnd: {
       default: {
         getInfo: ({}, cbk) => cbk(null, getInfoResponse),

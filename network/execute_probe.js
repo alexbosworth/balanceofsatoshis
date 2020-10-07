@@ -121,6 +121,8 @@ module.exports = (args, cbk) => {
 
         const method = !features ? subscribeToProbe : subscribeToProbeForRoute;
 
+        const timeoutMinutes = minutesAsMs((args.timeout_minutes || Number()));
+
         const sub = method({
           cltv_delta: args.cltv_delta,
           destination: args.destination,
@@ -135,7 +137,7 @@ module.exports = (args, cbk) => {
           outgoing_channel: args.outgoing_channel,
           path_timeout_ms: pathTimeoutMs,
           payment: args.payment,
-          probe_timeout_ms: minutesAsMs((args.timeout_minutes || Number())),
+          probe_timeout_ms: timeoutMinutes || undefined,
           routes: args.routes,
           tokens: args.tokens,
           total_mtokens: mtokens,

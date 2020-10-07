@@ -1,3 +1,4 @@
+const getPaidService = require('./get_paid_service');
 const getSwapCost = require('./get_swap_cost');
 const getSwapService = require('./get_swap_service');
 const rebalance = require('./rebalance');
@@ -7,6 +8,7 @@ const swapOut = require('./swap_out');
 const {swapTypes} = require('./constants');
 
 module.exports = {
+  getPaidService,
   getSwapCost,
   getSwapService,
   rebalance,

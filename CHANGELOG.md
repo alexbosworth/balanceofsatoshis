@@ -1,5 +1,10 @@
 # Versions
 
+## Version 6.2.1
+
+- `chain-receive`: Fix method on testnet
+- `increase-inbound-liquidity`: Fix method on testnet
+
 ## Version 6.2.0
 
 - `fees`: Allow specifying formulas with `--set-fee-rate`, including INBOUND_FEE_RATE

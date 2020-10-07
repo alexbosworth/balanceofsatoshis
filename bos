@@ -9,6 +9,7 @@ const {statSync} = require('fs');
 const {unlink} = require('fs');
 const {writeFile} = require('fs');
 
+const fetch = require('node-fetch');
 const {findKey} = require('ln-sync');
 const inquirer = require('inquirer');
 const prog = require('caporal');
@@ -38,12 +39,12 @@ const {getFeesPaid} = require('./routing');
 const {getForwards} = require('./network');
 const {getLiquidity} = require('./balances');
 const {getLnds} = require('./lnd');
+const {getPaidService} = require('./swaps');
 const {getPeers} = require('./network');
 const {getPriceChart} = require('./fiat');
 const {getReceivedChart} = require('./wallets');
 const {getReport} = require('./wallets');
 const {getSwapCost} = require('./swaps');
-const {getSwapService} = require('./swaps');
 const {getUtxos} = require('./chain');
 const {ignoreFromAvoid} = require('./routing');
 const {lndCredentials} = require('./lnd');
@@ -220,11 +221,13 @@ prog
   .option('--node <node_name>', 'Node to receive funds on')
   .option('--recovery <refund_recovery>', 'Attempt refund of swap')
   .option('--refund-address <refund_address>', 'Refund address for swap')
+  .option('--service-socket <swap_service_socket>', 'host:port for service')
   .option('--test-refund', 'Reduce refund timeout height to test refund')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return swapIn({
+          fetch,
           logger,
           api_key: options.apiKey || undefined,
           in_through: options.in || undefined,
@@ -234,6 +237,7 @@ prog
           node: options.node,
           recovery: options.recovery,
           refund_address: options.refundAddress,
+          socket: options.serviceSocket || undefined,
           tokens: args.amount,
         },
         returnObject({exit, logger, reject, resolve}));
@@ -632,6 +636,7 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return swapOut({
+          fetch,
           logger,
           api_key: options.apiKey || undefined,
           avoid: flatten([options.avoid].filter(n => !!n)),
@@ -695,22 +700,32 @@ prog
   .visible(false)
   .argument('<type>', 'Liquidity direction', swapTypes)
   .argument('<amount>', 'Amount of liquidity to get quote for', INT)
+  .argument('<api-key>', 'Swap API key to use', hexMatch)
   .option('--above <tokens>', 'Return amount above watermark', INT)
-  .option('--api-key <api_key>', 'Pre-paid API key to use', hexMatch)
   .option('--fast', 'Avoid any server batching wait time')
   .option('--node <node_name>', 'Node to get liquidity cost')
+  .option('--service-socket', 'Specify a custom swap service address')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const {service} = await getSwapService({logger, node: options.node});
+        const {lnd} = await authenticatedLnd({logger, node: options.node});
+
+        const {macaroon, preimage, service} = await getPaidService({
+          fetch,
+          lnd,
+          logger,
+          socket: options.serviceSocket,
+          token: args.apiKey,
+        });
 
         return getSwapCost({
+          lnd,
           logger,
+          macaroon,
+          preimage,
           service,
           above: options.above,
-          api_key: options.apiKey || undefined,
           is_fast: options.fast || undefined,
-          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
           tokens: args.amount,
           type: args.type,
         },
@@ -1120,10 +1135,12 @@ prog
   .option('--macaroon <macaroon>', 'Hex encoded macaroon of swap API key')
   .option('--node <node_name>', 'Node to use to pay for API key')
   .option('--preimage <preimage>', 'Hex encoded preimage of swap API key')
+  .option('--service-socket <swap_service_socket>', 'host:port for service')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return swapApiKey({
+          fetch,
           logger,
           api_key: options.apiKey,
           is_purchase: options.purchase,
@@ -1131,6 +1148,7 @@ prog
           macaroon: options.macaroon,
           node: options.node,
           preimage: options.preimage,
+          socket: options.serviceSocket,
         },
         returnObject({logger, reject, resolve}));
       } catch (err) {

@@ -10,6 +10,7 @@ const getPaidService = require('./get_paid_service');
 
   {
     [api_key]: <Swap CBOR Encoded API Key Hex String>
+    [fetch]: <Node Fetch Function>
     [is_purchase]: <Purchase a New API Key Bool>
     [macaroon]: <Macaroon Hex Encoded String>
     [lnd]: <Authenticated LND API gRPC API Object>
@@ -87,8 +88,10 @@ module.exports = (args, cbk) => {
         }
 
         return getPaidService({
+          fetch: args.fetch,
           lnd: args.lnd,
           logger: args.logger,
+          socket: args.socket,
           token: args.api_key,
         },
         cbk);

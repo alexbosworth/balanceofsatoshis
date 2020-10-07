@@ -10,18 +10,17 @@ const {returnResult} = require('asyncjs-util');
 const {balanceFromTokens} = require('./../balances');
 const {cltvDeltaBuffer} = require('./constants');
 const {fastDelayMinutes} = require('./constants');
-const getPaidService = require('./get_paid_service');
 const {slowDelayMinutes} = require('./constants');
 
 /** Get the cost of liquidity via swap
 
   {
     [above]: <Cost Above Tokens Number>
-    [api_key]: <CBOR API Key Hex Encoded String>
     [is_fast]: <Swap Out Is Immediate Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
-    service: <Swap Service API Object>
+    macaroon: <Authenticated Service Macaroon Base64 String>
+    preimage: <Authenticated Preimage Hex String>
     tokens: <Liquidity Tokens Number>
     type: <Liquidity Type String>
   }
@@ -44,6 +43,14 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToGetSwapCost']);
         }
 
+        if (!args.macaroon) {
+          return cbk([400, 'ExpectedServiceMacaroonToGetSwapCost']);
+        }
+
+        if (!args.preimage) {
+          return cbk([400, 'ExpectedPaymentPreimageToGetSwapCost']);
+        }
+
         if (!args.service) {
           return cbk([400, 'ExpectedSwapServiceToGetSwapCost']);
         }
@@ -59,37 +66,22 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get paid service
-      getService: ['validate', ({}, cbk) => {
-        // Exit early when there is no API key with the vanilla service
-        if (!args.api_key) {
-          return cbk(null, {service: args.service});
-        }
-
-        return getPaidService({
-          lnd: args.lnd,
-          logger: args.logger,
-          token: args.api_key,
-        },
-        cbk);
-      }],
-
       // Get swap terms
-      getTerms: ['getService', ({getService}, cbk) => {
+      getTerms: ['validate', ({}, cbk) => {
         switch (args.type) {
         case 'inbound':
           return getSwapOutTerms({
-            macaroon: getService.macaroon,
-            preimage: getService.preimage,
-            service: getService.service,
+            macaroon: args.macaroon,
+            preimage: args.preimage,
+            service: args.service,
           },
           cbk);
 
         case 'outbound':
           return getSwapInTerms({
-            macaroon: getService.macaroon,
-            preimage: getService.preimage,
-            service: getService.service,
+            macaroon: args.macaroon,
+            preimage: args.preimage,
+            service: args.service,
           },
           cbk);
 
@@ -104,12 +96,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Get a swap quote
-      getQuote: [
-        'getHeight',
-        'getService',
-        'getTerms',
-        ({getHeight, getService, getTerms}, cbk) =>
-      {
+      getQuote: ['getHeight', 'getTerms', ({getHeight, getTerms}, cbk) => {
         const cltv = getTerms.max_cltv_delta + getHeight.current_block_height;
         const swapDelay = !args.is_fast ? slowDelayMinutes : fastDelayMinutes;
 
@@ -117,9 +104,9 @@ module.exports = (args, cbk) => {
         case 'inbound':
           return getSwapOutQuote({
             delay: moment().add(swapDelay, 'minutes').toISOString(),
-            macaroon: getService.macaroon,
-            preimage: getService.preimage,
-            service: getService.service,
+            macaroon: args.macaroon,
+            preimage: args.preimage,
+            service: args.service,
             timeout: cltv - cltvDeltaBuffer,
             tokens: args.tokens,
           },
@@ -127,9 +114,9 @@ module.exports = (args, cbk) => {
 
         case 'outbound':
           return getSwapInQuote({
-            macaroon: getService.macaroon,
-            preimage: getService.preimage,
-            service: getService.service,
+            macaroon: args.macaroon,
+            preimage: args.preimage,
+            service: args.service,
             tokens: args.tokens,
           },
           cbk);

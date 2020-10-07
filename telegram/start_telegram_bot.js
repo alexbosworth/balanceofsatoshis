@@ -10,6 +10,7 @@ const {getWalletInfo} = require('ln-service');
 const {handleBackupCommand} = require('ln-telegram');
 const {handleBlocknotifyCommand} = require('ln-telegram');
 const {handleConnectCommand} = require('ln-telegram');
+const {handleEarningsCommand} = require('ln-telegram');
 const {handleInvoiceCommand} = require('ln-telegram');
 const {handleLiquidityCommand} = require('ln-telegram');
 const {handleMempoolCommand} = require('ln-telegram');
@@ -239,7 +240,6 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         });
 
         bot.command('earnings', ({message, replyWithMarkdown}) => {
-          const {handleEarningsCommand} = require('ln-telegram');
           handleEarningsCommand({
             from: message.from.id,
             id: connectedId,
