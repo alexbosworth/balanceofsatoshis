@@ -1,5 +1,11 @@
 # Versions
 
+## Version 6.3.0
+
+- `increase-inbound-liquidity`: Fix errors encountered during pathfinding
+- `increase-inbound-liquidity`: Allow specifying a peer alias or abbreviated key in `--with`
+- `rebalance`: Allow specifying formulas for `--amount`, including `*k`,`*m`, `*btc`
+
 ## Version 6.2.1
 
 - `chain-receive`: Fix method on testnet

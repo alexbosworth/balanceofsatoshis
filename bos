@@ -621,7 +621,7 @@ prog
   .option('--dryrun', 'Only show cost estimate for increase')
   .option('--fast', 'Request swap server avoid batching delay')
   .option('--max-deposit <max_deposit>', 'Maximum deposit amount', INT, 5e4)
-  .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 2e4)
+  .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 3e4)
   .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 60)
   .option('--max-paths <max_paths>', 'Maximum paths to attempt', INT, 1)
   .option('--no-color', 'Mute all colors')
@@ -982,7 +982,8 @@ prog
   // Rebalance between peers
   .command('rebalance', 'Rebalance funds between peers')
   .help('Change the liquidity profile of two peers')
-  .option('--amount <amount>', 'Maximum amount to rebalance', INT)
+  .help('When specifying amount you can use formulas or *k *m for *1e3, *1e6')
+  .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--avoid-high-inbound', 'Avoid rebalancing when inbound is high')
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
@@ -1119,7 +1120,7 @@ prog
           is_push: true,
           is_real_payment: true,
           message: options.message,
-          tokens: args.amount,
+          tokens: options.amount,
         },
         returnObject({logger, reject, resolve}));
       } catch (err) {

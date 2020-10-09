@@ -12,7 +12,8 @@ const tokensAsMtokens = tokens => BigInt(tokens) * BigInt(1e3);
 
   {
     destination: <Final Destination Public Key Hex String>
-    lnd: <Authenticated gRPC LND API Object>
+    identity: <Node Identity Public Key Hex String>
+    lnd: <Authenticated LND API Object>
     through: <In Through Node with Public Key Hex String>
     tokens: <Tokens to Send Number>
   }
@@ -29,13 +30,17 @@ const tokensAsMtokens = tokens => BigInt(tokens) * BigInt(1e3);
     }]
   }
 */
-module.exports = ({destination, lnd, through, tokens}, cbk) => {
+module.exports = ({destination, identity, lnd, through, tokens}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
         if (!destination) {
           return cbk([400, 'ExpectedDestinationToGetInboundPath']);
+        }
+
+        if (!identity) {
+          return cbk([400, 'ExpectedIdentityToGetInboundPath']);
         }
 
         if (!lnd) {
@@ -55,9 +60,6 @@ module.exports = ({destination, lnd, through, tokens}, cbk) => {
 
       // Get channels to validate the inbound channel exists
       getChannels: ['validate', ({}, cbk) => getChannels({lnd}, cbk)],
-
-      // Get local node info to check if this is a local inbound channel
-      getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd}, cbk)],
 
       // Get node
       getNode: ['validate', ({}, cbk) => {
@@ -79,10 +81,9 @@ module.exports = ({destination, lnd, through, tokens}, cbk) => {
       // Connecting path
       path: [
         'getChannels',
-        'getInfo',
         'getNode',
         'localChannels',
-        ({getChannels, getInfo, getNode, localChannels}, cbk) =>
+        ({getChannels, getNode, localChannels}, cbk) =>
       {
         const channels = [].concat(getNode.channels).concat(localChannels);
 
@@ -95,8 +96,6 @@ module.exports = ({destination, lnd, through, tokens}, cbk) => {
           return cbk([400, 'NoConnectingChannelToPayIn']);
         }
 
-        const publicKey = getInfo.public_key;
-
         const [channel] = connectingChannels.filter(chan => {
           const policy = chan.policies.find(n => n.public_key === through);
 
@@ -108,7 +107,7 @@ module.exports = ({destination, lnd, through, tokens}, cbk) => {
             return false;
           }
 
-          const isLocal = chan.policies.find(n => n.public_key === publicKey);
+          const isLocal = chan.policies.find(n => n.public_key === identity);
 
           const localChannel = getChannels.channels.find(({id}) => {
             return id === chan.id;

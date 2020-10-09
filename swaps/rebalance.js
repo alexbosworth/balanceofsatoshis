@@ -11,10 +11,12 @@ const {getPeerLiquidity} = require('ln-sync');
 const {getRouteThroughHops} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
+const {Parser} = require('hot-formula-parser');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
+const {getIdentity} = require('./../network');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');
 
@@ -56,17 +58,18 @@ const uniq = arr => Array.from(new Set(arr));
 
   {
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
+    [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
     [is_avoiding_high_inbound]: <Avoid High Inbound Liquidity Bool>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
-    [max_rebalance]: <Maximum Amount to Rebalance Tokens Number>
+    [max_rebalance]: <Maximum Amount to Rebalance Tokens String>
     [node]: <Node Name String>
     [out_channels]: [<Exclusively Rebalance Through Channel Ids String>]
+    [out_inbound]: <Outbound Target Inbound Liquidity Tokens Number>
     out_through: <Pay Out Through Peer String>
-    [target]: <Target Tokens Number>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
   }
 
@@ -75,15 +78,6 @@ const uniq = arr => Array.from(new Set(arr));
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
-      // Starting tokens to rebalance
-      tokens: cbk => {
-        if (!!args.max_rebalance && args.max_rebalance < minRebalanceAmount) {
-          return cbk(null, initialProbeTokens(probeSizeMinimal));
-        }
-
-        return cbk(null, initialProbeTokens(probeSizeRegular));
-      },
-
       // Check arguments
       validate: cbk => {
         if (!args.logger) {
@@ -110,10 +104,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedNonZeroMaxFeeRateForRebalance']);
         }
 
-        if (!!args.max_rebalance && args.max_rebalance < minRebalanceAmount) {
-          return cbk([400, 'LowRebalanceAmount', {min: minRebalanceAmount}]);
-        }
-
         if (isArray(args.out_through)) {
           return cbk([400, 'MultipleOutPeersIsNotSupported']);
         }
@@ -125,6 +115,63 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Determine the maximum rebalance
+      maximum: ['validate', ({}, cbk) => {
+        // Exit early when there is no maximum rebalance target
+        if (!args.max_rebalance) {
+          return cbk();
+        }
+
+        const parser = new Parser();
+
+        parser.setVariable('BTC', 1e8);
+        parser.setVariable('btc', 1e8);
+        parser.setVariable('m', 1e6);
+        parser.setVariable('M', 1e6);
+        parser.setVariable('mm', 1e6);
+        parser.setVariable('MM', 1e6);
+        parser.setVariable('k', 1e3);
+        parser.setVariable('K', 1e3);
+
+        const parsed = parser.parse(args.max_rebalance);
+
+        switch (parsed.error) {
+        case '#DIV/0!':
+          return cbk([400, 'CannotDivideByZeroInSpecifiedAmount']);
+
+        case '#ERROR!':
+          return cbk([400, 'FailedToParseSpecifiedAmount']);
+
+        case '#N/A':
+        case '#NAME?':
+          return cbk([400, 'UnrecognizedVariableOrFunctionInSpecifiedAmount']);
+
+        case '#NUM':
+          return cbk([400, 'InvalidNumberFoundInSpecifiedAmount']);
+
+        case '#VALUE!':
+          return cbk([400, 'UnexpectedValueTypeInSpecifiedAmount']);
+
+        default:
+          break;
+        }
+
+        if (parsed.result < minRebalanceAmount) {
+          return cbk([400, 'LowRebalanceAmount', {min: minRebalanceAmount}]);
+        }
+
+        return cbk(null, ceil(parsed.result));
+      }],
+
+      // Starting tokens to rebalance
+      tokens: ['maximum', ({maximum}, cbk) => {
+        if (!!maximum && maximum < minRebalanceAmount) {
+          return cbk(null, initialProbeTokens(probeSizeMinimal));
+        }
+
+        return cbk(null, initialProbeTokens(probeSizeRegular));
+      }],
+
       // Lnd by itself
       lnd: ['validate', ({}, cbk) => cbk(null, args.lnd)],
 
@@ -132,7 +179,7 @@ module.exports = (args, cbk) => {
       getInitialLiquidity: ['lnd', ({lnd}, cbk) => getChannels({lnd}, cbk)],
 
       // Get public key
-      getPublicKey: ['lnd', ({lnd}, cbk) => getWalletInfo({lnd}, cbk)],
+      getPublicKey: ['lnd', ({lnd}, cbk) => getIdentity({lnd}, cbk)],
 
       // Determine the maximum tokens that can be rebalanced
       maxRebalanceTokens: ['lnd', ({lnd}, cbk) => {
@@ -444,14 +491,15 @@ module.exports = (args, cbk) => {
       max: [
         'getInbound',
         'getOutbound',
+        'maximum',
         'tokens',
-        ({getInbound, getOutbound, tokens}, cbk) =>
+        ({getInbound, getOutbound, maximum, tokens}, cbk) =>
       {
-        if (!!args.max_rebalance && !!args.in_outbound) {
+        if (!!maximum && !!args.in_outbound) {
           return cbk([400, 'CannotSpecifyBothDiscreteAmountAndTargetAmounts']);
         }
 
-        if (!!args.max_rebalance && !!args.out_inbound) {
+        if (!!maximum && !!args.out_inbound) {
           return cbk([400, 'CannotSpecifyBothDiscreteAmountAndTargetAmounts']);
         }
 
@@ -460,7 +508,7 @@ module.exports = (args, cbk) => {
         }
 
         if (!args.in_outbound && !args.out_inbound) {
-          return cbk(null, args.max_rebalance || maxPaymentSize);
+          return cbk(null, maximum || maxPaymentSize);
         }
 
         const peer = !args.in_outbound ? getOutbound : getInbound;
@@ -496,14 +544,9 @@ module.exports = (args, cbk) => {
         ({getInbound, getOutbound, getPublicKey, ignore, max, tokens}, cbk) =>
       {
         args.logger.info({
-          outgoing_peer: {
-            alias: getOutbound.alias,
-            public_key: getOutbound.public_key,
-          },
-          incoming_peer: {
-            alias: getInbound.alias,
-            public_key: getInbound.public_key,
-          },
+          outgoing_peer_to_increase_inbound: getOutbound.alias,
+          incoming_peer_to_decrease_inbound: getInbound.alias,
+          rebalance_target_amount: tokAsBigTok(max),
         });
 
         const immediateIgnore = [{

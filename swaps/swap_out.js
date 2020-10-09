@@ -12,6 +12,8 @@ const {decodeSwapRecovery} = require('goldengate');
 const {encodeSwapRecovery} = require('goldengate');
 const {decodePaymentRequest} = require('ln-service');
 const {findDeposit} = require('goldengate');
+const {findKey} = require('ln-sync');
+const {formatTokens} = require('ln-sync');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNetwork} = require('ln-sync');
@@ -20,6 +22,7 @@ const {getNodeAlias} = require('ln-sync');
 const {getPayment} = require('ln-service');
 const {getSwapOutQuote} = require('goldengate');
 const {getSwapOutTerms} = require('goldengate');
+const {getSyntheticOutIgnores} = require('probing');
 const {getWalletInfo} = require('ln-service');
 const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
@@ -28,6 +31,7 @@ const {releaseSwapOutSecret} = require('goldengate');
 const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToBlocks} = require('ln-service');
+const {subscribeToMultiPathPay} = require('probing');
 const {subscribeToPastPayment} = require('ln-service');
 const {subscribeToPayViaRequest} = require('ln-service');
 const {subscribeToSwapOutStatus} = require('goldengate');
@@ -37,7 +41,10 @@ const {authenticatedLnd} = require('./../lnd');
 const avoidsAsIgnores = require('./avoids_as_ignores');
 const {chains} = require('./../network/networks');
 const channelForSend = require('./channel_for_send');
+const {cltvDeltaBuffer} = require('./constants');
 const {currencySymbols} = require('./../network/networks');
+const {describeRoute} = require('./../display');
+const {describeRoutingFailure} = require('./../display');
 const {estimatedSweepVbytes} = require('./constants');
 const {executeProbe} = require('./../network');
 const {fastDelayMinutes} = require('./constants');
@@ -77,6 +84,7 @@ const {round} = Math;
 const sha256 = n => createHash('sha256').update(Buffer.from(n, 'hex'));
 const swapDelayMinutes = fast => !!fast ? fastDelayMinutes : slowDelayMinutes;
 const tokensAsBigUnit = tokens => ((tokens || 0) / 1e8).toFixed(8);
+const uniq = arr => Array.from(new Set(arr));
 
 /** Get additional inbound liquidity
 
@@ -160,6 +168,11 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Find peer
+      findPeer: ['validate', ({}, cbk) => {
+        return findKey({lnd: args.lnd, query: args.peer}, cbk);
+      }],
+
       // Get current channel liquidity details
       getChannels: ['validate', ({}, cbk) => {
         return getChannels({lnd: args.lnd, is_active: true}, cbk);
@@ -174,12 +187,12 @@ module.exports = (args, cbk) => {
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
       // Get peer details
-      getPeerDetails: ['validate', ({}, cbk) => {
-        if (!args.peer) {
+      getPeerDetails: ['findPeer', ({findPeer}, cbk) => {
+        if (!findPeer.public_key) {
           return cbk();
         }
 
-        return getNodeAlias({id: args.peer, lnd: args.lnd}, cbk);
+        return getNodeAlias({id: findPeer.public_key, lnd: args.lnd}, cbk);
       }],
 
       // Decode the swap recovery if necessary
@@ -229,16 +242,16 @@ module.exports = (args, cbk) => {
       }],
 
       // Figure out which channel to use when swapping with a peer
-      channel: ['getChannels', ({getChannels}, cbk) => {
+      channel: ['findPeer', 'getChannels', ({findPeer, getChannels}, cbk) => {
         // Exit early when this is a recovery, or there is no peer selected
-        if (!!args.recovery || !args.peer) {
+        if (!!args.recovery || !findPeer.public_key) {
           return cbk();
         }
 
         const {id} = channelForSend({
           tokens: args.tokens,
           channels: getChannels.channels,
-          peer: args.peer,
+          peer: findPeer.public_key,
         });
 
         // There was no channel found to use for the swap
@@ -249,12 +262,30 @@ module.exports = (args, cbk) => {
         return cbk(null, {id});
       }],
 
-      // Get the ignore list from avoid directives
-      getIgnores: ['getChannels', ({getChannels}, cbk) => {
+      // Converrt avoids to ignores
+      avoidsAsIgnores: ['getChannels', ({getChannels}, cbk) => {
         return avoidsAsIgnores({
           avoid: args.avoid,
           channels: getChannels.channels,
           lnd: args.lnd,
+        },
+        cbk);
+      }],
+
+      // Get the ignore list from avoid directives
+      getIgnores: [
+        'avoidsAsIgnores',
+        'findPeer',
+        ({avoidsAsIgnores, findPeer}, cbk) =>
+      {
+        if (!findPeer.public_key) {
+          return cbk(null, {ignore: avoidsAsIgnores.ignore});
+        }
+
+        return getSyntheticOutIgnores({
+          ignore: avoidsAsIgnores.ignore,
+          lnd: args.lnd,
+          out: [findPeer.public_key],
         },
         cbk);
       }],
@@ -644,15 +675,144 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Probe for funding routes
+      // Get peers of the destination node
+      getGateways: ['decodeFundingRequest', ({decodeFundingRequest}, cbk) => {
+        if (!!args.recovery) {
+          return cbk();
+        }
+
+        const finalKey = decodeFundingRequest.destination;
+
+        return getNode({lnd: args.lnd, public_key: finalKey}, (err, res) => {
+          if (!!err) {
+            return cbk(null, {});
+          }
+
+          const policies = res.channels.map(channel => {
+            return channel.policies.find(n => n.public_key !== finalKey);
+          });
+
+          const keys = uniq(policies.map(n => n.public_key));
+
+          const gateways = keys.filter(n => !!n).map(gateway => ({
+            from_public_key: gateway,
+            to_public_key: finalKey,
+          }));
+
+          return cbk(null, {gateways});
+        });
+      }],
+
+      // Get funding routes for a multiple path payment
+      getFundingRoutes: [
+        'decodeFundingRequest',
+        'getGateways',
+        'getIgnores',
+        ({decodeFundingRequest, getGateways, getIgnores}, cbk) =>
+      {
+        if (!!args.recovery) {
+          return cbk();
+        }
+
+        // Exit early when not doing multipath funding
+        if (args.max_paths < 2) {
+          return cbk();
+        }
+
+        const {subscribeToMultiPathProbe} = require('probing');
+        const hasFeatures = !!decodeFundingRequest.features.length;
+        const paths = [];
+
+        const sub = subscribeToMultiPathProbe({
+          allow_stacking: getGateways.gateways,
+          cltv_delta: decodeFundingRequest.cltv_delta + cltvBuffer,
+          destination: decodeFundingRequest.destination,
+          features: !!hasFeatures ? decodeFundingRequest.features : undefined,
+          ignore: getIgnores.ignore,
+          lnd: args.lnd,
+          logger: args.logger,
+          max_paths: args.max_paths || undefined,
+          routes: decodeFundingRequest.routes,
+        });
+
+        sub.on('error', err => {
+          return cbk([503, 'UnexpectedErrorProbingRouteToSwapService', {err}]);
+        });
+
+        sub.on('evaluating', ({tokens}) => {
+          return args.logger.info({evaluating: tokens});
+        });
+
+        sub.on('failure', () => {
+          return cbk([503, 'FailedToFindAnyPathsToSwapServiceDestination']);
+        });
+
+        sub.on('path', path => {
+          paths.push(path);
+
+          const liquidity = paths.reduce((m, n) => m + n.liquidity, Number());
+
+          return args.logger.info({
+            found_liquidity: formatTokens({tokens: liquidity}).display,
+            found_paths: paths.length,
+          });
+        });
+
+        sub.on('probing', async ({route}) => {
+          const {description} = await describeRoute({route, lnd: args.lnd});
+
+          return args.logger.info({probing: description});
+        });
+
+        sub.on('routing_failure', async failure => {
+          const {description} = await describeRoutingFailure({
+            index: failure.index,
+            lnd: args.lnd,
+            reason: failure.reason,
+            route: failure.route,
+          });
+
+          return args.logger.info({failure: description});
+        });
+
+        sub.on('success', ({paths}) => {
+          const liquidity = paths.reduce((m, n) => m + n.liquidity, Number());
+
+          if (decodeFundingRequest.tokens > liquidity) {
+            return cbk([
+              503,
+              'FailedToFindEnoughLiquidityOnPathsToFundSwap',
+              {available_liquidity: liquidity},
+            ]);
+          }
+
+          return cbk(null, {paths});
+        });
+      }],
+
+      // Get a funding route for a single path payment
       findRoutesForFunding: [
         'channel',
         'decodeFundingRequest',
+        'findPeer',
+        'getFundingRoutes',
         'getIgnores',
         'initiateSwap',
-        ({channel, decodeFundingRequest, getIgnores, initiateSwap}, cbk) =>
+        ({
+          channel,
+          decodeFundingRequest,
+          findPeer,
+          getIgnores,
+          initiateSwap,
+        },
+        cbk) =>
       {
         if (!!args.recovery) {
+          return cbk();
+        }
+
+        // Exit early when doing multiple paths
+        if (args.max_paths > 1) {
           return cbk();
         }
 
@@ -668,7 +828,7 @@ module.exports = (args, cbk) => {
           logger: args.logger,
           max_fee: round(tokens / maxRoutingFeeDenominator),
           max_paths: args.max_paths || undefined,
-          out_through: args.peer || undefined,
+          out_through: findPeer.public_key || undefined,
           outgoing_channel: !!channel ? channel.id : undefined,
           payment: decodeFundingRequest.payment,
           request: initiateSwap.swap_fund_request,
@@ -680,10 +840,19 @@ module.exports = (args, cbk) => {
 
       // Get info about the peer we are going to get inbound liquidity with
       getSwapPeers: [
+        'findPeer',
         'findRoutesForFunding',
         'getChannels',
+        'getFundingRoutes',
         'getPeerDetails',
-        ({findRoutesForFunding, getChannels, getPeerDetails}, cbk) =>
+        ({
+          findPeer,
+          findRoutesForFunding,
+          getChannels,
+          getFundingRoutes,
+          getPeerDetails,
+        },
+        cbk) =>
       {
         // Exit early when this is a recovery
         if (!!args.recovery) {
@@ -691,14 +860,37 @@ module.exports = (args, cbk) => {
         }
 
         // Exit early when a peer is specified
-        if (!!args.peer) {
+        if (!!findPeer.public_key) {
           return cbk(null, [{
             alias: getPeerDetails.alias || undefined,
             peer_channels: getChannels.channels.filter(channel => {
-              return channel.partner_public_key === args.peer;
+              return channel.partner_public_key === findPeer.public_key;
             }),
-            public_key: args.peer,
+            public_key: findPeer.public_key,
           }]);
+        }
+
+        // Exit early when the funding routes are found
+        if (!!getFundingRoutes) {
+          return asyncMap(getFundingRoutes.paths, (path, cbk) => {
+            const [outPeer] = path.relays;
+
+            return getNode({
+              is_omitting_channels: true,
+              lnd: args.lnd,
+              public_key: outPeer,
+            },
+            (err, res) => {
+              return cbk(null, {
+                alias: !!res ? res.alias : undefined,
+                peer_channels: getChannels.channels.filter(channel => {
+                  return channel.partner_public_key === outPeer;
+                }),
+                public_key: outPeer,
+              });
+            });
+          },
+          cbk);
         }
 
         return asyncMap(findRoutesForFunding.routes, (route, cbk) => {
@@ -729,6 +921,7 @@ module.exports = (args, cbk) => {
         'decodeFundingRequest',
         'findRouteForExecution',
         'findRoutesForFunding',
+        'getFundingRoutes',
         'getSwapPeers',
         'getQuote',
         ({
@@ -737,6 +930,7 @@ module.exports = (args, cbk) => {
           decodeFundingRequest,
           findRouteForExecution,
           findRoutesForFunding,
+          getFundingRoutes,
           getSwapPeers,
           getQuote,
         },
@@ -749,7 +943,7 @@ module.exports = (args, cbk) => {
 
         const executionRoutingFee = findRouteForExecution.fee || Number();
         const executionSend = decodeExecutionRequest.tokens;
-        const fundingRoutingFee = findRoutesForFunding.fee || Number();
+        const fundingRoutingFee = (findRoutesForFunding || {}).fee || Number();
         const fundingSend = decodeFundingRequest.tokens;
         const increase = `${tokensAsBigUnit(args.tokens)} ${currency}`;
         const peerChannels = flatten(getSwapPeers.map(n => n.peer_channels));
@@ -790,8 +984,75 @@ module.exports = (args, cbk) => {
             return cbk([500, 'InboundLiquidityIncreaseDryRun']);
           }
 
-          return cbk(null, res.tokens_per_vbyte);
+          return cbk(null, {
+            non_funding_routing_fees: allFees,
+            tokens_per_vbyte: res.tokens_per_vbyte
+          });
         });
+      }],
+
+      // Multi pay to swap fund
+      multiPayToFund: [
+        'checkRequestAmounts',
+        'checkSwap',
+        'getFundingRoutes',
+        'getMinSweepFee',
+        'decodeFundingRequest',
+        ({decodeFundingRequest, getFundingRoutes, getMinSweepFee}, cbk) =>
+      {
+        if (!getFundingRoutes) {
+          return cbk();
+        }
+
+        const sub = subscribeToMultiPathPay({
+          cltv_delta: decodeFundingRequest.cltv_delta + cltvDeltaBuffer,
+          destination: decodeFundingRequest.destination,
+          id: decodeFundingRequest.id,
+          lnd: args.lnd,
+          max_fee: args.max_fee - getMinSweepFee.non_funding_routing_fees,
+          mtokens: decodeFundingRequest.mtokens,
+          paths: getFundingRoutes.paths,
+          payment: decodeFundingRequest.payment,
+          routes: decodeFundingRequest.routes,
+        });
+
+        sub.on('error', err => {
+          return cbk([503, 'UnexpectedErrorPayingSwapFundingRequest', {err}]);
+        });
+
+        sub.on('failure', () => {
+          return cbk([503, 'FailedToPayFundingPaymentRequest']);
+        });
+
+        sub.on('paid', ({secret}) => args.logger.info({proof: secret}));
+
+        sub.on('paying', async ({route}) => {
+          const {description} = await describeRoute({route, lnd: args.lnd});
+
+          return args.logger.info({
+            amount: route.tokens,
+            paying: description,
+          });
+        });
+
+        sub.on('routing_failure', async ({index, reason, route}) => {
+          if (reason === 'MppTimeout') {
+            return;
+          }
+
+          const {description} = await describeRoutingFailure({
+            index,
+            reason,
+            route,
+            lnd: args.lnd,
+          });
+
+          return args.logger.info({failure: description});
+        });
+
+        sub.on('success', ({}) => cbk());
+
+        return;
       }],
 
       // Pay to swap funding
@@ -802,9 +1063,14 @@ module.exports = (args, cbk) => {
         'findRouteForExecution',
         'findRoutesForFunding',
         'getMinSweepFee',
+        'multiPayToFund',
         ({decodeFundingRequest, findRoutesForFunding}, cbk) =>
       {
         if (!!args.recovery) {
+          return cbk();
+        }
+
+        if (!findRoutesForFunding) {
           return cbk();
         }
 
@@ -823,7 +1089,7 @@ module.exports = (args, cbk) => {
             return cbk([503, 'UnexpectedErrorFundingSwap', {err}]);
           }
 
-          return cbk(null, res);
+          return cbk();
         });
       }],
 
@@ -1104,7 +1370,7 @@ module.exports = (args, cbk) => {
             deadline_height: initiateSwap.timeout - args.confs,
             lnd: args.lnd,
             max_fee_multiplier: maxFeeMultiplier,
-            min_fee_rate: getMinSweepFee,
+            min_fee_rate: getMinSweepFee.tokens_per_vbyte,
             private_key: claim.private_key,
             secret: claim.secret,
             start_height: startingHeight - fuzzBlocks,
@@ -1176,6 +1442,7 @@ module.exports = (args, cbk) => {
       // Get funding payment
       getFundingPayment: [
         'decodeFundingRequest',
+        'multiPayToFund',
         'payToFund',
         'recover',
         'sweep',
@@ -1275,14 +1542,18 @@ module.exports = (args, cbk) => {
 
         const serviceFee = swapFee - routingFeeTokens - chainFee;
 
-        return cbk(null, {
+        const resolution = {
           completed: moment().calendar(),
           inbound_increased: `${increase} ${currency}`,
           chain_fee_paid: `${tokensAsBigUnit(chainFee)} ${currency}`,
           routing_fee_paid: `${tokensAsBigUnit(routingFeeTokens)} ${currency}`,
           service_fee_paid: `${tokensAsBigUnit(serviceFee)} ${currency}`,
           total_fee_paid: `${tokensAsBigUnit(swapFee)} ${currency}`,
-        });
+        };
+
+        args.logger.info(resolution);
+
+        return cbk(null, {});
       }],
     },
     returnResult({reject, resolve, of: 'summary'}, cbk));

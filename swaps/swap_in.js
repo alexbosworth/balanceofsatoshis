@@ -471,7 +471,7 @@ module.exports = (args, cbk) => {
             send_exact_amount: bigFormat(args.tokens),
             send_to_qr: qr,
           },
-          service_fee: args.tokens - createInvoice.tokens,
+          swap_service_fee: args.tokens - createInvoice.tokens,
           refund_recovery_secret: recovery,
           timing: {
             earliest_completion: moment(now() + msPerBlock).fromNow(),

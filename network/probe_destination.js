@@ -8,12 +8,14 @@ const {getNode} = require('ln-service');
 const {getRouteToDestination} = require('ln-service');
 const {getRoutes} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
+const {parsePaymentRequest} = require('invoices');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {signBytes} = require('ln-service');
 const {subscribeToFindMaxPayable} = require('probing');
 
 const executeProbe = require('./execute_probe');
+const getIdentity = require('./get_identity');
 const {getInboundPath} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
@@ -94,6 +96,9 @@ module.exports = (args, cbk) => {
       return getChannels({lnd: args.lnd}, cbk);
     }],
 
+    // Get identity key
+    getIdentity: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
+
     // Get height
     getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
 
@@ -117,7 +122,11 @@ module.exports = (args, cbk) => {
         return cbk([400, 'PayRequestOrDestinationRequiredToInitiateProbe']);
       }
 
-      return decodePaymentRequest({lnd: args.lnd, request: args.request}, cbk);
+      try {
+        return cbk(null, parsePaymentRequest({request: args.request}));
+      } catch (err) {
+        return cbk([400, 'FailedToDecodePaymentRequest', {err}]);
+      }
     }],
 
     // Tokens
@@ -219,7 +228,12 @@ module.exports = (args, cbk) => {
     }],
 
     // Get inbound path if an inbound restriction is specified
-    getInboundPath: ['to', 'tokens', ({to, tokens}, cbk) => {
+    getInboundPath: [
+      'getIdentity',
+      'to',
+      'tokens',
+      ({getIdentity, to, tokens}, cbk) =>
+    {
       if (!args.in_through) {
         return cbk();
       }
@@ -227,6 +241,7 @@ module.exports = (args, cbk) => {
       return getInboundPath({
         tokens,
         destination: to.destination,
+        identity: getIdentity.public_key,
         lnd: args.lnd,
         through: args.in_through,
       },

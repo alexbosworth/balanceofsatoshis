@@ -34,35 +34,80 @@ const makeLnd = ({channels}) => {
   };
 };
 
+const makeArgs = overrides => {
+  const args = {
+    identity: Buffer.alloc(33, 3).toString('hex'),
+    destination: Buffer.alloc(33, 0).toString('hex'),
+    lnd: makeLnd({
+      channels: [{
+        capacity: '10',
+        chan_point: `${Buffer.alloc(32).toString('hex')}:0`,
+        channel_id: '12345',
+        last_update: 12345,
+        node1_policy: {
+          disabled: false,
+          fee_base_msat: '1',
+          fee_rate_milli_msat: '1',
+          last_update: 1,
+          max_htlc_msat: '10000000',
+          min_htlc: '1',
+          time_lock_delta: 1,
+        },
+        node1_pub: Buffer.alloc(33, 0).toString('hex'),
+        node2_policy: {
+          disabled: false,
+          fee_base_msat: '1',
+          fee_rate_milli_msat: '1',
+          last_update: 1,
+          max_htlc_msat: '10000000',
+          min_htlc: '1',
+          time_lock_delta: 1,
+        },
+        node2_pub: Buffer.alloc(33, 1).toString('hex'),
+      }],
+    }),
+    through: Buffer.alloc(33, 1).toString('hex'),
+    tokens: 1,
+  };
+
+  Object.keys(overrides).forEach(k => args[k] = overrides[k]);
+
+  return args;
+};
+
 const tests = [
   {
-    args: {},
+    args: makeArgs({destination: undefined}),
     description: 'A final destination is required',
     error: [400, 'ExpectedDestinationToGetInboundPath'],
   },
   {
-    args: {destination: 'b'},
+    args: makeArgs({identity: undefined}),
+    description: 'A node identity public key is required',
+    error: [400, 'ExpectedIdentityToGetInboundPath'],
+  },
+  {
+    args: makeArgs({lnd: undefined}),
     description: 'Lnd to get destination node is required',
     error: [400, 'ExpectedLndToGetInboundPath'],
   },
   {
-    args: {destination: 'b', lnd: {}},
-    description: 'Lnd to get destination node is required',
+    args: makeArgs({through: undefined}),
+    description: 'Inbound peer public key is expected',
     error: [400, 'ExpectedInThroughPublicKeyHexString'],
   },
   {
-    args: {destination: 'b', lnd: {}, through: 'a'},
-    description: 'Lnd to get destination node is required',
+    args: makeArgs({tokens: undefined}),
+    description: 'Tokens is required',
     error: [400, 'ExpectedTokensToGetInboundPath'],
   },
   {
-    args: {destination: 'b', lnd: makeLnd({}), through: 'a', tokens: 1},
+    args: makeArgs({lnd: makeLnd({})}),
     description: 'A connecting channel is required',
     error: [400, 'NoConnectingChannelToPayIn'],
   },
   {
-    args: {
-      destination: 'b',
+    args: makeArgs({
       lnd: makeLnd({
         channels: [{
           capacity: '1',
@@ -91,47 +136,13 @@ const tests = [
           node2_pub: Buffer.alloc(33, 1).toString('hex'),
         }],
       }),
-      through: Buffer.alloc(33, 1).toString('hex'),
-      tokens: 2,
-    },
+    }),
     description: 'A sufficient capacity channel is required',
     error: [400, 'NoSufficientCapacityConnectingChannelToPayIn'],
   },
   {
-    args: {
-      destination: Buffer.alloc(33, 0).toString('hex'),
-      lnd: makeLnd({
-        channels: [{
-          capacity: '10',
-          chan_point: `${Buffer.alloc(32).toString('hex')}:0`,
-          channel_id: '12345',
-          last_update: 12345,
-          node1_policy: {
-            disabled: false,
-            fee_base_msat: '1',
-            fee_rate_milli_msat: '1',
-            last_update: 1,
-            max_htlc_msat: '10000000',
-            min_htlc: '1',
-            time_lock_delta: 1,
-          },
-          node1_pub: Buffer.alloc(33, 0).toString('hex'),
-          node2_policy: {
-            disabled: false,
-            fee_base_msat: '1',
-            fee_rate_milli_msat: '1',
-            last_update: 1,
-            max_htlc_msat: '10000000',
-            min_htlc: '1',
-            time_lock_delta: 1,
-          },
-          node2_pub: Buffer.alloc(33, 1).toString('hex'),
-        }],
-      }),
-      through: Buffer.alloc(33, 1).toString('hex'),
-      tokens: 1,
-    },
-    description: 'A sufficient capacity channel is required',
+    args: makeArgs({}),
+    description: 'A sufficient capacity results in a path',
     expected: {
       path: [
         {
@@ -149,8 +160,7 @@ const tests = [
     },
   },
   {
-    args: {
-      destination: Buffer.alloc(33, 0).toString('hex'),
+    args: makeArgs({
       lnd: makeLnd({
         channels: [{
           capacity: '0',
@@ -179,9 +189,7 @@ const tests = [
           node2_pub: Buffer.alloc(33, 1).toString('hex'),
         }],
       }),
-      through: Buffer.alloc(33, 1).toString('hex'),
-      tokens: 1,
-    },
+    }),
     description: 'Finds inbound path within a max htlc limiter',
     expected: {
       path: [
