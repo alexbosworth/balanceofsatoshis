@@ -7,6 +7,7 @@ const {Transaction} = require('bitcoinjs-lib');
 const {endpoints} = require('./blockstream');
 
 const closeSpendsDelayMs = 1000;
+const flatten = arr => [].concat(...arr);
 const getTxDelayMs = 2000;
 
 /** Get channel resolution
@@ -16,6 +17,11 @@ const getTxDelayMs = 2000;
     [is_cooperative_close]: <Channel Is Cooperatively Closed Bool>
     network: <Network Name String>
     request: <Request Function>
+    transactions: [{
+      id: <Transaction Id String>
+      output_addresses: [<Address String>]
+      transaction: <Raw Transaction Hex String>
+    }]
   }
 
   @returns via cbk or Promise
@@ -54,6 +60,13 @@ module.exports = (args, cbk) => {
 
         const id = args.close_transaction_id;
 
+        const found = args.transactions.find(n => n.id === id);
+
+        // Exit early when the transaction is pre-provided
+        if (!!found) {
+          return cbk(null, found.transaction);
+        }
+
         return args.request({
           url: `${endpoints[args.network]}tx/${id}/hex`
         },
@@ -74,13 +87,39 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Decode transactions to derive spends
+      spends: ['validate', ({}, cbk) => {
+        const spends = args.transactions.map(({id, transaction}) => {
+          return Transaction.fromHex(transaction).ins.map(({hash}, index) => {
+            return {
+              id: hash.reverse().toString('hex'),
+              spent_by: id,
+              vin: index,
+            };
+          });
+        });
+
+        return cbk(null, flatten(spends));
+      }],
+
       // Get close tx output spends
-      getCloseSpends: ['validate', ({}, cbk) => {
+      getCloseSpends: ['spends', ({spends}, cbk) => {
         if (!!args.is_cooperative_close) {
           return cbk(null, []);
         }
 
         const closeTxId = args.close_transaction_id;
+
+        const found = args.transactions.find(n => n.id === closeTxId);
+
+        const outspends = spends.filter(n => n.id === closeTxId);
+
+        // Exit early without requesting when all spends are found locally
+        if (!!found && found.output_addresses.length === outspends.length) {
+          return cbk(null, outspends.map(outspend => {
+            return {txid: outspend.spent_by, vin: outspend.vin};
+          }));
+        }
 
         return args.request({
           json: true,
@@ -132,6 +171,13 @@ module.exports = (args, cbk) => {
 
           if (!!txs[txid]) {
             return cbk(null, {id: txid, transaction: txs[txid]});
+          }
+
+          const found = args.transactions.find(n => n.id === txid);
+
+          // Exit early when the transaction is pre-provided
+          if (!!found) {
+            return cbk(null, {id: txid, transaction: found.transaction});
           }
 
           return args.request({

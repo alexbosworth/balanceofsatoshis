@@ -1,5 +1,9 @@
 # Versions
 
+## Version 6.3.1
+
+- `closed`: Increase speed and reduce calls by checking against local transaction data
+
 ## Version 6.3.0
 
 - `increase-inbound-liquidity`: Fix errors encountered during pathfinding

@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
+const {getChainTransactions} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
@@ -64,12 +65,16 @@ module.exports = ({limit, lnd, request}, cbk) => {
       // Get the network
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd}, cbk)],
 
+      // Get on-chain transactions
+      getTx: ['validate', ({}, cbk) => getChainTransactions({lnd}, cbk)],
+
       // Get spends
       getSpends: [
         'getClosed',
         'getHeight',
         'getNetwork',
-        async ({getClosed, getHeight, getNetwork}) =>
+        'getTx',
+        async ({getClosed, getHeight, getNetwork, getTx}) =>
       {
         const closedChannels = getClosed.channels
           .reverse()
@@ -83,6 +88,7 @@ module.exports = ({limit, lnd, request}, cbk) => {
             close_transaction_id: channel.close_transaction_id,
             is_cooperative_close: channel.is_cooperative_close,
             network: getNetwork.network,
+            transactions: getTx.transactions.filter(n => !!n.transaction),
           });
 
           const {alias} = await getNodeAlias({
