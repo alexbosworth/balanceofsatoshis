@@ -7,6 +7,7 @@ const asyncTimesSeries = require('async/timesSeries');
 const {attemptSweep} = require('goldengate');
 const {checkSwapTiming} = require('goldengate');
 const {createChainAddress} = require('ln-service');
+const {createInvoice} = require('ln-service');
 const {createSwapOut} = require('goldengate');
 const {decodeSwapRecovery} = require('goldengate');
 const {encodeSwapRecovery} = require('goldengate');
@@ -72,8 +73,10 @@ const {sweepProgressLogDelayMs} = require('./constants');
 
 const {ceil} = Math;
 const cltvBuffer = 3;
+const farFutureDate = () => moment().add(1, 'years').toISOString();
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
+const hexAsBase64 = hex => Buffer.from(hex, 'hex').toString('base64');
 const {isArray} = Array;
 const {max} = Math;
 const maxCltvDelta = 144 * 30;
@@ -1396,6 +1399,16 @@ module.exports = (args, cbk) => {
               args.logger.info({
                 attempting_sweep_fee_rate: res.fee_rate,
                 attempt_tx_id: Transaction.fromHex(res.transaction).getId(),
+              });
+
+              createInvoice({
+                description: hexAsBase64(res.transaction),
+                expires_at: farFutureDate(),
+                lnd: args.lnd,
+              },
+              err => {
+                // Suppress errors creating backup invoice
+                return;
               });
 
               // Exit early when the swap service is not available

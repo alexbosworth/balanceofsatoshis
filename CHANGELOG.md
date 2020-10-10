@@ -1,5 +1,9 @@
 # Versions
 
+## Version 6.3.2
+
+- `increase-inbound-liquidity`: Backup on-chain recovery to safeguard swap completion
+
 ## Version 6.3.1
 
 - `closed`: Increase speed and reduce calls by checking against local transaction data
