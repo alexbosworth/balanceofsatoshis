@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const {encode} = require('cbor');
+const {grantAccess} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
@@ -12,6 +13,8 @@ const {pemAsDer} = require('./../encryption');
     ask: <Inquirer Function> ({message, name, type}, cbk) => {}
     [expire_days]: <Expire Access in Days Number>
     is_cleartext: <Export Clear Credential Components Bool>
+    is_nospend: <Restrict Credentials To Non-Spending Permissions Bool>
+    is_readonly: <Restrict Credentials To Read-Only Permissions Bool>
     logger: <Winston Logger Object> ({info}) => ()
     [node]: <Node Name String>
   }
@@ -75,6 +78,8 @@ module.exports = (args, cbk) => {
         return lndCredentials({
           expiry,
           key,
+          is_nospend: args.is_nospend,
+          is_readonly: args.is_readonly,
           logger: args.logger,
           node: args.node,
         },

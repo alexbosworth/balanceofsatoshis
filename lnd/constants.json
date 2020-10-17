@@ -1,0 +1,28 @@
+{
+  "noSpendPerms": [
+    "address:read",
+    "address:write",
+    "info:read",
+    "info:write",
+    "invoices:read",
+    "invoices:write",
+    "macaroon:read",
+    "message:read",
+    "offchain:read",
+    "onchain:read",
+    "peers:read",
+    "peers:write",
+    "signer:read"
+  ],
+  "permissionEntities": [
+    "address",
+    "info",
+    "invoices",
+    "macaroon",
+    "message",
+    "offchain",
+    "onchain",
+    "peers",
+    "signer"
+  ]
+}

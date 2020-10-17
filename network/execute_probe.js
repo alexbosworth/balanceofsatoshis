@@ -6,6 +6,7 @@ const {subscribeToProbe} = require('ln-service');
 const {subscribeToProbeForRoute} = require('ln-service');
 
 const {describeConfidence} = require('./../display');
+const {describeRoute} = require('./../display');
 
 const {now} = Date;
 const minutesAsMs = minutes => 1000 * 60 * minutes;
@@ -192,51 +193,12 @@ module.exports = (args, cbk) => {
         });
 
         // Log probing attempts
-        sub.on('probing', ({route}) => {
+        sub.on('probing', async ({route}) => {
           attemptedPaths.push(route);
 
-          return asyncMapSeries(route.hops, (hop, cbk) => {
-            return getNode({
-              is_omitting_channels: true,
-              lnd: args.lnd,
-              public_key: hop.public_key,
-            },
-            (err, node) => {
-              // Ignore errors, not all nodes may be in the graph
-              const alias = (!!err || !node || !node.alias) ? '' : node.alias;
+          const {description} = await describeRoute({route, lnd: args.lnd});
 
-              const towards = `${alias} ${hop.public_key}`;
-
-              return cbk(null, {towards, channel: hop.channel, fee: hop.fee});
-            });
-          },
-          (err, path) => {
-            if (!!err) {
-              return args.logger.error(err);
-            }
-
-            const {confidence} = route;
-
-            const {description} = describeConfidence({confidence});
-
-            const evaluating = path
-              .map((n, i) => {
-                const nextHop = path[i + 1];
-
-                if (!nextHop) {
-                  return;
-                }
-
-                return `${n.channel} ${n.towards}. Hop fee: ${n.fee}`;
-              })
-              .filter(n => !!n);
-
-            return args.logger.info({
-              evaluating: !!evaluating.length ? evaluating : undefined,
-              confidence: description || undefined,
-              potential_fee: route.fee,
-            });
-          });
+          return args.logger.info({evaluating: description});
         });
 
         return;

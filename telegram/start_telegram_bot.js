@@ -5,6 +5,7 @@ const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
+const {getForwards} = require('ln-service');
 const {getTransactionRecord} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
 const {handleBackupCommand} = require('ln-telegram');
@@ -16,14 +17,15 @@ const {handleLiquidityCommand} = require('ln-telegram');
 const {handleMempoolCommand} = require('ln-telegram');
 const {handlePayCommand} = require('ln-telegram');
 const inquirer = require('inquirer');
+const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
 const {postClosedMessage} = require('ln-telegram');
-const {postForwardedPayments} = require('ln-telegram');
 const {postOpenMessage} = require('ln-telegram');
 const {postSettledInvoice} = require('ln-telegram');
-const {postUpdatedBackups} = require('ln-telegram');
+const {postUpdatedBackup} = require('ln-telegram');
 const {returnResult} = require('asyncjs-util');
 const {sendMessage} = require('ln-telegram');
+const {subscribeToBackups} = require('ln-service');
 const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
@@ -40,6 +42,7 @@ const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const home = '.bos';
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
+const limit = 99999;
 const maxCommandDelayMs = 1000 * 10;
 const msSince = epoch => Date.now() - (epoch * 1e3);
 const network = 'btc';
@@ -68,6 +71,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
   let connectedId = id;
   let isStopped = false;
   let paymentsLimit = !payments || !payments.limit ? Number() : payments.limit;
+  const subscriptions = [];
 
   return new Promise((resolve, reject) => {
     return asyncAuto({
@@ -371,15 +375,34 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
       // Subscribe to backups
       backups: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
         return asyncEach(getNodes, (node, cbk) => {
-          return postUpdatedBackups({
-            logger,
-            request,
-            id: connectedId,
-            key: apiKey,
-            lnd: node.lnd,
-            node: {alias: node.alias, public_key: node.public_key},
-          },
-          cbk);
+          let postBackupTimeoutHandle;
+          const sub = subscribeToBackups({lnd: node.lnd});
+
+          subscriptions.push(sub);
+
+          sub.on('backup', ({backup}) => {
+            // Cancel pending backup notification when there is a new backup
+            if (!!postBackupTimeoutHandle) {
+              clearTimeout(postBackupTimeoutHandle);
+            }
+
+            // Time delay backup posting to avoid posting duplicate messages
+            postBackupTimeoutHandle = setTimeout(() => {
+              return postUpdatedBackup({
+                backup,
+                request,
+                id: connectedId,
+                key: apiKey,
+                node: {alias: node.alias, public_key: node.public_key},
+              },
+              err => !!err ? logger.error({post_backup_err: err}) : null);
+            },
+            restartSubscriptionTimeMs);
+
+            return;
+          });
+
+          sub.on('error', err => cbk([503, 'ErrorInBackupsSub', {err}]));
         },
         cbk);
       }],
@@ -393,6 +416,8 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
       {
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
           const sub = subscribeToChannels({lnd});
+
+          subscriptions.push(sub);
 
           sub.on('channel_closed', update => {
             return postClosedMessage({
@@ -458,13 +483,45 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
       // Poll for forwards
       forwards: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
-        return asyncEach(getNodes, ({from, lnd}, cbk) => {
-          return postForwardedPayments({
-            from,
-            lnd,
-            request,
-            id: connectedId,
-            key: apiKey,
+        return asyncEach(getNodes, (node, cbk) => {
+          let after = new Date().toISOString();
+          const {from} = node;
+          const {lnd} = node;
+
+          return asyncForever(cbk => {
+            if (isStopped) {
+              return cbk([503, 'ExpectedNonStoppedBotToReportForwards']);
+            }
+
+            const before = new Date().toISOString();
+
+            return getForwards({after, before, limit, lnd}, (err, res) => {
+              // Exit early and ignore errors
+              if (!!err) {
+                return setTimeout(cbk, restartSubscriptionTimeMs);
+              }
+
+              // Push cursor forward
+              after = before;
+
+              // Notify Telegram bot that forwards happened
+              return notifyOfForwards({
+                from,
+                lnd,
+                request,
+                forwards: res.forwards,
+                id: connectedId,
+                key: apiKey,
+                node: node.public_key,
+              },
+              err => {
+                if (!!err) {
+                  logger.error({forwards_notify_err: err});
+                }
+
+                return setTimeout(cbk, restartSubscriptionTimeMs);
+              });
+            });
           },
           cbk);
         },
@@ -475,6 +532,8 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
       invoices: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
           const sub = subscribeToInvoices({lnd});
+
+          subscriptions.push(sub);
 
           sub.on('invoice_updated', invoice => {
             return postSettledInvoice({
@@ -518,6 +577,8 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           const sub = subscribeToTransactions({lnd});
           const transactions = [];
 
+          subscriptions.push(sub);
+
           sub.on('chain_transaction', async transaction => {
             const {id} = transaction;
 
@@ -537,14 +598,13 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
               return await postChainTransaction({
                 from,
-                lnd,
                 request,
                 id: connectedId,
                 key: apiKey,
                 transaction: record,
               });
             } catch (err) {
-              logger.error({chain_tx_err: err});
+              logger.error({chain_tx_err: err, node: from});
 
               if (!!isFinished) {
                 return;
@@ -583,7 +643,9 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
     (err, res) => {
       isStopped = true;
 
-      return returnResult({reject, resolve})(err, res);
+      subscriptions.forEach(n => n.removeAllListeners());
+
+      return returnResult({reject, resolve}, cbk)(err, res);
     });
   });
 };

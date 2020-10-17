@@ -5,11 +5,11 @@ const {getNetwork} = require('ln-sync');
 const {getSwapMacaroon} = require('goldengate');
 const {lightningLabsSwapService} = require('goldengate');
 const {paidMacaroon} = require('goldengate');
+const {payViaPaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {swapUserId} = require('goldengate');
 
 const decodeSwapApiKey = require('./decode_swap_api_key');
-const {probeDestination} = require('./../network');
 
 const bitcoinTestnetNetwork = 'btctestnet';
 const bufferFromBase64 = base64 => Buffer.from(base64, 'base64');
@@ -24,7 +24,6 @@ const testnetSocket = 'https://balanceofsatoshis.com:11010';
   {
     fetch: <Fetch Function>
     lnd: <Authenticated LND gRPC API Object>
-    logger: <Winston Logger Object>
     [socket]: <Custom Backing Service Socket String>
     [token]: <Prepaid Service Token CBOR Encoded String>
   }
@@ -39,7 +38,7 @@ const testnetSocket = 'https://balanceofsatoshis.com:11010';
     token: <Authentication Token Hex String>
   }
 */
-module.exports = ({fetch, lnd, logger, socket, token}, cbk) => {
+module.exports = ({fetch, lnd, socket, token}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -50,10 +49,6 @@ module.exports = ({fetch, lnd, logger, socket, token}, cbk) => {
 
         if (!lnd) {
           return cbk([400, 'ExpectedLndToGetPaidService']);
-        }
-
-        if (!logger) {
-          return cbk([400, 'ExpectedLoggerToGetPaidService']);
         }
 
         return cbk();
@@ -122,14 +117,12 @@ module.exports = ({fetch, lnd, logger, socket, token}, cbk) => {
       {
         // Exit early when there is already a paid service token
         if (!!decodeToken) {
-          return cbk(null, {preimage: decodeToken.preimage});
+          return cbk(null, {secret: decodeToken.preimage});
         }
 
         // Purchase the macaroon
-        return probeDestination({
+        return payViaPaymentRequest({
           lnd,
-          logger,
-          is_real_payment: true,
           max_fee: maxRoutingFee,
           request: getUnpaidMacaroon.request,
         },
@@ -146,11 +139,11 @@ module.exports = ({fetch, lnd, logger, socket, token}, cbk) => {
       {
         const {id} = getUnpaidMacaroon;
         const {macaroon} = getUnpaidMacaroon;
-        const {paid} = payForMacaroon;
-        const {preimage} = payForMacaroon;
+        const paid = payForMacaroon.tokens;
+        const preimage = payForMacaroon.secret;
         const {service} = remote;
 
-        if (!decodeToken && !paid) {
+        if (!decodeToken && !preimage) {
           return cbk([400, 'FailedToPurchasePaidServiceTokens']);
         }
 

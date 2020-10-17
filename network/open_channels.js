@@ -35,6 +35,7 @@ const interrogationSeparator = ' and \n  ';
 const {isArray} = Array;
 const isHex = n => !!n && !(n.length % 2) && /^[0-9A-F]*$/i.test(n);
 const makeId = () => randomBytes(32).toString('hex');
+const peerAddedDelayMs = 1000 * 5;
 const per = (a, b) => (a / b).toFixed(2);
 const times = 10;
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
@@ -208,7 +209,7 @@ module.exports = (args, cbk) => {
                 return cbk([503, 'FailedToConnectToPeer', ({peer: key})]);
               }
 
-              return cbk(null, true);
+              return setTimeout(() => cbk(null, true), peerAddedDelayMs);
             });
           },
           cbk);

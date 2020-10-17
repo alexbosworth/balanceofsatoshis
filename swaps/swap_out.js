@@ -336,7 +336,6 @@ module.exports = (args, cbk) => {
           network,
           fetch: args.fetch,
           lnd: args.lnd,
-          logger: args.logger,
           socket: args.socket,
           token: args.api_key,
         },

@@ -9,6 +9,7 @@ const {statSync} = require('fs');
 const {unlink} = require('fs');
 const {writeFile} = require('fs');
 
+const {deletePayments} = require('ln-service');
 const fetch = require('node-fetch');
 const {findKey} = require('ln-sync');
 const inquirer = require('inquirer');
@@ -369,12 +370,14 @@ prog
     });
   })
 
-  // Export LND credentials from the standard
+  // Export LND credentials
   .command('credentials', 'Export local credentials')
   .help('Output encrypted remote access credentials. Use with "nodes --add"')
   .option('--cleartext', 'Output remote access credentials without encryption')
   .option('--days <days>', 'Expiration days for credentials', INT, 365)
   .option('--node <node_name>', 'Get credentials for a saved node')
+  .option('--nospend', 'Credentials do not include spending privileges')
+  .option('--readonly', 'Credentials only include read permissions')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return getCredentials({
@@ -382,6 +385,8 @@ prog
         ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
         expire_days: options.days,
         is_cleartext: options.cleartext,
+        is_nospend: options.nospend,
+        is_readonly: options.readonly,
         node: options.node,
       },
       returnObject({logger, reject, resolve}));
@@ -399,6 +404,23 @@ prog
       try {
         return decryptWithNode({
           encrypted: args.encrypted,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
+  // Delete all payments
+  .command('delete-payments-history', 'Delete all records of past payments')
+  .visible(false)
+  .option('--node <node_name>', 'Node to delete all past payments on')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return deletePayments({
           lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
         },
         returnObject({logger, reject, resolve}));

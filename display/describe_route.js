@@ -1,7 +1,8 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {getNode} = require('ln-service');
-const {green} = require('colorette');
+const {gray} = require('colorette');
+const {greenBright} = require('colorette');
 const {returnResult} = require('asyncjs-util');
 
 const describeConfidence = require('./describe_confidence');
@@ -90,22 +91,24 @@ module.exports = ({lnd, route}, cbk) => {
 
         const path = route.hops.map((hop, i, hops) => {
           const {alias} = getAliases.find(n => n.id === hop.public_key);
+          const {channel} = hop;
+          const isFinal = i === hops.length - 1;
 
-          const feeMtokens = !i ? hop.fee_mtokens : hops[i - 1].fee_mtokens;
-          const forwarder = `${alias} ${hop.public_key}`.trim();
+          const feeMtokens = isFinal ? hops[i-1].fee_mtokens : hop.fee_mtokens;
+          const forwarder = `${greenBright(alias)} ${hop.public_key}`.trim();
 
           const feeRate = effectiveFeeRate(feeMtokens, hop.forward_mtokens);
 
           const rate = formatFeeRate({rate: feeRate}).display;
 
-          const forward = `${green(forwarder)}. Hop fee rate ${rate}`;
+          const forward = `${forwarder}. Fee rate: ${rate}`;
 
           if (!i) {
-            return [`${hop.channel} ${description || String()}`, forward];
+            return [`${gray(channel)} ${description || String()}`, forward];
           } else if (i === hops.length - [i].length) {
-            return [`${hop.channel}`];
+            return [`${gray(channel)}`];
           } else {
-            return [`${hop.channel}`, forward];
+            return [`${gray(channel)}`, forward];
           }
         });
 

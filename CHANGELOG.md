@@ -1,5 +1,15 @@
 # Versions
 
+## Version 6.4.0
+
+- `accounting`: Improve the speed and reduce the backend burden of getting payment records
+- `credentials`: Allow exporting credentials without spending privileges: `--nospend`
+- `credentials`: Allow exporting credentials with read-only privileges: `--readonly`
+- `delete-payments-history`: Add "hidden" command to allow deleting all payment records
+- `increase-inbound-liquidity`: Fix issue when attempting without a specified API key
+- `telegram`: Improve automatic recovery in situations where errors are encountered
+- `telegram`: Reveal unverified "from" public key when receiving keysends with invalid signatures
+
 ## Version 6.3.2
 
 - `increase-inbound-liquidity`: Backup on-chain recovery to safeguard swap completion

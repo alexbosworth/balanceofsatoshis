@@ -16,7 +16,6 @@ const makeArgs = override => {
         getInfo: ({}, cbk) => cbk(null, getInfoResponse),
       },
     },
-    logger: {},
     token: makeToken(Buffer.from(macaroon, 'base64'), Buffer.alloc(1, 1)),
   };
 
@@ -30,11 +29,6 @@ const tests = [
     args: makeArgs({lnd: undefined}),
     description: 'LND object is required',
     error: [400, 'ExpectedLndToGetPaidService'],
-  },
-  {
-    args: makeArgs({logger: undefined}),
-    description: 'Logger object is required',
-    error: [400, 'ExpectedLoggerToGetPaidService'],
   },
   {
     args: makeArgs({}),
