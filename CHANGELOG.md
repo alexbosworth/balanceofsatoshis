@@ -2,6 +2,7 @@
 
 ## Version 6.5.0
 
+- `open`: Using formulas like `0.1*btc` is supported when specifying `--amount`
 - `probe`: Using formulas like "0.1*btc" is supported when specifying `<amount>`
 - `rebalance`: Using formulas is supported in `in-target-outbound`, `out-target-inbound`
 - `rebalance`: Using `CAPACITY` as a formula variable is supported for target inbound/outbound
