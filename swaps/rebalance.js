@@ -11,12 +11,12 @@ const {getPeerLiquidity} = require('ln-sync');
 const {getRouteThroughHops} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
-const {Parser} = require('hot-formula-parser');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
 const {getIdentity} = require('./../network');
+const {parseAmount} = require('./../display');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');
 
@@ -50,6 +50,7 @@ const probeSizeRegular = 2e5
 const pubKeyHexLength = 66;
 const rateDivisor = 1e6;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
+const sumOf = arr => arr.reduce((sum, n) => sum + n);
 const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
 const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
 const uniq = arr => Array.from(new Set(arr));
@@ -122,45 +123,17 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const parser = new Parser();
+        try {
+          const {tokens} = parseAmount({amount: args.max_rebalance});
 
-        parser.setVariable('BTC', 1e8);
-        parser.setVariable('btc', 1e8);
-        parser.setVariable('m', 1e6);
-        parser.setVariable('M', 1e6);
-        parser.setVariable('mm', 1e6);
-        parser.setVariable('MM', 1e6);
-        parser.setVariable('k', 1e3);
-        parser.setVariable('K', 1e3);
+          if (tokens < minRebalanceAmount) {
+            return cbk([400, 'LowRebalanceAmount', {min: minRebalanceAmount}]);
+          }
 
-        const parsed = parser.parse(args.max_rebalance);
-
-        switch (parsed.error) {
-        case '#DIV/0!':
-          return cbk([400, 'CannotDivideByZeroInSpecifiedAmount']);
-
-        case '#ERROR!':
-          return cbk([400, 'FailedToParseSpecifiedAmount']);
-
-        case '#N/A':
-        case '#NAME?':
-          return cbk([400, 'UnrecognizedVariableOrFunctionInSpecifiedAmount']);
-
-        case '#NUM':
-          return cbk([400, 'InvalidNumberFoundInSpecifiedAmount']);
-
-        case '#VALUE!':
-          return cbk([400, 'UnexpectedValueTypeInSpecifiedAmount']);
-
-        default:
-          break;
+          return cbk(null, tokens);
+        } catch (err) {
+          return cbk([400, err.message]);
         }
-
-        if (parsed.result < minRebalanceAmount) {
-          return cbk([400, 'LowRebalanceAmount', {min: minRebalanceAmount}]);
-        }
-
-        return cbk(null, ceil(parsed.result));
       }],
 
       // Starting tokens to rebalance
@@ -511,8 +484,9 @@ module.exports = (args, cbk) => {
           return cbk(null, maximum || maxPaymentSize);
         }
 
+        const amount = !args.in_outbound ? args.out_inbound : args.in_outbound;
+
         const peer = !args.in_outbound ? getOutbound : getInbound;
-        const target = !args.in_outbound ? args.out_inbound : args.in_outbound;
 
         return getPeerLiquidity({
           lnd: args.lnd,
@@ -523,13 +497,23 @@ module.exports = (args, cbk) => {
             return cbk(err);
           }
 
+          const variables = {capacity: sumOf([res.inbound, res.outbound])};
+
+          try {
+            parseAmount({amount, variables});
+          } catch (err) {
+            return cbk([400, err.message]);
+          }
+
+          const target = parseAmount({amount, variables}).tokens;
+
           const current = !args.in_outbound ? res.inbound : res.outbound;
 
           if (current > target - tokens) {
             return cbk([400, 'AlreadyEnoughLiquidityForPeer']);
           }
 
-          return cbk(null, min(...[maxPaymentSize, target - current]));
+          return cbk(null, target - current);
         });
       }],
 

@@ -14,6 +14,7 @@ const {subscribeToMultiPathProbe} = require('probing');
 
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
+const {parseAmount} = require('./../display');
 const probeDestination = require('./probe_destination');
 
 const defaultFinalCltvDelta = 144;
@@ -40,7 +41,7 @@ const unsupported = 501;
     out: [<Out Through Peer With Public Key Hex String>]
     [request]: <BOLT 11 Encoded Payment Request String>
     [timeout_minutes]: <Stop Searching For Routes After N Minutes Number>
-    [tokens]: <Tokens Number>
+    [tokens]: <Tokens Amount String>
   }
 
   @returns via cbk or Promise
@@ -119,6 +120,20 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Parse amount to probe
+      tokens: ['validate', ({}, cbk) => {
+        // Exit early when no tokens are specified
+        if (!args.tokens) {
+          return cbk();
+        }
+
+        try {
+          return cbk(null, parseAmount({amount: args.tokens}).tokens);
+        } catch (err) {
+          return cbk([400, err.message]);
+        }
+      }],
+
       // Get synthetic ignores to approximate out
       getIgnores: ['getOuts', ({getOuts}, cbk) => {
         // Exit early when not doing a multi-path
@@ -140,7 +155,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Probe just through a single path
-      singleProbe: ['getOuts', ({getOuts}, cbk) => {
+      singleProbe: ['getOuts', 'tokens', ({getOuts, tokens}, cbk) => {
         // Exit early when not finding max
         if (!!args.find_max || args.max_paths !== singlePath) {
           return cbk();
@@ -154,6 +169,7 @@ module.exports = (args, cbk) => {
         const [outThrough] = getOuts.map(n => n.public_key);
 
         return probeDestination({
+          tokens,
           destination: args.destination,
           ignore: args.ignore,
           in_through: args.in_through,
@@ -161,7 +177,6 @@ module.exports = (args, cbk) => {
           logger: args.logger,
           out_through: outThrough,
           request: args.request,
-          tokens: args.tokens,
         },
         cbk);
       }],

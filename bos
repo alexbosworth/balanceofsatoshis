@@ -969,7 +969,7 @@ prog
   .command('probe', 'Check if a payment request is sendable')
   .help('Simulate paying a payment request without actually paying it')
   .argument('<to>', 'Payment request or node public key')
-  .argument('[amount]', 'Amount to probe, default: request amount', INT)
+  .argument('[amount]', 'Amount to probe, default: request amount')
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--find-max', 'Find the maximum routeable amount on success route')
   .option('--in <public_key>', 'Route through specific peer of destination')
@@ -1005,11 +1005,12 @@ prog
   .command('rebalance', 'Rebalance funds between peers')
   .help('Change the liquidity profile of two peers')
   .help('When specifying amount you can use formulas or *k *m for *1e3, *1e6')
+  .help('Specifying target liquidity you can use CAPACITY/2, other formulas')
   .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--avoid-high-inbound', 'Avoid rebalancing when inbound is high')
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
-  .option('--in-target-outbound <amt>', 'Balance up to outbound amount', INT)
+  .option('--in-target-outbound <amt>', 'Balance up to outbound amount')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
   .option('--minutes <minutes>', 'Time-out route search after N minutes', INT)
@@ -1017,7 +1018,7 @@ prog
   .option('--node <node_name>', 'Node to use for payment request check')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
   .option('--out-channel', 'Lock outbound rebalance to channels', REPEATABLE)
-  .option('--out-target-inbound <amount>', 'Balance up to inbound amount', INT)
+  .option('--out-target-inbound <amount>', 'Balance up to inbound amount')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {

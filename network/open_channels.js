@@ -25,6 +25,7 @@ const {transactionAsPsbt} = require('psbt');
 
 const {getAddressUtxo} = require('./../chain');
 const {getRawTransaction} = require('./../chain');
+const {parseAmount} = require('./../display');
 
 const addressesHeader = green('Addresses');
 const base64AsHex = n => Buffer.from(n, 'base64').toString('hex');
@@ -47,7 +48,7 @@ const utxoPollingTimes = 20;
 
   {
     ask: <Ask For Input Function>
-    capacities: [<New Channel Capacity Tokens Number>]
+    capacities: [<New Channel Capacity Tokens String>]
     gives: [<New Channel Give Tokens Number>]
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
@@ -152,10 +153,28 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Parse capacities
+      capacities: ['validate', ({}, cbk) => {
+        const capacities = args.capacities.map(amount => {
+          try {
+            return parseAmount({amount}).tokens;
+          } catch (err) {
+            return cbk([400, err.message]);
+          }
+        });
+
+        return cbk(null, capacities);
+      }],
+
       // Connect up to the peers
-      connect: ['getNodes', 'getPeers', ({getNodes, getPeers}, cbk) => {
+      connect: [
+        'capacities',
+        'getNodes',
+        'getPeers',
+        ({capacities, getNodes, getPeers}, cbk) =>
+      {
         const channels = args.public_keys.map((key, i) => {
-          const total = args.capacities[i] || defaultChannelCapacity;
+          const total = capacities[i] || defaultChannelCapacity;
 
           return {total, public_key: key};
         });
@@ -218,9 +237,14 @@ module.exports = (args, cbk) => {
       }],
 
       // Initiate open requests
-      openChannels: ['connect', 'getWalletVersion', ({}, cbk) => {
+      openChannels: [
+        'capacities',
+        'connect',
+        'getWalletVersion',
+        ({capacities}, cbk) =>
+      {
         const channels = args.public_keys.map((key, i) => {
-          const capacity = args.capacities[i] || defaultChannelCapacity;
+          const capacity = capacities[i] || defaultChannelCapacity;
           const give = args.gives[i] || undefined;
 
           return {capacity, give_tokens: give, partner_public_key: key};

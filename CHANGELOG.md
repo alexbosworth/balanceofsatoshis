@@ -1,5 +1,11 @@
 # Versions
 
+## Version 6.5.0
+
+- `probe`: Using formulas like "0.1*btc" is supported when specifying `<amount>`
+- `rebalance`: Using formulas is supported in `in-target-outbound`, `out-target-inbound`
+- `rebalance`: Using `CAPACITY` as a formula variable is supported for target inbound/outbound
+
 ## Version 6.4.0
 
 - `accounting`: Improve the speed and reduce the backend burden of getting payment records
