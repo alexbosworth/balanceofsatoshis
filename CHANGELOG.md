@@ -1,5 +1,9 @@
 # Versions
 
+## Version 6.5.1
+
+- `increase-inbound-liquidity`: Fix support for recovery mode in new swap versions
+
 ## Version 6.5.0
 
 - `open`: Using formulas like `0.1*btc` is supported when specifying `--amount`

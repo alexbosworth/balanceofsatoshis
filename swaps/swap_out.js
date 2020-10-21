@@ -940,7 +940,11 @@ module.exports = (args, cbk) => {
       {
         // Exit early when this is a recovery
         if (!!args.recovery) {
-          return cbk();
+          return getChainFeeRate({
+            confirmation_target: maxCltvDelta,
+            lnd: args.lnd,
+          },
+          cbk);
         }
 
         const executionRoutingFee = findRouteForExecution.fee || Number();
