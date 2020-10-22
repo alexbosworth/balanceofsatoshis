@@ -222,7 +222,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         });
 
         bot.command('blocknotify', ({message, replyWithMarkdown}) => {
-          return handleBlocknotifyCommand({
+          handleBlocknotifyCommand({
             request,
             reply: replyWithMarkdown,
           },
@@ -233,14 +233,18 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
             return;
           });
+
+          return;
         });
 
         bot.command('connect', ({from, replyWithMarkdown}) => {
-          return handleConnectCommand({
+          handleConnectCommand({
             from: from.id,
             id: connectedId,
             reply: replyWithMarkdown,
           });
+
+          return;
         });
 
         bot.command('earnings', ({message, replyWithMarkdown}) => {

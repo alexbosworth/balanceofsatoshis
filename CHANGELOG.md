@@ -1,5 +1,10 @@
 # Versions
 
+## Version 6.5.2
+
+- `increase-inbound-liquidity`: Increase default maximum wait time
+- `telegram`: Improve stability of `/blocknotify`
+
 ## Version 6.5.1
 
 - `increase-inbound-liquidity`: Fix support for recovery mode in new swap versions
