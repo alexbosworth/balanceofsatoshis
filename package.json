@@ -4,7 +4,7 @@
     "url": "https://twitter.com/alexbosworth"
   },
   "bin": {
-    "bos": "./bos"
+    "bos": "bos"
   },
   "bugs": {
     "url": "https://github.com/alexbosworth/balanceofsatoshis/issues"

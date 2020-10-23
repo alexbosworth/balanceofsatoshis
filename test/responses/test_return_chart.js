@@ -42,7 +42,7 @@ tests.forEach(({args, description, error, expected, res}) => {
 
     if (!!error) {
       return returnChart({logger ,reject: () => {
-        deepIs(loggedErrors, [error], 'Error logged as expected');
+        deepIs(loggedErrors, [{err: error}], 'Error logged as expected');
 
         return end();
       }})(error);
