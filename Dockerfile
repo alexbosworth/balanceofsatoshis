@@ -15,6 +15,6 @@ USER $USER_ID:$GROUP_ID
 
 COPY . /app/
 
-RUN npm install --only=prod
+RUN npm ci --production
 
 ENTRYPOINT [ "/app/bos" ]

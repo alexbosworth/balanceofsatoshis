@@ -62,6 +62,9 @@ bos chain-receive "amount"
 # See the current fee estimates confirmation targets
 bos chainfees
 
+# Show chain fees paid
+bos chart-chain-fees
+
 # Show routing fees earned
 bos chart-fees-earned
 

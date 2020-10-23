@@ -21,7 +21,7 @@ const padLen = (lineLen, desc) => (Math.max(0, lineLen - desc.length) + 3) / 2;
 module.exports = ({data, logger, reject, resolve}) => {
   return (err, res) => {
     if (!!err) {
-      logger.error(err);
+      logger.error({err});
 
       return reject();
     }

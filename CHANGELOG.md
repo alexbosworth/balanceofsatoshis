@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.1.0
+
+- `chart-chain-fees`: Add method to show chain fees paid over time
+
 ## Version 7.0.0
 
 - Support for versions of LND lower than v0.11.0 is discontinued

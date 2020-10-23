@@ -391,7 +391,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Check quote to validate parameters of the swap
-      checkQuote: ['getQuote', ({getQuote}, cbk) => {
+      checkQuote: ['getLimits', 'getQuote', ({getLimits, getQuote}, cbk) => {
         if (!!args.recovery) {
           return cbk();
         }
@@ -408,17 +408,13 @@ module.exports = (args, cbk) => {
           return cbk([400, 'FeeForSwapExceedsMaximumFeeLimit', getQuote]);
         }
 
-        if (getQuote.cltv_delta < minCltvDelta) {
-          return cbk([400, 'ExpectedMoreTimeToCompleteSwap']);
-        }
-
         const fundConfs = (args.confs || minConfs);
         const swapDelayMin = swapDelayMinutes(args.is_fast);
         const sweepConfs = (args.confs || minConfs);
 
         const allFees = getQuote.fee;
         const swapMinimumMinutes = (fundConfs + sweepConfs) * minutesPerBlock;
-        const swapTimeoutMinutes = getQuote.cltv_delta * minutesPerBlock;
+        const swapTimeoutMinutes = getLimits.max_cltv_delta * minutesPerBlock;
 
         const fastestSwapTime = moment().add(swapMinimumMinutes, 'minutes');
         const swapTimeout = moment().add(swapTimeoutMinutes, 'minutes');
@@ -924,6 +920,7 @@ module.exports = (args, cbk) => {
         'findRouteForExecution',
         'findRoutesForFunding',
         'getFundingRoutes',
+        'getLimits',
         'getSwapPeers',
         'getQuote',
         ({
@@ -933,8 +930,8 @@ module.exports = (args, cbk) => {
           findRouteForExecution,
           findRoutesForFunding,
           getFundingRoutes,
+          getLimits,
           getSwapPeers,
-          getQuote,
         },
         cbk) =>
       {
@@ -961,7 +958,7 @@ module.exports = (args, cbk) => {
         const serviceFee = fundingSend + executionSend - args.tokens;
 
         return getChainFeeRate({
-          confirmation_target: getQuote.cltv_delta,
+          confirmation_target: getLimits.max_cltv_delta,
           lnd: args.lnd,
         },
         (err, res) => {
@@ -1110,7 +1107,7 @@ module.exports = (args, cbk) => {
         'getMinSweepFee',
         'getQuote',
         'initiateSwap',
-        ({channel, decodeExecutionRequest, getQuote, initiateSwap}, cbk) =>
+        ({channel, decodeExecutionRequest, initiateSwap}, cbk) =>
       {
         if (!!args.recovery) {
           return cbk();

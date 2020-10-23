@@ -300,6 +300,28 @@ prog
     });
   })
 
+  // Show a chart of chain fees paid
+  .command('chart-chain-fees', 'Get a chart of chain fee expenses')
+  .help('Show chart of mining fee expenditure over time')
+  .option('--days <days>', 'Chart over the past number of days', INT, 60)
+  .option('--no-color', 'Disable colors')
+  .option('--node <node_name>', 'Chain fees from saved node(s)', REPEATABLE)
+  .action((args, options, logger) => {
+    const getChainFees = require('./routing/get_chain_fees');
+    return new Promise(async (resolve, reject) => {
+      try {
+        return getChainFees({
+          days: options.days,
+          is_monochrome: !!options.noColor,
+          lnds: (await getLnds({logger, nodes: options.node})).lnds,
+        },
+        returnChart({logger, reject, resolve, data: 'data'}));
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
   // Show a chart of routing fees paid
   .command('chart-fees-paid', 'Get a chart of paid routing fees')
   .help('Show the routing fees paid to forwarding nodes')
