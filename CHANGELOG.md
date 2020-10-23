@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.0.0
+
+- Support for versions of LND lower than v0.11.0 is discontinued
+
 ## Version 6.5.2
 
 - `increase-inbound-liquidity`: Increase default maximum wait time

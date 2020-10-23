@@ -120,11 +120,9 @@ module.exports = (args, cbk) => {
         const {features} = args;
         const start = now();
 
-        const method = !features ? subscribeToProbe : subscribeToProbeForRoute;
-
         const timeoutMinutes = minutesAsMs((args.timeout_minutes || Number()));
 
-        const sub = method({
+        const sub = subscribeToProbeForRoute({
           cltv_delta: args.cltv_delta,
           destination: args.destination,
           features: args.features,

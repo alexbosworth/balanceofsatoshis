@@ -6,11 +6,11 @@ const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getFeeRates} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
 const {getPendingChannels} = require('ln-service');
 const {gray} = require('colorette');
 const {green} = require('colorette');
-const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
 const {Parser} = require('hot-formula-parser');
 const {returnResult} = require('asyncjs-util');
@@ -76,7 +76,7 @@ module.exports = (args, cbk) => {
 
       // Get the wallet public key
       getPublicKey: ['validate', ({}, cbk) => {
-        return getWalletInfo({lnd: args.lnd}, cbk);
+        return getIdentity({lnd: args.lnd}, cbk);
       }],
 
       // Get the current fee rates

@@ -4,7 +4,7 @@ const {join} = require('path');
 const asyncAuto = require('async/auto');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
-const {getWalletInfo} = require('ln-service');
+const {getWalletVersion} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {getLnds} = require('./../lnd');
@@ -67,7 +67,7 @@ module.exports = (args, cbk) => {
 
         return await asyncMap(withName, async ({lnd, node}) => {
           try {
-            return await getWalletInfo({lnd});
+            return await getWalletVersion({lnd});
           } catch (err) {
             args.logger.error({node, err: 'failed_to_connect'});
           }

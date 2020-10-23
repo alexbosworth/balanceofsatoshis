@@ -6,6 +6,7 @@ const {createInvoice} = require('ln-service');
 const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeerLiquidity} = require('ln-sync');
 const {getRouteThroughHops} = require('ln-service');
@@ -15,7 +16,6 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
-const {getIdentity} = require('./../network');
 const {parseAmount} = require('./../display');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');

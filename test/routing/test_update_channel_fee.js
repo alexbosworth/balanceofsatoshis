@@ -1,7 +1,6 @@
 const {test} = require('tap');
 
 const {chanInfoResponse} = require('./../fixtures');
-const {listChannelsResponse} = require('./../fixtures');
 const {pendingChannelsResponse} = require('./../fixtures');
 const updateChannelFee = require('./../../routing/update_channel_fee');
 
@@ -24,11 +23,27 @@ const makeLnd = ({}) => {
           lifetime: '1',
           local_balance: '1',
           local_chan_reserve_sat: '1',
+          local_constraints: {
+            chan_reserve_sat: '1',
+            csv_delay: 1,
+            dust_limit_sat: '1',
+            max_accepted_htlcs: 1,
+            max_pending_amt_msat: '1',
+            min_htlc_msat: '1',
+          },
           num_updates: '1',
           pending_htlcs: [],
           private: false,
           remote_balance: '1',
           remote_chan_reserve_sat: '1',
+          remote_constraints: {
+            chan_reserve_sat: '1',
+            csv_delay: 1,
+            dust_limit_sat: '1',
+            max_accepted_htlcs: 1,
+            max_pending_amt_msat: '1',
+            min_htlc_msat: '1',
+          },
           remote_pubkey: Buffer.alloc(33).toString('hex'),
           static_remote_key: true,
           total_satoshis_received: '1',

@@ -1,8 +1,8 @@
 const asyncAuto = require('async/auto');
 const {decodeFirst} = require('cbor');
 const {diffieHellmanComputeSecret} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const decryptWithSecret = require('./decrypt_with_secret');
@@ -64,9 +64,7 @@ module.exports = ({encrypted, lnd}, cbk) => {
       }],
 
       // Get node public key
-      getPublicKey: ['decode', ({decode}, cbk) => {
-        return getWalletInfo({lnd}, cbk);
-      }],
+      getPublicKey: ['decode', ({decode}, cbk) => getIdentity({lnd}, cbk)],
 
       // Determine the foreign key if any
       foreignKey: ['decode', 'getPublicKey', ({decode, getPublicKey}, cbk) => {

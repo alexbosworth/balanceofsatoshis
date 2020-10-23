@@ -1,6 +1,6 @@
 const asyncAuto = require('async/auto');
 const {getChannels} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const multiProbe = require('./multi_probe');
@@ -77,7 +77,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the node public key
-      getKey: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
+      getKey: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
 
       // Run probe with ignore list
       probe: ['getChannels', 'getKey', ({getChannels, getKey}, cbk) => {

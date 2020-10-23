@@ -3,7 +3,6 @@ const asyncMap = require('async/map');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const tokensAsMtokens = tokens => BigInt(tokens) * BigInt(1e3);

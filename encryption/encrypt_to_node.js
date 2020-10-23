@@ -1,6 +1,6 @@
 const asyncAuto = require('async/auto');
 const {diffieHellmanComputeSecret} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const encryptToSecret = require('./encrypt_to_secret');
@@ -36,9 +36,7 @@ module.exports = ({lnd, message, to}, cbk) => {
       },
 
       // Get own public key
-      getPublicKey: ['validate', ({}, cbk) => {
-        return getWalletInfo({lnd}, cbk);
-      }],
+      getPublicKey: ['validate', ({}, cbk) => getIdentity({lnd}, cbk)],
 
       // Encode to public key
       toPublicKey: ['getPublicKey', ({getPublicKey}, cbk) => {

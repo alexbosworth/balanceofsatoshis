@@ -1,7 +1,6 @@
 const currencyForNetwork = require('./currency_for_network');
 const executeProbe = require('./execute_probe');
 const getForwards = require('./get_forwards');
-const getIdentity = require('./get_identity');
 const getPeers = require('./get_peers');
 const multiPathPayment = require('./multi_path_payment');
 const multiPathProbe = require('./multi_path_probe');
@@ -21,7 +20,6 @@ module.exports = {
   currencyForNetwork,
   executeProbe,
   getForwards,
-  getIdentity,
   getPeers,
   multiPathPayment,
   multiPathProbe,

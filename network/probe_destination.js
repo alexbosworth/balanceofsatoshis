@@ -4,9 +4,9 @@ const {randomBytes} = require('crypto');
 const asyncAuto = require('async/auto');
 const {decodePaymentRequest} = require('ln-service');
 const {getChannels} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getRouteToDestination} = require('ln-service');
-const {getRoutes} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {parsePaymentRequest} = require('invoices');
 const {payViaRoutes} = require('ln-service');
@@ -15,7 +15,6 @@ const {signBytes} = require('ln-service');
 const {subscribeToFindMaxPayable} = require('probing');
 
 const executeProbe = require('./execute_probe');
-const getIdentity = require('./get_identity');
 const {getInboundPath} = require('./../routing');
 const {sortBy} = require('./../arrays');
 

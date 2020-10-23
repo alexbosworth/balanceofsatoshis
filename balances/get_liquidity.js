@@ -4,7 +4,6 @@ const {getLiquidity} = require('ln-sync');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getScoredNodes} = require('ln-sync');
-const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const balanceFromTokens = require('./balance_from_tokens');

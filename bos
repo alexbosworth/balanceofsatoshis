@@ -220,7 +220,7 @@ prog
   .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to receive funds on')
-  .option('--recovery <refund_recovery>', 'Attempt refund of swap')
+  .option('--recovery <refund_recovery>', 'Attempt refund of swap', hexMatch)
   .option('--refund-address <refund_address>', 'Refund address for swap')
   .option('--service-socket <swap_service_socket>', 'host:port for service')
   .option('--test-refund', 'Reduce refund timeout height to test refund')
@@ -635,6 +635,7 @@ prog
   // Increase inbound liquidity
   .command('increase-inbound-liquidity', 'Increase node inbound liquidity')
   .help('Spend down a channel to get inbound. Fee is an estimate, may be more')
+  .help('If you want to control chain fee increases, use show-raw-recoveries')
   .option('--address <out_address>', 'Out chain address to send funds out to')
   .option('--api-key <api_key>', 'Pre-paid API key to use')
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)

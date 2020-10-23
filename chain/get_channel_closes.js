@@ -98,20 +98,22 @@ module.exports = ({limit, lnd, request}, cbk) => {
 
           const currentHeight = getHeight.current_block_height;
           const isRemoteForceClose = channel.is_remote_force_close;
+          const init = `${channel.transaction_id}:${channel.transaction_vout}`;
 
           return {
-            alias: alias || undefined,
+            peer_public_key: channel.partner_public_key,
+            peer_alias: alias || undefined,
+            is_local_force_close: channel.is_local_force_close || undefined,
+            is_cooperative_close: channel.is_cooperative_close || undefined,
+            is_remote_force_close: isRemoteForceClose || undefined,
             blocks_since_close: currentHeight - channel.close_confirm_height,
             capacity: channel.capacity,
-            close_transaction_id: channel.close_transaction_id,
+            channel_id: channel.id || undefined,
+            channel_open: init,
+            channel_close: channel.close_transaction_id,
+            channel_balance_spend: channel.close_balance_spent_by || undefined,
+            channel_resolutions: resolutions || undefined,
             is_breach_close: channel.is_breach_close || undefined,
-            is_cooperative_close: channel.is_cooperative_close || undefined,
-            is_local_force_close: channel.is_local_force_close || undefined,
-            is_remote_force_close: isRemoteForceClose || undefined,
-            output_resolutions: resolutions || undefined,
-            partner_public_key: channel.partner_public_key,
-            transaction_id: channel.transaction_id,
-            transaction_vout: channel.transaction_vout,
           };
         });
       }],

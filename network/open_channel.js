@@ -5,12 +5,12 @@ const asyncTimeout = require('async/timeout');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const {getScoredNodes} = require('ln-sync');
-const {getWalletInfo} = require('ln-service');
 const {openChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
@@ -120,10 +120,8 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Get wallet info
-      getWallet: ['validate', ({}, cbk) => {
-        return getWalletInfo({lnd: args.lnd}, cbk);
-      }],
+      // Get wallet identity
+      getWallet: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
 
       // Get mempool size
       getMempool: ['getNetwork', ({getNetwork}, cbk) => {

@@ -4,7 +4,6 @@ const {findKey} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
 const {getSyntheticOutIgnores} = require('probing');
-const {getWalletInfo} = require('ln-service');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToMultiPathPay} = require('probing');

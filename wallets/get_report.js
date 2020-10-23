@@ -32,6 +32,7 @@ const afterMs = 1000 * 60 * 60 * 24;
 const centsPerDollar = 100;
 const defaultConfTarget = 6;
 const formatAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
+const limit = 1000;
 const msPerBlock = 1000 * 60 * 10;
 const {now} = Date;
 const sumOf = arr => arr.reduce((sum, n) => n + sum, 0);
@@ -135,7 +136,7 @@ module.exports = ({node, style}, cbk) => {
 
     // Get payments
     getPayments: ['getLnd', ({getLnd}, cbk) => {
-      return getPayments({lnd: getLnd.lnd}, cbk);
+      return getPayments({limit, lnd: getLnd.lnd}, cbk);
     }],
 
     // Currency
