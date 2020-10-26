@@ -6,11 +6,11 @@ const {createInvoice} = require('ln-service');
 const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeerLiquidity} = require('ln-sync');
 const {getRouteThroughHops} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -606,9 +606,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the current height
-      getHeight: ['channels', 'lnd', ({lnd}, cbk) => {
-        return getWalletInfo({lnd}, cbk);
-      }],
+      getHeight: ['channels', 'lnd', ({lnd}, cbk) => getHeight({lnd}, cbk)],
 
       // Get route for rebalance
       getRoute: ['channels', 'invoice', ({channels, invoice}, cbk) => {

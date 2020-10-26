@@ -2,10 +2,10 @@ const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
 const {getChainTransactions} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
-const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const getChannelResolution = require('./get_channel_resolution');
@@ -60,7 +60,7 @@ module.exports = ({limit, lnd, request}, cbk) => {
       getClosed: ['validate', ({}, cbk) => getClosedChannels({lnd}, cbk)],
 
       // Get the current height
-      getHeight: ['validate', ({}, cbk) => getWalletInfo({lnd}, cbk)],
+      getHeight: ['validate', ({}, cbk) => getHeight({lnd}, cbk)],
 
       // Get the network
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd}, cbk)],

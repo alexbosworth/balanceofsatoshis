@@ -7,13 +7,13 @@ const {formatTokens} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getInvoices} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPayments} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 const size = require('window-size');
@@ -311,7 +311,7 @@ module.exports = (args, cbk) => {
         const maxOutbound = args.outbound_liquidity_below;
         const {network} = await getNetwork({lnd: args.lnd});
         const peerKeys = getChannels.channels.map(n => n.partner_public_key);
-        const wallet = await getWalletInfo({lnd: args.lnd});
+        const wallet = await getHeight({lnd: args.lnd});
 
         const heights = allChannels.map(({id, key}) => {
           return {key, height: decodeChanId({channel: id}).block_height};

@@ -7,7 +7,6 @@ const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getRouteToDestination} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
 const {parsePaymentRequest} = require('invoices');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -15,7 +14,6 @@ const {signBytes} = require('ln-service');
 const {subscribeToFindMaxPayable} = require('probing');
 
 const executeProbe = require('./execute_probe');
-const {getInboundPath} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
 const bufFromHex = hex => Buffer.from(hex, 'hex');
@@ -98,9 +96,6 @@ module.exports = (args, cbk) => {
     // Get identity key
     getIdentity: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
 
-    // Get height
-    getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
-
     // Destination to pay
     to: ['validate', ({}, cbk) => {
       if (!!args.is_push) {
@@ -153,14 +148,10 @@ module.exports = (args, cbk) => {
     // Get the features of the node to probe
     getFeatures: [
       'getDestinationNode',
-      'getInfo',
+      'getIdentity',
       'to',
-      ({getDestinationNode, getInfo, to}, cbk) =>
+      ({getDestinationNode, getIdentity, to}, cbk) =>
     {
-      if (!getInfo.features.length) {
-        return cbk(null, {});
-      }
-
       if (!!to.features) {
         return cbk(null, {features: to.features});
       }
@@ -174,17 +165,13 @@ module.exports = (args, cbk) => {
     // Determine messages to attach
     messages: [
       'getFeatures',
-      'getInfo',
+      'getIdentity',
       'to',
-      async ({getFeatures, getInfo, to}, cbk) =>
+      async ({getFeatures, getIdentity, to}, cbk) =>
     {
       // Exit early when there are no messages
       if (!args.message && !args.is_push) {
         return;
-      }
-
-      if (!getInfo.features) {
-        throw [400, 'SendingNodeDoesNotSupportSendingMessages'];
       }
 
       const date = Buffer.alloc(dateBytesLength);
@@ -200,10 +187,10 @@ module.exports = (args, cbk) => {
           value: Buffer.from(args.message).toString('hex'),
         });
 
-        messages.push({type: fromKeyType, value: getInfo.public_key});
+        messages.push({type: fromKeyType, value: getIdentity.public_key});
 
         const preimage = Buffer.concat([
-          bufFromHex(getInfo.public_key),
+          bufFromHex(getIdentity.public_key),
           bufFromHex(to.destination),
           date,
           Buffer.from(args.message),
@@ -224,33 +211,6 @@ module.exports = (args, cbk) => {
       }
 
       return messages;
-    }],
-
-    // Get inbound path if an inbound restriction is specified
-    getInboundPath: [
-      'getIdentity',
-      'to',
-      'tokens',
-      ({getIdentity, to, tokens}, cbk) =>
-    {
-      if (!args.in_through) {
-        return cbk();
-      }
-
-      return getInboundPath({
-        tokens,
-        destination: to.destination,
-        identity: getIdentity.public_key,
-        lnd: args.lnd,
-        through: args.in_through,
-      },
-      (err, res) => {
-        if (!!err) {
-          return cbk(err);
-        }
-
-        return cbk(null, [res.path]);
-      });
     }],
 
     // Outgoing channel id
@@ -291,13 +251,13 @@ module.exports = (args, cbk) => {
     // Log sending towards destination
     checkPath: [
       'getDestinationNode',
-      'getInfo',
+      'getIdentity',
       'to',
-      ({getDestinationNode, getInfo, to}, cbk) =>
+      ({getDestinationNode, getIdentity, to}, cbk) =>
     {
       const sendingTo = `${getDestinationNode.alias} ${to.destination}`;
 
-      if (to.destination === getInfo.public_key) {
+      if (to.destination === getIdentity.public_key) {
         args.logger.info({circular_rebalance_for: sendingTo});
       } else {
         args.logger.info({checking_for_path_to: sendingTo});
@@ -309,23 +269,12 @@ module.exports = (args, cbk) => {
     // Probe towards destination
     probe: [
       'getFeatures',
-      'getInboundPath',
-      'getInfo',
+      'getIdentity',
       'messages',
       'outgoingChannelId',
       'to',
-      ({
-        getInboundPath,
-        getFeatures,
-        getInfo,
-        messages,
-        outgoingChannelId,
-        to,
-      },
-      cbk) =>
+      ({getFeatures, messages, outgoingChannelId, to}, cbk) =>
     {
-      const inboundPath = !getInfo.features.length ? getInboundPath : null;
-
       return executeProbe({
         messages,
         cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
@@ -333,14 +282,13 @@ module.exports = (args, cbk) => {
         features: getFeatures.features,
         ignore: args.ignore,
         in_through: args.in_through,
-        is_strict_hints: !!getInboundPath,
         is_strict_max_fee: args.is_strict_max_fee,
         lnd: args.lnd,
         logger: args.logger,
         max_fee: args.max_fee,
         outgoing_channel: outgoingChannelId,
         payment: to.payment,
-        routes: inboundPath || to.routes,
+        routes: to.routes,
         timeout_minutes: args.timeout_minutes || undefined,
         tokens: args.tokens || to.tokens || defaultTokens,
         total_mtokens: !!to.payment ? to.mtokens : undefined,

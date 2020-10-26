@@ -1,3 +1,5 @@
+const EventEmitter = require('events');
+
 const {test} = require('tap');
 
 const {getInfoResponse} = require('./../fixtures');
@@ -21,6 +23,17 @@ const tests = [
   {
     args: {
       lnd: {
+        chain: {
+          registerBlockEpochNtfn: ({}) => {
+            const emitter = new EventEmitter();
+
+            emitter.cancel = () => {};
+
+            process.nextTick(() => emitter.emit('error', 'err'));
+
+            return emitter;
+          },
+        },
         default: {
           closedChannels: ({}, cbk) => cbk(null, {channels: []}),
           getInfo: ({}, cbk) => cbk(null, getInfoRes()),
@@ -37,6 +50,17 @@ const tests = [
   {
     args: {
       lnd: {
+        chain: {
+          registerBlockEpochNtfn: ({}) => {
+            const emitter = new EventEmitter();
+
+            emitter.cancel = () => {};
+
+            process.nextTick(() => emitter.emit('error', 'err'));
+
+            return emitter;
+          },
+        },
         default: {
           closedChannels: ({}, cbk) => cbk(null, {channels: []}),
           getChanInfo: ({}, cbk) => cbk(null, {
@@ -137,6 +161,17 @@ const tests = [
     args: {
       inbound_liquidity_below: 1000,
       lnd: {
+        chain: {
+          registerBlockEpochNtfn: ({}) => {
+            const emitter = new EventEmitter();
+
+            emitter.cancel = () => {};
+
+            process.nextTick(() => emitter.emit('error', 'err'));
+
+            return emitter;
+          },
+        },
         default: {
           closedChannels: ({}, cbk) => cbk(null, {channels: []}),
           getChanInfo: ({}, cbk) => cbk({details: 'edge not found'}),

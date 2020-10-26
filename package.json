@@ -31,7 +31,7 @@
     "inquirer": "7.3.3",
     "invoices": "1.1.4",
     "ln-accounting": "4.1.11",
-    "ln-service": "50.0.1",
+    "ln-service": "50.2.0",
     "ln-sync": "0.3.0",
     "ln-telegram": "3.0.2",
     "moment": "2.29.1",

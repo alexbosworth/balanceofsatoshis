@@ -9,11 +9,11 @@ const {encodeSwapRecovery} = require('goldengate');
 const {findDeposit} = require('goldengate');
 const {findSecret} = require('goldengate');
 const {getChainFeeRate} = require('goldengate');
+const {getHeight} = require('ln-service');
 const {getInvoice} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getSwapInQuote} = require('goldengate');
 const {getSwapInTerms} = require('goldengate');
-const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
 const qrcode = require('qrcode-terminal');
 const {refundTransaction} = require('goldengate');
@@ -81,7 +81,7 @@ module.exports = (args, cbk) => {
     },
 
     // Get the best block height at the start of the swap
-    getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
+    getInfo: ['validate', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
 
     // Get channels
     getLiquidity: ['validate', ({}, cbk) => {

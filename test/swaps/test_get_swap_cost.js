@@ -1,3 +1,5 @@
+const EventEmitter = require('events');
+
 const {test} = require('tap');
 
 const {getInfoResponse} = require('./../fixtures');
@@ -8,6 +10,17 @@ const preimage = 'preimage';
 
 const makeLnd = ({}) => {
   return {
+    chain: {
+      registerBlockEpochNtfn: ({}) => {
+        const emitter = new EventEmitter();
+
+        emitter.cancel = () => {};
+
+        process.nextTick(() => emitter.emit('error', 'err'));
+
+        return emitter;
+      },
+    },
     default: {
       getInfo: ({}, cbk) => cbk(null, getInfoResponse),
     },

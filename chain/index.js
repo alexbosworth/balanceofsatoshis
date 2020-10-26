@@ -1,3 +1,4 @@
+const fundTransaction = require('./fund_transaction');
 const getAddressUtxo = require('./get_address_utxo');
 const getChainFees = require('./get_chain_fees');
 const getChannelCloses = require('./get_channel_closes');
@@ -8,6 +9,7 @@ const getUtxos = require('./get_utxos');
 const splitUtxos = require('./split_utxos');
 
 module.exports = {
+  fundTransaction,
   getAddressUtxo,
   getChainFees,
   getChannelCloses,

@@ -1,9 +1,9 @@
 const asyncAuto = require('async/auto');
+const {getHeight} = require('ln-service');
 const {getSwapInQuote} = require('goldengate');
 const {getSwapInTerms} = require('goldengate');
 const {getSwapOutQuote} = require('goldengate');
 const {getSwapOutTerms} = require('goldengate');
-const {getWalletInfo} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
@@ -91,9 +91,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the current height
-      getHeight: ['getTerms', ({}, cbk) => {
-        return getWalletInfo({lnd: args.lnd}, cbk);
-      }],
+      getHeight: ['getTerms', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
 
       // Get a swap quote
       getQuote: ['getHeight', 'getTerms', ({getHeight, getTerms}, cbk) => {

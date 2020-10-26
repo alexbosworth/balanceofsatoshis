@@ -92,6 +92,9 @@ bos find "query"
 # Output a summarized version of peers forwarded towards
 bos forwards
 
+# Create a signed raw transaction for an on-chain transfer
+bos fund "address" "amount"
+
 # See help about a command
 bos help "command"
 

@@ -2,7 +2,7 @@ const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const asyncWhilst = require('async/whilst');
 const {getChannel} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -267,7 +267,7 @@ module.exports = (args, cbk) => {
           channels,
           cltv_delta: args.cltv_delta,
           destination: args.destination,
-          height: (await getWalletInfo({lnd: args.lnd})).current_block_height,
+          height: (await getHeight({lnd: args.lnd})).current_block_height,
           max: getMultiLimits.routes_max,
           mtokens: tokensAsMtokens(args.tokens),
           payment: args.payment,

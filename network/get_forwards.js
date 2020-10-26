@@ -5,9 +5,9 @@ const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getForwards} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const {getNode} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const size = require('window-size');
 
@@ -87,9 +87,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Get current block height
-      getHeight: ['validate', ({}, cbk) => {
-        return getWalletInfo({lnd: args.lnd}, cbk);
-      }],
+      getHeight: ['validate', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
 
       // Get pending channels
       getPending: ['validate', ({}, cbk) => {

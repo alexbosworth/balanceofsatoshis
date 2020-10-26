@@ -17,6 +17,7 @@ const {findKey} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
@@ -24,7 +25,6 @@ const {getPayment} = require('ln-service');
 const {getSwapOutQuote} = require('goldengate');
 const {getSwapOutTerms} = require('goldengate');
 const {getSyntheticOutIgnores} = require('probing');
-const {getWalletInfo} = require('ln-service');
 const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
 const {payViaRoutes} = require('ln-service');
@@ -182,9 +182,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the current block height
-      getHeight: ['validate', ({}, cbk) => {
-        return getWalletInfo({lnd: args.lnd}, cbk);
-      }],
+      getHeight: ['validate', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
 
       // Get the network this swap is taking place on
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
@@ -1238,7 +1236,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return getWalletInfo({lnd: args.lnd}, (err, res) => {
+        return getHeight({lnd: args.lnd}, (err, res) => {
           if (!!err) {
             return cbk(err);
           }

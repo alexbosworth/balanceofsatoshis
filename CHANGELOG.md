@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.2.0
+
+- `fund`: Add method to create a signed raw transaction using on-chain funds
+
 ## Version 7.1.0
 
 - `chart-chain-fees`: Add method to show chain fees paid over time

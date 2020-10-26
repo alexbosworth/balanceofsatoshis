@@ -8,7 +8,7 @@ const {keys} = Object;
   {
     amount: <Amount String>
     [variables]: {
-      <NAme String>: <Amount Number>
+      <Name String>: <Amount Number>
     }
   }
 

@@ -1,6 +1,6 @@
 const asyncAuto = require('async/auto');
 const {decodePaymentRequest} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
+const {getHeight} = require('ln-service');
 const moment = require('moment');
 const {payViaPaymentRequest} = require('ln-service');
 const request = require('@alexbosworth/request');
@@ -118,7 +118,7 @@ module.exports = ({exchange, fee, node, pair}, cbk) => {
 
       // Get height
       getHeight: ['decodedRequest', 'getLnd', ({getLnd}, cbk) => {
-        return getWalletInfo({lnd: getLnd.lnd}, cbk);
+        return getHeight({lnd: getLnd.lnd}, cbk);
       }],
 
       // Purchase preimage needed to decrypt price data

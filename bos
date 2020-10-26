@@ -26,6 +26,7 @@ const {encryptToNode} = require('./encryption');
 const {exchanges} = require('./fiat');
 const {decryptWithNode} = require('./encryption');
 const {findRecord} = require('./lnd');
+const {fundTransaction} = require('./chain');
 const {gateway} = require('./lnd');
 const {getAccountingReport} = require('./balances');
 const {getBalance} = require('./balances');
@@ -575,6 +576,30 @@ prog
           to: (await findKey({lnd, query: options.out})).public_key,
         },
         returnObject({logger, reject, resolve, table}));
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
+  // Fund and sign a chain transaction
+  .command('fund', 'Make a signed transaction spending on-chain funds')
+  .help('Use LND UTXOs to craft a signed raw transaction sending to addresses')
+  .help('Specify <address> <amount> <address> <amount> for addresses, amounts')
+  .argument('<address_amount...>', 'Address and amount to send')
+  .option('--fee-rate <fee>', 'Per vbyte fee rate for on-chain tx fee', INT)
+  .option('--node <node_name>', 'Node to spend coins')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return fundTransaction({
+          logger,
+          addresses: args.addressAmount.filter((n, i) => !(i % 2)),
+          amounts: args.addressAmount.filter((n, i) => i % 2),
+          fee_tokens_per_vbyte: options.feeRate,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnObject({logger, reject, resolve}));
       } catch (err) {
         return reject(err);
       }

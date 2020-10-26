@@ -1,7 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncTimesSeries = require('async/timesSeries');
 const {getChainFeeRate} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const bytesPerKb = 1e3;
@@ -60,11 +60,11 @@ module.exports = ({blocks, lnd}, cbk) => {
         cbk);
       }],
 
-      // Get wallet info
-      getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd}, cbk)],
+      // Get chain info
+      getHeight: ['validate', ({}, cbk) => getHeight({lnd}, cbk)],
 
       // Collapse chain fees into steps
-      chainFees: ['getFees', 'getInfo', ({getFees, getInfo}, cbk) => {
+      chainFees: ['getFees', 'getHeight', ({getFees, getHeight}, cbk) => {
         let cursor = {};
         const feeByBlockTarget = {};
 
@@ -81,7 +81,7 @@ module.exports = ({blocks, lnd}, cbk) => {
           });
 
         return cbk(null, {
-          current_block_hash: getInfo.current_block_hash,
+          current_block_hash: getHeight.current_block_hash,
           fee_by_block_target: feeByBlockTarget,
         });
       }],

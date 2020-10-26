@@ -1,3 +1,5 @@
+const EventEmitter = require('events');
+
 const {test} = require('tap');
 
 const {getChainFees} = require('./../../chain');
@@ -14,6 +16,17 @@ const tests = [
   {
     args: {
       lnd: {
+        chain: {
+          registerBlockEpochNtfn: ({}) => {
+            const emitter = new EventEmitter();
+
+            emitter.cancel = () => {};
+
+            process.nextTick(() => emitter.emit('error', 'err'));
+
+            return emitter;
+          },
+        },
         default: {getInfo: ({}, cbk) => cbk(null, getInfoRes())},
         wallet: {estimateFee: (args, cbk) => cbk('err')},
       },
@@ -24,6 +37,17 @@ const tests = [
   {
     args: {
       lnd: {
+        chain: {
+          registerBlockEpochNtfn: ({}) => {
+            const emitter = new EventEmitter();
+
+            emitter.cancel = () => {};
+
+            process.nextTick(() => emitter.emit('error', 'err'));
+
+            return emitter;
+          },
+        },
         default: {getInfo: ({}, cbk) => cbk(null, getInfoRes())},
         wallet: {
           estimateFee: (args, cbk) => {
