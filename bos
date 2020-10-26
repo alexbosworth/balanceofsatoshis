@@ -564,9 +564,9 @@ prog
     const table = !!options.complete ? undefined : 'rows';
 
     return new Promise(async (resolve, reject) => {
-      const {lnd} = await authenticatedLnd({logger, node: options.node});
-
       try {
+        const {lnd} = await authenticatedLnd({logger, node: options.node});
+
         return getForwards({
           lnd,
           days: options.days,
@@ -577,7 +577,7 @@ prog
         },
         returnObject({logger, reject, resolve, table}));
       } catch (err) {
-        return reject(err);
+        reject(logger.error({err}));
       }
     });
   })

@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.2.1
+
+- `forwards`: Fix issue where forwards in closed channels were not represented in output
+
 ## Version 7.2.0
 
 - `fund`: Add method to create a signed raw transaction using on-chain funds
