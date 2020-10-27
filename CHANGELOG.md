@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.2.2
+
+- `reconnect`: Attempt to fix channels that are inactive but peers are still connected
+
 ## Version 7.2.1
 
 - `forwards`: Fix issue where forwards in closed channels were not represented in output

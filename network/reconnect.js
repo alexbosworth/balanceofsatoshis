@@ -6,6 +6,7 @@ const asyncMap = require('async/map');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
+const {removePeer} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {shuffle} = require('./../arrays');
@@ -15,6 +16,9 @@ const notFound = -1;
 const uniq = arr => Array.from(new Set(arr));
 
 /** Get channel peers that are disconnected and attempt to reconnect
+
+  This method will also disconnect peers that are connected, but have inactive
+  channels.
 
   {
     lnd: <Authenticated LND gRPC API Object>
@@ -41,7 +45,7 @@ module.exports = ({lnd, retries}, cbk) => {
         return cbk();
       },
 
-      // Get open channels
+      // Get open, inactive channels
       getChannels: ['validate', ({}, cbk) => {
         return getChannels({lnd, is_offline: true}, cbk);
       }],
@@ -49,17 +53,44 @@ module.exports = ({lnd, retries}, cbk) => {
       // Get connected peers
       getPeers: ['validate', ({}, cbk) => getPeers({lnd}, cbk)],
 
-      // Disconnected peers
-      disconnected: [
+      // Disconnect connected peers that have an inactive channel
+      disconnect: [
         'getChannels',
         'getPeers',
         ({getChannels, getPeers}, cbk) =>
+      {
+        // Find peers that have an inactive channel but are connected peers
+        const peers = getPeers.peers.filter(peer => {
+          return !!getChannels.channels.find(channel => {
+            return channel.partner_public_key === peer.public_key;
+          });
+        });
+
+        return asyncMap(peers, (peer, cbk) => {
+          return removePeer({lnd, public_key: peer.public_key}, cbk);
+        },
+        err => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, peers.map(n => n.public_key));
+        });
+      }],
+
+      // Disconnected peers
+      disconnected: [
+        'disconnect',
+        'getChannels',
+        'getPeers',
+        ({disconnect, getChannels, getPeers}, cbk) =>
       {
         const connected = getPeers.peers.map(n => n.public_key);
 
         const disconnected = getChannels.channels
           .filter(n => connected.indexOf(n.partner_public_key) === notFound)
-          .map(n => n.partner_public_key);
+          .map(n => n.partner_public_key)
+          .concat(disconnect);
 
         return cbk(null, shuffle({array: uniq(disconnected)}).shuffled);
       }],
