@@ -82,16 +82,31 @@ module.exports = ({fs, node, os}, cbk) => {
         }
       }],
 
-      // Derive the socket from the configuration settings
-      deriveSocket: ['parseConf', ({parseConf}, cbk) => {
+      // Derive the RPC host
+      deriveHost: ['parseConf', ({parseConf}, cbk) => {
         // Exit early when there is no conf settings
         if (!parseConf) {
           return cbk();
         }
 
+        const {tlsextradomain} = parseConf[applicationOptions] || {};
         const {tlsextraip} = parseConf[applicationOptions] || {};
 
-        if (!tlsextraip) {
+        if (!tlsextradomain && !tlsextraip) {
+          return cbk();
+        }
+
+        return cbk(null, tlsextradomain || tlsextraip);
+      }],
+
+      // Derive the RPC socket from the configuration settings
+      deriveSocket: [
+        'deriveHost',
+        'parseConf',
+        ({deriveHost, parseConf}, cbk) =>
+      {
+        // Exit early when there is no conf settings or TLS host
+        if (!deriveHost || !parseConf) {
           return cbk();
         }
 
@@ -104,7 +119,7 @@ module.exports = ({fs, node, os}, cbk) => {
             throw new Error('FailedToDerivePortFromApplicationOptions');
           }
 
-          return cbk(null, `${tlsextraip}:${port}`);
+          return cbk(null, `${deriveHost}:${port}`);
         } catch (err) {
           // Ignore errors
           return cbk();

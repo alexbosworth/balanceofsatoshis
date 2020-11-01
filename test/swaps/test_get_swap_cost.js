@@ -5,8 +5,7 @@ const {test} = require('tap');
 const {getInfoResponse} = require('./../fixtures');
 const {getSwapCost} = require('./../../swaps');
 
-const macaroon = 'macaroon';
-const preimage = 'preimage';
+const metadata = {get: () => ['00']};
 
 const makeLnd = ({}) => {
   return {
@@ -50,24 +49,23 @@ const makeTerms = ({max, min}) => ({
 
 const tests = [
   {
-    args: {macaroon, preimage, lnd: {}, logger: {}},
+    args: {metadata, lnd: {}, logger: {}},
     description: 'Swap service is required',
     error: [400, 'ExpectedSwapServiceToGetSwapCost'],
   },
   {
-    args: {macaroon, preimage, lnd: {}, logger: {}, service: {}},
+    args: {metadata, lnd: {}, logger: {}, service: {}},
     description: 'Tokens are required',
     error: [400, 'ExpectedTokensCountToGetSwapCost'],
   },
   {
-    args: {macaroon, preimage, lnd: {}, logger: {}, service: {}, tokens: 1},
+    args: {metadata, lnd: {}, logger: {}, service: {}, tokens: 1},
     description: 'Swap type is required',
     error: [400, 'ExpectedLiquidityTypeToGetSwapCost'],
   },
   {
     args: {
-      macaroon,
-      preimage,
+      metadata,
       lnd: {},
       logger: {},
       service: makeService({}),
@@ -79,8 +77,7 @@ const tests = [
   },
   {
     args: {
-      macaroon,
-      preimage,
+      metadata,
       lnd: makeLnd({}),
       logger: {},
       service: {
@@ -95,8 +92,7 @@ const tests = [
   },
   {
     args: {
-      macaroon,
-      preimage,
+      metadata,
       lnd: makeLnd({}),
       logger: {},
       service: {
@@ -113,8 +109,7 @@ const tests = [
   },
   {
     args: {
-      macaroon,
-      preimage,
+      metadata,
       lnd: makeLnd({}),
       logger: {},
       service: makeService({}),

@@ -348,8 +348,7 @@ module.exports = (args, cbk) => {
         }
 
         return getSwapOutTerms({
-          macaroon: getService.macaroon,
-          preimage: getService.preimage,
+          metadata: getService.metadata,
           service: getService.service,
         },
         cbk);
@@ -379,8 +378,7 @@ module.exports = (args, cbk) => {
 
         return getSwapOutQuote({
           delay: !args.is_fast ? fundAt.toISOString() : undefined,
-          macaroon: getService.macaroon,
-          preimage: getService.preimage,
+          metadata: getService.metadata,
           service: getService.service,
           timeout: getLimits.max_cltv_delta + startHeight,
           tokens: args.tokens,
@@ -482,8 +480,7 @@ module.exports = (args, cbk) => {
         return createSwapOut({
           network,
           fund_at: fundAt.toISOString(),
-          macaroon: getService.macaroon,
-          preimage: getService.preimage,
+          metadata: getService.metadata,
           service: getService.service,
           timeout: getTimeout,
           tokens: args.tokens,
@@ -584,8 +581,7 @@ module.exports = (args, cbk) => {
 
         const sub = subscribeToSwapOutStatus({
           id: decodeFundingRequest.id,
-          macaroon: getService.macaroon,
-          preimage: getService.preimage,
+          metadata: getService.metadata,
           service: getService.service,
         });
 
@@ -1415,8 +1411,7 @@ module.exports = (args, cbk) => {
               }
 
               return releaseSwapOutSecret({
-                auth_macaroon: getService.macaroon,
-                auth_preimage: getService.preimage,
+                metadata: getService.metadata,
                 secret: claim.secret,
                 service: getService.service,
               },

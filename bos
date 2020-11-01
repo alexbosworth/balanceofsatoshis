@@ -780,7 +780,7 @@ prog
       try {
         const {lnd} = await authenticatedLnd({logger, node: options.node});
 
-        const {macaroon, preimage, service} = await getPaidService({
+        const {metadata, service} = await getPaidService({
           fetch,
           lnd,
           logger,
@@ -791,8 +791,7 @@ prog
         return getSwapCost({
           lnd,
           logger,
-          macaroon,
-          preimage,
+          metadata,
           service,
           above: options.above,
           is_fast: options.fast || undefined,

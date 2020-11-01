@@ -19,8 +19,7 @@ const {slowDelayMinutes} = require('./constants');
     [is_fast]: <Swap Out Is Immediate Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
-    macaroon: <Authenticated Service Macaroon Base64 String>
-    preimage: <Authenticated Preimage Hex String>
+    metadata: <Authentication Metadata Object>
     tokens: <Liquidity Tokens Number>
     type: <Liquidity Type String>
   }
@@ -43,12 +42,8 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToGetSwapCost']);
         }
 
-        if (!args.macaroon) {
-          return cbk([400, 'ExpectedServiceMacaroonToGetSwapCost']);
-        }
-
-        if (!args.preimage) {
-          return cbk([400, 'ExpectedPaymentPreimageToGetSwapCost']);
+        if (!args.metadata) {
+          return cbk([400, 'ExpectedServiceMetadataToGetSwapCost']);
         }
 
         if (!args.service) {
@@ -71,16 +66,14 @@ module.exports = (args, cbk) => {
         switch (args.type) {
         case 'inbound':
           return getSwapOutTerms({
-            macaroon: args.macaroon,
-            preimage: args.preimage,
+            metadata: args.metadata,
             service: args.service,
           },
           cbk);
 
         case 'outbound':
           return getSwapInTerms({
-            macaroon: args.macaroon,
-            preimage: args.preimage,
+            metadata: args.metadata,
             service: args.service,
           },
           cbk);
@@ -102,8 +95,7 @@ module.exports = (args, cbk) => {
         case 'inbound':
           return getSwapOutQuote({
             delay: moment().add(swapDelay, 'minutes').toISOString(),
-            macaroon: args.macaroon,
-            preimage: args.preimage,
+            metadata: args.metadata,
             service: args.service,
             timeout: cltv - cltvDeltaBuffer,
             tokens: args.tokens,
@@ -112,8 +104,7 @@ module.exports = (args, cbk) => {
 
         case 'outbound':
           return getSwapInQuote({
-            macaroon: args.macaroon,
-            preimage: args.preimage,
+            metadata: args.metadata,
             service: args.service,
             tokens: args.tokens,
           },

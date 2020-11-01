@@ -158,22 +158,23 @@ module.exports = (args, cbk) => {
         'forNode',
         'getCert',
         'getMacaroon',
+        'getSocket',
         'nodeCredentials',
-        ({forNode, getCert, getMacaroon, nodeCredentials}, cbk) =>
+        ({forNode, getCert, getMacaroon, getSocket, nodeCredentials}, cbk) =>
       {
         // Exit early with the default credentials when no node is specified
         if (!forNode) {
           return cbk(null, {
-            socket,
             cert: getCert.cert,
             macaroon: getMacaroon.macaroon,
+            socket: getSocket.socket || socket,
           });
         }
 
         return cbk(null, {
           cert: nodeCredentials.cert,
           macaroon: nodeCredentials.macaroon,
-          socket: nodeCredentials.socket,
+          socket: getSocket.socket || nodeCredentials.socket,
         });
       }],
 

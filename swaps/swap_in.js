@@ -135,6 +135,7 @@ module.exports = (args, cbk) => {
       }
 
       return getSwapInQuote({
+        metadata: getService.metadata,
         service: getService.service,
         tokens: args.tokens,
       },
@@ -187,7 +188,11 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      return getSwapInTerms({service: getService.service}, cbk);
+      return getSwapInTerms({
+        metadata: getService.metadata,
+        service: getService.service,
+      },
+      cbk);
     }],
 
     // Initiate the swap
@@ -212,8 +217,7 @@ module.exports = (args, cbk) => {
       return createSwapIn({
         fee: getQuote.fee,
         in_through: args.in_through,
-        macaroon: getService.macaroon,
-        preimage: getService.preimage,
+        metadata: getService.metadata,
         request: createInvoice.request,
         service: getService.service,
       },

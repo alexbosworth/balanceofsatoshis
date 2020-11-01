@@ -34,8 +34,7 @@ const tests = [
     args: makeArgs({}),
     description: 'A paid service object is returned',
     expected: {
-      macaroon,
-      preimage: Buffer.alloc(1, 1).toString('hex'),
+      metadata: {get: () => [Buffer.alloc(1, 1).toString('hex')]},
       service: {},
       token: makeToken(Buffer.from(macaroon, 'base64'), Buffer.alloc(1, 1)),
     },
