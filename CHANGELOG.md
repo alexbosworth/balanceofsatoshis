@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.2.4
+
+- `pay`, `probe`: Fix error when describing a probe of a route where there is only one hop
+
 ## Version 7.2.3
 
 - `reconnect`: Attempt to fix channels that are inactive but peers are still connected

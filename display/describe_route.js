@@ -92,7 +92,7 @@ module.exports = ({lnd, route}, cbk) => {
         const path = route.hops.map((hop, i, hops) => {
           const {alias} = getAliases.find(n => n.id === hop.public_key);
           const {channel} = hop;
-          const isFinal = i === hops.length - 1;
+          const isFinal = i === hops.length - 1 && hops.length !== 1;
 
           const feeMtokens = isFinal ? hops[i-1].fee_mtokens : hop.fee_mtokens;
           const forwarder = `${greenBright(alias)} ${hop.public_key}`.trim();
