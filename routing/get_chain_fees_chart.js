@@ -1,7 +1,8 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {formatTokens} = require('ln-sync');
-const {getChainTransactions} = require('ln-service');
+const {getChainTransactions} = require('ln-accounting');
+const {getNetwork} = require('ln-sync');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
@@ -23,6 +24,7 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
     days: <Chain Fees Paid Over Days Count Number>
     is_monochrome: <Omit Colors Bool>
     lnds: [<Authenticated LND API Object>]
+    request: <Request Function>
   }
 
   @returns via cbk or Promise
@@ -45,13 +47,29 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLndToGetChainFeesChart']);
         }
 
+        if (!args.request) {
+          return cbk([400, 'ExpectedRequestFunctionToGetChainFees']);
+        }
+
         return cbk();
       },
 
       // Get chain transactions
       getTransactions: ['validate', ({}, cbk) => {
         return asyncMap(args.lnds, (lnd, cbk) => {
-          return getChainTransactions({lnd}, cbk);
+          return getNetwork({lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            return getChainTransactions({
+              lnd,
+              after: moment().subtract(args.days, 'days').toISOString(),
+              network: res.network,
+              request: args.request,
+            },
+            cbk);
+          });
         },
         (err, res) => {
           if (!!err) {

@@ -1,5 +1,10 @@
 # Versions
 
+## Version 7.2.5
+
+- `accounting`: Includes sweep chain fees in the chain-fees category
+- `chart-chain-fees`: Accurately portray sweep fees in chart
+
 ## Version 7.2.4
 
 - `pay`, `probe`: Fix error when describing a probe of a route where there is only one hop

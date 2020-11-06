@@ -32,8 +32,8 @@ const {getAccountingReport} = require('./balances');
 const {getBalance} = require('./balances');
 const {getCertValidityDays} = require('./lnd');
 const {getChainFees} = require('./chain');
+const {getChainFeesChart} = require('./routing');
 const {getChannelCloses} = require('./chain');
-const {getPrices} = require('./fiat');
 const {getCredentials} = require('./lnd');
 const {getDepositAddress} = require('./chain');
 const {getFeesChart} = require('./routing');
@@ -44,6 +44,7 @@ const {getLnds} = require('./lnd');
 const {getPaidService} = require('./swaps');
 const {getPeers} = require('./network');
 const {getPriceChart} = require('./fiat');
+const {getPrices} = require('./fiat');
 const {getReceivedChart} = require('./wallets');
 const {getReport} = require('./wallets');
 const {getSwapCost} = require('./swaps');
@@ -94,6 +95,7 @@ prog
   .argument('<category>', 'Report category', keys(accountingCategories))
   .help(`Categories: ${keys(accountingCategories).join(', ')}`)
   .help(`Rate providers: ${rateProviders.join(', ')}`)
+  .help('Privacy note: this requests tx related data from third parties')
   .option('--csv', 'Output a CSV')
   .option('--month <month>', 'Show only records for specific month', months)
   .option('--node <node_name>', 'Get details from named node')
@@ -304,14 +306,15 @@ prog
   // Show a chart of chain fees paid
   .command('chart-chain-fees', 'Get a chart of chain fee expenses')
   .help('Show chart of mining fee expenditure over time')
+  .help('Privacy note: this requests tx data from third parties')
   .option('--days <days>', 'Chart over the past number of days', INT, 60)
   .option('--no-color', 'Disable colors')
   .option('--node <node_name>', 'Chain fees from saved node(s)', REPEATABLE)
   .action((args, options, logger) => {
-    const getChainFees = require('./routing/get_chain_fees');
     return new Promise(async (resolve, reject) => {
       try {
-        return getChainFees({
+        return getChainFeesChart({
+          request,
           days: options.days,
           is_monochrome: !!options.noColor,
           lnds: (await getLnds({logger, nodes: options.node})).lnds,
@@ -375,6 +378,7 @@ prog
   // Determine the outcomes of channel closings
   .command('closed', 'Get the status of a channel closings')
   .help('Channel closes with chain-transaction derived resolution details')
+  .help('Privacy note: this requests tx data from third parties')
   .option('--limit [limit]', 'Limit of closings to get', INT, 20)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Get channel closes from saved node')
