@@ -1,6 +1,6 @@
 # Versions
 
-## Version 7.2.6
+## Version 7.2.7
 
 - `accounting`: Includes sweep chain fees in the chain-fees category
 - `chart-chain-fees`: Accurately portray sweep fees in chart
