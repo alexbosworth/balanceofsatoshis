@@ -59,6 +59,7 @@ const {peerSortOptions} = require('./network');
 const {priceProviders} = require('./fiat');
 const {probe} = require('./network');
 const {probeDestination} = require('./network');
+const {purchasePing} = require('./services');
 const {rebalance} = require('./swaps');
 const {reconnect} = require('./network');
 const {removePeer} = require('./network');
@@ -67,6 +68,7 @@ const {returnNumber} = require('./responses');
 const {returnObject} = require('./responses');
 const {returnOutput} = require('./responses');
 const {sendGift} = require('./network');
+const {serviceKeySendRequests} = require('./services');
 const {setAutopilot} = require('./network');
 const {splitUtxos} = require('./chain');
 const {swapApiKey} = require('./swaps');
@@ -1052,6 +1054,30 @@ prog
     });
   })
 
+  // Request to receive a pong from a network node
+  .command('purchase-ping', 'Request a ping payment response from a node')
+  .argument('<to>', 'Send ping request to node with key or peer with name/key')
+  .option('--in <peer>', 'Request response payment inbound via peer')
+  .option('--node <node_name>', 'Saved node to use to make ping request')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const {lnd} = await authenticatedLnd({logger, node: options.node});
+
+        return purchasePing({
+          lnd,
+          logger,
+          destination: (await findKey({lnd, query: args.to})).public_key,
+        },
+        returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        logger.error({err});
+
+        return reject();
+      }
+    });
+  })
+
   // Rebalance between peers
   .command('rebalance', 'Rebalance funds between peers')
   .help('Change the liquidity profile of two peers')
@@ -1199,6 +1225,26 @@ prog
         returnObject({logger, reject, resolve}));
       } catch (err) {
         return reject(err);
+      }
+    });
+  })
+
+  // Respond to keysend service requests
+  .command('service-keysend-requests', 'Respond to keysend service requests')
+  .help('Offering keysend services requires --keysend enabled')
+  .option('--node <node_name>', 'Saved node to respond to service requests')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        await serviceKeySendRequests({
+          logger,
+          lnd: (await authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        returnObject({logger, reject, resolve}));
+      } catch (err) {
+        logger.error({err});
+
+        return reject();
       }
     });
   })

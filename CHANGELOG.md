@@ -1,5 +1,10 @@
 # Versions
 
+## Version 7.3.0
+
+- `purchase-ping`: Add method to make a ping keysend request to a node
+- `service-keysend-requests`: Add method to auto-pay pongs back to incoming pings
+
 ## Version 7.2.7
 
 - `accounting`: Includes sweep chain fees in the chain-fees category

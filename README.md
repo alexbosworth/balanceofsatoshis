@@ -131,6 +131,9 @@ bos price
 # Test if funds can be sent to a destination
 bos probe "payment_request/public_key"
 
+# Make a ping keysend-request to a node
+bos purchase-ping "public_key"
+
 # Rebalance funds between peers
 bos rebalance
 
@@ -142,6 +145,9 @@ bos report
 
 # Send funds and an optional message to a node
 bos send
+
+# Service keysend-requests
+bos service-keysend-requests
 
 # Connect up to a Telegram bot
 bos telegram

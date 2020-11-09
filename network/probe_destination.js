@@ -51,6 +51,10 @@ const signatureType = '34349337';
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [message]: <Message String>
+    [messages]: [{
+      type: <Additional Message To Final Destination Type Number String>
+      value: <Message To Final Destination Raw Value Hex Encoded String>
+    }]
     [out_through]: <Out Through Peer With Public Key Hex String>
     [request]: <Payment Request String>
     [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
@@ -69,301 +73,308 @@ const signatureType = '34349337';
   }
 */
 module.exports = (args, cbk) => {
-  return asyncAuto({
-    // Check arguments
-    validate: cbk => {
-      if (!args.lnd) {
-        return cbk([400, 'ExpectedLndToProbeDestination']);
-      }
-
-      if (!args.logger) {
-        return cbk([400, "ExpectedLoggerToProbeDestination"]);
-      }
-
-      return cbk();
-    },
-
-    // Get channels to determine an outgoing channel id restriction
-    getChannels: ['validate', ({}, cbk) => {
-      // Exit early when there is no need to add an outgoing channel id
-      if (!args.out_through) {
-        return cbk();
-      }
-
-      return getChannels({lnd: args.lnd}, cbk);
-    }],
-
-    // Get identity key
-    getIdentity: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
-
-    // Destination to pay
-    to: ['validate', ({}, cbk) => {
-      if (!!args.is_push) {
-        const secret = randomBytes(preimageByteLength);
-
-        return cbk(null, {
-          secret,
-          destination: args.destination,
-          id: createHash('sha256').update(secret).digest().toString('hex'),
-        });
-      }
-
-      if (!args.request && !!args.destination) {
-        return cbk(null, {destination: args.destination, routes: []});
-      }
-
-      if (!args.request) {
-        return cbk([400, 'PayRequestOrDestinationRequiredToInitiateProbe']);
-      }
-
-      try {
-        return cbk(null, parsePaymentRequest({request: args.request}));
-      } catch (err) {
-        return cbk([400, 'FailedToDecodePaymentRequest', {err}]);
-      }
-    }],
-
-    // Tokens
-    tokens: ['to', ({to}, cbk) => {
-      return cbk(null, args.tokens || to.tokens || defaultTokens);
-    }],
-
-    // Lookup node destination details
-    getDestinationNode: ['to', ({to}, cbk) => {
-      return getNode({
-        is_omitting_channels: true,
-        lnd: args.lnd,
-        public_key: to.destination,
-      },
-      (err, res) => {
-        // Suppress errors when the node is not found
-        if (!!err) {
-          return cbk(null, {alias: String()});
+  return new Promise((resolve, reject) => {
+    return asyncAuto({
+      // Check arguments
+      validate: cbk => {
+        if (!args.lnd) {
+          return cbk([400, 'ExpectedLndToProbeDestination']);
         }
 
-        return cbk(null, res);
-      });
-    }],
+        if (!args.logger) {
+          return cbk([400, "ExpectedLoggerToProbeDestination"]);
+        }
 
-    // Get the features of the node to probe
-    getFeatures: [
-      'getDestinationNode',
-      'getIdentity',
-      'to',
-      ({getDestinationNode, getIdentity, to}, cbk) =>
-    {
-      if (!!to.features) {
-        return cbk(null, {features: to.features});
-      }
+        return cbk();
+      },
 
-      const features = getDestinationNode.features || [];
+      // Get channels to determine an outgoing channel id restriction
+      getChannels: ['validate', ({}, cbk) => {
+        // Exit early when there is no need to add an outgoing channel id
+        if (!args.out_through) {
+          return cbk();
+        }
 
-      // Only known features may be passed to find routes
-      return cbk(null, {features: features.filter(n => !!n.is_known)});
-    }],
+        return getChannels({lnd: args.lnd}, cbk);
+      }],
 
-    // Determine messages to attach
-    messages: [
-      'getFeatures',
-      'getIdentity',
-      'to',
-      async ({getFeatures, getIdentity, to}, cbk) =>
-    {
-      // Exit early when there are no messages
-      if (!args.message && !args.is_push) {
-        return;
-      }
+      // Get identity key
+      getIdentity: ['validate', ({}, cbk) => {
+        return getIdentity({lnd: args.lnd}, cbk);
+      }],
 
-      const date = Buffer.alloc(dateBytesLength);
-      const messages = []
+      // Destination to pay
+      to: ['validate', ({}, cbk) => {
+        if (!!args.is_push) {
+          const secret = randomBytes(preimageByteLength);
 
-      date.writeUIntBE(now(), Number(), datePrecisionLength);
+          return cbk(null, {
+            secret,
+            destination: args.destination,
+            id: createHash('sha256').update(secret).digest().toString('hex'),
+          });
+        }
 
-      if (!!args.message) {
-        messages.push({type: dateType, value: date.toString('hex')});
+        if (!args.request && !!args.destination) {
+          return cbk(null, {destination: args.destination, routes: []});
+        }
 
-        messages.push({
-          type: messageType,
-          value: Buffer.from(args.message).toString('hex'),
-        });
+        if (!args.request) {
+          return cbk([400, 'PayRequestOrDestinationRequiredToInitiateProbe']);
+        }
 
-        messages.push({type: fromKeyType, value: getIdentity.public_key});
+        try {
+          return cbk(null, parsePaymentRequest({request: args.request}));
+        } catch (err) {
+          return cbk([400, 'FailedToDecodePaymentRequest', {err}]);
+        }
+      }],
 
-        const preimage = Buffer.concat([
-          bufFromHex(getIdentity.public_key),
-          bufFromHex(to.destination),
-          date,
-          Buffer.from(args.message),
-        ]);
+      // Tokens
+      tokens: ['to', ({to}, cbk) => {
+        return cbk(null, args.tokens || to.tokens || defaultTokens);
+      }],
 
-        const {signature} = await signBytes({
-          preimage: preimage.toString('hex'),
-          key_family: nodeKeyFamily,
-          key_index: Number(),
+      // Lookup node destination details
+      getDestinationNode: ['to', ({to}, cbk) => {
+        return getNode({
+          is_omitting_channels: true,
           lnd: args.lnd,
+          public_key: to.destination,
+        },
+        (err, res) => {
+          // Suppress errors when the node is not found
+          if (!!err) {
+            return cbk(null, {alias: String()});
+          }
+
+          return cbk(null, res);
+        });
+      }],
+
+      // Get the features of the node to probe
+      getFeatures: [
+        'getDestinationNode',
+        'getIdentity',
+        'to',
+        ({getDestinationNode, getIdentity, to}, cbk) =>
+      {
+        if (!!to.features) {
+          return cbk(null, {features: to.features});
+        }
+
+        const features = getDestinationNode.features || [];
+
+        // Only known features may be passed to find routes
+        return cbk(null, {features: features.filter(n => !!n.is_known)});
+      }],
+
+      // Determine messages to attach
+      messages: [
+        'getFeatures',
+        'getIdentity',
+        'to',
+        async ({getFeatures, getIdentity, to}, cbk) =>
+      {
+        // Exit early when there are no messages
+        if (!args.message && !args.messages && !args.is_push) {
+          return;
+        }
+
+        const date = Buffer.alloc(dateBytesLength);
+        const messages = [].concat(args.messages || []);
+
+        date.writeUIntBE(now(), Number(), datePrecisionLength);
+
+        if (!!args.message) {
+          messages.push({type: dateType, value: date.toString('hex')});
+
+          messages.push({
+            type: messageType,
+            value: Buffer.from(args.message).toString('hex'),
+          });
+
+          messages.push({type: fromKeyType, value: getIdentity.public_key});
+
+          const preimage = Buffer.concat([
+            bufFromHex(getIdentity.public_key),
+            bufFromHex(to.destination),
+            date,
+            Buffer.from(args.message),
+          ]);
+
+          const {signature} = await signBytes({
+            preimage: preimage.toString('hex'),
+            key_family: nodeKeyFamily,
+            key_index: Number(),
+            lnd: args.lnd,
+          });
+
+          messages.push({type: signatureType, value: signature});
+        }
+
+        if (!!args.is_push) {
+          messages.push({type: keySendPreimageType, value: to.secret});
+        }
+
+        return messages;
+      }],
+
+      // Outgoing channel id
+      outgoingChannelId: ['getChannels', 'to', ({getChannels, to}, cbk) => {
+        if (!getChannels) {
+          return cbk();
+        }
+
+        const {channels} = getChannels;
+        const outPeer = args.out_through;
+        const tokens = args.tokens || to.tokens || defaultTokens;
+
+        const withPeer = channels
+          .filter(n => !!n.is_active)
+          .filter(n => n.partner_public_key === outPeer);
+
+        if (!withPeer.length) {
+          return cbk([404, 'NoActiveChannelWithOutgoingPeer']);
+        }
+
+        const withBalance = withPeer.filter(n => {
+          const reserve = n.local_reserve || floor(n.capacity * reserveRatio);
+
+          return n.local_balance - tokens > reserve + n.commit_transaction_fee;
         });
 
-        messages.push({type: signatureType, value: signature});
-      }
+        if (!withBalance.length) {
+          return cbk([404, 'NoOutboundPeerWithSufficientBalance']);
+        }
 
-      if (!!args.is_push) {
-        messages.push({type: keySendPreimageType, value: to.secret});
-      }
+        const attribute = 'local_balance';
 
-      return messages;
-    }],
+        const [channel] = sortBy({attribute, array: withBalance}).sorted;
 
-    // Outgoing channel id
-    outgoingChannelId: ['getChannels', 'to', ({getChannels, to}, cbk) => {
-      if (!getChannels) {
+        return cbk(null, channel.id);
+      }],
+
+      // Log sending towards destination
+      checkPath: [
+        'getDestinationNode',
+        'getIdentity',
+        'to',
+        ({getDestinationNode, getIdentity, to}, cbk) =>
+      {
+        const sendingTo = `${getDestinationNode.alias} ${to.destination}`;
+
+        if (to.destination === getIdentity.public_key) {
+          args.logger.info({circular_rebalance_for: sendingTo});
+        } else {
+          args.logger.info({checking_for_path_to: sendingTo});
+        }
+
         return cbk();
-      }
+      }],
 
-      const {channels} = getChannels;
-      const outPeer = args.out_through;
-      const tokens = args.tokens || to.tokens || defaultTokens;
+      // Probe towards destination
+      probe: [
+        'getFeatures',
+        'getIdentity',
+        'messages',
+        'outgoingChannelId',
+        'to',
+        ({getFeatures, messages, outgoingChannelId, to}, cbk) =>
+      {
+        return executeProbe({
+          messages,
+          cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
+          destination: to.destination,
+          features: getFeatures.features,
+          ignore: args.ignore,
+          in_through: args.in_through,
+          is_strict_max_fee: args.is_strict_max_fee,
+          lnd: args.lnd,
+          logger: args.logger,
+          max_fee: args.max_fee,
+          outgoing_channel: outgoingChannelId,
+          payment: to.payment,
+          routes: to.routes,
+          timeout_minutes: args.timeout_minutes || undefined,
+          tokens: args.tokens || to.tokens || defaultTokens,
+          total_mtokens: !!to.payment ? to.mtokens : undefined,
+        },
+        cbk);
+      }],
 
-      const withPeer = channels
-        .filter(n => !!n.is_active)
-        .filter(n => n.partner_public_key === outPeer);
+      // Get maximum value of the successful route
+      getMax: ['probe', 'to', ({probe, to}, cbk) => {
+        if (!args.find_max || !probe.route) {
+          return cbk(null, {});
+        }
 
-      if (!withPeer.length) {
-        return cbk([404, 'NoActiveChannelWithOutgoingPeer']);
-      }
+        const sub = subscribeToFindMaxPayable({
+          cltv: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
+          hops: probe.route.hops,
+          lnd: args.lnd,
+          max: args.find_max,
+          request: args.request,
+        });
 
-      const withBalance = withPeer.filter(n => {
-        const reserve = n.local_reserve || floor(n.capacity * reserveRatio);
+        sub.on('evaluating', ({tokens}) => {
+          return args.logger.info({evaluating_amount: tokens});
+        });
 
-        return n.local_balance - tokens > reserve + n.commit_transaction_fee;
-      });
+        sub.once('error', err => cbk(err));
+        sub.once('failure', () => cbk(null, {maximum: Number()}));
+        sub.once('success', ({maximum}) => cbk(null, {maximum}));
 
-      if (!withBalance.length) {
-        return cbk([404, 'NoOutboundPeerWithSufficientBalance']);
-      }
+        return;
+      }],
 
-      const attribute = 'local_balance';
+      // If there is a successful route, pay it
+      pay: ['probe', 'to', ({probe, to}, cbk) => {
+        if (!args.is_real_payment) {
+          return cbk();
+        }
 
-      const [channel] = sortBy({attribute, array: withBalance}).sorted;
+        if (!probe.route) {
+          return cbk();
+        }
 
-      return cbk(null, channel.id);
-    }],
+        if (args.max_fee !== undefined && probe.route.fee > args.max_fee) {
+          return cbk([400, 'MaxFeeTooLow', {required_fee: probe.route.fee}]);
+        }
 
-    // Log sending towards destination
-    checkPath: [
-      'getDestinationNode',
-      'getIdentity',
-      'to',
-      ({getDestinationNode, getIdentity, to}, cbk) =>
-    {
-      const sendingTo = `${getDestinationNode.alias} ${to.destination}`;
+        args.logger.info({
+          paying: probe.route.hops.map(({channel}) => channel),
+        });
 
-      if (to.destination === getIdentity.public_key) {
-        args.logger.info({circular_rebalance_for: sendingTo});
-      } else {
-        args.logger.info({checking_for_path_to: sendingTo});
-      }
+        return payViaRoutes({
+          id: to.id,
+          lnd: args.lnd,
+          routes: [probe.route],
+        },
+        cbk);
+      }],
 
-      return cbk();
-    }],
+      // Outcome of probes and payment
+      outcome: ['getMax', 'pay', 'probe', ({getMax, pay, probe}, cbk) => {
+        if (!probe.route) {
+          return cbk(null, {attempted_paths: probe.attempted_paths});
+        }
 
-    // Probe towards destination
-    probe: [
-      'getFeatures',
-      'getIdentity',
-      'messages',
-      'outgoingChannelId',
-      'to',
-      ({getFeatures, messages, outgoingChannelId, to}, cbk) =>
-    {
-      return executeProbe({
-        messages,
-        cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
-        destination: to.destination,
-        features: getFeatures.features,
-        ignore: args.ignore,
-        in_through: args.in_through,
-        is_strict_max_fee: args.is_strict_max_fee,
-        lnd: args.lnd,
-        logger: args.logger,
-        max_fee: args.max_fee,
-        outgoing_channel: outgoingChannelId,
-        payment: to.payment,
-        routes: to.routes,
-        timeout_minutes: args.timeout_minutes || undefined,
-        tokens: args.tokens || to.tokens || defaultTokens,
-        total_mtokens: !!to.payment ? to.mtokens : undefined,
-      },
-      cbk);
-    }],
+        const {route} = probe;
 
-    // Get maximum value of the successful route
-    getMax: ['probe', 'to', ({probe, to}, cbk) => {
-      if (!args.find_max || !probe.route) {
-        return cbk(null, {});
-      }
-
-      const sub = subscribeToFindMaxPayable({
-        cltv: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
-        hops: probe.route.hops,
-        lnd: args.lnd,
-        max: args.find_max,
-        request: args.request,
-      });
-
-      sub.on('evaluating', ({tokens}) => {
-        return args.logger.info({evaluating_amount: tokens});
-      });
-
-      sub.once('error', err => cbk(err));
-      sub.once('failure', () => cbk(null, {maximum: Number()}));
-      sub.once('success', ({maximum}) => cbk(null, {maximum}));
-
-      return;
-    }],
-
-    // If there is a successful route, pay it
-    pay: ['probe', 'to', ({probe, to}, cbk) => {
-      if (!args.is_real_payment) {
-        return cbk();
-      }
-
-      if (!probe.route) {
-        return cbk();
-      }
-
-      if (args.max_fee !== undefined && probe.route.fee > args.max_fee) {
-        return cbk([400, 'MaxFeeTooLow', {required_fee: probe.route.fee}]);
-      }
-
-      args.logger.info({paying: probe.route.hops.map(({channel}) => channel)});
-
-      return payViaRoutes({
-        id: to.id,
-        lnd: args.lnd,
-        routes: [probe.route],
-      },
-      cbk);
-    }],
-
-    // Outcome of probes and payment
-    outcome: ['getMax', 'pay', 'probe', ({getMax, pay, probe}, cbk) => {
-      if (!probe.route) {
-        return cbk(null, {attempted_paths: probe.attempted_paths});
-      }
-
-      const {route} = probe;
-
-      return cbk(null, {
-        fee: !route ? undefined : route.fee,
-        latency_ms: !route ? undefined : probe.latency_ms,
-        route_maximum: getMax.maximum,
-        paid: !pay ? undefined : pay.tokens,
-        preimage: !pay ? undefined : pay.secret,
-        probed: !!pay ? undefined : route.tokens - route.fee,
-        relays: !route ? undefined : route.hops.map(n => n.public_key),
-        success: !route ? undefined : route.hops.map(({channel}) => channel),
-      });
-    }],
-  },
-  returnResult({of: 'outcome'}, cbk));
+        return cbk(null, {
+          fee: !route ? undefined : route.fee,
+          id: !pay ? undefined : pay.id,
+          latency_ms: !route ? undefined : probe.latency_ms,
+          route_maximum: getMax.maximum,
+          paid: !pay ? undefined : pay.tokens,
+          preimage: !pay ? undefined : pay.secret,
+          probed: !!pay ? undefined : route.tokens - route.fee,
+          relays: !route ? undefined : route.hops.map(n => n.public_key),
+          success: !route ? undefined : route.hops.map(({channel}) => channel),
+        });
+      }],
+    },
+    returnResult({reject, resolve, of: 'outcome'}, cbk));
+  });
 };
