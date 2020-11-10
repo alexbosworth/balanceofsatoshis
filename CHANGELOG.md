@@ -1,5 +1,11 @@
 # Versions
 
+## Version 7.3.1
+
+- `accounting`: Includes close channel chain fees in the chain-fees category
+- `chart-chain-fees`: Accurately portray channel close chain fees in chart
+- `telegram`: Improve stability across network disconnections
+
 ## Version 7.3.0
 
 - `purchase-ping`: Add method to make a ping keysend request to a node
