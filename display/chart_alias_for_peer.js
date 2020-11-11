@@ -21,7 +21,7 @@ const shortKey = key => key.substring(0, 16);
 module.exports = args => {
   const inactive = !!args.is_inactive ?  inactiveEmoji : String();
   const left = !!args.is_disconnected ? disconnectedEmoji : String();
-  const regularAlias = args.alias.replace(isEmoji, String());
+  const regularAlias = args.alias.replace(isEmoji, String()).trim();
 
   const handle = regularAlias || shortKey(args.public_key);
 

@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.3.2
+
+Start speed of all commands is increased.
+
 ## Version 7.3.1
 
 - `accounting`: Includes close channel chain fees in the chain-fees category
