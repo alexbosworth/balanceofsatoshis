@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.3.3
+
+- `telegram`: Fix a stability issue that could interfere with auto-restarting
+
 ## Version 7.3.2
 
 Start speed of all commands is increased.
