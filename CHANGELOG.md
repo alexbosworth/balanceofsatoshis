@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.4.0
+
+- `chain-receive`: Add support for MPP receiving
+
 ## Version 7.3.3
 
 - `telegram`: Fix a stability issue that could interfere with auto-restarting

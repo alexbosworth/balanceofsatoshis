@@ -1,7 +1,11 @@
+const {createHash} = require('crypto');
+
 const {addressForScript} = require('goldengate');
 const asyncAuto = require('async/auto');
 const {broadcastTransaction} = require('goldengate');
+const {cancelHodlInvoice} = require('ln-service');
 const {createChainAddress} = require('ln-service');
+const {createHodlInvoice} = require('ln-service');
 const {createInvoice} = require('ln-service');
 const {createSwapIn} = require('goldengate');
 const {decodeSwapRecovery} = require('goldengate');
@@ -32,6 +36,7 @@ const bigFormat = tokens => ((tokens || 0) / 1e8).toFixed(8);
 const msPerBlock = 1000 * 60 * 10;
 const msPerYear = 1000 * 60 * 60 * 24 * 365;
 const {now} = Date;
+const sha256 = buffer => createHash('sha256').update(buffer).digest();
 const waitForDepositMs = 1000 * 60 * 60 * 24;
 
 /** Receive funds on-chain
@@ -118,6 +123,20 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
+    // Get the limits for a swap
+    getLimits: ['getService', ({getService}, cbk) => {
+      // Exit early when recovering an existing swap
+      if (!!args.recovery) {
+        return cbk();
+      }
+
+      return getSwapInTerms({
+        metadata: getService.metadata,
+        service: getService.service,
+      },
+      cbk);
+    }],
+
     // Get quote for a swap
     getQuote: [
       'getLiquidity',
@@ -181,26 +200,71 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
-    // Get the limits for a swap
-    getLimits: ['getService', ({getService}, cbk) => {
-      // Exit early when recovering an existing swap
+    // Create probe invoice
+    createProbeInvoice: ['createInvoice', ({createInvoice}, cbk) => {
+      // Exit early when we're recovering an existing swap
       if (!!args.recovery) {
         return cbk();
       }
 
-      return getSwapInTerms({
-        metadata: getService.metadata,
-        service: getService.service,
+      // The probe invoice has a hash deterministically derived from the swap
+      const hashedHash = sha256(Buffer.from(createInvoice.id, 'hex'));
+
+      hashedHash[0] ^= 1;
+
+      return createHodlInvoice({
+        description: 'Dummy invoice for swap probe',
+        expires_at: moment().add(1, 'hour').toISOString(),
+        id: hashedHash.toString('hex'),
+        is_including_private_channels: true,
+        lnd: args.lnd,
+        mtokens: createInvoice.mtokens,
       },
       cbk);
+    }],
+
+    // Wait for the probe invoice to be hit
+    waitForProbe: ['createProbeInvoice', ({createProbeInvoice}, cbk) => {
+      // Exit early when there is no probe invoice to wait for
+      if (!createProbeInvoice) {
+        return cbk();
+      }
+
+      const sub = subscribeToInvoice({
+        id: createProbeInvoice.id,
+        lnd: args.lnd,
+      });
+
+      args.logger.info({evaluating_connectivity: true});
+
+      sub.on('error', err => cbk(err));
+
+      sub.on('invoice_updated', invoice => {
+        if (!!invoice.is_canceled) {
+          return cbk([503, 'FailedToReceiveProbe']);
+        }
+
+        // Exit early when waiting for probe
+        if (!invoice.is_held) {
+          return;
+        }
+
+        sub.removeAllListeners();
+
+        // Cancel back the invoice when it is held
+        return cancelHodlInvoice({id: invoice.id, lnd: args.lnd}, () => cbk());
+      });
+
+      return;
     }],
 
     // Initiate the swap
     createSwap: [
       'createInvoice',
+      'createProbeInvoice',
       'getQuote',
       'getService',
-      ({createInvoice, getQuote, getService}, cbk) =>
+      ({createInvoice, createProbeInvoice, getQuote, getService}, cbk) =>
     {
       // Exit early when we're recovering an existing swap
       if (!!args.recovery) {
@@ -218,6 +282,7 @@ module.exports = (args, cbk) => {
         fee: getQuote.fee,
         in_through: args.in_through,
         metadata: getService.metadata,
+        probe_request: createProbeInvoice.request,
         request: createInvoice.request,
         service: getService.service,
       },
