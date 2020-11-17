@@ -46,6 +46,7 @@ const makeLnd = ({}) => {
           },
           remote_pubkey: Buffer.alloc(33).toString('hex'),
           static_remote_key: true,
+          thaw_height: 0,
           total_satoshis_received: '1',
           total_satoshis_sent: '1',
           unsettled_balance: '1',

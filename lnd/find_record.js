@@ -1,13 +1,20 @@
 const asyncAuto = require('async/auto');
 const {chanFormat} = require('bolt07');
+const {formatTokens} = require('ln-sync');
 const {getChannel} = require('ln-service');
+const {getChannels} = require('ln-service');
+const {getClosedChannels} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
 const {getPayment} = require('ln-service');
 const {getTransactionRecord} = require('ln-sync');
+const {gray} = require('colorette');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const asBigUnit = tokens => (tokens / 1e8).toFixed(8);
+const balance = ({display}) => display.trim() || gray('0.00000000');
+const blocksTime = (n, p) => moment.duration(n * 10, 'minutes').humanize(p);
 const {isArray} = Array;
 const isHash = n => !!n && /^[0-9A-F]{64}$/i.test(n);
 const notFound = 404;
@@ -18,7 +25,7 @@ const standardIdHexLength = Buffer.alloc(32).toString('hex').length;
   Try to find a record by id
 
   {
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
     query: <Query String>
   }
 
@@ -64,8 +71,17 @@ module.exports = ({lnd, query}, cbk) => {
         return cbk();
       },
 
+      // Get channels
+      getChannels: ['validate', ({}, cbk) => getChannels({lnd}, cbk)],
+
+      // Get closed
+      getClosed: ['validate', ({}, cbk) => getClosedChannels({lnd}, cbk)],
+
       // Get graph
       getGraph: ['validate', ({}, cbk) => getNetworkGraph({lnd}, cbk)],
+
+      // Get blockchain height
+      getHeight: ['validate', ({}, cbk) => getHeight({lnd}, cbk)],
 
       // Payment
       getPayment: ['validate', ({}, cbk) => {
@@ -97,10 +113,21 @@ module.exports = ({lnd, query}, cbk) => {
 
       // Records
       records: [
+        'getChannels',
+        'getClosed',
         'getGraph',
+        'getHeight',
         'getPayment',
         'getTx',
-        ({getGraph, getPayment, getTx}, cbk) =>
+        ({
+          getChannels,
+          getClosed,
+          getGraph,
+          getHeight,
+          getPayment,
+          getTx,
+        },
+        cbk) =>
       {
         const nodes = getGraph.nodes
           .filter(node => {
@@ -111,6 +138,9 @@ module.exports = ({lnd, query}, cbk) => {
             return node.public_key === query;
           })
           .map(node => {
+            const hasLargeChannels = !!node.features
+              .find(n => n.type === 'large_channels');
+
             return {
               alias: node.alias,
               capacity: asBigUnit(getGraph.channels.reduce(
@@ -123,9 +153,47 @@ module.exports = ({lnd, query}, cbk) => {
                 },
                 Number()
               )),
+              is_accepting_large_channels: hasLargeChannels || undefined,
               public_key: node.public_key,
               updated: moment(node.updated_at).fromNow(),
               urls: node.sockets.map(socket => `${node.public_key}@${socket}`),
+              past_channels: getClosed.channels
+                .filter(n => n.partner_public_key === node.public_key)
+                .filter(n => !!n.id)
+                .filter(n => !!n.close_confirm_height)
+                .map(chan => {
+                  const currentHeight = getHeight.current_block_height;
+                  const [height] = chan.id.split('x');
+                  const removed = chan.close_confirm_height;
+
+                  return {
+                    age: blocksTime(removed - height),
+                    closed: blocksTime(removed - currentHeight, true),
+                    capacity: formatTokens({tokens: chan.capacity}).display,
+                    breach_closed: chan.is_breach_close || undefined,
+                    cooperative_closed: chan.is_cooperative_close || undefined,
+                    force_closed: chan.is_local_force_close || undefined,
+                    peer_force_closed: chan.is_remote_force_close || undefined,
+                  };
+                }),
+              connected_channels: getChannels.channels
+                .filter(n => n.partner_public_key === node.public_key)
+                .filter(n => !!n.id)
+                .map(chan => {
+                  const [height] = chan.id.split('x');
+                  const local = formatTokens({tokens: chan.local_balance});
+                  const remote = formatTokens({tokens: chan.remote_balance});
+
+                  const inbound = `in: ${balance(remote)}`;
+                  const outbound = `out: ${balance(local)}`;
+
+                  return {
+                    age: blocksTime(getHeight.current_block_height - height),
+                    liquidity: `${outbound} | ${inbound}`,
+                    capacity: formatTokens({tokens: chan.capacity}).display,
+                    funding: `${chan.transaction_id} ${chan.transaction_vout}`,
+                  };
+                }),
             }
           })
           .filter(node => node.capacity !== asBigUnit(0));

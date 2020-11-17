@@ -1,5 +1,12 @@
 # Versions
 
+## Version 7.4.1
+
+- `fees`, `peers`: Standardize peer alias display
+- `find`: Show connected and past connected channels with a peer match
+- `find`: Show large channel support for peer matches
+- `peers`: Add display of cooperative close delays, pending forwards, and low uptime status
+
 ## Version 7.4.0
 
 - `chain-receive`: Add support for MPP receiving

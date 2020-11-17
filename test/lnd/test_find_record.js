@@ -1,3 +1,5 @@
+const EventEmitter = require('events');
+
 const {test} = require('tap');
 
 const {describeGraphResponse} = require('./../fixtures');
@@ -17,8 +19,24 @@ const tests = [
   {
     args: {
       lnd: {
+        chain: {
+          registerBlockEpochNtfn: ({}) => {
+            const emitter = new EventEmitter();
+
+            emitter.cancel = () => {};
+
+            process.nextTick(() => emitter.emit('data', {
+              hash: Buffer.alloc(32),
+              height: 1,
+            }));
+
+            return emitter;
+          },
+        },
         default: {
+          closedChannels: ({}, cbk) => cbk(null, {channels: []}),
           describeGraph: ({}, cbk) => cbk(null, describeGraphResponse),
+          listChannels: ({}, cbk) => cbk(null, {channels: []}),
         },
       },
       query: 'a',
@@ -30,8 +48,11 @@ const tests = [
       nodes: [{
         alias: 'alias',
         capacity: '0.00000001',
+        is_accepting_large_channels: undefined,
         public_key: 'a',
         urls: ['a@127.0.0.1:9735'],
+        past_channels: [],
+        connected_channels: [],
       }],
       payment: undefined,
       payment_failed: undefined,
@@ -41,8 +62,24 @@ const tests = [
   {
     args: {
       lnd: {
+        chain: {
+          registerBlockEpochNtfn: ({}) => {
+            const emitter = new EventEmitter();
+
+            emitter.cancel = () => {};
+
+            process.nextTick(() => emitter.emit('data', {
+              hash: Buffer.alloc(32),
+              height: 1,
+            }));
+
+            return emitter;
+          },
+        },
         default: {
+          closedChannels: ({}, cbk) => cbk(null, {channels: []}),
           describeGraph: ({}, cbk) => cbk(null, describeGraphResponse),
+          listChannels: ({}, cbk) => cbk(null, {channels: []}),
         },
       },
       query: '0x0x1',

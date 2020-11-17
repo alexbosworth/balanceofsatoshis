@@ -16,6 +16,7 @@ const {Parser} = require('hot-formula-parser');
 const {returnResult} = require('asyncjs-util');
 const {updateRoutingFees} = require('ln-service');
 
+const {chartAliasForPeer} = require('./../display');
 const {formatFeeRate} = require('./../display');
 const updateChannelFee = require('./update_channel_fee');
 
@@ -321,8 +322,14 @@ module.exports = (args, cbk) => {
 
           const rate = max(...peerRates.map(n => n.fee_rate));
 
+          const {display} = chartAliasForPeer({
+            alias,
+            is_inactive: channels.find(n => !n.is_active),
+            public_key: id,
+          });
+
           return {
-            alias: alias || shortKey(id),
+            alias: display,
             id: id,
             out_fee: !peerRates.length ? noFee : formatFeeRate({rate}).display,
           };
