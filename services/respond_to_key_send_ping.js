@@ -9,6 +9,7 @@ const {returnResult} = require('asyncjs-util');
 const maximumPingPrice = 200;
 const minimumPingPrice = 10;
 const responsePingTokens = 1;
+const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
 
 /** Respond to a key send ping request
 
@@ -140,7 +141,7 @@ module.exports = ({id, lnd, logger, received, request}, cbk) => {
         }
 
         // Exit early when the response ping tokens are not as expected
-        if (parseRequest.tokens !== responsePingTokens) {
+        if (parseRequest.mtokens !== tokensAsMillitokens(responsePingTokens)) {
           logger.warn({received_bad_ping: 'PingResponseTokensValueIncorrect'});
         }
 

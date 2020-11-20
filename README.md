@@ -230,7 +230,7 @@ variable to avoid adding the --node prefix
 
 If that is set, it will use that node if no node is specified.
 
-You can also add a JSON fille to your .bos directory: config.json, add
+You can also add a JSON file to your .bos directory: config.json, add
 "default_saved_node": "nodename" to set the default via a file instead
 
 ## Linux Fu

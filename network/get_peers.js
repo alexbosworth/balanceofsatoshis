@@ -354,6 +354,8 @@ module.exports = (args, cbk) => {
             .filter(n => !!n)
             .find(n => !!n.id);
 
+          const isPrivatePeer = !activeChannels.find(n => !n.is_private);
+
           const uptime = sumOf(activeChannels
             .filter(n => !!n.time_online)
             .map(n => n.time_online));
@@ -406,6 +408,7 @@ module.exports = (args, cbk) => {
             inbound_liquidity: sumOf(channels.map(n => n.remote_balance)),
             is_forwarding: hasHtlcChannel || undefined,
             is_offline: !peer || undefined,
+            is_private: isPrivatePeer || undefined,
             is_thawing: hasThawChannel || undefined,
             last_activity: args.idle_days !== undefined ? lastActivity : null,
             outbound_liquidity: sumOf(channels.map(n => n.local_balance)),
@@ -454,6 +457,7 @@ module.exports = (args, cbk) => {
                 inbound_liquidity: peer.inbound_liquidity,
                 is_forwarding: peer.is_forwarding,
                 is_offline: peer.is_offline,
+                is_private: peer.is_private,
                 is_thawing: peer.is_thawing,
                 outbound_liquidity: peer.outbound_liquidity,
                 public_key: peer.public_key,
@@ -476,6 +480,7 @@ module.exports = (args, cbk) => {
               inbound_liquidity: n.inbound_liquidity || undefined,
               is_forwarding: n.is_forwarding || undefined,
               is_offline: n.is_offline || undefined,
+              is_private: n.is_private || undefined,
               is_thawing: n.is_thawing || undefined,
               outbound_liquidity: n.outbound_liquidity || undefined,
               public_key: n.public_key || undefined,
@@ -517,6 +522,7 @@ module.exports = (args, cbk) => {
                 downtime_percentage: peer.downtime_percentage,
                 is_forwarding: peer.is_forwarding,
                 is_inactive: peer.is_offline,
+                is_private: peer.is_private,
                 is_thawing: peer.is_thawing,
                 public_key: peer.public_key,
               });

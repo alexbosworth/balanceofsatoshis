@@ -1,5 +1,11 @@
 # Versions
 
+## Version 7.4.2
+
+- `fund`: Fix issue setting fee rate
+- `peers`: Add icon for private peers
+- `peers`: Fix icon for cooperative close delay peers
+
 ## Version 7.4.1
 
 - `fees`, `peers`: Standardize peer alias display
