@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.4.3
+
+- `increase-inbound-liquidity`: Fix issue preventing mainnet usage
+
 ## Version 7.4.2
 
 - `fund`: Fix issue setting fee rate

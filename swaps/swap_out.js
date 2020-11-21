@@ -33,6 +33,7 @@ const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToBlocks} = require('ln-service');
 const {subscribeToMultiPathPay} = require('probing');
+const {subscribeToMultiPathProbe} = require('probing');
 const {subscribeToPastPayment} = require('ln-service');
 const {subscribeToPayViaRequest} = require('ln-service');
 const {subscribeToSwapOutStatus} = require('goldengate');
@@ -711,7 +712,6 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const {subscribeToMultiPathProbe} = require('probing');
         const hasFeatures = !!decodeFundingRequest.features.length;
         const paths = [];
 
@@ -1149,7 +1149,6 @@ module.exports = (args, cbk) => {
       findInMempool: [
         'initiateSwap',
         'network',
-        'payToExecute',
         'recover',
         'startHeight',
         ({initiateSwap, network, recover, startHeight}, cbk) =>
