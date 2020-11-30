@@ -38,7 +38,7 @@
     "moment": "2.29.1",
     "node-fetch": "2.6.1",
     "probing": "1.3.2",
-    "psbt": "1.1.6",
+    "psbt": "1.1.7",
     "qrcode-terminal": "0.12.0",
     "sanitize-filename": "1.6.3",
     "stats-lite": "2.2.0",
@@ -49,6 +49,7 @@
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
+    "secp256k1": "4.0.2",
     "tap": "14.11.0"
   },
   "engines": {
@@ -71,8 +72,9 @@
   },
   "scripts": {
     "build-docker": "docker build -t alexbosworth/balanceofsatoshis . && docker save alexbosworth/balanceofsatoshis > balanceofsatoshis.tar && gzip balanceofsatoshis.tar",
+    "postpack": "PACKAGE_VERSION=$(cat package.json | grep \\\"version\\\" | head -1 | awk -F: '{ print $2 }' | sed 's/[\",]//g' | tr -d '[[:space:]]') && git tag -s v$PACKAGE_VERSION -m v$PACKAGE_VERSION && git push github --tags",
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/wallets/*.js"
   },
-  "version": "7.4.3"
+  "version": "7.5.0"
 }

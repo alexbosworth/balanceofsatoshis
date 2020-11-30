@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.5.0
+
+- `open-balanced-channel`: Add command to open channel with dual-sided funding
+
 ## Version 7.4.3
 
 - `increase-inbound-liquidity`: Fix issue preventing mainnet usage

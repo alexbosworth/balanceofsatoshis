@@ -1,0 +1,12 @@
+{
+  "balancedChannelKeyTypes": {
+    "accept_request": "80501",
+    "channel_capacity": "80502",
+    "funding_signature": "80503",
+    "funding_tx_fee_rate": "80504",
+    "multisig_public_key": "80505",
+    "transit_public_key": "80506",
+    "transit_tx_id": "80507",
+    "transit_tx_vout": "80508"
+  }
+}

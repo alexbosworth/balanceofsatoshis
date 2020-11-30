@@ -1,4 +1,5 @@
+const openBalancedChannel = require('./open_balanced_channel');
 const purchasePing = require('./purchase_ping');
 const serviceKeySendRequests = require('./service_key_send_requests');
 
-module.exports = {purchasePing, serviceKeySendRequests};
+module.exports = {openBalancedChannel, purchasePing, serviceKeySendRequests};

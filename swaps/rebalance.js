@@ -59,9 +59,9 @@ const uniq = arr => Array.from(new Set(arr));
 
   {
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
+    [is_avoiding_high_inbound]: <Avoid High Inbound Liquidity Bool>
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
-    [is_avoiding_high_inbound]: <Avoid High Inbound Liquidity Bool>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
