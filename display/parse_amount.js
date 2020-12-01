@@ -2,6 +2,7 @@ const {Parser} = require('hot-formula-parser');
 
 const {ceil} = Math;
 const {keys} = Object;
+const {round} = Math;
 
 /** Parse a described amount into tokens
 
@@ -62,5 +63,5 @@ module.exports = ({amount, variables}) => {
     break;
   }
 
-  return {tokens: parsed.result};
+  return {tokens: round(parsed.result)};
 };

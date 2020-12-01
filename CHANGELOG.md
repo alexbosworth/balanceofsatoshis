@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.5.1
+
+- `reconnect`: Add an execution timeout to reconnecting
+
 ## Version 7.5.0
 
 - `open-balanced-channel`: Add command to open channel with dual-sided funding

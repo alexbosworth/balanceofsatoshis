@@ -1,18 +1,19 @@
-const {addPeer} = require('ln-service');
 const asyncAuto = require('async/auto');
-const asyncDetectSeries = require('async/detectSeries');
-const asyncFilterLimit = require('async/filterLimit');
 const asyncMap = require('async/map');
+const asyncTimeout = require('async/timeout');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {removePeer} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const connectToNodes = require('./connect_to_nodes');
 const {shuffle} = require('./../arrays');
 
 const connectLimit = 5;
+const connectTimeoutMs = 1000 * 60 * 10;
 const notFound = -1;
+const timedOutCode = 'ETIMEDOUT';
 const uniq = arr => Array.from(new Set(arr));
 
 /** Get channel peers that are disconnected and attempt to reconnect
@@ -121,21 +122,23 @@ module.exports = ({lnd, retries}, cbk) => {
 
       // Try to connect to all disconnected peers
       reconnect: ['getDisconnected', ({getDisconnected}, cbk) => {
-        const nodes = getDisconnected.filter(n => !!n);
-
-        return asyncFilterLimit(nodes, connectLimit, (node, cbk) => {
-          return asyncDetectSeries(node.sockets, ({socket}, cbk) => {
-            return addPeer({
-              lnd,
-              socket,
-              public_key: node.public_key,
-              retry_count: retries,
-            },
-            err => cbk(null, !err));
-          },
-          cbk);
+        return asyncTimeout(connectToNodes, connectTimeoutMs)({
+          lnd,
+          retries,
+          limit: connectLimit,
+          nodes: getDisconnected.filter(n => !!n),
         },
-        cbk);
+        (err, res) => {
+          if (!!err && err.code === timedOutCode) {
+            return cbk([503, 'ReconnectingToNodesTimedOut']);
+          }
+
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, res.connected);
+        });
       }],
 
       // Reconnected to nodes

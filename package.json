@@ -74,7 +74,7 @@
     "build-docker": "docker build -t alexbosworth/balanceofsatoshis . && docker save alexbosworth/balanceofsatoshis > balanceofsatoshis.tar && gzip balanceofsatoshis.tar",
     "postpack": "PACKAGE_VERSION=$(cat package.json | grep \\\"version\\\" | head -1 | awk -F: '{ print $2 }' | sed 's/[\",]//g' | tr -d '[[:space:]]') && git tag -s v$PACKAGE_VERSION -m v$PACKAGE_VERSION && git push github --tags",
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
-    "test": "tap test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/swaps/*.js test/wallets/*.js"
+    "test": "tap -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/wallets/*.js"
   },
-  "version": "7.5.0"
+  "version": "7.5.1"
 }
