@@ -15,7 +15,6 @@ const {getPeers} = require('ln-service');
 const {getPublicKey} = require('ln-service');
 const {networks} = require('bitcoinjs-lib');
 const {openChannels} = require('ln-service');
-const {payViaPaymentDetails} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {payments} = require('bitcoinjs-lib');
 const {proposeChannel} = require('ln-service');

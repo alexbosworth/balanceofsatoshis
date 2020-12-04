@@ -37,6 +37,7 @@ const makeArgs = overrides => {
     lnd: {
       default: {
         addInvoice: ({}, cbk) => cbk(null, {
+          payment_addr: Buffer.alloc(32),
           payment_request: request,
           r_hash: Buffer.alloc(32),
         }),
@@ -94,6 +95,7 @@ const makeArgs = overrides => {
           features: {},
           htlcs: [],
           memo: 'memo',
+          payment_addr: Buffer.alloc(32),
           payment_request: request,
           r_hash: Buffer.alloc(32),
           r_preimage: Buffer.alloc(32),
@@ -128,6 +130,8 @@ const makeArgs = overrides => {
       invoices: {
         subscribeSingleInvoice: ({}) => {
           const eventEmitter = new EventEmitter();
+
+          eventEmitter.cancel = () => {};
 
           process.nextTick(() => {
             const multiSigKeyTypeBuffer = Buffer.alloc(32);
@@ -179,6 +183,7 @@ const makeArgs = overrides => {
               }],
               is_keysend: true,
               memo: '',
+              payment_addr: Buffer.alloc(32),
               payment_request: '',
               private: false,
               r_hash: Buffer.alloc(32),

@@ -154,17 +154,6 @@ module.exports = (args, cbk) => {
       // Get public key
       getPublicKey: ['lnd', ({lnd}, cbk) => getIdentity({lnd}, cbk)],
 
-      // Determine the maximum tokens that can be rebalanced
-      maxRebalanceTokens: ['lnd', ({lnd}, cbk) => {
-        return getWalletVersion({lnd}, (err, res) => {
-          if (!!err || res.version === legacyVersion) {
-            return cbk(null, legacyMaxRebalanceTokens);
-          }
-
-          return cbk(null, maxRebalanceTokens);
-        });
-      }],
-
       // Figure out which public keys and channels to avoid
       ignore: [
         'getInitialLiquidity',
@@ -589,13 +578,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Create local invoice
-      invoice: [
-        'channels',
-        'findRoute',
-        'lnd',
-        'maxRebalanceTokens',
-        ({findRoute, lnd, maxRebalanceTokens}, cbk) =>
-      {
+      invoice: ['channels', 'findRoute', 'lnd', ({findRoute, lnd}, cbk) => {
         return createInvoice({
           lnd,
           cltv_delta: defaultCltvDelta,
@@ -614,7 +597,9 @@ module.exports = (args, cbk) => {
           cltv_delta: cltvDelta,
           lnd: args.lnd,
           mtokens: invoice.mtokens,
+          payment: invoice.payment,
           public_keys: channels.map(n => n.destination),
+          total_mtokens: !!invoice.payment ? invoice.mtokens : undefined,
         },
         (err, res) => {
           // Exit early when there is an error and use local route calculation
@@ -651,6 +636,8 @@ module.exports = (args, cbk) => {
             destination: getPublicKey.public_key,
             height: getHeight.current_block_height,
             mtokens: (BigInt(invoice.tokens) * mtokensPerToken).toString(),
+            payment: invoice.payment,
+            total_mtokens: !!invoice.payment ? invoice.mtokens : undefined,
           });
 
           const endRoute = getRoute.route || route;

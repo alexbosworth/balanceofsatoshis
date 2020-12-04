@@ -6,7 +6,6 @@ const {decodePaymentRequest} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
-const {getRouteToDestination} = require('ln-service');
 const {parsePaymentRequest} = require('invoices');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');

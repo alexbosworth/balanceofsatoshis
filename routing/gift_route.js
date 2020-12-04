@@ -23,6 +23,7 @@ const mtokPerTok = BigInt(1e3);
     }]
     destination: <Destination Public Key Hex String>
     height: <Current Best Tip Block Height Number>
+    [payment]: <Payment Identifier Hex String>
     tokens: <Tokens to Gift Number>
   }
 
@@ -50,7 +51,7 @@ const mtokPerTok = BigInt(1e3);
     }
   }
 */
-module.exports = ({channel, destination, height, tokens}) => {
+module.exports = ({channel, destination, height, payment, tokens}) => {
   if (!channel) {
     throw new Error('ExpectedChannelToCalculateGiftRoute');
   }
@@ -115,6 +116,8 @@ module.exports = ({channel, destination, height, tokens}) => {
     destination,
     height,
     mtokens,
+    payment,
+    total_mtokens: !!payment ? mtokens : undefined,
   });
 
   return {route};

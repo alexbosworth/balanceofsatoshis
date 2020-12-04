@@ -83,6 +83,7 @@ module.exports = ({lnd, to, tokens}, cbk) => {
             channel: getChannel,
             destination: getWallet.public_key,
             height: getWallet.current_block_height,
+            payment: createInvoice.payment,
           });
 
           return cbk(null, route);

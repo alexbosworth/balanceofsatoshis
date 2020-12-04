@@ -89,6 +89,7 @@ const makeArgs = overrides => {
               }],
               is_keysend: true,
               memo: '',
+              payment_addr: Buffer.alloc(0),
               payment_request: '',
               private: false,
               r_hash: Buffer.alloc(32),

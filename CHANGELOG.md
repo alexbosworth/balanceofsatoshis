@@ -1,5 +1,11 @@
 # Versions
 
+## Version 7.5.2
+
+- `closed`: Clarify the closing party in the cooperative case
+- `gift`: Add support for payment identifiers
+- `rebalance`: Add support for payment identifiers
+
 ## Version 7.5.1
 
 - `reconnect`: Add an execution timeout to reconnecting

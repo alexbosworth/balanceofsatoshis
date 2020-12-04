@@ -8,7 +8,6 @@ const {getNode} = require('ln-service');
 const {getSyntheticOutIgnores} = require('probing');
 const {getWalletVersion} = require('ln-service');
 const {parsePaymentRequest} = require('ln-service');
-const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToMultiPathProbe} = require('probing');
 

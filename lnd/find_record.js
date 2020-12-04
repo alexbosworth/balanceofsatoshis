@@ -164,15 +164,20 @@ module.exports = ({lnd, query}, cbk) => {
                 .map(chan => {
                   const currentHeight = getHeight.current_block_height;
                   const [height] = chan.id.split('x');
+                  const isCoopClose = chan.is_cooperative_close;
                   const removed = chan.close_confirm_height;
+
+                  const coopClose = isCoopClose && !chan.is_partner_closed;
+                  const peerCoopClose = isCoopClose && chan.is_partner_closed;
 
                   return {
                     age: blocksTime(removed - height),
                     closed: blocksTime(removed - currentHeight, true),
                     capacity: formatTokens({tokens: chan.capacity}).display,
                     breach_closed: chan.is_breach_close || undefined,
-                    cooperative_closed: chan.is_cooperative_close || undefined,
+                    cooperative_closed: coopClose || undefined,
                     force_closed: chan.is_local_force_close || undefined,
+                    peer_cooperatively_closed: peerCoopClose || undefined,
                     peer_force_closed: chan.is_remote_force_close || undefined,
                   };
                 }),

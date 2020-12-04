@@ -106,6 +106,7 @@ module.exports = ({limit, lnd, request}, cbk) => {
             is_local_force_close: channel.is_local_force_close || undefined,
             is_cooperative_close: channel.is_cooperative_close || undefined,
             is_remote_force_close: isRemoteForceClose || undefined,
+            peer_closed_channel: channel.is_partner_closed || undefined,
             blocks_since_close: currentHeight - channel.close_confirm_height,
             capacity: channel.capacity,
             channel_id: channel.id || undefined,
