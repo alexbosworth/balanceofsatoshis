@@ -1,0 +1,56 @@
+const {test} = require('tap');
+
+const {chanInfoResponse} = require('./../fixtures');
+const detect = require('./../../peers/detect_open_rule_violation');
+const {getNodeInfoResponse} = require('./../fixtures');
+
+const makeArgs = overrides => {
+  const args = {
+    capacity: 1,
+    lnd: {
+      default: {
+        getChanInfo: (args, cbk) => cbk(null, chanInfoResponse),
+        getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
+      },
+    },
+    local_balance: 1,
+    partner_public_key: Buffer.alloc(33, 2).toString('hex'),
+    rules: ['capacity > 0'],
+  };
+
+  Object.keys(overrides).forEach(k => args[k] = overrides[k]);
+
+  return args;
+};
+
+const tests = [
+  {
+    args: makeArgs({capacity: undefined}),
+    description: 'Capacity is required',
+    error: [400, 'ExpectedChannelCapacityToDetectRuleViolation'],
+  },
+  {
+    args: makeArgs({}),
+    description: 'No rule violation is detected',
+    expected: {},
+  },
+  {
+    args: makeArgs({rules: ['capacity > 0', 'capacity > 1']}),
+    description: 'A rule violation is detected',
+    expected: {rule: 'capacity > 1'},
+  },
+];
+
+tests.forEach(({args, description, error, expected}) => {
+  return test(description, async ({end, equal, rejects}) => {
+    if (!!error) {
+      await rejects(detect(args), error, 'Got expected error');
+    } else {
+      const {rule} = await detect(args);
+
+      equal(rule, expected.rule, 'Got expected rule violation');
+    }
+
+    return end();
+  });
+});

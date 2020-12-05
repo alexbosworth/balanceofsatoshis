@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.6.0
+
+- `inbound-channel-rules`: Add method to enforce rules for accepting inbound channels
+
 ## Version 7.5.2
 
 - `closed`: Clarify the closing party in the cooperative case

@@ -29,6 +29,7 @@ const {marketPairs} = importLazy('./commands');
 const network = importLazy('./network');
 const nodes = importLazy('./nodes');
 const {peerSortOptions} = importLazy('./commands');
+const peers = importLazy('./peers');
 const {priceProviders} = importLazy('./commands');
 const {rateProviders} = importLazy('./commands');
 const responses = importLazy('./responses');
@@ -1131,6 +1132,32 @@ prog
     });
   })
 
+  // Reject inbound channel requests
+  .command('inbound-channel-rules', 'Enforce rules for inbound channels')
+  .help('At least one rule is required')
+  .help('For formulas: CAPACITIES are the sizes of the peer public channels')
+  .help('For formulas: CAPACITY is the size of the requested channel open')
+  .help('For formulas: FEE_RATES are the outbound fee rates for the peer')
+  .help('For formulas: LOCAL_BALANCE is the gifted amount from the peer')
+  .help('For formulas: PUBLIC_KEY is the public key of the requesting peer')
+  .option('--node <node_name>', 'Saved node to reject inbound channels on')
+  .option('--reason <message>', 'Message to return when rejecting a request')
+  .option('--rule <formula>', 'Freeform rule for inbound channel', REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return peers.rejectInboundChannels({
+          logger,
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          reason: options.reason,
+          rules: flatten([options.rule].filter(n => !!n)),
+        });
+      } catch (err) {
+        return reject(logger.error(err));
+      }
+    });
+  })
+
   // Remove a peer
   .command('remove-peer', 'Close out with a channel-connected peer')
   .argument('[public_key]', 'Choose a specific peer to close with')
@@ -1142,7 +1169,7 @@ prog
   .option('--idle-days <days>', 'No receives or routes for n days', INT)
   .option('--inbound-below <amount>', 'Peer inbound is below amount', INT)
   .option('--no-color', 'Mute all colors')
-  .option('--node <node_name>', 'Node to remote peer on')
+  .option('--node <node_name>', 'Node to remove peer on')
   .option('--offline', 'Make sure the peer is offline')
   .option('--omit <key>', 'Avoid closing peer with public key', REPEATABLE)
   .option('--outbound-below <amount>', 'Peer outbound is below amount', INT)
