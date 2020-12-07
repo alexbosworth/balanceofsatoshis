@@ -104,6 +104,9 @@ bos gateway
 # Output the sum total of remote channel liquidity
 bos inbound-liquidity
 
+# Enforce rules on inbound channels
+bos inbound-channel-rules
+
 # Increase inbound liquidity to the node
 bos increase-inbound-liquidity
 

@@ -51,6 +51,7 @@ const {keys} = Object;
 const lndForNode = (logger, node) => lnd.authenticatedLnd({logger, node});
 const months = [...Array(12).keys()].map(n => ++n);
 const {REPEATABLE} = prog;
+const {STRING} = prog;
 const yearMatch = /^\d{4}$/;
 
 prog
@@ -625,6 +626,33 @@ prog
     });
   })
 
+  // Reject inbound channel requests
+  .command('inbound-channel-rules', 'Enforce rules for inbound channels')
+  .help('At least one rule is required')
+  .help('For formulas: CAPACITIES are the sizes of the peer public channels')
+  .help('For formulas: CAPACITY is the size of the requested channel open')
+  .help('For formulas: CHANNEL_AGES are the block ages of public channels')
+  .help('For formulas: FEE_RATES are the outbound fee rates for the peer')
+  .help('For formulas: LOCAL_BALANCE is the gifted amount from the peer')
+  .help('For formulas: PUBLIC_KEY is the public key of the requesting peer')
+  .option('--node <node_name>', 'Saved node to reject inbound channels on')
+  .option('--reason <message>', 'Message to return when rejecting a request')
+  .option('--rule <formula>', 'Freeform rule for inbound channel', REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return peers.rejectInboundChannels({
+          logger,
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          reason: options.reason,
+          rules: flatten([options.rule].filter(n => !!n)),
+        });
+      } catch (err) {
+        return reject(logger.error(err));
+      }
+    });
+  })
+
   // Get inbound liquidity information: available inbound off-chain tokens
   .command('inbound-liquidity', 'Get inbound liquidity size')
   .option('--above <tokens>', 'Return amount above watermark', INT)
@@ -1132,32 +1160,6 @@ prog
     });
   })
 
-  // Reject inbound channel requests
-  .command('inbound-channel-rules', 'Enforce rules for inbound channels')
-  .help('At least one rule is required')
-  .help('For formulas: CAPACITIES are the sizes of the peer public channels')
-  .help('For formulas: CAPACITY is the size of the requested channel open')
-  .help('For formulas: FEE_RATES are the outbound fee rates for the peer')
-  .help('For formulas: LOCAL_BALANCE is the gifted amount from the peer')
-  .help('For formulas: PUBLIC_KEY is the public key of the requesting peer')
-  .option('--node <node_name>', 'Saved node to reject inbound channels on')
-  .option('--reason <message>', 'Message to return when rejecting a request')
-  .option('--rule <formula>', 'Freeform rule for inbound channel', REPEATABLE)
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        return peers.rejectInboundChannels({
-          logger,
-          lnd: (await lndForNode(logger, options.node)).lnd,
-          reason: options.reason,
-          rules: flatten([options.rule].filter(n => !!n)),
-        });
-      } catch (err) {
-        return reject(logger.error(err));
-      }
-    });
-  })
-
   // Remove a peer
   .command('remove-peer', 'Close out with a channel-connected peer')
   .argument('[public_key]', 'Choose a specific peer to close with')
@@ -1221,8 +1223,12 @@ prog
 
   // Send funds to a destination
   .command('send', 'Send funds to a node')
+  .help('Formulas supported in amount, and N*USD or N*EUR')
+  .help('Also supported in formulas: LIQUIDITY, INBOUND, OUTBOUND (with peer)')
   .argument('<to>', 'Send to node with public key')
-  .option('--amount <amount>', 'Amount to send to destination', INT, 1)
+  .option('--amount <amount>', 'Amount to send to destination', STRING, '1')
+  .option('--dryrun', 'Avoid actually sending funds')
+  .option('--max_fee <fee>', 'Maximum fee tokens', INT, 10)
   .option('--message <message>', 'Message to include with payment')
   .option('--no-color', 'Mute all colors')
   .option('--node <name>', 'Node to send funds from')
@@ -1233,18 +1239,19 @@ prog
 
         const destination = await lnSync.findKey({lnd, query: args.to});
 
-        return network.probeDestination({
+        return network.pushPayment({
           lnd,
           logger,
+          request,
+          amount: options.amount,
           destination: destination.public_key,
-          is_push: true,
-          is_real_payment: true,
+          is_dry_run: options.dryrun,
+          max_fee: options.maxFee,
           message: options.message,
-          tokens: options.amount,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error(err));
       }
     });
   })

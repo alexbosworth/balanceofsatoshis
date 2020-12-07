@@ -1,3 +1,5 @@
+const EventEmitter = require('events');
+
 const {test} = require('tap');
 
 const {chanInfoResponse} = require('./../fixtures');
@@ -8,6 +10,20 @@ const makeArgs = overrides => {
   const args = {
     capacity: 1,
     lnd: {
+      chain: {
+        registerBlockEpochNtfn: ({}) => {
+          const emitter = new EventEmitter();
+
+          emitter.cancel = () => {};
+
+          process.nextTick(() => emitter.emit('data', {
+            hash: Buffer.alloc(32),
+            height: 10,
+          }));
+
+          return emitter;
+        },
+      },
       default: {
         getChanInfo: (args, cbk) => cbk(null, chanInfoResponse),
         getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),

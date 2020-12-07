@@ -12,7 +12,7 @@ const {getInvoice} = require('ln-service');
 const {getInvoices} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNetworkGraph} = require('ln-service');
-const {getPayments} = require('ln-service');
+const {getPayments} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
 const {italicize} = require('@alexbosworth/html2unicode');
 const moment = require('moment');
@@ -136,7 +136,12 @@ module.exports = ({node, style}, cbk) => {
 
     // Get payments
     getPayments: ['getLnd', ({getLnd}, cbk) => {
-      return getPayments({limit, lnd: getLnd.lnd}, cbk);
+      return getPayments({
+        limit,
+        after: new Date(now() - afterMs).toISOString(),
+        lnd: getLnd.lnd,
+      },
+      cbk);
     }],
 
     // Currency

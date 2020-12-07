@@ -1,5 +1,14 @@
 # Versions
 
+## Version 7.7.0
+
+- `chart-fees-paid`: Optimize render speed by paging payments fetching
+- `inbound_channel_rules`: Add `CHANNEL_AGES` testing for rule creation
+- `peers`: Optimize speed when using `--idle-days` by paging payments fetching
+- `peers`: Show icon when peer has an active HTLC
+- `report`: Optimize render speed by paging payments fetching
+- `send`: Add `dryrun`, `max-fee` options, formula support including USD/EUR and liquidity vars
+
 ## Version 7.6.0
 
 - `inbound-channel-rules`: Add method to enforce rules for accepting inbound channels

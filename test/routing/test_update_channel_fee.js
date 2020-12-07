@@ -17,6 +17,7 @@ const makeLnd = ({}) => {
           channel_point: `${Buffer.alloc(32).toString('hex')}:0`,
           commit_fee: '1',
           commit_weight: '1',
+          commitment_type: 'LEGACY',
           csv_delay: '1',
           fee_per_kw: '1',
           initiator: true,

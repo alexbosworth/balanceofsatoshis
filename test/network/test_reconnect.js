@@ -26,10 +26,7 @@ const tests = [
   {
     args: {lnd: makeLnd({}), retries: 1},
     description: 'Peers are reconnected',
-    expected: [{
-      alias: 'alias',
-      public_key: '000000000000000000000000000000000000000000000000000000000000000000',
-    }],
+    expected: [],
   },
   {
     args: {
@@ -43,6 +40,7 @@ const tests = [
             "channel_point": "00:0",
             "commit_fee": "1",
             "commit_weight": "1",
+            "commitment_type": "LEGACY",
             "csv_delay": "1",
             "fee_per_kw": "1",
             "initiator": true,
@@ -83,10 +81,7 @@ const tests = [
       retries: 1,
     },
     description: 'Inactive channel peers are disconnected and reconnected',
-    expected: [{
-      alias: 'alias',
-      public_key: '000000000000000000000000000000000000000000000000000000000000000000',
-    }],
+    expected: [],
   },
   {
     args: {lnd: makeLnd({getNodeErr: 'err'}), retries: 1},
@@ -100,9 +95,9 @@ tests.forEach(({args, description, error, expected}) => {
     if (!!error) {
       await rejects(reconnect(args), error, 'Got expected error');
     } else {
-      const {reconnected} = reconnect(args);
+      const {reconnected} = await reconnect(args);
 
-      deepIs(reconnected, expected.reconnected, 'Got expected reconnections');
+      deepIs(reconnected, expected, 'Got expected reconnections');
     }
 
     return end();

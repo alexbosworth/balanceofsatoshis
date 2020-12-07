@@ -2,7 +2,7 @@ const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {getNode} = require('ln-service');
 const {getChannels} = require('ln-service');
-const {getPayments} = require('ln-service');
+const {getPayments} = require('ln-sync');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
@@ -73,20 +73,6 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Get payments
-      getPayments: ['validate', ({}, cbk) => {
-        return asyncMap(args.lnds, (lnd, cbk) => {
-          return getPayments({lnd}, cbk);
-        },
-        (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          return cbk(null, flatten(res.map(n => n.payments)));
-        });
-      }],
-
       // Segment measure
       measure: ['validate', ({}, cbk) => {
         if (args.days > maxChartDays) {
@@ -101,6 +87,20 @@ module.exports = (args, cbk) => {
       // Start date for payments
       start: ['validate', ({}, cbk) => {
         return cbk(null, moment().subtract(args.days, 'days'));
+      }],
+
+      // Get payments
+      getPayments: ['start', 'validate', ({start}, cbk) => {
+        return asyncMap(args.lnds, (lnd, cbk) => {
+          return getPayments({after: start.toISOString(), lnd}, cbk);
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, flatten(res.map(n => n.payments)));
+        });
       }],
 
       // Filter the payments

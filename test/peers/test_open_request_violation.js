@@ -6,6 +6,7 @@ const makeArgs = overrides => {
   const args = {
     capacities: [1, 2, 3],
     capacity: 4,
+    channel_ages: [10],
     fee_rates: [5, 6],
     local_balance: 7,
     public_key: Buffer.alloc(33, 3).toString('hex'),
@@ -35,6 +36,7 @@ const tests = [
         'SUM(capacities) > 5',
         'MAX(fee_rates) < 7',
         `NOT(EXACT(public_key, '020202020202020202020202020202020202020202020202020202020202020202'))`,
+        'MAX(channel_ages) > 9',
       ],
     }),
     description: 'Multiple rules are passed',

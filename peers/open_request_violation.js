@@ -8,6 +8,7 @@ const {keys} = Object;
   {
     capacities: [<Existing Public Channel Capacity Tokens Number>]
     capacity: <Open Channel Capacity Tokens Number>
+    channel_ages: [<Blocks Since Channel Open Number>]
     fee_rates: [<Outgoing Parts Per Million Fee Rate Number>]
     local_balance: <Open Channel Gifted Tokens Number>
     public_key: <Open Channel Gifted Tokens Number>
@@ -31,6 +32,10 @@ module.exports = args => {
     throw new Error('ExpectedChannelCapacityToCheckForOpenRequestViolation');
   }
 
+  if (!isArray(args.channel_ages)) {
+    throw new Error('ExpectedChannelAgesArrayToCheckForOpenRequestViolation');
+  }
+
   if (!isArray(args.fee_rates)) {
     throw new Error('ExpectedArrayOfFeeRatesToCheckForOpenRequestViolation');
   }
@@ -51,6 +56,7 @@ module.exports = args => {
     btc: 1e8,
     capacities: args.capacities,
     capacity: args.capacity,
+    channel_ages: args.channel_ages,
     fee_rates: args.fee_rates,
     k: 1e3,
     local_balance: args.local_balance,

@@ -11,6 +11,7 @@ const pay = require('./pay');
 const {peerSortOptions} = require('./constants');
 const probe = require('./probe');
 const probeDestination = require('./probe_destination');
+const pushPayment = require('./push_payment');
 const reconnect = require('./reconnect');
 const removePeer = require('./remove_peer');
 const sendGift = require('./send_gift');
@@ -30,6 +31,7 @@ module.exports = {
   peerSortOptions,
   probe,
   probeDestination,
+  pushPayment,
   reconnect,
   removePeer,
   sendGift,

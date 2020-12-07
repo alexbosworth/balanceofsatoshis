@@ -1,4 +1,6 @@
 const asyncAuto = require('async/auto');
+const {decodeChanId} = require('bolt07');
+const {getHeight} = require('ln-service');
 const {getNode} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
@@ -48,6 +50,9 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Get the current chain height
+      getHeight: ['validate', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
+
       // Get the capacities fees for the node to use in rule parsing
       getNodeFees: ['validate', ({}, cbk) => {
         return getNode({
@@ -58,13 +63,24 @@ module.exports = (args, cbk) => {
       }],
 
       // Evaluate rules to find a violation
-      evaluate: ['getNodeFees', ({getNodeFees}, cbk) => {
+      evaluate: [
+        'getHeight',
+        'getNodeFees',
+        ({getHeight, getNodeFees}, cbk) =>
+      {
         const key = args.partner_public_key;
+
+        const channelAges = getNodeFees.channels.map(({id}) => {
+          const channelHeight = decodeChanId({channel: id}).block_height;
+
+          return getHeight.current_block_height - channelHeight;
+        });
 
         try {
           const {rule} = openRequestViolation({
             capacities: getNodeFees.channels.map(n => n.capacity),
             capacity: args.capacity,
+            channel_ages: channelAges,
             fee_rates: getNodeFees.channels
               .map(({policies}) => policies.find(n => n.public_key === key))
               .filter(n => !!n && n.fee_rate !== undefined)

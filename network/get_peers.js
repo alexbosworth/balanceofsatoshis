@@ -11,7 +11,7 @@ const {getHeight} = require('ln-service');
 const {getInvoices} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
-const {getPayments} = require('ln-service');
+const {getPayments} = require('ln-sync');
 const {getPeers} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const moment = require('moment');
@@ -24,7 +24,7 @@ const {formatFeeRate} = require('./../display');
 const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
-const defaultInvoicesLimit = 100;
+const defaultInvoicesLimit = 200;
 const defaultSort = 'first_connected';
 const fromNow = epoch => !epoch ? undefined : moment(epoch * 1e3).fromNow();
 const {isArray} = Array;
@@ -128,6 +128,8 @@ module.exports = (args, cbk) => {
           return cbk(null, invoices);
         }
 
+        const after = moment().subtract(args.idle_days, 'days').toISOString();
+
         return asyncUntil(
           cbk => cbk(null, token === false),
           cbk => {
@@ -142,6 +144,11 @@ module.exports = (args, cbk) => {
               }
 
               token = res.next || false;
+
+              // When there is a too-old invoice returned, stop paging
+              if (!!after && res.invoices.find(n => n.created_at < after)) {
+                token = false;
+              }
 
               res.invoices.forEach(n => invoices.push(n));
 
@@ -165,7 +172,9 @@ module.exports = (args, cbk) => {
           return cbk(null, {payments: []})
         }
 
-        return getPayments({lnd: args.lnd}, cbk);
+        const after = moment().subtract(args.idle_days, 'days').toISOString();
+
+        return getPayments({after, lnd: args.lnd}, cbk);
       }],
 
       // Get connected peers
@@ -350,9 +359,7 @@ module.exports = (args, cbk) => {
             .find(n => n > wallet.current_block_height);
 
           const hasHtlcChannel = activeChannels
-            .map(n => n.pending_payments.length)
-            .filter(n => !!n)
-            .find(n => !!n.id);
+            .find(n => !!n.pending_payments.length);
 
           const isPrivatePeer = !activeChannels.find(n => !n.is_private);
 
