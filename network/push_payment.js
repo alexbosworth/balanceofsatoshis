@@ -13,6 +13,7 @@ const fiats = ['EUR', 'USD'];
 const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
 const rateAsTokens = rate => 1e8 / rate;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
+const minTokens = 1;
 const networks = {btc: 'BTC', btctestnet: 'BTC', ltc: 'LTC'};
 
 /** Push a payment to a destination
@@ -147,7 +148,7 @@ module.exports = (args, cbk) => {
 
       // Push the amount to the destination
       push: ['parseAmount', ({parseAmount}, cbk) => {
-        if (!parseAmount.tokens) {
+        if (parseAmount.tokens < minTokens) {
           return cbk([400, 'ExpectedNonZeroAmountToPushPayment']);
         }
 
@@ -172,6 +173,6 @@ module.exports = (args, cbk) => {
         cbk);
       }],
     },
-    returnResult({reject, resolve}, cbk));
+    returnResult({reject, resolve, of: 'push'}, cbk));
   });
 };

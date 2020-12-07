@@ -648,7 +648,7 @@ prog
           rules: flatten([options.rule].filter(n => !!n)),
         });
       } catch (err) {
-        return reject(logger.error(err));
+        return reject(logger.error({err}));
       }
     });
   })
@@ -1228,7 +1228,7 @@ prog
   .argument('<to>', 'Send to node with public key')
   .option('--amount <amount>', 'Amount to send to destination', STRING, '1')
   .option('--dryrun', 'Avoid actually sending funds')
-  .option('--max_fee <fee>', 'Maximum fee tokens', INT, 10)
+  .option('--max-fee <fee>', 'Maximum fee tokens', INT, 10)
   .option('--message <message>', 'Message to include with payment')
   .option('--no-color', 'Mute all colors')
   .option('--node <name>', 'Node to send funds from')
@@ -1251,7 +1251,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error(err));
+        return reject(logger.error({err}));
       }
     });
   })
@@ -1369,7 +1369,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   });

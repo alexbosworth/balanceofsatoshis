@@ -1,6 +1,6 @@
 # Versions
 
-## Version 7.7.0
+## Version 7.7.1
 
 - `chart-fees-paid`: Optimize render speed by paging payments fetching
 - `inbound_channel_rules`: Add `CHANNEL_AGES` testing for rule creation
