@@ -11,6 +11,27 @@ const utxo = {
   pk_script: '00',
 };
 
+const makeLnd = ({listUnspent}) => {
+  const unspent = ({}, cbk) => cbk(null, {utxos: [utxo]});
+
+  const lnd = {
+    default: {
+      closedChannels: ({}, cbk) => cbk(null, {channels: []}),
+      getTransactions: ({}, cbk) => cbk(null, {transactions: []}),
+      listChannels: ({}, cbk) => cbk(null, {channels: []}),
+      listUnspent: listUnspent || unspent,
+      pendingChannels: ({}, cbk) => cbk(null, {
+        pending_force_closing_channels: [],
+        pending_open_channels: [],
+        waiting_close_channels: [],
+      }),
+    },
+    wallet: {listUnspent: listUnspent || unspent},
+  };
+
+  return lnd;
+};
+
 const tests = [
   {
     args: {},
@@ -18,31 +39,20 @@ const tests = [
     error: [400, 'ExpectedLndObjectToGetUtxos'],
   },
   {
-    args: {
-      lnd: {
-        default: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})},
-        wallet: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})},
-      },
-    },
+    args: {lnd: makeLnd({})},
     description: 'Utxos are returned',
     expected: {
       address: 'address',
-      address_format: 'np2wpkh',
-      confirmation_count: 1,
-      output_script: '00',
-      tokens: 1,
-      transaction_id: '00',
-      transaction_vout: 0,
+      amount: '\x1B[2m0.00000001\x1B[22m',
+      confirmations: 1,
+      is_unconfirmed: undefined,
+      outpoint: '00:0',
+      related_description: undefined,
+      related_channels: undefined,
     },
   },
   {
-    args: {
-      count_below: 1,
-      lnd: {
-        default: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})},
-        wallet: {listUnspent: ({}, cbk) => cbk(null, {utxos: [utxo]})},
-      },
-    },
+    args: {count_below: 1, lnd: makeLnd({})},
     description: 'No count below',
     expected: {count: 0},
   },
@@ -50,40 +60,22 @@ const tests = [
     args: {
       count_below: 5,
       is_confirmed: true,
-      lnd: {
-        default: {
-          listUnspent: ({}, cbk) => cbk(null, {
-            utxos: [{
-              address: 'address',
-              address_type: 'NESTED_PUBKEY_HASH',
-              amount_sat: '2',
-              confirmations: '1',
-              outpoint: {
-                bytes: Buffer.alloc(1),
-                output_index: 0,
-                txid_str: '00',
-              },
-              pk_script: '00',
-            }],
-          }),
-        },
-        wallet: {
-          listUnspent: ({}, cbk) => cbk(null, {
-            utxos: [{
-              address: 'address',
-              address_type: 'NESTED_PUBKEY_HASH',
-              amount_sat: '2',
-              confirmations: '1',
-              outpoint: {
-                bytes: Buffer.alloc(1),
-                output_index: 0,
-                txid_str: '00',
-              },
-              pk_script: '00',
-            }],
-          }),
-        },
-      },
+      lnd: makeLnd({
+        listUnspent: ({}, cbk) => cbk(null, {
+          utxos: [{
+            address: 'address',
+            address_type: 'NESTED_PUBKEY_HASH',
+            amount_sat: '2',
+            confirmations: '1',
+            outpoint: {
+              bytes: Buffer.alloc(1),
+              output_index: 0,
+              txid_str: '00',
+            },
+            pk_script: '00',
+          }],
+        }),
+      }),
       min_tokens: 1,
     },
     description: 'A count below a target is returned',
@@ -92,40 +84,22 @@ const tests = [
   {
     args: {
       is_count: 1,
-      lnd: {
-        default: {
-          listUnspent: ({}, cbk) => cbk(null, {
-            utxos: [{
-              address: 'address',
-              address_type: 'NESTED_PUBKEY_HASH',
-              amount_sat: '2',
-              confirmations: '1',
-              outpoint: {
-                bytes: Buffer.alloc(1),
-                output_index: 0,
-                txid_str: '00',
-              },
-              pk_script: '00',
-            }],
-          }),
-        },
-        wallet: {
-          listUnspent: ({}, cbk) => cbk(null, {
-            utxos: [{
-              address: 'address',
-              address_type: 'NESTED_PUBKEY_HASH',
-              amount_sat: '2',
-              confirmations: '1',
-              outpoint: {
-                bytes: Buffer.alloc(1),
-                output_index: 0,
-                txid_str: '00',
-              },
-              pk_script: '00',
-            }],
-          }),
-        },
-      },
+      lnd: makeLnd({
+        listUnspent: ({}, cbk) => cbk(null, {
+          utxos: [{
+            address: 'address',
+            address_type: 'NESTED_PUBKEY_HASH',
+            amount_sat: '2',
+            confirmations: '1',
+            outpoint: {
+              bytes: Buffer.alloc(1),
+              output_index: 0,
+              txid_str: '00',
+            },
+            pk_script: '00',
+          }],
+        }),
+      }),
       min_tokens: 1,
     },
     description: 'Just a count is returned',
@@ -144,12 +118,12 @@ tests.forEach(({args, description, error, expected}) => {
 
       equal(none, undefined, 'Only one UTXO returned');
       equal(utxo.address, expected.address, 'Got expected address');
-      equal(utxo.address_format, expected.address_format, 'Got addr format');
-      equal(utxo.confirmation_count, expected.confirmation_count, 'Got confs');
-      equal(utxo.output_script, expected.output_script, 'Got output script');
-      equal(utxo.tokens, expected.tokens, 'Got expected tokens');
-      equal(utxo.transaction_id, expected.transaction_id, 'Got expected txid');
-      equal(utxo.transaction_vout, expected.transaction_vout, 'Got vout');
+      equal(utxo.confirmations, expected.confirmations, 'Got confs');
+      equal(utxo.outpoint, expected.outpoint, 'Got outpoint');
+      equal(utxo.amount, expected.amount, 'Got expected tokens');
+      equal(utxo.is_unconfirmed, expected.is_unconfirmed, 'Got unconf');
+      equal(utxo.related_description, expected.related_description, 'Desc');
+      equal(utxo.related_channels, expected.related_channels, 'Channels');
     } else {
       const count = await getUtxos(args);
 

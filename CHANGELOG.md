@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.8.0
+
+- `utxos`: Add metadata context information to UTXO list
+
 ## Version 7.7.1
 
 - `chart-fees-paid`: Optimize render speed by paging payments fetching
