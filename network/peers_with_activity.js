@@ -16,7 +16,7 @@ const noTok = 0;
     }]
     terminated: [{
       [id]: <Standard Format Channel Id String>
-      partner_public_key: <Peer Pubic Key Hex String>
+      partner_public_key: <Peer Public Key Hex String>
     }]
   }
 
@@ -26,7 +26,7 @@ const noTok = 0;
       forwarded: <Forwarded Tokens Number>
       inbound: <Inbound Tokens Balance Number>
       outbound: <Outbound Tokens Balance Number>
-      public: <Public Key Hex String>
+      public_key: <Public Key Hex String>
     }]
   }
 */
@@ -43,6 +43,7 @@ module.exports = ({additions, channels, forwards, terminated}) => {
     const inbound = active.reduce((sum, n) => sum + n.remote_balance, noTok);
     const outbound = active.reduce((sum, n) => sum + n.local_balance, noTok);
 
+    // Calculate the total forwarded over closed channels
     const prevOut = terminated
       .filter(n => !!n.id && n.partner_public_key === publicKey)
       .reduce((sent, {id}) => {
@@ -51,6 +52,7 @@ module.exports = ({additions, channels, forwards, terminated}) => {
           .reduce((sum, {tokens}) => sum + tokens, noTok);
       }, noTok);
 
+    // Sum up with the active channel forwarded amounts
     const forwarded = prevOut + active.reduce((sent, {id}) => {
       return sent + forwards
         .filter(forward => forward.outgoing_channel === id)

@@ -561,8 +561,10 @@ prog
   .help('Use LND UTXOs to craft a signed raw transaction sending to addresses')
   .help('Specify <address> <amount> <address> <amount> for addresses, amounts')
   .argument('<address_amount...>', 'Address and amount to send')
+  .option('--dryrun', 'Avoid locking up UTXOs')
   .option('--fee-rate <fee>', 'Per vbyte fee rate for on-chain tx fee', INT)
   .option('--node <node_name>', 'Node to spend coins')
+  .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -571,7 +573,9 @@ prog
           addresses: args.addressAmount.filter((n, i) => !(i % 2)),
           amounts: args.addressAmount.filter((n, i) => i % 2),
           fee_tokens_per_vbyte: options.feeRate,
+          is_dry_run: !!args.dryrun,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          utxos: flatten([options.utxo].filter(n => !!n)),
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {

@@ -44,7 +44,7 @@ const tests = [
 tests.forEach(({args, description, error, expected}) => {
   return test(description, async ({end, equal, rejects}) => {
     if (!!error) {
-      rejects(getPaidService(args), error, 'Got expected error');
+      await rejects(getPaidService(args), error, 'Got expected error');
     } else {
       const paid = await getPaidService(args);
 

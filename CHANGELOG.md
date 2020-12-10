@@ -1,5 +1,10 @@
 # Versions
 
+## Verrsion 7.9.0
+
+- `fund`: Allow specifying `--utxo` to force selection of specific UTXOs for funding
+- `fund`: Add `--dryrun` to immediately unlock UTXOs for future coin selection
+
 ## Version 7.8.0
 
 - `utxos`: Add metadata context information to UTXO list

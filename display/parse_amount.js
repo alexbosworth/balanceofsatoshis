@@ -53,7 +53,7 @@ module.exports = ({amount, variables}) => {
   case '#NAME?':
     throw new Error('UnrecognizedVariableOrFunctionInSpecifiedAmount');
 
-  case '#NUM':
+  case '#NUM!':
     throw new Error('InvalidNumberFoundInSpecifiedAmount');
 
   case '#VALUE!':
@@ -61,6 +61,10 @@ module.exports = ({amount, variables}) => {
 
   default:
     break;
+  }
+
+  if (!!parsed.error) {
+    throw new Error(parsed.error);
   }
 
   return {tokens: round(parsed.result)};

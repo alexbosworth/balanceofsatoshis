@@ -57,7 +57,7 @@ const tests = [
 tests.forEach(({args, description, error, expected}) => {
   return test(description, async ({end, equal, rejects}) => {
     if (!!error) {
-      rejects(getMaximum(args, args.test), error, 'Got expected error');
+      await rejects(getMaximum(args, args.test), error, 'Got expected error');
     } else {
       const {maximum} = await getMaximum(args, args.test);
 

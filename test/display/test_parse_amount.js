@@ -9,7 +9,27 @@ const tests = [
     error: 'UnrecognizedVariableOrFunctionInSpecifiedAmount',
   },
   {
-    args: {amount: '1.20969468*btc'},
+    args: {amount: '1/0'},
+    description: 'Dividing by zero is not allowed',
+    error: 'CannotDivideByZeroInSpecifiedAmount',
+  },
+  {
+    args: {amount: '0.0.0'},
+    description: 'A generic invalid amount is rejected',
+    error: 'FailedToParseSpecifiedAmount',
+  },
+  {
+    args: {amount: 'OCT2DEC()'},
+    description: 'Invalid numbers are rejected',
+    error: 'InvalidNumberFoundInSpecifiedAmount',
+  },
+  {
+    args: {amount: '"string" + 1'},
+    description: 'Invalid formulas are rejected',
+    error: 'UnexpectedValueTypeInSpecifiedAmount',
+  },
+  {
+    args: {amount: '1.20969468*btc', variables: {variable: 'value'}},
     description: 'A long precision BTC value is parsed',
     expected: {tokens: 120969468},
   },

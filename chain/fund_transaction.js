@@ -1,22 +1,30 @@
 const asyncAuto = require('async/auto');
+const asyncEach = require('async/each');
 const {formatTokens} = require('ln-sync');
 const {fundPsbt} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {signPsbt} = require('ln-service');
+const {unlockUtxo} = require('ln-service');
 
 const {parseAmount} = require('./../display');
 
 const asOutpoint = utxo => `${utxo.transaction_id}:${utxo.transaction_vout}`;
+const asInput = n => ({transaction_id: n.id, transaction_vout: n.vout});
+const asUtxo = n => ({id: n.slice(0, 64), vout: Number(n.slice(65))});
 const {isArray} = Array;
+const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
 
 /** Fund and sign a transaction
 
   {
     addresses: <Address String>
     amount: <Amount String>
+    spend: [<Coin Outpoint String>]
     [fee_tokens_per_vbyte]: <Fee Tokens Per Virtual Byte Number>
+    is_dry_run: <Release Locks on Transaction Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
+    [utxo]: <Unspent Transaction Outpoint String>
   }
 
   @returns via cbk or Promise
@@ -49,6 +57,14 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedAmountOfFundsToSendToAddress']);
         }
 
+        if (!isArray(args.utxos)) {
+          return cbk([400, 'ExpectedArrayOfUtxosToSpendToFundTransaction']);
+        }
+
+        if (args.utxos.find(n => !isOutpoint(n))) {
+          return cbk([400, 'ExpectedOutpointFormattedUtxoToFundTransaction']);
+        }
+
         return cbk();
       },
 
@@ -69,16 +85,38 @@ module.exports = (args, cbk) => {
 
       // Create a funded PSBT
       fund: ['outputs', ({outputs}, cbk) => {
+        const inputs = args.utxos.map(asUtxo).map(asInput);
+
         args.logger.info({
-          spend: outputs.map(output => ({
+          send_to: outputs.map(output => ({
             [output.address]: formatTokens({tokens: output.tokens}).display,
           })),
         });
 
         return fundPsbt({
           outputs,
+          inputs: !!inputs.length ? inputs : undefined,
           lnd: args.lnd,
           fee_tokens_per_vbyte: args.fee_tokens_per_vbyte,
+        },
+        cbk);
+      }],
+
+      // Unlock the locked UTXO in a dry run scenario
+      unlock: ['fund', ({fund}, cbk) => {
+        // Exit early and keep UTXOs locked when not a dry run
+        if (args.is_dry_run) {
+          return cbk();
+        }
+
+        return asyncEach(fund.inputs, (input, cbk) => {
+          return unlockUtxo({
+            id: input.lock_id,
+            lnd: args.lnd,
+            transaction_id: input.transaction_id,
+            transaction_vout: input.transaction_vout,
+          },
+          cbk);
         },
         cbk);
       }],

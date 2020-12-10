@@ -11,6 +11,8 @@ const attribute = 'local_balance';
       local_reserve: <Local Reserve Required Amount Number>
       partner_public_key: <Peer Public Key Hex String>
     }]
+    peer: <Peer Public Key Hex String>
+    tokens: <Tokens Number>
   }
 
   @returns

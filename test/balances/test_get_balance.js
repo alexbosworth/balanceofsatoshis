@@ -51,7 +51,7 @@ const tests = [
 tests.forEach(({args, description, error, expected}) => {
   return test(description, async ({end, equal, rejects}) => {
     if (!!error) {
-      rejects(getBalance(args), error, 'Got expected error');
+      await rejects(getBalance(args), error, 'Got expected error');
     } else {
       const balances = await getBalance(args);
 
