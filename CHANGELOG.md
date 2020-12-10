@@ -1,6 +1,6 @@
 # Versions
 
-## Verrsion 7.9.0
+## Version 7.9.0
 
 - `fund`: Allow specifying `--utxo` to force selection of specific UTXOs for funding
 - `fund`: Add `--dryrun` to immediately unlock UTXOs for future coin selection
