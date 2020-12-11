@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.10.0
+
+- `broadcast`: Add command to broadcast a signed raw transaction
+
 ## Version 7.9.0
 
 - `fund`: Allow specifying `--utxo` to force selection of specific UTXOs for funding

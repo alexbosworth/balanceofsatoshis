@@ -2,6 +2,8 @@ const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const {formatTokens} = require('ln-sync');
 const {fundPsbt} = require('ln-service');
+const {getChainFeeRate} = require('ln-service');
+const {getUtxos} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {signPsbt} = require('ln-service');
 const {unlockUtxo} = require('ln-service');
@@ -13,18 +15,19 @@ const asInput = n => ({transaction_id: n.id, transaction_vout: n.vout});
 const asUtxo = n => ({id: n.slice(0, 64), vout: Number(n.slice(65))});
 const {isArray} = Array;
 const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
+const minConfs = 1;
 
 /** Fund and sign a transaction
 
   {
-    addresses: <Address String>
-    amount: <Amount String>
+    addresses: [<Address String>]
+    amounts: [<Amount String>]
     spend: [<Coin Outpoint String>]
     [fee_tokens_per_vbyte]: <Fee Tokens Per Virtual Byte Number>
     is_dry_run: <Release Locks on Transaction Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
-    [utxo]: <Unspent Transaction Outpoint String>
+    utxos: [<Unspent Transaction Outpoint String>]
   }
 
   @returns via cbk or Promise
@@ -68,8 +71,16 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Get the current fee rate
+      getFee: ['validate', ({}, cbk) => getChainFeeRate({lnd: args.lnd}, cbk)],
+
+      // Get the UTXOs
+      getUtxos: ['validate', ({}, cbk) => {
+        return getUtxos({lnd: args.lnd, min_confirmations: minConfs}, cbk);
+      }],
+
       // Derive exact outputs
-      outputs: ['validate', ({}, cbk) => {
+      outputs: ['getUtxos', ({getUtxos}, cbk) => {
         try {
           const outputs = args.addresses.map((address, i) => {
             const {tokens} = parseAmount({amount: args.amounts[i]});
@@ -84,10 +95,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Create a funded PSBT
-      fund: ['outputs', ({outputs}, cbk) => {
+      fund: ['getFee', 'outputs', ({getFee, outputs}, cbk) => {
         const inputs = args.utxos.map(asUtxo).map(asInput);
+        const fee = args.fee_tokens_per_vbyte || getFee.tokens_per_vbyte;
 
         args.logger.info({
+          fee_rate: fee,
           send_to: outputs.map(output => ({
             [output.address]: formatTokens({tokens: output.tokens}).display,
           })),
@@ -97,7 +110,7 @@ module.exports = (args, cbk) => {
           outputs,
           inputs: !!inputs.length ? inputs : undefined,
           lnd: args.lnd,
-          fee_tokens_per_vbyte: args.fee_tokens_per_vbyte,
+          fee_tokens_per_vbyte: fee,
         },
         cbk);
       }],
@@ -105,7 +118,7 @@ module.exports = (args, cbk) => {
       // Unlock the locked UTXO in a dry run scenario
       unlock: ['fund', ({fund}, cbk) => {
         // Exit early and keep UTXOs locked when not a dry run
-        if (args.is_dry_run) {
+        if (!args.is_dry_run) {
           return cbk();
         }
 

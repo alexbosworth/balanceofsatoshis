@@ -148,6 +148,27 @@ prog
     });
   })
 
+  // Broadcast a chain transaction
+  .command('broadcast', 'Submit a signed transaction to the mempool')
+  .argument('<tx>', 'Signed raw transaction')
+  .option('--description <description>', 'Describe the transaction being sent')
+  .option('--node <node_name>', 'Node to submit transaction on')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return chain.broadcastTransaction({
+          logger,
+          description: options.description,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          transaction: args.tx,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
+    });
+  })
+
   // Get the number of days until the RPC cert expires
   .command('cert-validity-days', 'Number of days until the cert is invalid')
   .option('--below <number_of_days>', 'Return number of days below mark', INT)
