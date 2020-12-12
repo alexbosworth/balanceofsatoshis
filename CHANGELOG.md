@@ -1,5 +1,10 @@
 # Versions
 
+## Version 7.10.1
+
+- `accounting`: Fix chain accounting on testnet
+- `accounting`: Add additional labeling to tx with descriptions and push payments received
+
 ## Version 7.10.0
 
 - `broadcast`: Add command to broadcast a signed raw transaction

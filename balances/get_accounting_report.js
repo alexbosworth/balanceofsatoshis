@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const {getAccountingReport} = require('ln-accounting');
+const {getNetwork} = require('ln-sync');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
@@ -61,8 +62,15 @@ module.exports = (args, cbk) => {
         }
       }],
 
+      // Get the network name
+      getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
+
       // Get accounting info
-      getAccounting: ['dateRange', ({dateRange}, cbk) => {
+      getAccounting: [
+        'dateRange',
+        'getNetwork',
+        ({dateRange, getNetwork}, cbk) =>
+      {
         return getAccountingReport({
           after: dateRange.after,
           before: dateRange.before,
@@ -70,6 +78,7 @@ module.exports = (args, cbk) => {
           currency: args.currency || defaultCurrency,
           fiat: args.fiat || defaultFiat,
           lnd: args.lnd,
+          network: getNetwork.network,
           rate_provider: args.rate_provider || undefined,
           request: args.request,
         },
