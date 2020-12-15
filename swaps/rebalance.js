@@ -193,7 +193,8 @@ module.exports = (args, cbk) => {
         'lnd',
         ({getAvoids, getInitialLiquidity, getPublicKey, lnd}, cbk) =>
       {
-        const avoids = [].concat(args.avoid).concat(getAvoids);
+        const avoids = [].concat(args.avoid).concat(getAvoids)
+          .filter(n => n !== getPublicKey.public_key);
 
         return asyncMap(avoids, (id, cbk) => {
           // Exit early when the id is a public key

@@ -993,7 +993,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
@@ -1037,7 +1037,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve, table}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
@@ -1098,7 +1098,7 @@ prog
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
