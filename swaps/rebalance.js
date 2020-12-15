@@ -1,3 +1,6 @@
+const {homedir} = require('os');
+const {join} = require('path');
+
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const asyncMapSeries = require('async/mapSeries');
@@ -45,12 +48,14 @@ const minTokens = 0;
 const minimalRebalanceAmount = 2e5;
 const mtokensPerToken = BigInt(1e3);
 const notFoundIndex = -1;
+const {parse} = JSON;
 const probeSizeMinimal = 1e2;
 const probeSizeRegular = 2e5
 const pubKeyHexLength = 66;
 const rateDivisor = 1e6;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
+const tagFilePath = () => join(...[homedir(), '.bos', 'tags.json']);
 const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
 const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
 const uniq = arr => Array.from(new Set(arr));
@@ -59,6 +64,9 @@ const uniq = arr => Array.from(new Set(arr));
 
   {
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [is_avoiding_high_inbound]: <Avoid High Inbound Liquidity Bool>
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
@@ -81,6 +89,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFsToRebalance']);
+        }
+
         if (!args.logger) {
           return cbk([400, 'ExpectedLoggerToRebalance'])
         }
@@ -148,6 +160,25 @@ module.exports = (args, cbk) => {
       // Lnd by itself
       lnd: ['validate', ({}, cbk) => cbk(null, args.lnd)],
 
+      // Get global avoids
+      getAvoids: ['validate', ({}, cbk) => {
+        return args.fs.getFile(tagFilePath(), (err, res) => {
+          if (!!err || !res) {
+            return cbk(null, []);
+          }
+
+          try {
+            const {tags} = parse(res.toString());
+
+            const avoids = tags.filter(n => !!n.is_avoided).map(n => n.nodes);
+
+            return cbk(null, flatten(avoids));
+          } catch (err) {
+            return cbk(null, []);
+          }
+        });
+      }],
+
       // Get initial liquidity
       getInitialLiquidity: ['lnd', ({lnd}, cbk) => getChannels({lnd}, cbk)],
 
@@ -156,12 +187,15 @@ module.exports = (args, cbk) => {
 
       // Figure out which public keys and channels to avoid
       ignore: [
+        'getAvoids',
         'getInitialLiquidity',
         'getPublicKey',
         'lnd',
-        ({getInitialLiquidity, getPublicKey, lnd}, cbk) =>
+        ({getAvoids, getInitialLiquidity, getPublicKey, lnd}, cbk) =>
       {
-        return asyncMap(args.avoid || [], (id, cbk) => {
+        const avoids = [].concat(args.avoid).concat(getAvoids);
+
+        return asyncMap(avoids, (id, cbk) => {
           // Exit early when the id is a public key
           if (isPublicKey(id)) {
             return cbk(null, {from_public_key: id});

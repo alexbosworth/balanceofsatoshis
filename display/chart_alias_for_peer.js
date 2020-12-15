@@ -14,6 +14,7 @@ const unreliableEmoji = '🤢';
   {
     alias: <Alias String>
     [downtime_percentage]: <Percentage Of Time Peer Is Down Number>
+    [icons]: [<Icon String>]
     [is_disconnected]: <Peer is No Longer Connected By Any Channel Bool>
     [is_forwarding]: <Peer is Forwarding Bool>
     [is_inactive]: <Peer Channels Are Disabled Bool>
@@ -44,14 +45,16 @@ module.exports = args => {
 
   const unreliable = !!isOftenDown ? unreliableEmoji : String();
 
-  const markers = [
-    left,
-    inactive,
-    forwarding,
-    privatePeer,
-    thawing,
-    unreliable,
-  ];
+  const markers = []
+    .concat(!args.icons ? [] : args.icons)
+    .concat([
+      left,
+      inactive,
+      forwarding,
+      privatePeer,
+      thawing,
+      unreliable,
+    ]);
 
   return {display: markers.concat(handle).filter(n => !!n).join(separator)};
 };

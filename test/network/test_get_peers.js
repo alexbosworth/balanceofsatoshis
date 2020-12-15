@@ -11,17 +11,18 @@ const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 
 const tests = [
   {
-    args: {},
+    args: {fs: {}},
     description: 'Getting peers requires lnd',
     error: [400, 'ExpectedLndToGetPeers'],
   },
   {
-    args: {lnd: {}},
+    args: {fs: {}, lnd: {}},
     description: 'Getting peers requires an omit array',
     error: [400, 'ExpectedOmitArrayToGetPeers'],
   },
   {
     args: {
+      fs: {getFile: ({}, cbk) => cbk()},
       lnd: {
         chain: {
           registerBlockEpochNtfn: ({}) => {
@@ -49,6 +50,7 @@ const tests = [
   },
   {
     args: {
+      fs: {getFile: ({}, cbk) => cbk()},
       lnd: {
         chain: {
           registerBlockEpochNtfn: ({}) => {
@@ -165,6 +167,7 @@ const tests = [
   },
   {
     args: {
+      fs: {getFile: ({}, cbk) => cbk()},
       inbound_liquidity_below: 1000,
       lnd: {
         chain: {

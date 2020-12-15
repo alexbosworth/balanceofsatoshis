@@ -1,5 +1,11 @@
 # Versions
 
+## Version 7.11.0
+
+- `tags`: Add method to create groupings of public keys
+- `tags`: Add `--avoid` flag to always avoid a set of peers in `rebalance`
+- `tags`: Add `--icon` flag to show icons next to peers in `forwards`, `peers`
+
 ## Version 7.10.1
 
 - `accounting`: Fix chain accounting on testnet

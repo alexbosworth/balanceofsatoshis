@@ -41,6 +41,7 @@ const telegram = importLazy('./telegram');
 const wallets = importLazy('./wallets');
 const {version} = importLazy('./package');
 
+const {BOOL} = prog;
 const {exit} = process;
 const flatten = arr => [].concat(...arr);
 const {FLOAT} = prog;
@@ -566,6 +567,7 @@ prog
           lnd,
           days: options.days,
           from: (await lnSync.findKey({lnd, query: options.in})).public_key,
+          fs: {getFile: readFile},
           is_monochrome: !!options.noColor,
           is_table: !options.complete,
           to: (await lnSync.findKey({lnd, query: options.out})).public_key,
@@ -1019,6 +1021,7 @@ prog
       try {
         return network.getPeers({
           earnings_days: options.feeDays,
+          fs: {getFile: readFile},
           idle_days: options.idleDays || undefined,
           inbound_liquidity_below: options.inboundBelow,
           is_active: !!options.active,
@@ -1148,6 +1151,7 @@ prog
         return swaps.rebalance({
           logger,
           avoid: flatten([options.avoid].filter(n => !!n)),
+          fs: {getFile: readFile},
           in_through: options.in || undefined,
           in_outbound: options.inTargetOutbound || undefined,
           is_avoiding_high_inbound: options.avoidHighInbound || undefined,
@@ -1324,6 +1328,31 @@ prog
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
         return reject(err);
+      }
+    });
+  })
+
+  // Adjust the set of tagged nodes
+  .command('tags', 'View or adjust the set of tagged nodes')
+  .argument('[tag]', 'Adjust or view a specific tag')
+  .option('--add <public_key', 'Add a public key to a tag', REPEATABLE)
+  .option('--avoid', 'Mark to globally avoid all tagged nodes', BOOL, true)
+  .option('--icon <icon>', 'Icon to use for the tag')
+  .option('--remove <public_key>', 'Remove a public key from a tag', REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return await nodes.adjustTags({
+          add: flatten([options.add].filter(n => !!n)),
+          fs: {writeFile, getFile: readFile, makeDirectory: mkdir},
+          icon: options.icon,
+          is_avoided: options.avoid,
+          remove: flatten([options.remove].filter(n => !!n)),
+          tag: args.tag,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(logger.error({err}));
       }
     });
   })

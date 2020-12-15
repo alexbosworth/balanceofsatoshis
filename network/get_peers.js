@@ -21,6 +21,7 @@ const size = require('window-size');
 const {authenticatedLnd} = require('./../lnd');
 const {chartAliasForPeer} = require('./../display');
 const {formatFeeRate} = require('./../display');
+const {getIcons} = require('./../display');
 const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
@@ -41,6 +42,9 @@ const wideSizeCols = 150;
 
   {
     [earnings_days]: <Routing Fee Earnings Days Number>
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [idle_days]: <Not Active For Days Number>
     [inbound_liquidity_below]: <Inbound Liquidity Below Tokens Number>
     [is_active]: <Active Channels Only Bool>
@@ -74,6 +78,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFsToGetPeers']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToGetPeers']);
         }
@@ -118,6 +126,9 @@ module.exports = (args, cbk) => {
 
         return getPastForwards({days, lnd: args.lnd}, cbk);
       }],
+
+      // Get node icons
+      getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
 
       // Get invoices
       getInvoices: ['validate', ({}, cbk) => {
@@ -474,7 +485,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Final peers and table
-      allPeers: ['peers', ({peers}, cbk) => {
+      allPeers: ['getIcons', 'peers', ({getIcons, peers}, cbk) => {
         if (!args.is_table) {
           return cbk(null, {
             peers: peers.peers.map(n => ({
@@ -524,9 +535,13 @@ module.exports = (args, cbk) => {
                 tokens: peer.outbound_liquidity,
               });
 
+              const nodeIcons = getIcons.nodes
+                .find(n => n.public_key === peer.public_key);
+
               const alias = chartAliasForPeer({
                 alias: peer.alias,
                 downtime_percentage: peer.downtime_percentage,
+                icons: !!nodeIcons ? nodeIcons.icons : undefined,
                 is_forwarding: peer.is_forwarding,
                 is_inactive: peer.is_offline,
                 is_private: peer.is_private,

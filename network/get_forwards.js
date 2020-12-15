@@ -13,6 +13,7 @@ const {returnResult} = require('asyncjs-util');
 const size = require('window-size');
 
 const {chartAliasForPeer} = require('./../display');
+const {getIcons} = require('./../display');
 const isRelevantForward = require('./is_relevant_forward');
 const isRelevantSource = require('./is_relevant_source');
 const {lndCredentials} = require('./../lnd');
@@ -35,6 +36,9 @@ const wideSizeCols = 155;
 
   {
     [days]: <Days Number>
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [is_monochrome]: <Mute Colors Bool>
     [is_table]: <Return Results As Table Bool>
     lnd: <Authenticated LND gRPC API Object>
@@ -59,6 +63,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFsMethodsToGetForwardingInformation']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToGetForwardingInformation']);
         }
@@ -88,6 +96,9 @@ module.exports = (args, cbk) => {
 
       // Get current block height
       getHeight: ['validate', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
+
+      // Get node icons
+      getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
 
       // Get pending channels
       getPending: ['validate', ({}, cbk) => {
@@ -153,9 +164,18 @@ module.exports = (args, cbk) => {
         'channels',
         'getChannels',
         'getForwards',
+        'getIcons',
         'getPending',
         'nodes',
-        ({channels, getChannels, getForwards, getPending, nodes}, cbk) =>
+        ({
+          channels,
+          getChannels,
+          getForwards,
+          getIcons,
+          getPending,
+          nodes,
+        },
+        cbk) =>
       {
         const peers = nodes.map(node => {
           // Get the channels that are associated with this peer
@@ -209,10 +229,13 @@ module.exports = (args, cbk) => {
 
           const isDisconnected = !connected.length && !pending.length;
 
+          const nodeIcons = getIcons.nodes.find(n => n.public_key === node.id);
+
           return {
             alias: node.alias,
             earned_inbound_fees: sources.reduce((sum, n) => sum + n.fee, 0),
             earned_outbound_fees: forwards.reduce((sum, n) => sum + n.fee, 0),
+            icons: !!nodeIcons ? nodeIcons.icons : undefined,
             is_disconnected: isDisconnected || undefined,
             is_inactive: !isDisconnected && !active.length || undefined,
             last_inbound_at: !lastIn ? undefined : lastIn.toISOString(),
@@ -263,6 +286,7 @@ module.exports = (args, cbk) => {
               return notNull([
                 chartAliasForPeer({
                   alias: peer.alias,
+                  icons: peer.icons,
                   is_disconnected: peer.is_disconnected,
                   is_inactive: peer.is_inactive,
                   public_key: peer.public_key,
