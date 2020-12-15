@@ -42,7 +42,7 @@ module.exports = ({fs}, cbk) => {
         return fs.getFile(tagFilePath(), (err, res) => {
           // Exit early when there is no tag file
           if (!!err || !res) {
-            return cbk(null, []);
+            return cbk(null, {nodes: []});
           }
 
           try {
@@ -63,7 +63,7 @@ module.exports = ({fs}, cbk) => {
 
             return cbk(null, {nodes});
           } catch (err) {
-            return cbk(null, []);
+            return cbk(null, {nodes: []});
           }
         });
       }],
