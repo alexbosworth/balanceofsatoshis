@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.11.1
+
+- `report`: Fix error running command
+
 ## Version 7.11.0
 
 - `tags`: Add method to create groupings of public keys

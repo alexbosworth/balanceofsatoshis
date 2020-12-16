@@ -24,7 +24,7 @@
     "cert-info": "1.5.1",
     "colorette": "1.2.1",
     "crypto-js": "4.0.0",
-    "csv-parse": "4.14.1",
+    "csv-parse": "4.14.2",
     "goldengate": "10.0.0",
     "hot-formula-parser": "3.0.2",
     "import-lazy": "4.0.0",
@@ -76,5 +76,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/wallets/*.js"
   },
-  "version": "7.11.0"
+  "version": "7.11.1"
 }

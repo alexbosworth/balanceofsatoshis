@@ -41,6 +41,9 @@ const styled = 'styled';
 /** Get report
 
   {
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [node]: <Node Name String>
     [style]: <Style Type String>
   }
@@ -48,7 +51,7 @@ const styled = 'styled';
   @returns via cbk
   {}
 */
-module.exports = ({node, style}, cbk) => {
+module.exports = ({fs, node, style}, cbk) => {
   return asyncAuto({
     // Get authenticated lnd connection
     getLnd: cbk => authenticatedLnd({node}, cbk),
@@ -70,7 +73,7 @@ module.exports = ({node, style}, cbk) => {
 
     // Get forwards
     getForwards: ['getLnd', ({getLnd}, cbk) => {
-      return getForwards({lnd: getLnd.lnd}, cbk);
+      return getForwards({fs, lnd: getLnd.lnd}, cbk);
     }],
 
     // Get autopilot status

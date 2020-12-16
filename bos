@@ -1243,6 +1243,7 @@ prog
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return wallets.getReport({
+        fs: {getFile: readFile},
         node: options.node,
         style: !!options.styled ? 'styled' : undefined,
       },
