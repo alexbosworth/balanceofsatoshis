@@ -543,13 +543,25 @@ module.exports = (args, cbk) => {
 
       // Find a route to the destination
       findRoute: [
+        'findInKey',
+        'findOutKey',
         'getInbound',
         'getOutbound',
         'getPublicKey',
         'ignore',
         'max',
         'tokens',
-        ({getInbound, getOutbound, getPublicKey, ignore, max, tokens}, cbk) =>
+        ({
+          findInKey,
+          findOutKey,
+          getInbound,
+          getOutbound,
+          getPublicKey,
+          ignore,
+          max,
+          tokens,
+        },
+        cbk) =>
       {
         args.logger.info({
           outgoing_peer_to_increase_inbound: getOutbound.alias,
@@ -566,7 +578,14 @@ module.exports = (args, cbk) => {
           tokens,
           destination: getPublicKey.public_key,
           find_max: max,
-          ignore: [].concat(immediateIgnore).concat(ignore),
+          ignore: [].concat(immediateIgnore).concat(ignore).filter(n => {
+            if (!!n.to_public_key) {
+              return true;
+            }
+
+            // Never generally avoid directly specified keys
+            return ![findInKey, findOutKey].includes(n.from_public_key);
+          }),
           in_through: getInbound.public_key,
           logger: args.logger,
           lnd: args.lnd,

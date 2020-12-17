@@ -1,5 +1,10 @@
 # Versions
 
+## Version 7.12.0
+
+- `remove-peer`: Fix error running command
+- `remove-peer`: Add `--outpoint` to specific specific channels to close
+
 ## Version 7.11.1
 
 - `report`: Fix error running command

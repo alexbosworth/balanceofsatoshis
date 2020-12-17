@@ -8,11 +8,13 @@ const {returnResult} = require('asyncjs-util');
 
 const {getMempoolSize} = require('./../chain');
 
+const asOutpoint = n => `${n.transaction_id}:${n.transaction_vout}`;
 const fastConf = 6;
 const {floor} = Math;
 const defaultDays = 365 * 2;
 const getMempoolRetries = 10;
 const getPeers = require('./get_peers');
+const {isArray} = Array;
 const maxMempoolSize = 2e6;
 const regularConf = 72;
 const slowConf = 144;
@@ -22,6 +24,9 @@ const slowConf = 144;
   {
     [address]: <Close Out Funds to On-Chain Address String>
     [chain_fee_rate]: <Chain Fee Per VByte Number>
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [idle_days]: <No Activity From Peer For Days Number>
     [inbound_liquidity_below]: <Peer Has Inbound Liquidity Below Tokens Number>
     [is_active]: <Peer Is Actively Connected Bool>
@@ -34,6 +39,7 @@ const slowConf = 144;
     logger: <Winston Logger Object>
     [omit]: [<Avoid Peer With Public Key String>]
     [outbound_liquidity_below]: <Has Outbound Liquidity Below Tokens Number>
+    outpoints: [<Only Remove Specific Channel Funding Outpoint String>]
     [public_key]: <Public Key Hex String>
     request: <Request Function>
   }
@@ -45,12 +51,20 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFsMethodsToRemovePeer']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'LndIsRequiredToRemovePeer']);
         }
 
         if (!args.logger) {
           return cbk([400, 'LoggerIsRequiredToRemovePeer']);
+        }
+
+        if (!isArray(args.outpoints)) {
+          return cbk([400, 'ExpectedSpecificOutpointsToRemoveFromPeer']);
         }
 
         if (!args.request) {
@@ -92,6 +106,7 @@ module.exports = (args, cbk) => {
       getPeers: ['validate', ({}, cbk) => {
         return getPeers({
           earnings_days: args.idle_days || defaultDays,
+          fs: args.fs,
           idle_days: args.idle_days || Number(),
           inbound_liquidity_below: args.inbound_liquidity_below,
           is_active: args.is_active,
@@ -213,9 +228,20 @@ module.exports = (args, cbk) => {
 
         const feeRate = args.chain_fee_rate || getNormalFee.tokens_per_vbyte;
 
-        const toClose = getChannels.channels.filter(channel => {
-          return channel.partner_public_key === selectPeer.public_key;
-        });
+        const toClose = getChannels.channels
+          .filter(chan => chan.partner_public_key === selectPeer.public_key)
+          .filter(chan => {
+            if (!args.outpoints.length)  {
+              return true;
+            }
+
+            return args.outpoints.includes(asOutpoint(chan));
+          });
+
+        // Exit early when there are no channels to close
+        if (!toClose.length) {
+          return cbk([400, 'NoChannelsToCloseWithPeer']);
+        }
 
         args.logger.info({
           close_with_peer: selectPeer,
