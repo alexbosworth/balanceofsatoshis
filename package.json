@@ -76,5 +76,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/wallets/*.js"
   },
-  "version": "7.12.0"
+  "version": "7.13.0"
 }

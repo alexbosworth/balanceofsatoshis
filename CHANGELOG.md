@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.13.0
+
+- `rebalance`: Add support for specifying a tag group to rebalance `--in` or `--out`
+
 ## Version 7.12.0
 
 - `remove-peer`: Fix error running command

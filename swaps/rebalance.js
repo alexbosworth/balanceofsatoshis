@@ -19,8 +19,10 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
+const {findTagMatch} = require('./../peers');
 const {parseAmount} = require('./../display');
 const {probeDestination} = require('./../network');
+const {shuffle} = require('./../arrays');
 const {sortBy} = require('./../arrays');
 
 const {ceil} = Math;
@@ -78,7 +80,7 @@ const uniq = arr => Array.from(new Set(arr));
     [node]: <Node Name String>
     [out_channels]: [<Exclusively Rebalance Through Channel Ids String>]
     [out_inbound]: <Outbound Target Inbound Liquidity Tokens Number>
-    out_through: <Pay Out Through Peer String>
+    [out_through]: <Pay Out Through Peer String>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
   }
 
@@ -160,21 +162,24 @@ module.exports = (args, cbk) => {
       // Lnd by itself
       lnd: ['validate', ({}, cbk) => cbk(null, args.lnd)],
 
-      // Get global avoids
-      getAvoids: ['validate', ({}, cbk) => {
+      // Get the set of tags
+      getTags: ['validate', ({}, cbk) => {
+        const defaultTags = {avoids: [], tags: []};
+
         return args.fs.getFile(tagFilePath(), (err, res) => {
           if (!!err || !res) {
-            return cbk(null, []);
+            return cbk(null, defaultTags);
           }
 
           try {
             const {tags} = parse(res.toString());
 
+            // Find global avoids in tags
             const avoids = tags.filter(n => !!n.is_avoided).map(n => n.nodes);
 
-            return cbk(null, flatten(avoids));
+            return cbk(null, {tags, avoids: flatten(avoids)});
           } catch (err) {
-            return cbk(null, []);
+            return cbk(null, defaultTags);
           }
         });
       }],
@@ -187,13 +192,13 @@ module.exports = (args, cbk) => {
 
       // Figure out which public keys and channels to avoid
       ignore: [
-        'getAvoids',
         'getInitialLiquidity',
         'getPublicKey',
+        'getTags',
         'lnd',
-        ({getAvoids, getInitialLiquidity, getPublicKey, lnd}, cbk) =>
+        ({getInitialLiquidity, getPublicKey, getTags, lnd}, cbk) =>
       {
-        const avoids = [].concat(args.avoid).concat(getAvoids)
+        const avoids = [].concat(args.avoid).concat(getTags.avoids)
           .filter(n => n !== getPublicKey.public_key);
 
         return asyncMap(avoids, (id, cbk) => {
@@ -267,9 +272,24 @@ module.exports = (args, cbk) => {
       // Find inbound peer key if a name is specified
       findInKey: [
         'getInitialLiquidity',
+        'getTags',
         'lnd',
-        ({getInitialLiquidity, lnd}, cbk) =>
+        ({getInitialLiquidity, getTags, lnd}, cbk) =>
       {
+        const {match, matches} = findTagMatch({
+          channels: getInitialLiquidity.channels.filter(n => n.is_active),
+          tags: getTags.tags,
+          query: args.in_through,
+        });
+
+        if (!!matches) {
+          return cbk([400, 'MultipleTagMatchesFoundForInPeer', {matches}]);
+        }
+
+        if (match) {
+          return cbk(null, match);
+        }
+
         return findKey({
           lnd,
           channels: getInitialLiquidity.channels,
@@ -287,9 +307,24 @@ module.exports = (args, cbk) => {
       // Find outbound peer key if a name is specified
       findOutKey: [
         'getInitialLiquidity',
+        'getTags',
         'lnd',
-        ({getInitialLiquidity, lnd}, cbk) =>
+        ({getInitialLiquidity, getTags, lnd}, cbk) =>
       {
+        const {match, matches} = findTagMatch({
+          channels: getInitialLiquidity.channels.filter(n => n.is_active),
+          tags: getTags.tags,
+          query: args.out_through,
+        });
+
+        if (!!matches) {
+          return cbk([400, 'MultipleTagMatchesFoundForOutPeer', {matches}]);
+        }
+
+        if (match) {
+          return cbk(null, match);
+        }
+
         return findKey({
           lnd,
           channels: getInitialLiquidity.channels,
