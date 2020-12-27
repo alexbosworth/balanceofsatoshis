@@ -72,6 +72,7 @@ const {slowDelayMinutes} = require('./constants');
 const {swappable} = require('./../network/networks');
 const {sweepProgressLogDelayMs} = require('./constants');
 
+const addressMatch = /\b((bc|tb)(0([ac-hj-np-z02-9]{39}|[ac-hj-np-z02-9]{59})|1[ac-hj-np-z02-9]{8,87})|([13]|[mn2])[a-km-zA-HJ-NP-Z1-9]{25,39})\b/i;
 const {ceil} = Math;
 const cltvBuffer = 3;
 const farFutureDate = () => moment().add(1, 'years').toISOString();
@@ -139,6 +140,10 @@ module.exports = (args, cbk) => {
 
         if (!args.logger) {
           return cbk([400, 'ExpectedLoggerForSwapProgressNotifications']);
+        }
+
+        if (!!args.out_address && !addressMatch.test(args.out_address)) {
+          return cbk([400, 'UnrecognizedFormatOfOutAddress']);
         }
 
         if (!!args.spend_address && !args.spend_tokens) {

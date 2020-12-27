@@ -18,7 +18,7 @@ const none = 0;
     [is_confirmed]: <Is Confirmed Funds Bool>
     [is_offchain_only]: <Get Only Channels Tokens Bool>
     [is_onchain_only]: <Get Only Chain Tokens Bool>
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
   }
 
   @returns via cbk

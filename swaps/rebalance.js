@@ -609,6 +609,10 @@ module.exports = (args, cbk) => {
           to_public_key: getInbound.public_key,
         }];
 
+        if (getInbound.public_key === getOutbound.public_key) {
+          return cbk([400, 'ExpectedDifferentPeersForInboundAndOutbound']);
+        }
+
         return probeDestination({
           tokens,
           destination: getPublicKey.public_key,

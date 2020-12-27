@@ -127,20 +127,35 @@ prog
   .option('--above <tokens>', 'Return tokens above watermark', INT)
   .option('--below <tokens>', 'Return tokens below watermark', INT)
   .option('--confirmed', 'Return confirmed funds only')
+  .option('--detailed', 'Return detailed balance information')
   .option('--node <node_name>', 'Node to get balance for')
   .option('--offchain', 'List only off-chain tokens')
   .option('--onchain', 'List only on-chain tokens')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const {lnd} = await lndForNode(logger, options.node);
+
+        // Exit early when detailed balance details are requested
+        if (!!options.detailed) {
+          return balances.getDetailedBalance({
+            lnd,
+            above: options.above,
+            below: options.below,
+            is_confirmed: options.confirmed,
+            is_offchain_only: options.offchain,
+            is_onchain_only: options.onchain,
+          },
+          responses.returnObject({logger, reject, resolve}));
+        }
+
         return balances.getBalance({
+          lnd,
           above: options.above,
           below: options.below,
           is_confirmed: !!options.confirmed,
           is_offchain_only: !!options.offchain,
           is_onchain_only: !!options.onchain,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          node: options.node,
         },
         responses.returnNumber({logger, reject, resolve, number: 'balance'}));
       } catch (err) {

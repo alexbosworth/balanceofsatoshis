@@ -8,6 +8,7 @@ const {getNode} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
+const closingFees = require('./closing_fees');
 const getChannelResolution = require('./get_channel_resolution');
 
 const defaultLimit = 20;
@@ -20,24 +21,26 @@ const defaultLimit = 20;
     request: <Request Function>
   }
 
-  @returns via cbk
+  @returns via cbk or Promise
   {
-    closes: [{
-      blocks_since_close: <Blocks Since Close Number>
-      capacity: <Channel Capacity Value Number>
-      close_transaction_id: <Close Transaction Id Hex String>
-      [is_breach_close]: <Channel is Breach Close Bool>
-      [is_cooperative_close]: <Channel is Cooperative Close Bool>
-      [is_local_force_close]: <Channel is Local Force Close Bool>
-      [is_remote_force_close]: <Channel is Remote Force Close Bool>
-      [output_resolutions]: [{
-        type: <Type String>
-        value: <Value Number>
-      }]
-      partner_public_key: <Channel Partner Public Key Hex String>
-      transaction_id: <Transaction Id Hex String>
-      transaction_vout: <Transaction Output Index Number>
+    peer_public_key: <Peer Public Key Hex String>
+    [peer_alias]: <Peer Alias Strring>
+    [is_local_force_close]: <Channel Was Locally Force Closed Bool>
+    [is_cooperative_close]: <Channel Was Cooperatively Closed Bool>
+    [is_remote_force_close]: <Channel was Remotely Force Closed Bool>
+    [peer_closed_channel]: <Peer Closed the Channel Bool>
+    blocks_since_close: <Count of Blocks Since Close Number>
+    capacity: <Channel Capacity Tokens Number>
+    [channel_id]: <Channel Id String>
+    channel_open: <Channel Funding Outpoint String>
+    channel_close: <Channel Close Transaction Id Hex String>
+    [channel_balance_spend]: <Channel Balance Spent In Tx Id Hex String>
+    [channel_resolutions]: [{
+      type: <Resolution Type String>
+      value: <Value Number>
     }]
+    [is_breach_close]: <Channel Was Breach Closed Bool>
+    [closing_fee_paid]: <Closing Fees Paid Related To Channel Tokens Number>
   }
 */
 module.exports = ({limit, lnd, request}, cbk) => {
@@ -100,6 +103,14 @@ module.exports = ({limit, lnd, request}, cbk) => {
           const isRemoteForceClose = channel.is_remote_force_close;
           const init = `${channel.transaction_id}:${channel.transaction_vout}`;
 
+          const closingFeePaid = closingFees({
+            capacity: channel.capacity,
+            close_balance_spent_by: channel.close_balance_spent_by,
+            close_transaction_id: channel.close_transaction_id,
+            is_partner_initiated: channel.is_partner_initiated,
+            transactions: getTx.transactions,
+          });
+
           return {
             peer_public_key: channel.partner_public_key,
             peer_alias: alias || undefined,
@@ -115,6 +126,7 @@ module.exports = ({limit, lnd, request}, cbk) => {
             channel_balance_spend: channel.close_balance_spent_by || undefined,
             channel_resolutions: resolutions || undefined,
             is_breach_close: channel.is_breach_close || undefined,
+            closing_fee_paid: closingFeePaid.fees || undefined,
           };
         });
       }],

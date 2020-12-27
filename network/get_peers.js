@@ -98,19 +98,20 @@ module.exports = (args, cbk) => {
       },
 
       // Get channels
-      getChannels: ['validate', async ({}) => {
-        return await getChannels({
+      getChannels: ['validate', ({}, cbk) => {
+        return getChannels({
           is_active: args.is_active,
           is_offline: args.is_offline,
           is_private: args.is_private,
           is_public: args.is_public,
           lnd: args.lnd,
-        });
+        },
+        cbk);
       }],
 
       // Get closed channels
-      getClosed: ['validate', async ({}) => {
-        return await getClosedChannels({lnd: args.lnd});
+      getClosed: ['validate', ({}, cbk) => {
+        return getClosedChannels({lnd: args.lnd}, cbk);
       }],
 
       // Get fee earnings

@@ -1,5 +1,11 @@
 # Versions
 
+## Version 7.14.0
+
+- `balance`: Add `--detailed` option to get a breakdown of various component balances
+- `closed`: Indicate channel close transaction fees paid
+- `increase-inbound-liquidity`: Confirm that the output address looks like an address
+
 ## Version 7.13.0
 
 - `rebalance`: Add support for specifying a tag group to rebalance `--in` or `--out`
