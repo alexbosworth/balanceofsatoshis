@@ -199,7 +199,9 @@ module.exports = (args, cbk) => {
           return cbk(null, {tag: adjustTag});
         }
 
-        return cbk(null, {tags: parse(getTags).tags});
+        return cbk(null, {
+          tags: parse(getTags).tags.filter(n => !!n.nodes && !!n.nodes.length),
+        });
       }],
     },
     returnResult({reject, resolve, of: 'result'}, cbk));

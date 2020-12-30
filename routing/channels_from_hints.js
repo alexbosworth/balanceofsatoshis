@@ -32,13 +32,15 @@ const defaultCapacity = Number.MAX_SAFE_INTEGER;
 module.exports = ({request}) => {
   const channels = [];
 
+  // Exit early when there is no request to derive channels for
   if (!request) {
     return {channels};
   }
 
   const {routes} = parsePaymentRequest({request});
 
-  if (!routes || !routes.length) {
+  // Exit early when there are no hop hints in the requests
+  if (!routes) {
     return {channels};
   }
 

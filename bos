@@ -1016,6 +1016,8 @@ prog
   // Get a list of channel-connected peers
   .command('peers', 'Get a list of channel-connected peers')
   .help(`Sort options: ${peerSortOptions.join(', ')}`)
+  .help('Icons: 🤢 often d/c, 💸 active HTLC, 💀 d/c, 🌚 private, 🧊 delayed coop close')
+  .help('Icons: 🧊 delayed close, ⏳ pending channel')
   .option('--active', 'Only active peer channels')
   .option('--complete', 'Show complete set of records in non table view')
   .option('--fee-days <past_days>', 'Include fees earned over n days', INT)
@@ -1273,13 +1275,16 @@ prog
   .command('send', 'Send funds to a node')
   .help('Formulas supported in amount, and N*USD or N*EUR')
   .help('Also supported in formulas: LIQUIDITY, INBOUND, OUTBOUND (with peer)')
+  .help('OUT_INBOUND, OUT_OUTBOUND (when specifying outbound peer)')
   .argument('<to>', 'Send to node with public key')
   .option('--amount <amount>', 'Amount to send to destination', STRING, '1')
   .option('--dryrun', 'Avoid actually sending funds')
+  .option('--in <pubkey_or_alias>', 'Route in through a specific node')
   .option('--max-fee <fee>', 'Maximum fee tokens', INT, 10)
   .option('--message <message>', 'Message to include with payment')
   .option('--no-color', 'Mute all colors')
   .option('--node <name>', 'Node to send funds from')
+  .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1293,9 +1298,11 @@ prog
           request,
           amount: options.amount,
           destination: destination.public_key,
+          in_through: options.in,
           is_dry_run: options.dryrun,
           max_fee: options.maxFee,
           message: options.message,
+          out_through: options.out,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {

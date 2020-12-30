@@ -1,6 +1,8 @@
 const asyncAuto = require('async/auto');
+const asyncFilter = require('async/filter');
 const asyncMap = require('async/map');
 const asyncTimeout = require('async/timeout');
+const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
@@ -54,28 +56,62 @@ module.exports = ({lnd, retries}, cbk) => {
       // Get connected peers
       getPeers: ['validate', ({}, cbk) => getPeers({lnd}, cbk)],
 
+      // Get disabled but active channels
+      getDisabled: ['getChannels', ({getChannels}, cbk) => {
+        const active = getChannels.channels.filter(n => n.is_active);
+
+        return asyncFilter(active, (channel, cbk) => {
+          return getChannel({lnd, id: channel.id}, (err, res) => {
+            // Exit early when there is an issue getting a channel
+            if (!!err) {
+              return cbk(null, false);
+            }
+
+            const ownPolicy = res.policies
+              .find(n => n.public_key !== channel.partner_public_key);
+
+            // Exit early when there is no own policy found
+            if (!ownPolicy) {
+              return cbk(null, false);
+            }
+
+            // Select for active channels that are marked disabled
+            return cbk(null, ownPolicy.is_disabled === true);
+          });
+        },
+        cbk);
+      }],
+
       // Disconnect connected peers that have an inactive channel
       disconnect: [
         'getChannels',
+        'getDisabled',
         'getPeers',
-        ({getChannels, getPeers}, cbk) =>
+        ({getChannels, getDisabled, getPeers}, cbk) =>
       {
-        // Find peers that have an inactive channel but are connected peers
-        const peers = getPeers.peers.filter(peer => {
-          return !!getChannels.channels.find(channel => {
-            return channel.partner_public_key === peer.public_key;
-          });
-        });
+        // Some peers have active channels but they are marked disabled
+        const disabled = getDisabled.map(n => n.partner_public_key);
 
-        return asyncMap(peers, (peer, cbk) => {
-          return removePeer({lnd, public_key: peer.public_key}, cbk);
+        // Find peers that have an inactive channel but are connected peers
+        const peers = getPeers.peers
+          .filter(peer => {
+            return !!getChannels.channels.find(channel => {
+              return channel.partner_public_key === peer.public_key;
+            });
+          })
+          .map(n => n.public_key);
+
+        const remove = uniq([].concat(disabled).concat(peers));
+
+        return asyncMap(remove, (peer, cbk) => {
+          return removePeer({lnd, public_key: peer}, cbk);
         },
         err => {
           if (!!err) {
             return cbk(err);
           }
 
-          return cbk(null, peers.map(n => n.public_key));
+          return cbk(null, remove);
         });
       }],
 

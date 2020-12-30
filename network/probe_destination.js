@@ -63,6 +63,7 @@ const signatureType = '34349337';
   @returns via cbk
   {
     [fee]: <Fee Tokens To Destination Number>
+    [id]: <Payment Hash Hex String>
     [latency_ms]: <Latency Milliseconds Number>
     [route_maximum]: <Maximum Sendable Tokens On Successful Probe Path Number>
     [paid]: <Paid Tokens Number>

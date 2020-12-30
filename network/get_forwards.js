@@ -215,6 +215,8 @@ module.exports = (args, cbk) => {
 
           const active = connected.filter(n => n.is_active);
 
+          const isPrivatePeer = !active.find(n => !n.is_private);
+
           const pending = getPending.pending_channels
             .filter(n => n.is_opening)
             .filter(n => n.partner_public_key === node.id);
@@ -238,6 +240,8 @@ module.exports = (args, cbk) => {
             icons: !!nodeIcons ? nodeIcons.icons : undefined,
             is_disconnected: isDisconnected || undefined,
             is_inactive: !isDisconnected && !active.length || undefined,
+            is_pending: !!pending.length || undefined,
+            is_private: !!isPrivatePeer || undefined,
             last_inbound_at: !lastIn ? undefined : lastIn.toISOString(),
             last_outbound_at: !lastOut ? undefined : lastOut.toISOString(),
             liquidity_inbound: remote,
@@ -289,6 +293,8 @@ module.exports = (args, cbk) => {
                   icons: peer.icons,
                   is_disconnected: peer.is_disconnected,
                   is_inactive: peer.is_inactive,
+                  is_pending: peer.is_pending,
+                  is_private: peer.is_private,
                   public_key: peer.public_key,
                 }).display,
                 formatTokens({

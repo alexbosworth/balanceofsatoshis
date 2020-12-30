@@ -1,5 +1,14 @@
 # Versions
 
+## Version 7.15.0
+
+- `forwards`: Show icon when a peer has part of their liquidity in a pending channel
+- `forwards`: Show icon when a peer has no public channels
+- `peers`: Show icon when a peer has part of their liquidity in a pending channel
+- `reconnect`: Cycle peers that are connected but the outgoing forwarding policy is disabled
+- `send`: Add `--in` and `--out` constraints to specify inbound and outbound hops
+- `send`: Add `OUT_INBOUND`, `OUT_LIQUIDITY`, `OUT_OUTBOUND` as amount formula variables
+
 ## Version 7.14.0
 
 - `balance`: Add `--detailed` option to get a breakdown of various component balances

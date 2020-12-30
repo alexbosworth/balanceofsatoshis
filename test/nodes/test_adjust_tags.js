@@ -80,7 +80,10 @@ const tests = [
     args: makeArgs({
       fs: {
         getFile: (path, cbk) => cbk(null, JSON.stringify({
-          tags: [{id: Buffer.alloc(32).toString('hex')}],
+          tags: [{
+            id: Buffer.alloc(32).toString('hex'),
+            nodes: [Buffer.alloc(33, 2).toString('hex')],
+          }],
         })),
         makeDirectory: (path, cbk) => cbk(),
         writeFile: (path, file, cbk) => cbk(),
@@ -90,6 +93,7 @@ const tests = [
     expected: {
       tags: [{
         id: '0000000000000000000000000000000000000000000000000000000000000000',
+        nodes: [Buffer.alloc(33, 2).toString('hex')],
       }],
     },
   },
