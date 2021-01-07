@@ -192,7 +192,8 @@ module.exports = (args, cbk) => {
           .filter(n => n.partner_public_key === getOutKey)
           .reduce((sum, chan) => {
             // Treat outgoing payment as if they were still local balance
-            const outbound = chan.pending_payments.filter(n => !!is_outgoing);
+            const outbound = chan.pending_payments
+              .filter(n => !!n.is_outgoing);
 
             const pending = sumOf(outbound.map(({tokens}) => tokens));
 
@@ -205,7 +206,8 @@ module.exports = (args, cbk) => {
           .filter(n => n.partner_public_key === args.destination)
           .reduce((sum, chan) => {
             // Treat outgoing payment as if they were still local balance
-            const outbound = chan.pending_payments.filter(n => !!is_outgoing);
+            const outbound = chan.pending_payments
+              .filter(n => !!n.is_outgoing);
 
             const pending = sumOf(outbound.map(({tokens}) => tokens));
 

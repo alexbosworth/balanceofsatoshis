@@ -56,6 +56,7 @@ const makeArgs = overrides => {
         getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
         listChannels: ({}, cbk) => cbk(null, listChannelsResponse),
         listInvoices: ({}, cbk) => cbk(null, {
+          first_index_offset: '0',
           invoices: [{
             add_index: '1',
             amt_paid_msat: '1000',

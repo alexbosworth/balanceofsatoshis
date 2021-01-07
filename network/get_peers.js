@@ -360,26 +360,26 @@ module.exports = (args, cbk) => {
           const blocks = wallet.current_block_height - oldest.height;
           const newBlocks = wallet.current_block_height - newest.height;
 
-          const activeChannels = getChannels.channels.filter(channel => {
+          const active = getChannels.channels.filter(channel => {
             return channel.partner_public_key === publicKey;
           });
 
           // A thaw channel cannot be cooperatively closed until a block height
-          const hasThawChannel = activeChannels
+          const hasThawChannel = active
             .map(n => n.cooperative_close_delay_height)
             .filter(n => !!n)
             .find(n => n > wallet.current_block_height);
 
-          const hasHtlcChannel = activeChannels
+          const hasHtlcChannel = active
             .find(n => !!n.pending_payments.length);
 
-          const isPrivatePeer = !activeChannels.find(n => !n.is_private);
+          const isHidden = !active.find(n => !n.is_private) && !!active.length;
 
-          const uptime = sumOf(activeChannels
+          const uptime = sumOf(active
             .filter(n => !!n.time_online)
             .map(n => n.time_online));
 
-          const downtime = sumOf(activeChannels
+          const downtime = sumOf(active
             .filter(n => !!n.time_offline)
             .map(n => n.time_offline));
 
@@ -387,7 +387,7 @@ module.exports = (args, cbk) => {
             return !!chan.is_opening && chan.partner_public_key === publicKey;
           });
 
-          const channels = [].concat(activeChannels).concat(pendingChannels);
+          const channels = [].concat(active).concat(pendingChannels);
 
           const policies = getPolicies
             .filter(n => !!n)
@@ -428,7 +428,7 @@ module.exports = (args, cbk) => {
             is_forwarding: hasHtlcChannel || undefined,
             is_offline: !peer || undefined,
             is_pending: !!pendingChannels.length || undefined,
-            is_private: isPrivatePeer || undefined,
+            is_private: isHidden || undefined,
             is_thawing: hasThawChannel || undefined,
             last_activity: args.idle_days !== undefined ? lastActivity : null,
             outbound_liquidity: sumOf(channels.map(n => n.local_balance)),

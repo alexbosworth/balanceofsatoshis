@@ -58,6 +58,7 @@ const makeArgs = overrides => {
       default: {
         listInvoices: ({}, cbk) => {
           return cbk(null, {
+            first_index_offset: '0',
             invoices: [{
               add_index: '1',
               amt_paid_msat: '10000',

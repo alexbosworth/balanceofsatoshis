@@ -215,7 +215,7 @@ module.exports = (args, cbk) => {
 
           const active = connected.filter(n => n.is_active);
 
-          const isPrivatePeer = !active.find(n => !n.is_private);
+          const isHidden = !active.find(n => !n.is_private) && !!active.length;
 
           const pending = getPending.pending_channels
             .filter(n => n.is_opening)
@@ -241,7 +241,7 @@ module.exports = (args, cbk) => {
             is_disconnected: isDisconnected || undefined,
             is_inactive: !isDisconnected && !active.length || undefined,
             is_pending: !!pending.length || undefined,
-            is_private: !!isPrivatePeer || undefined,
+            is_private: !!isHidden || undefined,
             last_inbound_at: !lastIn ? undefined : lastIn.toISOString(),
             last_outbound_at: !lastOut ? undefined : lastOut.toISOString(),
             liquidity_inbound: remote,

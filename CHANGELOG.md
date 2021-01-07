@@ -1,5 +1,10 @@
 # Versions
 
+## Version 7.15.1
+
+- `forwards`: Stop showing no-channel peers as being private peers
+- `send`: Fix error when sending out a peer that has an active HTLC
+
 ## Version 7.15.0
 
 - `forwards`: Show icon when a peer has part of their liquidity in a pending channel
