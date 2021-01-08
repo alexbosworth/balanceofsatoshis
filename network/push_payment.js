@@ -269,6 +269,7 @@ module.exports = (args, cbk) => {
           in_through: getInKey,
           is_push: true,
           is_real_payment: true,
+          max_fee: args.max_fee,
           message: args.message,
           out_through: getOutKey,
           tokens: parseAmount.tokens,

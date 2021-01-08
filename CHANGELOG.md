@@ -1,5 +1,10 @@
 # Versions
 
+## Version 7.15.2
+
+- `gateway`: Fix subscription closiing when web socket closes
+- `send`: Fix `max_fee` setting
+
 ## Version 7.15.1
 
 - `forwards`: Stop showing no-channel peers as being private peers

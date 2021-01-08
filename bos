@@ -1280,7 +1280,7 @@ prog
   .option('--amount <amount>', 'Amount to send to destination', STRING, '1')
   .option('--dryrun', 'Avoid actually sending funds')
   .option('--in <pubkey_or_alias>', 'Route in through a specific node')
-  .option('--max-fee <fee>', 'Maximum fee tokens', INT, 10)
+  .option('--max-fee <fee>', 'Maximum fee tokens', INT, 1337)
   .option('--message <message>', 'Message to include with payment')
   .option('--no-color', 'Mute all colors')
   .option('--node <name>', 'Node to send funds from')
