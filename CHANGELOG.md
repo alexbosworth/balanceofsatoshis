@@ -1,5 +1,10 @@
 # Versions
 
+## Version 7.15.3
+
+- `send`: Fix error message when failing to send
+- `telegram`: Avoid writing API key when key is already written
+
 ## Version 7.15.2
 
 - `gateway`: Fix subscription closiing when web socket closes

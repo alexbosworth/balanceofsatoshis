@@ -112,12 +112,12 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           if (!!err || !res || !res.toString()) {
             const token = interaction.api_token_prompt;
 
-            inquirer.prompt([token]).then(({key}) => cbk(null, key));
+            inquirer.prompt([token]).then(({key}) => cbk(null, {key}));
 
             return;
           }
 
-          return cbk(null, res.toString());
+          return cbk(null, {is_saved: true, key: res.toString()});
         });
       }],
 
@@ -142,12 +142,17 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
       // Save API key
       saveKey: ['apiKey', ({apiKey}, cbk) => {
+        // Exit early when API key is already saved
+        if (!!apiKey.is_saved) {
+          return cbk();
+        }
+
         const path = join(...[homedir(), home, botKeyFile]);
 
         return fs.makeDirectory(join(...[homedir(), home]), () => {
           // Ignore errors when making directory, it may already be present
 
-          return fs.writeFile(path, apiKey, err => {
+          return fs.writeFile(path, apiKey.key, err => {
             if (!!err) {
               return cbk([503, 'FailedToSaveTelegramApiToken', {err}]);
             }
@@ -164,9 +169,9 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           return cbk();
         }
 
-        bot = new Telegraf(apiKey);
+        bot = new Telegraf(apiKey.key);
 
-        const telegram = new Telegram(apiKey)
+        const telegram = new Telegram(apiKey.key)
 
         telegram.setMyCommands([
           {command: 'backup', description: 'Get node backup file'},
@@ -213,7 +218,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             request,
             from: message.from.id,
             id: connectedId,
-            key: apiKey,
+            key: apiKey.key,
             nodes: getNodes,
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
@@ -251,7 +256,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           handleEarningsCommand({
             from: message.from.id,
             id: connectedId,
-            key: apiKey,
+            key: apiKey.key,
             nodes: getNodes,
             reply: replyWithMarkdown,
             text: message.text,
@@ -267,7 +272,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             request,
             from: message.from.id,
             id: connectedId,
-            key: apiKey,
+            key: apiKey.key,
             nodes: getNodes,
             text: message.text,
           },
@@ -289,7 +294,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             request,
             from: message.from.id,
             id: connectedId,
-            key: apiKey,
+            key: apiKey.key,
             nodes: getNodes,
             text: message.text,
           },
@@ -318,7 +323,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             request,
             from: message.from.id,
             id: connectedId,
-            key: apiKey,
+            key: apiKey.key,
             nodes: getNodes,
             text: message.text,
           },
@@ -396,7 +401,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                 backup,
                 request,
                 id: connectedId,
-                key: apiKey,
+                key: apiKey.key,
                 node: {alias: node.alias, public_key: node.public_key},
               },
               err => !!err ? logger.error({post_backup_err: err}) : null);
@@ -434,7 +439,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
               is_cooperative_close: update.is_cooperative_close,
               is_local_force_close: update.is_local_force_close,
               is_remote_force_close: update.is_remote_force_close,
-              key: apiKey,
+              key: apiKey.key,
               partner_public_key: update.partner_public_key,
             },
             err => !!err ? logger.error({closed_err: err}) : null);
@@ -449,7 +454,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
               id: connectedId,
               is_partner_initiated: update.is_partner_initiated,
               is_private: update.is_private,
-              key: apiKey,
+              key: apiKey.key,
               partner_public_key: update.partner_public_key,
             },
             err => !!err ? logger.error({open_err: err}) : null);
@@ -479,7 +484,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
         return sendMessage({
           request,
           id: connectedId,
-          key: apiKey,
+          key: apiKey.key,
           text: `_Connected to ${getNodes.map(({from}) => from).join(', ')}_`,
         },
         cbk);
@@ -515,7 +520,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                 request,
                 forwards: res.forwards,
                 id: connectedId,
-                key: apiKey,
+                key: apiKey.key,
                 node: node.public_key,
               },
               err => {
@@ -552,7 +557,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                 payments: invoice.payments,
                 received: invoice.received,
               },
-              key: apiKey,
+              key: apiKey.key,
             },
             err => !!err ? logger.error({settled_err: err}) : null);
           });
@@ -604,7 +609,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                 from,
                 request,
                 id: connectedId,
-                key: apiKey,
+                key: apiKey.key,
                 transaction: record,
               });
             } catch (err) {

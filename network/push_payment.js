@@ -279,6 +279,11 @@ module.exports = (args, cbk) => {
 
       // Get adjusted outbound liquidity after push
       getAdjustedOutbound: ['push', ({push}, cbk) => {
+        // Exit early when the payment failed
+        if (!push.preimage) {
+          return cbk([503, 'UnexpectedSendPaymentFailure']);
+        }
+
         // Exit early when there is no outbound constraint
         if (!args.out_through) {
           return cbk();
