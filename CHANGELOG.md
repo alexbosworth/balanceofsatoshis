@@ -1,6 +1,6 @@
 # Versions
 
-## Verrsion 7.17.0
+## Version 7.17.0
 
 - `open`: Add `type` to allow specifying a private or public channel type
 
