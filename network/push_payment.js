@@ -14,11 +14,15 @@ const coins = ['BTC', 'LTC'];
 const fiats = ['EUR', 'USD'];
 const {isArray} = Array;
 const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
+const maxQuizLength = 10;
 const rateAsTokens = rate => 1e8 / rate;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
+const minQuiz = 2;
 const minTokens = 1;
 const networks = {btc: 'BTC', btctestnet: 'BTC', ltc: 'LTC'};
+const quizStart = 80509;
 const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
+const utf8AsHex = n => Buffer.from(n, 'utf8').toString('hex');
 
 /** Push a payment to a destination
 
@@ -32,6 +36,7 @@ const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
     max_fee: <Maximum Fee Tokens Number>
     [message]: <Message to Include With Payment String>
     [out_through]: <Pay Out Through Peer String>
+    quiz_answers: [<Quiz Answer String>]
     request: <Request Function>
   }
 */
@@ -66,6 +71,22 @@ module.exports = (args, cbk) => {
 
         if (!!args.out_through && !!isArray(args.out_through)) {
           return cbk([400, 'MultipleOutboundPeersNotSupported']);
+        }
+
+        if (!isArray(args.quiz_answers)) {
+          return cbk([400, 'ExpectedMultipleQuizAnswersToSend']);
+        }
+
+        if (!!args.quiz_answers.length && !args.message) {
+          return cbk([400, 'ExpectedQuizQuestionMessageToSendQuiz']);
+        }
+
+        if (!!args.quiz_answers.length && args.quiz_answers.length < minQuiz) {
+          return cbk([400, 'ExpectedMultipleQuizAnswersToSend']);
+        }
+
+        if (args.quiz_answers.length > maxQuizLength) {
+          return cbk([400, 'TooManyAnswersForQuiz', {max: maxQuizLength}]);
         }
 
         if (!args.request) {
@@ -271,6 +292,10 @@ module.exports = (args, cbk) => {
           is_real_payment: true,
           max_fee: args.max_fee,
           message: args.message,
+          messages: args.quiz_answers.map((answer, i) => ({
+            type: (quizStart + i).toString(),
+            value: utf8AsHex(answer),
+          })),
           out_through: getOutKey,
           tokens: parseAmount.tokens,
         },

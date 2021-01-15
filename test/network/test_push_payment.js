@@ -24,6 +24,7 @@ const makeArgs = overrides => {
     logger: {info: () => {}},
     max_fee: 0,
     message: 'message',
+    quiz_answers: [],
     request: ({}, cbk) => cbk(null, {statusCode: 200}, {
       rates: {
         btc: {

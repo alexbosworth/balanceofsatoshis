@@ -1,5 +1,12 @@
 # Versions
 
+## Version 7.16.0
+
+- `send`: Add support for sending a quiz to a recipient
+- `telegram`: Add support for checking the current and latest version with `/version`
+- `telegram`: Display interactive quizzes that are sent as KeySends
+- `telegram`: Mark unconfirmed on-chain transactions as pending
+
 ## Version 7.15.3
 
 - `send`: Fix error message when failing to send
@@ -7,7 +14,7 @@
 
 ## Version 7.15.2
 
-- `gateway`: Fix subscription closiing when web socket closes
+- `gateway`: Fix subscription closing when web socket closes
 - `send`: Fix `max_fee` setting
 
 ## Version 7.15.1

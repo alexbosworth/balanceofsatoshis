@@ -5,6 +5,7 @@ const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
+const {Composer} = require('telegraf');
 const {getForwards} = require('ln-service');
 const {getTransactionRecord} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
@@ -16,6 +17,7 @@ const {handleInvoiceCommand} = require('ln-telegram');
 const {handleLiquidityCommand} = require('ln-telegram');
 const {handleMempoolCommand} = require('ln-telegram');
 const {handlePayCommand} = require('ln-telegram');
+const {handleVersionCommand} = require('ln-telegram');
 const inquirer = require('inquirer');
 const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
@@ -30,10 +32,11 @@ const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const {subscribeToTransactions} = require('ln-service');
-const Telegraf = require('telegraf');
-const Telegram = require('telegraf/telegram')
+const {Telegraf} = require('telegraf');
 
 const interaction = require('./interaction');
+const named = require('./../package').name;
+const {version} = require('./../package');
 
 let bot;
 const botKeyFile = 'telegram_bot_api_key';
@@ -171,9 +174,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
         bot = new Telegraf(apiKey.key);
 
-        const telegram = new Telegram(apiKey.key)
-
-        telegram.setMyCommands([
+        bot.telegram.setMyCommands([
           {command: 'backup', description: 'Get node backup file'},
           {command: 'blocknotify', description: 'Get notified on next block'},
           {command: 'connect', description: 'Get connect code for the bot'},
@@ -182,6 +183,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           {command: 'liquidity', description: 'Get liquidity [with-peer]'},
           {command: 'mempool', description: 'Get info about the mempool'},
           {command: 'pay', description: 'Pay a payment request'},
+          {command: 'version', description: 'View current bot version'},
         ]);
 
         bot.catch(err => logger.error({telegram_error: err}));
@@ -203,12 +205,12 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           return next();
         });
 
-        bot.start(({replyWithMarkdown}) => {
+        bot.start(ctx => {
           if (!!connectedId) {
-            return replyWithMarkdown(interaction.bot_is_connected);
+            return ctx.replyWithMarkdown(interaction.bot_is_connected);
           }
 
-          return replyWithMarkdown(interaction.start_message);
+          return ctx.replyWithMarkdown(interaction.start_message);
         });
 
         bot.command('backup', ({message, reply}) => {
@@ -226,10 +228,10 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           return;
         });
 
-        bot.command('blocknotify', ({message, replyWithMarkdown}) => {
+        bot.command('blocknotify', ctx => {
           handleBlocknotifyCommand({
             request,
-            reply: replyWithMarkdown,
+            reply: n => ctx.replyWithMarkdown(n),
           },
           err => {
             if (!!err) {
@@ -242,24 +244,24 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           return;
         });
 
-        bot.command('connect', ({from, replyWithMarkdown}) => {
+        bot.command('connect', ctx => {
           handleConnectCommand({
-            from: from.id,
+            from: ctx.from.id,
             id: connectedId,
-            reply: replyWithMarkdown,
+            reply: n => ctx.replyWithMarkdown(n),
           });
 
           return;
         });
 
-        bot.command('earnings', ({message, replyWithMarkdown}) => {
+        bot.command('earnings', ctx => {
           handleEarningsCommand({
-            from: message.from.id,
+            from: ctx.message.from.id,
             id: connectedId,
             key: apiKey.key,
             nodes: getNodes,
-            reply: replyWithMarkdown,
-            text: message.text,
+            reply: n => ctx.replyWithMarkdown(n),
+            text: ctx.message.text,
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
 
@@ -281,10 +283,10 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           return;
         });
 
-        bot.command('mempool', async ({replyWithMarkdown}) => {
+        bot.command('mempool', async ctx => {
           return await handleMempoolCommand({
             request,
-            reply: replyWithMarkdown,
+            reply: n => ctx.replyWithMarkdown(n),
           });
         });
 
@@ -341,6 +343,15 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           return;
         });
 
+        bot.command('version', async ctx => {
+          return await handleVersionCommand({
+            named,
+            request,
+            version,
+            reply: n => ctx.replyWithMarkdown(n),
+          });
+        });
+
         bot.help(ctx => {
           const commands = [
             '/backup - Get node backup file',
@@ -351,6 +362,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
             '/liquidity [with] - View node liquidity',
             '/mempool - BTC mempool report',
             '/pay - Pay an invoice',
+            '/version - View the current bot version',
           ];
 
           return ctx.replyWithMarkdown(`🤖\n${commands.join('\n')}`);
@@ -558,6 +570,14 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                 received: invoice.received,
               },
               key: apiKey.key,
+              quiz: ({answers, correct, question}) => {
+                return bot.telegram.sendQuiz(
+                  connectedId,
+                  question,
+                  answers,
+                  {correct_option_id: correct},
+                );
+              },
             },
             err => !!err ? logger.error({settled_err: err}) : null);
           });
@@ -608,6 +628,7 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
               return await postChainTransaction({
                 from,
                 request,
+                confirmed: transaction.is_confirmed,
                 id: connectedId,
                 key: apiKey.key,
                 transaction: record,
