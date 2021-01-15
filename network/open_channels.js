@@ -35,7 +35,9 @@ const getTxRetryCount = 10;
 const interrogationSeparator = ' and \n  ';
 const {isArray} = Array;
 const isHex = n => !!n && !(n.length % 2) && /^[0-9A-F]*$/i.test(n);
+const knownTypes = ['private', 'public'];
 const makeId = () => randomBytes(32).toString('hex');
+const notFound = -1;
 const peerAddedDelayMs = 1000 * 5;
 const per = (a, b) => (a / b).toFixed(2);
 const times = 10;
@@ -54,6 +56,7 @@ const utxoPollingTimes = 20;
     logger: <Winston Logger Object>
     public_keys: [<Public Key Hex String>]
     request: <Request Function>
+    types: [<Channel Type String>]
   }
 
   @returns via cbk or Promise
@@ -104,6 +107,18 @@ module.exports = (args, cbk) => {
 
         if (!args.request) {
           return cbk([400, 'ExpectedRequestFunctionToOpenChannels']);
+        }
+
+        if (!isArray(args.types)) {
+          return cbk([400, 'ExpectedArrayOfTypesToOpenChannels']);
+        }
+
+        if (args.types.findIndex(n => !knownTypes.includes(n)) !== notFound) {
+          return cbk([400, 'UnknownChannelType']);
+        }
+
+        if (!!args.types.length && args.types.length !== publicKeysLength) {
+          return cbk([400, 'ChannelTypesMustBeSpecifiedForEveryPublicKey']);
         }
 
         return cbk();
@@ -246,8 +261,14 @@ module.exports = (args, cbk) => {
         const channels = args.public_keys.map((key, i) => {
           const capacity = capacities[i] || defaultChannelCapacity;
           const give = args.gives[i] || undefined;
+          const type = args.types[i] || undefined;
 
-          return {capacity, give_tokens: give, partner_public_key: key};
+          return {
+            capacity,
+            give_tokens: give,
+            is_private: !!type && type === 'private',
+            partner_public_key: key,
+          };
         });
 
         return openChannels({channels, lnd: args.lnd}, cbk);

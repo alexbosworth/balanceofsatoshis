@@ -911,6 +911,7 @@ prog
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
   .option('--give <give_amount>', 'Amount to gift to peer', REPEATABLE)
   .option('--node <node_name>', 'Node to open channels')
+  .option('--type <type>', 'Type of channel (private/public)', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -922,6 +923,7 @@ prog
           gives: flatten([options.give].filter(n => !!n)),
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           public_keys: args.peerPublicKeys,
+          types: flatten([options.type].filter(n => !!n)),
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
