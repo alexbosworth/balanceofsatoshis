@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.17.1
+
+- `accounting`: Fix for error when chain transactions list is missing required input data
+
 ## Version 7.17.0
 
 - `open`: Add `type` to allow specifying a private or public channel type
