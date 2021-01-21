@@ -5,6 +5,7 @@ const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
+const asyncRetry = require('async/retry');
 const {Composer} = require('telegraf');
 const {getForwards} = require('ln-service');
 const {getTransactionRecord} = require('ln-sync');
@@ -290,23 +291,22 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
           });
         });
 
-        bot.command('liquidity', ({message, reply}) => {
-          handleLiquidityCommand({
-            reply,
-            request,
-            from: message.from.id,
-            id: connectedId,
-            key: apiKey.key,
-            nodes: getNodes,
-            text: message.text,
-          },
-          err => {
-            if (!!err) {
-              return logger.error(err);
-            }
-
-            return;
-          });
+        bot.command('liquidity', async ({message, reply}) => {
+          try {
+            await asyncRetry({}, async () => {
+              await handleLiquidityCommand({
+                reply,
+                request,
+                from: message.from.id,
+                id: connectedId,
+                key: apiKey.key,
+                nodes: getNodes,
+                text: message.text,
+              });
+            });
+          } catch (err) {
+            logger.error(err);
+          }
         });
 
         bot.command('pay', async ({message, reply}) => {

@@ -69,7 +69,7 @@ module.exports = ({credentials, logger, port, remote}) => {
 
   const log = (err, line) => {
     if (!!err) {
-      return logger.err({gateway: err});
+      return logger.error({gateway: err});
     }
 
     return logger.info({gateway: line})

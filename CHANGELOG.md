@@ -1,5 +1,12 @@
 # Versions
 
+## Version 7.17.2
+
+- `gateway`: Fix error logging when starting gateway
+- `inbound-channel-rules`: Fix error when passing rules
+- `rebalance`: Avoid selecting the same out node as the inbound tag node
+- `telegram`: Improve reliability of /liquidity command
+
 ## Version 7.17.1
 
 - `accounting`: Fix for error when chain transactions list is missing required input data

@@ -48,6 +48,7 @@ module.exports = ({lnd, logger, reason, rules}, cbk) => {
             rules,
             capacities: [1],
             capacity: 2,
+            channel_ages: [],
             fee_rates: [3],
             local_balance: 4,
             public_key: Buffer.alloc(33, 2).toString('hex'),

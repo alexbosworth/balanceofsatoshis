@@ -20,11 +20,11 @@
     "bolt03": "1.2.6",
     "bolt07": "1.6.0",
     "caporal": "1.4.0",
-    "cbor": "6.0.0",
+    "cbor": "6.0.1",
     "cert-info": "1.5.1",
     "colorette": "1.2.1",
     "crypto-js": "4.0.0",
-    "csv-parse": "4.14.2",
+    "csv-parse": "4.15.0",
     "goldengate": "10.0.0",
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
@@ -32,7 +32,7 @@
     "inquirer": "7.3.3",
     "invoices": "1.1.4",
     "ln-accounting": "4.2.5",
-    "ln-service": "50.11.2",
+    "ln-service": "50.11.3",
     "ln-sync": "0.4.2",
     "ln-telegram": "3.1.0",
     "moment": "2.29.1",
@@ -76,5 +76,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/wallets/*.js"
   },
-  "version": "7.17.1"
+  "version": "7.17.2"
 }

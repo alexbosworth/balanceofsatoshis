@@ -38,7 +38,6 @@ const initialProbeTokens = size => Math.round((Math.random() * size) + size);
 const {isArray} = Array;
 const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
 const legacyMaxRebalanceTokens = 4294967;
-const legacyVersion = '0.10.0-beta';
 const {max} = Math;
 const maxPaymentSize = 4294967;
 const maxRebalanceTokens = 16777215;
@@ -269,12 +268,11 @@ module.exports = (args, cbk) => {
         return getNode({lnd, public_key: getPublicKey.public_key}, cbk);
       }],
 
-      // Find inbound peer key if a name is specified
-      findInKey: [
+      // Find inbound tag public key
+      findInTag: [
         'getInitialLiquidity',
         'getTags',
-        'lnd',
-        ({getInitialLiquidity, getTags, lnd}, cbk) =>
+        ({getInitialLiquidity, getTags}, cbk) =>
       {
         const {match, matches} = findTagMatch({
           channels: getInitialLiquidity.channels.filter(n => n.is_active),
@@ -286,8 +284,18 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MultipleTagMatchesFoundForInPeer', {matches}]);
         }
 
-        if (match) {
-          return cbk(null, match);
+        return cbk(null, match);
+      }],
+
+      // Find inbound peer key if a name is specified
+      findInKey: [
+        'findInTag',
+        'getInitialLiquidity',
+        'lnd',
+        ({findInTag, getInitialLiquidity, lnd}, cbk) =>
+      {
+        if (!!findInTag) {
+          return cbk(null, findInTag);
         }
 
         return findKey({
@@ -306,13 +314,16 @@ module.exports = (args, cbk) => {
 
       // Find outbound peer key if a name is specified
       findOutKey: [
+        'findInTag',
         'getInitialLiquidity',
         'getTags',
         'lnd',
-        ({getInitialLiquidity, getTags, lnd}, cbk) =>
+        ({findInTag, getInitialLiquidity, getTags, lnd}, cbk) =>
       {
         const {match, matches} = findTagMatch({
-          channels: getInitialLiquidity.channels.filter(n => n.is_active),
+          channels: getInitialLiquidity.channels
+            .filter(n => n.is_active)
+            .filter(n => n.partner_public_key !== findInTag),
           tags: getTags.tags,
           query: args.out_through,
         });
@@ -809,13 +820,24 @@ module.exports = (args, cbk) => {
       rebalance: [
         'getAdjustedInbound',
         'getAdjustedOutbound',
+        'getInbound',
+        'getOutbound',
         'pay',
-        ({getAdjustedInbound, getAdjustedOutbound, pay}, cbk) =>
+        ({
+          getAdjustedInbound,
+          getAdjustedOutbound,
+          getInbound,
+          getOutbound,
+          pay,
+        },
+        cbk) =>
       {
+        const inOn = getAdjustedOutbound.alias || getOutbound.public_key;
         const inOpeningIn = getAdjustedInbound.inbound_opening;
         const inOpeningOut = getAdjustedInbound.outbound_opening;
         const inPendingIn = getAdjustedInbound.inbound_pending;
         const inPendingOut = getAdjustedInbound.outbound_pending;
+        const outOn = getAdjustedInbound.alias || getInbound.public_key;
         const outOpeningIn = getAdjustedOutbound.inbound_opening;
         const outOpeningOut = getAdjustedOutbound.outbound_opening;
         const outPendingIn = getAdjustedOutbound.inbound_pending;
@@ -824,7 +846,7 @@ module.exports = (args, cbk) => {
         return cbk(null, {
           rebalance: [
             {
-              increased_inbound_on: getAdjustedOutbound.alias,
+              increased_inbound_on: inOn,
               liquidity_inbound: tokAsBigTok(getAdjustedOutbound.inbound),
               liquidity_inbound_opening: tokAsBigTok(outOpeningIn),
               liquidity_inbound_pending: tokAsBigTok(outPendingIn),
@@ -833,7 +855,7 @@ module.exports = (args, cbk) => {
               liquidity_outbound_pending: tokAsBigTok(outPendingOut),
             },
             {
-              decreased_inbound_on: getAdjustedInbound.alias,
+              decreased_inbound_on: outOn,
               liquidity_inbound: tokAsBigTok(getAdjustedInbound.inbound),
               liquidity_inbound_opening: tokAsBigTok(inOpeningIn),
               liquidity_inbound_pending: tokAsBigTok(inPendingIn),

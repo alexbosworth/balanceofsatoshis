@@ -8,6 +8,7 @@ const {returnResult} = require('asyncjs-util');
 const describeConfidence = require('./describe_confidence');
 const formatFeeRate = require('./format_fee_rate');
 
+const aliasColor = n => !!n ? greenBright(n) : '';
 const effectiveFeeRate = (n, m) => Number(BigInt(1e6) * BigInt(n) / BigInt(m));
 const flatten = arr => [].concat(...arr);
 
@@ -95,7 +96,7 @@ module.exports = ({lnd, route}, cbk) => {
           const isFinal = i === hops.length - 1 && hops.length !== 1;
 
           const feeMtokens = isFinal ? hops[i-1].fee_mtokens : hop.fee_mtokens;
-          const forwarder = `${greenBright(alias)} ${hop.public_key}`.trim();
+          const forwarder = `${aliasColor(alias)} ${hop.public_key}`.trim();
 
           const feeRate = effectiveFeeRate(feeMtokens, hop.forward_mtokens);
 
