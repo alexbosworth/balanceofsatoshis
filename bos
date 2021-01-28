@@ -91,6 +91,24 @@ prog
     });
   })
 
+  // Advertise to other nodes on the network
+  .command('advertise', 'Broadcast advertisement')
+  .option('--message <message>', 'Custom advertisement message')
+  .option('--node <node_name>', 'Advertise on saved node')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return await services.advertise({
+          logger,
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          message: options.message,
+        });
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
+    });
+  })
+
   // Direct autopilot to mirror one or more nodes on the network
   .command('autopilot', 'Enable autopilot')
   .visible(false)
@@ -1393,6 +1411,7 @@ prog
   .help('Supported updates: forwards, received payments')
   .option('--budget <amount>', 'Spending amount to allow', INT, Number())
   .option('--connect <connect_code>', 'Connection code', INT)
+  .option('--ignore-forwards-below <amount>', 'Ignore forwards of value', INT)
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -1407,6 +1426,7 @@ prog
             makeDirectory: mkdir,
           },
           id: options.connect,
+          min_forward_tokens: options.ignoreForwardsBelow || undefined,
           nodes: flatten([options.node].filter(n => !!n)),
           payments: {limit: options.budget}
         });

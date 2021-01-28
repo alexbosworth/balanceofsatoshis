@@ -38,6 +38,7 @@ const utf8AsHex = n => Buffer.from(n, 'utf8').toString('hex');
     [out_through]: <Pay Out Through Peer String>
     quiz_answers: [<Quiz Answer String>]
     request: <Request Function>
+    [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
   }
 */
 module.exports = (args, cbk) => {
@@ -297,6 +298,7 @@ module.exports = (args, cbk) => {
             value: utf8AsHex(answer),
           })),
           out_through: getOutKey,
+          timeout_minutes: args.timeout_minutes,
           tokens: parseAmount.tokens,
         },
         cbk);

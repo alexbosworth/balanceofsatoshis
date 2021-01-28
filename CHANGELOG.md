@@ -1,5 +1,13 @@
 # Versions
 
+## Version 7.18.0
+
+Remove support for auto-detecting TLS IP
+
+- `advertise`: Add method to advertise your node over KeySend to the network
+- `telegram`: Add `ignore-forwards-below` option to not be notified on small forwards
+- `telegram`: Avoid retrying /liquidity when a peer match is not found
+
 ## Version 7.17.2
 
 - `gateway`: Fix error logging when starting gateway

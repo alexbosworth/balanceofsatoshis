@@ -24,6 +24,7 @@ const restartDelayMs = 1000 * 60 * 3;
     }
     [id]: <Authorized User Id Number>
     logger: <Winston Logger Object>
+    [min_forward_tokens]: <Minimum Forward Tokens Number>
     [nodes]: [<Node Name String>]
     payments: {
       [limit]: <Total Spendable Budget Tokens Limit Number>
@@ -104,6 +105,9 @@ module.exports = (args, cbk) => {
               lnds,
               fs: args.fs,
               id: args.id,
+              limits: {
+                min_forward_tokens: args.min_forward_tokens || undefined,
+              },
               logger: args.logger,
               payments: {limit},
               request: args.request,

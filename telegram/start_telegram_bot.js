@@ -61,6 +61,9 @@ const restartSubscriptionTimeMs = 1000 * 30;
       writeFile: <Write File Function>
     }
     [id]: <Authorized User Id Number>
+    limits: {
+      min_forward_tokens: <Minimum Forward Tokens To Notify Number>
+    }
     lnds: [<Authenticated LND API Object>]
     logger: <Winston Logger Object>
     payments: {
@@ -71,7 +74,7 @@ const restartSubscriptionTimeMs = 1000 * 30;
 
   @returns via cbk or Promise
 */
-module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
+module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
   let connectedId = id;
   let isStopped = false;
   let paymentsLimit = !payments || !payments.limit ? Number() : payments.limit;
@@ -293,7 +296,15 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
 
         bot.command('liquidity', async ({message, reply}) => {
           try {
-            await asyncRetry({}, async () => {
+            await asyncRetry({
+              errorFilter: err => {
+                if (err && /^404/.test(err.message)) {
+                  return false;
+                }
+
+                return true;
+              },
+            }, async () => {
               await handleLiquidityCommand({
                 reply,
                 request,
@@ -530,7 +541,13 @@ module.exports = ({fs, id, lnds, logger, payments, request}, cbk) => {
                 from,
                 lnd,
                 request,
-                forwards: res.forwards,
+                forwards: res.forwards.filter(forward => {
+                  if (!limits || !limits.min_forward_tokens) {
+                    return true;
+                  }
+
+                  return forward.tokens >= limits.min_forward_tokens;
+                }),
                 id: connectedId,
                 key: apiKey.key,
                 node: node.public_key,

@@ -58,14 +58,14 @@ const tests = [
             [
               '[Application Options]',
               'rpclisten=0.0.0.0:1',
-              'tlsextraip=ip',
+              'tlsextradomain=domain',
             ].join('\n'),
           )
         ),
       },
     },
-    description: 'Ip and rpclisten returns a socket',
-    expected: {socket: 'ip:1'},
+    description: 'Ip and rpclisten returns a domain',
+    expected: {socket: 'domain:1'},
   },
 ];
 

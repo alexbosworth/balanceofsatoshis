@@ -90,13 +90,12 @@ module.exports = ({fs, node, os}, cbk) => {
         }
 
         const {tlsextradomain} = parseConf[applicationOptions] || {};
-        const {tlsextraip} = parseConf[applicationOptions] || {};
 
-        if (!tlsextradomain && !tlsextraip) {
+        if (!tlsextradomain) {
           return cbk();
         }
 
-        return cbk(null, tlsextradomain || tlsextraip);
+        return cbk(null, tlsextradomain);
       }],
 
       // Derive the RPC socket from the configuration settings
