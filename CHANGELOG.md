@@ -1,6 +1,6 @@
 # Versions
 
-## Version 7.18.1
+## Version 7.18.2
 
 Remove support for auto-detecting TLS IP
 
