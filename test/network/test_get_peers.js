@@ -9,48 +9,61 @@ const {pendingChannelsResponse} = require('./../fixtures');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 
+const makeArgs = overrides => {
+  const args = {
+    fs: {getFile: ({}, cbk) => cbk()},
+    lnd: {
+      chain: {
+        registerBlockEpochNtfn: ({}) => {
+          const emitter = new EventEmitter();
+
+          emitter.cancel = () => {};
+
+          process.nextTick(() => emitter.emit('error', 'err'));
+
+          return emitter;
+        },
+      },
+      default: {
+        closedChannels: ({}, cbk) => cbk(null, {channels: []}),
+        getInfo: ({}, cbk) => cbk(null, getInfoRes()),
+        listChannels: ({}, cbk) => cbk(null, {channels: []}),
+        listPeers: ({}, cbk) => cbk(null, {peers: []}),
+        pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
+      },
+    },
+    omit: [],
+    tags: [],
+  };
+
+  Object.keys(overrides).forEach(k => args[k] = overrides[k]);
+
+  return args;
+};
+
 const tests = [
   {
-    args: {fs: {}},
+    args: makeArgs({lnd: undefined}),
     description: 'Getting peers requires lnd',
     error: [400, 'ExpectedLndToGetPeers'],
   },
   {
-    args: {fs: {}, lnd: {}},
+    args: makeArgs({omit: undefined}),
     description: 'Getting peers requires an omit array',
     error: [400, 'ExpectedOmitArrayToGetPeers'],
   },
   {
-    args: {
-      fs: {getFile: ({}, cbk) => cbk()},
-      lnd: {
-        chain: {
-          registerBlockEpochNtfn: ({}) => {
-            const emitter = new EventEmitter();
-
-            emitter.cancel = () => {};
-
-            process.nextTick(() => emitter.emit('error', 'err'));
-
-            return emitter;
-          },
-        },
-        default: {
-          closedChannels: ({}, cbk) => cbk(null, {channels: []}),
-          getInfo: ({}, cbk) => cbk(null, getInfoRes()),
-          listChannels: ({}, cbk) => cbk(null, {channels: []}),
-          listPeers: ({}, cbk) => cbk(null, {peers: []}),
-          pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
-        },
-      },
-      omit: [],
-    },
+    args: makeArgs({sort_by: []}),
+    description: 'Getting peers requires only one sort factor',
+    error: [400, 'SortingByMultipleFieldsNotSupported'],
+  },
+  {
+    args: makeArgs({}),
     description: 'Getting peers with no channels returns nothing',
     expected: {peers: []},
   },
   {
-    args: {
-      fs: {getFile: ({}, cbk) => cbk()},
+    args: makeArgs({
       lnd: {
         chain: {
           registerBlockEpochNtfn: ({}) => {
@@ -145,8 +158,7 @@ const tests = [
           listPeers: ({}, cbk) => cbk(null, {peers: []}),
         },
       },
-      omit: [],
-    },
+    }),
     description: 'Getting peers with a channel returns peers',
     expected: {
       peers: [{
@@ -167,7 +179,7 @@ const tests = [
     },
   },
   {
-    args: {
+    args: makeArgs({
       fs: {getFile: ({}, cbk) => cbk()},
       inbound_liquidity_below: 1000,
       lnd: {
@@ -240,9 +252,8 @@ const tests = [
           pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
         },
       },
-      omit: [],
       outbound_liquidity_below: 1000,
-    },
+    }),
     description: 'Getting peers where a channel is missing returns peers',
     expected: {
       peers: [{

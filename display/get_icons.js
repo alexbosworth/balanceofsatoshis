@@ -5,6 +5,7 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
 const flatten = arr => [].concat(...arr);
+const {isArray} = Array;
 const {parse} = JSON;
 const tagFilePath = () => join(...[homedir(), '.bos', 'tags.json']);
 const uniq = arr => Array.from(new Set(arr));
@@ -20,6 +21,7 @@ const uniq = arr => Array.from(new Set(arr));
   @returns via cbk or Promise
   {
     nodes: [{
+      aliases: [<Alias String>]
       icons: [<Icon String>]
       public_key: <Public Key Hex String>
     }]
@@ -51,12 +53,14 @@ module.exports = ({fs}, cbk) => {
             const keys = uniq(flatten(file.tags.map(n => n.nodes)));
 
             const nodes = keys.map(key => {
-              const icons = file.tags.filter(tag => {
-                return tag.nodes && tag.nodes.includes(key);
+              // Only tags this node is included in
+              const meta = file.tags.filter(tag => {
+                return isArray(tag.nodes) && tag.nodes.includes(key);
               });
 
               return {
-                icons: uniq(icons.map(n => n.icon)),
+                aliases: uniq(meta.map(n => n.alias)),
+                icons: uniq(meta.map(n => n.icon)),
                 public_key: key,
               };
             });

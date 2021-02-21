@@ -1,6 +1,7 @@
 const {Parser} = require('hot-formula-parser');
 
 const {ceil} = Math;
+const {isArray} = Array;
 const {keys} = Object;
 const {round} = Math;
 
@@ -22,6 +23,10 @@ const {round} = Math;
   }
 */
 module.exports = ({amount, variables}) => {
+  if (isArray(amount)) {
+    throw new Error('CannotParseMultipleAmounts');
+  }
+
   const parser = new Parser();
 
   keys(variables || {}).forEach(key => {

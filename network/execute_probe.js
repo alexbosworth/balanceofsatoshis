@@ -27,7 +27,7 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
     [in_through]: <In Through Public Key Hex String>
     [is_strict_hints]: <Interpret Routes Strictly Ignoring Other Paths Bool>
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_timeout_height]: <Maximum Timeout Height Number>

@@ -607,7 +607,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve, table}));
       } catch (err) {
-        reject(logger.error({err}));
+        return reject(logger.error({err}));
       }
     });
   })
@@ -635,7 +635,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
@@ -688,7 +688,8 @@ prog
 
   // Reject inbound channel requests
   .command('inbound-channel-rules', 'Enforce rules for inbound channels')
-  .help('At least one rule is required')
+  .help('At least one rule is required.')
+  .help('A rule should be written evaluating to TRUE to accept a channel')
   .help('For formulas: CAPACITIES are the sizes of the peer public channels')
   .help('For formulas: CAPACITY is the size of the requested channel open')
   .help('For formulas: CHANNEL_AGES are the block ages of public channels')
@@ -756,7 +757,7 @@ prog
   .option('--max-deposit <max_deposit>', 'Maximum deposit amount', INT, 5e4)
   .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 3e4)
   .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 65)
-  .option('--max-paths <max_paths>', 'Maximum paths to attempt', INT, 2)
+  .option('--max-paths <max_paths>', 'Maximum paths to attempt', INT, 1)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Increase inbound liquidity on saved node')
   .option('--recovery <recovery>', 'Recover in-progress swap')
@@ -1051,6 +1052,7 @@ prog
   .option('--private', 'Only private channels')
   .option('--public', 'Only peers with public channels')
   .option('--sort <by>', 'Sort results by peer attribute', peerSortOptions)
+  .option('--tag <tag_name>', 'Only show peers in a tag', REPEATABLE)
   .action((args, options, logger) => {
     const table = !!options.complete ? undefined : 'rows';
 
@@ -1071,6 +1073,7 @@ prog
           omit: flatten([options.omit].filter(n => !!n)),
           outbound_liquidity_below: options.outboundBelow,
           sort_by: options.sort,
+          tags: flatten([options.tag].filter(n => !!n)),
         },
         responses.returnObject({logger, reject, resolve, table}));
       } catch (err) {

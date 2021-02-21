@@ -249,6 +249,30 @@ expr $(bos balance --node=savedNode1) + $(bos balance --node=savedNode2)
 # outputs the combined balance of both nodes
 ```
 
+### Auto Adjust Fees
+
+```
+# Cron every 5 minutes adjust fees
+*/5 * * * * /bin/timeout -s 2 30 /home/ubuntu/update-fees.sh
+```
+
+update-fees.sh:
+
+```
+#!/bin/bash
+# Raise the outbound fees to a public key when inbound increases
+/home/ubuntu/.npm-global/bin/bos fees --to PUBLIC_KEY --set-fee-rate="IF(INBOUND>10000000,1000,500)"
+```
+
+### Auto Balance Liquidity Between Two Nodes
+
+Keep a channel balanced between two nodes
+
+```
+# Cron: every 30 minutes send funds to reach 50:50
+*/30 * * * * /home/ubuntu/.npm-global/bin/bos send PUBKEY --max-fee 0 --message="rebalance" --amount="IF(OUTBOUND+1*m>(LIQUIDITY/2), OUTBOUND-(LIQUIDITY/2), 0)"
+```
+
 ## Alerts and Reports with `sendnotification`
 
 Some commands are made with the idea that they can trigger an alert or regular

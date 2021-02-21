@@ -9,7 +9,7 @@ const {getTransactionRecord} = require('ln-sync');
 const {getUtxos} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const describeRelatedChannel = n => `${n.action} with ${n.node} ${n.with}`;
+const describeChan = n => `${n.action} with ${(n.node || '' + n.with).trim()}`;
 const flatten = arr => [].concat(...arr);
 const none = 0;
 const uniq = arr => Array.from(new Set(arr));
@@ -150,7 +150,7 @@ module.exports = (args, cbk) => {
             .filter(n => n.tx === utxo.transaction_id)
             .filter(n => n.related_channels.length)
             .map(n => n.related_channels)
-            .map(chans => chans.map(n => describeRelatedChannel(n)));
+            .map(chans => chans.map(n => describeChan(n)));
 
           return {
             outpoint: `${utxo.transaction_id}:${utxo.transaction_vout}`,

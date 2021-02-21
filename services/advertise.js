@@ -23,7 +23,7 @@ const filterLimit = 10;
 const hashOf = n => createHash('sha256').update(n).digest().toString('hex');
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const invoiceDescription = n => `👀 ${n}`;
-const invoiceExpiration = () => new Date(Date.now() + 1000 * 60 * 60 * 24);
+const invoiceExpiration = () => new Date(Date.now() + 1000 * 60 * 60 * 24 * 5);
 const invoiceTokens = 1;
 const keySendValueType = '5482373484';
 const maxFeeTokens = 10;

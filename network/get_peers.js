@@ -57,6 +57,7 @@ const wideSizeCols = 150;
     omit: [<Omit Peer With Public Key Hex String>]
     [outbound_liquidity_below]: <Outbound Liquidity Below Tokens Number>
     [sort_by]: <Sort Results By Attribute String>
+    [tags]: [<Tag Identifier String>]
   }
 
   @returns via cbk or Promise
@@ -97,17 +98,8 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get channels
-      getChannels: ['validate', ({}, cbk) => {
-        return getChannels({
-          is_active: args.is_active,
-          is_offline: args.is_offline,
-          is_private: args.is_private,
-          is_public: args.is_public,
-          lnd: args.lnd,
-        },
-        cbk);
-      }],
+      // Get node icons
+      getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
 
       // Get closed channels
       getClosed: ['validate', ({}, cbk) => {
@@ -127,9 +119,6 @@ module.exports = (args, cbk) => {
 
         return getPastForwards({days, lnd: args.lnd}, cbk);
       }],
-
-      // Get node icons
-      getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
 
       // Get invoices
       getInvoices: ['validate', ({}, cbk) => {
@@ -195,6 +184,43 @@ module.exports = (args, cbk) => {
       // Get pending channels
       getPending: ['validate', ({}, cbk) => {
         return getPendingChannels({lnd: args.lnd}, cbk);
+      }],
+
+      // Get channels
+      getChannels: ['getIcons', ({getIcons}, cbk) => {
+        return getChannels({
+          is_active: args.is_active,
+          is_offline: args.is_offline,
+          is_private: args.is_private,
+          is_public: args.is_public,
+          lnd: args.lnd,
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          // Filter the list of channels to satisfy tag search constraints
+          const channels = res.channels.filter(channel => {
+            // Exit early when there are no tag constraints
+            if (!isArray(args.tags) || !args.tags.length) {
+              return true;
+            }
+
+            const key = channel.partner_public_key;
+
+            const node = getIcons.nodes.find(n => n.public_key === key);
+
+            // Exit early when there is no matching tagged node
+            if (!node) {
+              return false;
+            }
+
+            return !!args.tags.find(tag => node.aliases.includes(tag));
+          });
+
+          return cbk(null, {channels});
+        });
       }],
 
       // Get policies

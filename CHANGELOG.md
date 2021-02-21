@@ -1,5 +1,9 @@
 # Versions
 
+## Version 7.19.0
+
+- `peers`: Add `--tag` option to show only one or more tags in the output
+
 ## Version 7.18.2
 
 Remove support for auto-detecting TLS IP
