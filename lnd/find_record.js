@@ -197,6 +197,7 @@ module.exports = ({lnd, query}, cbk) => {
                     liquidity: `${outbound} | ${inbound}`,
                     capacity: formatTokens({tokens: chan.capacity}).display,
                     funding: `${chan.transaction_id} ${chan.transaction_vout}`,
+                    peer_created: chan.is_partner_initiated || undefined,
                   };
                 }),
             }

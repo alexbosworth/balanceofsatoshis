@@ -18,6 +18,7 @@ const {handleInvoiceCommand} = require('ln-telegram');
 const {handleLiquidityCommand} = require('ln-telegram');
 const {handleMempoolCommand} = require('ln-telegram');
 const {handlePayCommand} = require('ln-telegram');
+const {handlePendingCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
 const inquirer = require('inquirer');
 const {notifyOfForwards} = require('ln-telegram');
@@ -187,6 +188,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           {command: 'liquidity', description: 'Get liquidity [with-peer]'},
           {command: 'mempool', description: 'Get info about the mempool'},
           {command: 'pay', description: 'Pay a payment request'},
+          {command: 'pending', description: 'Get pending forwards, channels'},
           {command: 'version', description: 'View current bot version'},
         ]);
 
@@ -352,6 +354,19 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           });
 
           return;
+        });
+
+        bot.command('pending', async ctx => {
+          try {
+            return await handlePendingCommand({
+              from: ctx.message.from.id,
+              id: connectedId,
+              nodes: getNodes,
+              reply: n => ctx.replyWithMarkdown(n),
+            });
+          } catch (err) {
+            return logger.error({err});
+          }
         });
 
         bot.command('version', async ctx => {

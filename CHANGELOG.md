@@ -1,5 +1,12 @@
 # Versions
 
+## Version 8.0.0
+
+Support is ended for nodejs 10, nodejs 12 or higher is required
+
+- `find`: Indicate if a peer initiated a found channel
+- `telegram`: Add `/pending` command to view pending HTLCs and channels
+
 ## Version 7.19.0
 
 - `peers`: Add `--tag` option to show only one or more tags in the output
