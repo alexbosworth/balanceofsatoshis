@@ -13,6 +13,7 @@ const {signBytes} = require('ln-service');
 const {subscribeToFindMaxPayable} = require('probing');
 
 const executeProbe = require('./execute_probe');
+const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
 const bufFromHex = hex => Buffer.from(hex, 'hex');
@@ -39,6 +40,9 @@ const signatureType = '34349337';
   {
     [destination]: <Destination Public Key Hex String>
     [find_max]: <Find Maximum Payable On Probed Route Below Tokens Number>
+    [fs]: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [ignore]: [{
       from_public_key: <Avoid Node With Public Key Hex String>
     }]
@@ -96,6 +100,15 @@ module.exports = (args, cbk) => {
         }
 
         return getChannels({lnd: args.lnd}, cbk);
+      }],
+
+      // Get node icons
+      getIcons: ['validate', ({}, cbk) => {
+        if (!args.fs) {
+          return cbk();
+        }
+
+        return getIcons({fs: args.fs}, cbk);
       }],
 
       // Get identity key
@@ -276,11 +289,12 @@ module.exports = (args, cbk) => {
       // Probe towards destination
       probe: [
         'getFeatures',
+        'getIcons',
         'getIdentity',
         'messages',
         'outgoingChannelId',
         'to',
-        ({getFeatures, messages, outgoingChannelId, to}, cbk) =>
+        ({getFeatures, getIcons, messages, outgoingChannelId, to}, cbk) =>
       {
         return executeProbe({
           messages,
@@ -296,6 +310,7 @@ module.exports = (args, cbk) => {
           outgoing_channel: outgoingChannelId,
           payment: to.payment,
           routes: to.routes,
+          tagged: !!getIcons ? getIcons.nodes : undefined,
           timeout_minutes: args.timeout_minutes || undefined,
           tokens: args.tokens || to.tokens || defaultTokens,
           total_mtokens: !!to.payment ? to.mtokens : undefined,

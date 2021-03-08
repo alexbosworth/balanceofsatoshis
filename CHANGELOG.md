@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.1
+
+- `rebalance`: Show node icons in route descriptions
+
 ## Version 8.0.0
 
 Support is ended for nodejs 10, nodejs 12 or higher is required

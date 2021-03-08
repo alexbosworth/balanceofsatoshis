@@ -45,6 +45,10 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
       [fee_rate]: <Proportional Fee Rate Number>
       public_key: <Destination Public Key Hex String>
     }]]
+    [tagged]: [{
+      icons: [<Icon String>]
+      public_key: <Public Key Hex String>
+    }]
     [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
     tokens: <Tokens To Probe Number>
     [total_mtokens]: <Total Millitokens String>
@@ -194,7 +198,11 @@ module.exports = (args, cbk) => {
         sub.on('probing', async ({route}) => {
           attemptedPaths.push(route);
 
-          const {description} = await describeRoute({route, lnd: args.lnd});
+          const {description} = await describeRoute({
+            route,
+            lnd: args.lnd,
+            tagged: args.tagged || undefined,
+          });
 
           return args.logger.info({evaluating: description});
         });

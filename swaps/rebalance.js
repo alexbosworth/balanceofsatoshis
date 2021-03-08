@@ -628,6 +628,7 @@ module.exports = (args, cbk) => {
           tokens,
           destination: getPublicKey.public_key,
           find_max: max,
+          fs: args.fs,
           ignore: [].concat(immediateIgnore).concat(ignore).filter(n => {
             if (!!n.to_public_key) {
               return true;
