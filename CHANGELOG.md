@@ -1,6 +1,6 @@
 # Versions
 
-## Version 8.0.1
+## Version 8.0.2
 
 - `rebalance`: Show node icons in route descriptions
 
