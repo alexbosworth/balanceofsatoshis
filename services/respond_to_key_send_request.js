@@ -11,18 +11,19 @@ const typePing = '8470534167946609795';
 
   {
     id: <Received Payment Invoice Id Hex String>
-    lnd: <Authenticated LND API Object>
+    lnd: <Server Authenticated LND API Object>
     logger: <Winston Logger Object>
     messages: [{
       type: <Message Type Number String>
       value: <Raw Value Hex String>
     }]
+    pay: <Payer Authenticated LND API Object>
     received: <Received Tokens Rounded Down Number>
   }
 
   @returns via cbk or Promise
 */
-module.exports = ({id, lnd, logger, messages, received}, cbk) => {
+module.exports = ({id, lnd, logger, messages, pay, received}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -41,6 +42,10 @@ module.exports = ({id, lnd, logger, messages, received}, cbk) => {
 
         if (!isArray(messages)) {
           return cbk([400, 'ExpectedMessagesArrayToRespondToKeySendRequest']);
+        }
+
+        if (!pay) {
+          return cbk([400, 'ExpectedPayerLndToRespondToKeySendRequest']);
         }
 
         if (received === undefined) {
@@ -63,6 +68,7 @@ module.exports = ({id, lnd, logger, messages, received}, cbk) => {
           id,
           lnd,
           logger,
+          pay,
           received,
           request: hexAsString(ping.value),
         },

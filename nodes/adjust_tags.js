@@ -155,10 +155,11 @@ module.exports = (args, cbk) => {
           return cbk([400, 'AmbiguousTagToAdjustSpecified', {matches}]);
         }
 
+        const setAvoid = args.is_avoided !== undefined;
         const setIcon = args.icon !== undefined;
 
         // Exit early when not editing the tag
-        if (!args.add.length && !setIcon && !args.remove.length) {
+        if (!args.add.length && !setAvoid && !setIcon && !args.remove.length) {
           return cbk(null, tagMatch);
         }
 

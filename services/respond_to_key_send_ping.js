@@ -3,7 +3,7 @@ const {formatTokens} = require('ln-sync');
 const {getNodeAlias} = require('ln-sync');
 const {getPayment} = require('ln-service');
 const {parsePaymentRequest} = require('invoices');
-const {pay} = require('ln-service');
+const {payViaPaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const maximumPingPrice = 200;
@@ -15,15 +15,16 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
 
   {
     id: <Ping Invoice Id Hex String>
-    lnd: <Authenticated LND API Object>
+    lnd: <Server Authenticated LND API Object>
     logger: <Winston Logger Object>
+    pay: <Payer Authenticated LND API Object>
     received: <Received Tokens Rounded Down Number>
     [request]: <BOLT 11 Encoded Payment Request String>
   }
 
   @returns via cbk or Promise
 */
-module.exports = ({id, lnd, logger, received, request}, cbk) => {
+module.exports = ({id, lnd, logger, pay, received, request}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -38,6 +39,10 @@ module.exports = ({id, lnd, logger, received, request}, cbk) => {
 
         if (!logger) {
           return cbk([400, 'ExpectedWinstonLoggerToRespondToKeySendPing']);
+        }
+
+        if (!pay) {
+          return cbk([400, 'ExpectedPayerLndToRespondToKeySendPing']);
         }
 
         if (received === undefined) {
@@ -68,7 +73,7 @@ module.exports = ({id, lnd, logger, received, request}, cbk) => {
           return cbk();
         }
 
-        return getPayment({lnd, id: parseRequest.id}, (err, res) => {
+        return getPayment({id: parseRequest.id, lnd: pay}, (err, res) => {
           // Ignore errors on payment lookup
           if (!!err) {
             return cbk();
@@ -143,13 +148,15 @@ module.exports = ({id, lnd, logger, received, request}, cbk) => {
         // Exit early when the response ping tokens are not as expected
         if (parseRequest.mtokens !== tokensAsMillitokens(responsePingTokens)) {
           logger.warn({received_bad_ping: 'PingResponseTokensValueIncorrect'});
+
+          return cbk();
         }
 
         const feeBudget = received - responsePingTokens;
 
-        return pay({
-          lnd,
+        return payViaPaymentRequest({
           request,
+          lnd: pay,
           max_fee: received - responsePingTokens,
         },
         (err, res) => {

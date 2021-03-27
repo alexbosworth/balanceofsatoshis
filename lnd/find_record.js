@@ -135,6 +135,10 @@ module.exports = ({lnd, query}, cbk) => {
               return true;
             }
 
+            if (node.public_key.startsWith(query.toLowerCase())) {
+              return true;
+            }
+
             return node.public_key === query;
           })
           .map(node => {

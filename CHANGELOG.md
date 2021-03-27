@@ -1,5 +1,11 @@
 # Versions
 
+## Version 8.0.3
+
+- `find`: Lookup node by start of public key
+- `service-keysend-requests`: Use an alternative node to pay response requests
+- `tags`: Fix issue when setting avoid on a tag without adjusting icon or keys
+
 ## Version 8.0.2
 
 - `rebalance`: Show node icons in route descriptions

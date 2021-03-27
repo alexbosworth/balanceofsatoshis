@@ -362,7 +362,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               from: ctx.message.from.id,
               id: connectedId,
               nodes: getNodes,
-              reply: n => ctx.replyWithMarkdown(n),
+              reply: n => ctx.reply(n),
             });
           } catch (err) {
             return logger.error({err});
@@ -388,6 +388,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             '/liquidity [with] - View node liquidity',
             '/mempool - BTC mempool report',
             '/pay - Pay an invoice',
+            '/pending - View pending channels, probes, and forwards',
             '/version - View the current bot version',
           ];
 

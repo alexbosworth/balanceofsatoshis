@@ -1338,14 +1338,43 @@ prog
 
   // Respond to keysend service requests
   .command('service-keysend-requests', 'Respond to keysend service requests')
-  .help('Offering keysend services requires --keysend enabled')
+  .help('Offering keysend services requires --accept-keysend in LND')
   .option('--node <node_name>', 'Saved node to respond to service requests')
+  .option('--payer <pay_with_node_name>', 'Node to pay response requests with')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const {lnd} = await lndForNode(logger, options.node);
+        const payer = options.payer === options.node ? null : options.payer;
+
         await services.serviceKeySendRequests({
+          lnd,
           logger,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          pay: !payer ? lnd : (await lndForNode(logger, payer)).lnd,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
+    });
+  })
+
+  // Simulate a keysend request by generating a special local invoice
+  .command('simulate-keysend-request', 'Create an invoice to simulate request')
+  .visible(false)
+  .argument('<amount>', 'Invoice amount to simulate receiving')
+  .argument('<number_value_pairs...>', 'TLV records: <number> <hex value>')
+  .help('Make an invoice that represents a fake keysend with records')
+  .help('This invoice can trigger keysend request services to test them out')
+  .option('--node <node_name>', 'Saved node to create simulated request')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        await services.simulateKeySendRequest({
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          tokens: Number(args.amount),
+          types: args.numberValuePairs.filter((n, i) => !(i % 2)),
+          values: args.numberValuePairs.filter((n, i) => i % 2),
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
