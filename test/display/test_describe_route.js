@@ -90,10 +90,10 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, async ({deepIs, end, equal, rejects}) => {
+  return test(description, async ({end, equal, rejects, strictSame}) => {
     const description = await describeRoute(args);
 
-    deepIs(description, expected, 'Got expected route description');
+    strictSame(description, expected, 'Got expected route description');
 
     return end();
   });

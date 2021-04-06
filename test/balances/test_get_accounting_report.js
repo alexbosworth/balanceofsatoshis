@@ -17,6 +17,7 @@ const makeLnd = ({unconfirmedBalance}) => {
           fee: '1',
           fee_msat: '1000',
           timestamp: '1',
+          timestamp_ns: '1000000000',
         }],
         last_offset_index: '1',
       }),
@@ -107,13 +108,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, rejects}) => {
+  return test(description, async ({end, rejects, strictSame}) => {
     if (!!error) {
       await rejects(getAccountingReport(args), error, 'Got expected error');
     } else {
       const res = await getAccountingReport(args);
 
-      deepIs(res, expected, 'Got expected response');
+      strictSame(res, expected, 'Got expected response');
     }
 
     return end();

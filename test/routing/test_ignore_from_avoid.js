@@ -11,8 +11,8 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, throws}) => {
-    deepIs(ignoreFromAvoid(args).ignore, expected.ignore, 'Got ignores');
+  return test(description, async ({end, strictSame, throws}) => {
+    strictSame(ignoreFromAvoid(args).ignore, expected.ignore, 'Got ignores');
 
     return end();
   });

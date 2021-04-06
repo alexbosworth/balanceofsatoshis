@@ -77,13 +77,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, equal, rejects}) => {
+  return test(description, async ({end, equal, rejects, strictSame}) => {
     if (!!error) {
       rejects(getSavedCredentials(args), error, 'Got expected error');
     } else {
       const {credentials, node} = await getSavedCredentials(args);
 
-      deepIs(credentials, expected.credentials, 'Got expected credentials');
+      strictSame(credentials, expected.credentials, 'Got expected credentials');
       equal(node, expected.node, 'Got expected node name');
     }
 

@@ -38,7 +38,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({deepIs, end, equal}) => {
+  return test(description, ({end, equal, strictSame}) => {
     let loggedErr;
     let loggedInfo;
 
@@ -61,7 +61,7 @@ tests.forEach(({args, description, error, expected}) => {
           file: args.file,
           write: (path, data, cbk) => cbk('err'),
           reject: err => {
-            deepIs(err, error, 'Got expected file write error');
+            strictSame(err, error, 'Got expected file write error');
 
             return end();
           },

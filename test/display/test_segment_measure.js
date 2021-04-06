@@ -21,8 +21,8 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, ({deepIs, end}) => {
-    deepIs(segmentMeasure(args), expected, 'Got expected result');
+  return test(description, ({end, strictSame}) => {
+    strictSame(segmentMeasure(args), expected, 'Got expected result');
 
     return end();
   });

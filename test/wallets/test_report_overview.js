@@ -65,10 +65,10 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, rejects}) => {
+  return test(description, async ({end, rejects, strictSame}) => {
     const {report} = method(args);
 
-    deepIs(report, expected.report, 'Got expected report');
+    strictSame(report, expected.report, 'Got expected report');
 
     return end();
   });

@@ -31,7 +31,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected, res}) => {
-  return test(description, ({deepIs, end, equal, throws}) => {
+  return test(description, ({end, equal, strictSame, throws}) => {
     const loggedErrors = [];
     const loggedInfo = [];
 
@@ -42,7 +42,7 @@ tests.forEach(({args, description, error, expected, res}) => {
 
     if (!!error) {
       return returnChart({logger ,reject: () => {
-        deepIs(loggedErrors, [{err: error}], 'Error logged as expected');
+        strictSame(loggedErrors, [{err: error}], 'Error logged as expected');
 
         return end();
       }})(error);
@@ -52,7 +52,7 @@ tests.forEach(({args, description, error, expected, res}) => {
       logger,
       data: args.data,
       resolve: () => {
-        deepIs(loggedInfo.join('\n'), expected.join('\n'), 'Got expected info');
+        strictSame(loggedInfo.join('\n'), expected.join('\n'), 'Got expected info');
 
         return end();
       },

@@ -49,14 +49,14 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({deepIs, end, equal, throws}) => {
+  return test(description, ({end, equal, strictSame, throws}) => {
     if (!!error) {
       throws(() => rangeForDate(args), new Error(error), 'Got expected error');
     } else if (!args.year && !!args.month) {
       equal(!!rangeForDate(args).after, true, 'Got expected after date');
       equal(!!rangeForDate(args).before, true, 'Got expected before date');
     } else {
-      deepIs(rangeForDate(args), expected, 'Got expected date range');
+      strictSame(rangeForDate(args), expected, 'Got expected date range');
     }
 
     return end();

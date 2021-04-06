@@ -206,8 +206,28 @@ module.exports = (args, cbk) => {
             return cbk(null, {from_public_key: id});
           }
 
+          const isChannel = !!channelMatch.test(id);
+
+          // Exit early when the id matches a tag alias
+          if (!isChannel && getTags.tags.find(n => n.alias === id)) {
+            const {nodes} = getTags.tags.find(n => n.alias === id);
+
+            args.logger.info({avoiding_tag: `${id}: ${nodes.length} nodes`});
+
+            return cbk(null, nodes.map(n => ({from_public_key: n})));
+          }
+
+          // Exit early when the id matches a tag id
+          if (!isChannel && getTags.tags.find(n => n.id === id)) {
+            const {nodes} = getTags.tags.find(n => n.id === id);
+
+            args.logger.info({avoiding_tag: `${id}: ${nodes.length} nodes`});
+
+            return cbk(null, nodes.map(n => ({from_public_key: n})));
+          }
+
           // Exit early when the id is a peer query
-          if (!channelMatch.test(id)) {
+          if (!isChannel) {
             return findKey({
               lnd,
               channels: getInitialLiquidity.channels,
@@ -758,7 +778,7 @@ module.exports = (args, cbk) => {
             return cbk([
               400,
               'RebalanceTotalFeeTooHigh',
-              {needed_max_fee: endRoute.fee},
+              {needed_max_fee: endRoute.fee.toString()},
             ]);
           }
 
@@ -769,7 +789,7 @@ module.exports = (args, cbk) => {
             return cbk([
               400,
               'RebalanceFeeRateTooHigh',
-              {needed_max_fee_rate: feeRate},
+              {needed_max_fee_rate: feeRate.toString()},
             ]);
           }
 

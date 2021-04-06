@@ -22,13 +22,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({deepIs, end, equal, throws}) => {
+  return test(description, ({end, equal, strictSame, throws}) => {
     if (!!error) {
       throws(() => forwardsViaPeer(args), new Error(error), 'Got error');
     } else {
       const {forwards} = forwardsViaPeer(args);
 
-      deepIs(forwards, expected.forwards, 'Forwards are returned');
+      strictSame(forwards, expected.forwards, 'Forwards are returned');
     }
 
     return end();

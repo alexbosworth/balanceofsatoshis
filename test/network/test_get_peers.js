@@ -276,7 +276,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, equal, rejects}) => {
+  return test(description, async ({end, equal, rejects, strictSame}) => {
     if (!!error) {
       rejects(getPeers(args), error, 'Got expected error');
     } else {
@@ -284,7 +284,7 @@ tests.forEach(({args, description, error, expected}) => {
 
       peers.forEach(n => delete n.first_connected);
 
-      deepIs(peers, expected.peers, 'Got expected peers');
+      strictSame(peers, expected.peers, 'Got expected peers');
     }
 
     return end();

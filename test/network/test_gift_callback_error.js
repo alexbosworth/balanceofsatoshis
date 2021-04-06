@@ -37,10 +37,10 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, ({deepIs, end}) => {
+  return test(description, ({end, strictSame}) => {
     const err = giftCallbackError(args);
 
-    deepIs(err, expected.err, 'Got expected error');
+    strictSame(err, expected.err, 'Got expected error');
 
     return end();
   });

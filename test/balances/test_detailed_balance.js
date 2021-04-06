@@ -110,7 +110,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({deepIs, end, equal, throws}) => {
+  return test(description, ({end, equal, strictSame, throws}) => {
     if (!!error) {
       throws(() => detailedBalances(args), new Error(error));
 
@@ -119,7 +119,7 @@ tests.forEach(({args, description, error, expected}) => {
 
     const balances = detailedBalances(args);
 
-    deepIs(balances, expected, 'Got expected balances');
+    strictSame(balances, expected, 'Got expected balances');
 
     return end();
   });

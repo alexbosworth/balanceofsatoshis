@@ -21,13 +21,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, equal, rejects}) => {
+  return test(description, async ({end, equal, rejects, strictSame}) => {
     if (!!error) {
       rejects(setAutopilot(args), error, 'Got expected error');
     } else {
       const autopilot = await setAutopilot(args);
 
-      deepIs(autopilot, expected.autopilot, 'Got expected autopilot result');
+      strictSame(autopilot, expected.autopilot, 'Got expected autopilot result');
     }
 
     return end();

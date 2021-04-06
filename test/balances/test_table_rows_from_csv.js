@@ -31,13 +31,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, equal, rejects}) => {
+  return test(description, async ({end, equal, rejects, strictSame}) => {
     if (!!error) {
       await rejects(tableRowsFromCsv(args), error, 'Got expected error');
     } else {
       const {rows} = await tableRowsFromCsv(args);
 
-      deepIs(rows, expected.rows, 'Got expected table rows');
+      strictSame(rows, expected.rows, 'Got expected table rows');
     }
 
     return end();

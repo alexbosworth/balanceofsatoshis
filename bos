@@ -1172,6 +1172,7 @@ prog
   .help('Change the liquidity profile of two peers')
   .help('When specifying amount you can use formulas or *k *m for *1e3, *1e6')
   .help('Specifying target liquidity you can use CAPACITY/2, other formulas')
+  .help('You can use tags with --avoid, --in, --out')
   .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
   .option('--avoid-high-inbound', 'Avoid rebalancing when inbound is high')

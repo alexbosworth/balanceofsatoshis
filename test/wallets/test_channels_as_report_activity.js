@@ -113,12 +113,12 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, rejects}) => {
+  return test(description, async ({end, rejects, strictSame}) => {
     const {activity} = method(args);
 
     const [element] = activity;
 
-    deepIs(element, expected.activity, 'Got expected activity');
+    strictSame(element, expected.activity, 'Got expected activity');
 
     return end();
   });

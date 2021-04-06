@@ -1,9 +1,15 @@
+const {createHash} = require('crypto');
+
 const asyncAuto = require('async/auto');
+const {createInvoice} = require('ln-service');
+const {getInvoice} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const respondToKeySendPing = require('./respond_to_key_send_ping');
 
-const hexAsString = hex => Buffer.from(hex, 'hex').toString();
+const expires = () => new Date(1000 * 60 * 60 * 24 + Date.now()).toISOString();
+const hashOf = preimage => createHash('sha256').update(preimage).digest();
+const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const {isArray} = Array;
 const typePing = '8470534167946609795';
 
@@ -55,8 +61,27 @@ module.exports = ({id, lnd, logger, messages, pay, received}, cbk) => {
         return cbk();
       },
 
+      // Derive a locking id from the keysend request
+      lockId: ['validate', ({}, cbk) => {
+        return cbk(null, hashOf(hexAsBuffer(id)));
+      }],
+
+      // Look for a pending lock invoice
+      hasLock: ['lockId', ({lockId}, cbk) => {
+        return getInvoice({lnd, id: lockId}, err => cbk(null, !err));
+      }],
+
+      // Create a locking invoice to safeguard against double response
+      createLock: ['hasLock', ({hasLock}, cbk) => {
+        if (!!hasLock) {
+          return cbk([409, 'LockExistsForKeySendRequest', {id}]);
+        }
+
+        return createInvoice({lnd, expires_at: expires()}, cbk);
+      }],
+
       // Check to see if this is a ping
-      ping: ['validate', ({}, cbk) => {
+      ping: ['createLock', ({}, cbk) => {
         const ping = messages.find(({type}) => type === typePing);
 
         // Exit early when this is not a ping request
@@ -70,7 +95,7 @@ module.exports = ({id, lnd, logger, messages, pay, received}, cbk) => {
           logger,
           pay,
           received,
-          request: hexAsString(ping.value),
+          request: hexAsBuffer(ping.value).toString(),
         },
         cbk);
       }],

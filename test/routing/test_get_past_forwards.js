@@ -45,13 +45,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, equal, rejects}) => {
+  return test(description, async ({end, equal, rejects, strictSame}) => {
     if (!!error) {
       await rejects(getPastForwards(args, args.test), error, 'Got error');
     } else {
       const {forwards} = await getPastForwards(args);
 
-      deepIs(forwards, expected.forwards, 'Got expected forwards');
+      strictSame(forwards, expected.forwards, 'Got expected forwards');
     }
 
     return end();

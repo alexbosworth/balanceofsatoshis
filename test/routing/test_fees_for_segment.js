@@ -36,10 +36,10 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, ({deepIs, end, equal, throws}) => {
+  return test(description, ({end, equal, strictSame, throws}) => {
     const {fees} = feesForSegment(args);
 
-    deepIs(fees, expected.fees, 'Got expected fees');
+    strictSame(fees, expected.fees, 'Got expected fees');
 
     return end();
   });

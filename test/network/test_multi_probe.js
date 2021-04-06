@@ -105,13 +105,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, equal, throws}) => {
+  return test(description, async ({end, equal, strictSame, throws}) => {
     if (!!error) {
       throws(() => multiProbe(args), new Error(error), 'Got error');
     } else {
       const res = multiProbe(args);
 
-      deepIs(res, expected, 'Got expected result');
+      strictSame(res, expected, 'Got expected result');
     }
 
     return end();

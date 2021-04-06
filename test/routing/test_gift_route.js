@@ -137,11 +137,11 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, throws}) => {
+  return test(description, async ({end, strictSame, throws}) => {
     if (!!error) {
       throws(() => giftRoute(args), new Error(error), 'Got expected error');
     } else {
-      deepIs(giftRoute(args).route, expected.route, 'Got expected route');
+      strictSame(giftRoute(args).route, expected.route, 'Got expected route');
     }
 
     return end();

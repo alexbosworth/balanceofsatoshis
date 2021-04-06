@@ -72,13 +72,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({deepIs, end, equal, throws}) => {
+  return test(description, ({end, equal, strictSame, throws}) => {
     if (!!error) {
       throws(() => liquidityTokens(args), new Error(error), 'Got error');
     } else {
       const tokens = liquidityTokens(args);
 
-      deepIs(tokens, expected.tokens, 'Got expected tokens');
+      strictSame(tokens, expected.tokens, 'Got expected tokens');
     }
 
     return end();

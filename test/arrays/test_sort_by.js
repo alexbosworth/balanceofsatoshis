@@ -31,13 +31,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({deepIs, end, throws}) => {
+  return test(description, ({end, strictSame, throws}) => {
     if (!!error) {
       throws(() => sortBy(args), new Error(error), 'Got expected error');
     } else {
       const {sorted} = sortBy(args);
 
-      deepIs(sorted, expected.sorted, 'Array is sorted as expected');
+      strictSame(sorted, expected.sorted, 'Array is sorted as expected');
     }
 
     return end();

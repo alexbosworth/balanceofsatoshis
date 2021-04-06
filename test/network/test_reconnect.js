@@ -91,13 +91,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, rejects}) => {
+  return test(description, async ({end, rejects, strictSame}) => {
     if (!!error) {
       await rejects(reconnect(args), error, 'Got expected error');
     } else {
       const {reconnected} = await reconnect(args);
 
-      deepIs(reconnected, expected, 'Got expected reconnections');
+      strictSame(reconnected, expected, 'Got expected reconnections');
     }
 
     return end();

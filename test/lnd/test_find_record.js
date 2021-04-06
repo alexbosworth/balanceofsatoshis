@@ -125,7 +125,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, equal, rejects}) => {
+  return test(description, async ({end, equal, rejects, strictSame}) => {
     if (!!error) {
       await rejects(findRecord(args), error, 'Got expected error');
     } else {
@@ -133,7 +133,7 @@ tests.forEach(({args, description, error, expected}) => {
 
       (res.nodes || []).forEach(n => delete n.updated);
 
-      deepIs(res, expected, 'Got expected result');
+      strictSame(res, expected, 'Got expected result');
     }
 
     return end();

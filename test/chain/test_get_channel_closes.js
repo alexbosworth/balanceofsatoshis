@@ -25,13 +25,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({deepIs, end, rejects}) => {
+  return test(description, async ({end, rejects, strictSame}) => {
     if (!!error) {
       await rejects(getChannelCloses(args), error, 'Got expected error');
     } else {
       const closes = await getChannelCloses(args);
 
-      deepIs(closes, expected, 'Got expected closed channels');
+      strictSame(closes, expected, 'Got expected closed channels');
     }
 
     return end();

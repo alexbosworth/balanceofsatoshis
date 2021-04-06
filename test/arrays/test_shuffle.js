@@ -21,7 +21,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({deepIs, end, equal, throws}) => {
+  return test(description, ({end, equal, strictSame, throws}) => {
     if (!!error) {
       throws(() => shuffle(args), new Error(error), 'Got expected error');
     } else if (!expected.shuffled) {

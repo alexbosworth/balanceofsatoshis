@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.4
+
+- `rebalance`: Add support for specifying a list of nodes to `avoid` by specifying a tag
+
 ## Version 8.0.3
 
 - `find`: Lookup node by start of public key
