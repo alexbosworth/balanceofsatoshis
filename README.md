@@ -218,6 +218,23 @@ configuration), two things need to be done:
  You can also set `cert_path` and `macaroon_path` to the path of the relevant
  files instead.
 
+#### Umbrel Saved Node
+
+1. Create directory `~/.bos/`, (like `mkdir /home/umbrel/.bos`)
+2. Create a directory for your umbrel node credentials like `~/.bos/umbrel` (ie `mkdir /home/umbrel/.bos/umbrel`)
+3. Create a credentials.json file in this directory: `nano /home/umbrel/.bos/umbrel/credentials.json`
+4. In this file put the node credentials:
+
+```
+{
+  "cert_path": "/home/umbrel/umbrel/lnd/tls.cert",
+  "macaroon_path": "/home/umbrel/umbrel/lnd/data/chain/bitcoin/mainnet/admin.macaroon",
+  "socket": "umbrel.local:10009"
+}
+```
+
+5. Now when you do a command, specify `--node umbrel` or whatever your dir is: `bos --node umbrel balance`
+
 ### Using Saved Nodes
  
 To run commands on nodes specified this way, you need to suffix commands with
