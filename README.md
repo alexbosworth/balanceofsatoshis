@@ -3,8 +3,6 @@
 Commands for working with LND balances.
 
 [![npm version](https://badge.fury.io/js/balanceofsatoshis.svg)](https://badge.fury.io/js/balanceofsatoshis)
-[![Coverage Status](https://coveralls.io/repos/github/alexbosworth/balanceofsatoshis/badge.svg?branch=master)](https://coveralls.io/github/alexbosworth/balanceofsatoshis?branch=master)
-[![Build Status](https://travis-ci.org/alexbosworth/balanceofsatoshis.svg?branch=master)](https://travis-ci.org/alexbosworth/balanceofsatoshis)
 
 ## Install
 
