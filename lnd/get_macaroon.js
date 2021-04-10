@@ -21,6 +21,7 @@ const macName = 'admin.macaroon';
     os: {
       homedir: <Home Directory Function> () => <Home Directory Path String>
       platform: <Platform Function> () => <Platform Name String>
+      userInfo: <User Info Function> () => {username: <User Name String>}
     }
   }
 

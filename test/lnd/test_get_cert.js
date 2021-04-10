@@ -2,7 +2,11 @@ const {test} = require('tap');
 
 const getCert = require('./../../lnd/get_cert');
 
-const os = {homedir: () => 'homedir', platform: () => 'platform'};
+const os = {
+  homedir: () => 'homedir',
+  platform: () => 'platform',
+  userInfo: () => ({username: 'username'}),
+};
 
 const tests = [
   {

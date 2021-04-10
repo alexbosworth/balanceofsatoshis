@@ -2,7 +2,11 @@ const {test} = require('tap');
 
 const getMacaroon = require('./../../lnd/get_macaroon');
 
-const os = {homedir: () => 'homedir', platform: () => 'platform'};
+const os = {
+  homedir: () => 'homedir',
+  platform: () => 'platform',
+  userInfo: () => ({username: 'username'}),
+};
 
 const tests = [
   {

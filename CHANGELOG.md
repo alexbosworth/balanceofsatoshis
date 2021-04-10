@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.5
+
+- Adjust default lnd dir for Umbrel's default lnd dir location
+
 ## Version 8.0.4
 
 - `rebalance`: Add support for specifying a list of nodes to `avoid` by specifying a tag

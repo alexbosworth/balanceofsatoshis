@@ -80,14 +80,6 @@ module.exports = ({lnd, tokens, types, values}, cbk) => {
         // would be dangerous to do for a public payment request.
         const secret = makeSecret();
 
-console.log("CREATE", {
-          description,
-          secret,
-          tokens,
-          description_hash: secret,
-          expires_at: expiry(),
-})
-
         return createInvoice({
           description,
           lnd,

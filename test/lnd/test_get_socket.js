@@ -2,7 +2,11 @@ const {test} = require('tap');
 
 const getSocket = require('./../../lnd/get_socket');
 
-const os = {homedir: () => 'homedir', platform: () => 'platform'};
+const os = {
+  homedir: () => 'homedir',
+  platform: () => 'platform',
+  userInfo: () => ({username: 'username'}),
+};
 
 const tests = [
   {

@@ -4,6 +4,7 @@ const {platform} = require('os');
 const {publicEncrypt} = require('crypto');
 const {readFile} = require('fs');
 const {spawn} = require('child_process');
+const {userInfo} = require('os');
 
 const asyncAuto = require('async/auto');
 const {authenticatedLndGrpc} = require('ln-service');
@@ -24,7 +25,7 @@ const config = 'config.json';
 const defaultNodeName = process.env.BOS_DEFAULT_SAVED_NODE;
 const fs = {getFile: readFile};
 const home = '.bos';
-const os = {homedir, platform};
+const os = {homedir, platform, userInfo};
 const {parse} = JSON;
 const readPerms = permissionEntities.map(entity => `${entity}:read`);
 const socket = 'localhost:10009';
