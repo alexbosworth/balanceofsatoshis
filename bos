@@ -1037,8 +1037,8 @@ prog
   // Get a list of channel-connected peers
   .command('peers', 'Get a list of channel-connected peers')
   .help(`Sort options: ${peerSortOptions.join(', ')}`)
-  .help('Icons: 🤢 often d/c, 💸 active HTLC, 💀 d/c, 🌚 private, 🧊 delayed coop close')
-  .help('Icons: 🧊 delayed close, ⏳ pending channel')
+  .help('Icons: 🤢 often d/c, 💸 active HTLC, 💀 d/c, 🌚 private')
+  .help('Icons: 🧊 delayed coop close, ⏳ pending channel')
   .option('--active', 'Only active peer channels')
   .option('--complete', 'Show complete set of records in non table view')
   .option('--fee-days <past_days>', 'Include fees earned over n days', INT)

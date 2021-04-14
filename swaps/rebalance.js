@@ -20,11 +20,13 @@ const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
 const {findTagMatch} = require('./../peers');
+const {formatFeeRate} = require('./../display');
 const {parseAmount} = require('./../display');
 const {probeDestination} = require('./../network');
 const {shuffle} = require('./../arrays');
 const {sortBy} = require('./../arrays');
 
+const asRate = (fee, tokens) => ({rate: Math.ceil(fee / tokens * 1e6)});
 const {ceil} = Math;
 const channelMatch = /^\d*x\d*x\d*$/;
 const cltvDelta = 144;
@@ -853,6 +855,7 @@ module.exports = (args, cbk) => {
         },
         cbk) =>
       {
+        const feeRate = formatFeeRate(asRate(pay.fee, pay.tokens)).display;
         const inOn = getAdjustedOutbound.alias || getOutbound.public_key;
         const inOpeningIn = getAdjustedInbound.inbound_opening;
         const inOpeningOut = getAdjustedInbound.outbound_opening;
@@ -887,6 +890,7 @@ module.exports = (args, cbk) => {
             {
               rebalanced: tokAsBigTok(pay.tokens),
               rebalance_fees_spent: tokAsBigTok(pay.fee),
+              rebalance_fee_rate: feeRate,
             },
           ],
         });

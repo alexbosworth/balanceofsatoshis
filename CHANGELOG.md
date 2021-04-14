@@ -1,5 +1,12 @@
 # Versions
 
+## Version 8.0.6
+
+- Add autocomplete guidance to the README
+
+- `rebalance`: Show effective fee rate paid to rebalance
+- `telegram`: Send error message to telegram when node goes offline
+
 ## Version 8.0.5
 
 - Adjust default lnd dir for Umbrel's default lnd dir location

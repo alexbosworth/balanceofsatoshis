@@ -620,7 +620,15 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
 
             logger.error({invoices_err: err});
 
-            return cbk([503, 'InvoicesSubscriptionFailed', {err, from}]);
+            sendMessage({
+              request,
+              id: connectedId,
+              key: apiKey.key,
+              text: `_😵 Lost connection to nodes! Cannot connect to ${from}._`,
+            },
+            () => {
+              return cbk([503, 'InvoicesSubscriptionFailed', {err, from}]);
+            });
           });
         },
         cbk);

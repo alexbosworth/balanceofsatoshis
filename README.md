@@ -39,6 +39,16 @@ bos help commandName
 
 Or ask about commands on [Telegram](https://t.me/balanceofsatoshis)
 
+If you want autocomplete on commands and options you can do:
+
+```
+## Autocomplete on ZSH shells (on startup: you can add this to ~/.zshrc)
+source <(bos completion zsh)
+
+## Autocomplete on bash (on startup: add to ~/.profile or ~/.bash_profile)
+source <(bos completion bash)
+```
+
 ### Example Commands
 
 ```shell
