@@ -25,13 +25,13 @@
     "cert-info": "1.5.1",
     "colorette": "1.2.2",
     "crypto-js": "4.0.0",
-    "csv-parse": "4.15.3",
+    "csv-parse": "4.15.4",
     "goldengate": "10.0.3",
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
     "ini": "2.0.0",
     "inquirer": "8.0.0",
-    "invoices": "1.1.7",
+    "invoices": "1.2.0",
     "ln-accounting": "4.2.7",
     "ln-service": "51.7.0",
     "ln-sync": "0.4.5",
@@ -43,7 +43,7 @@
     "qrcode-terminal": "0.12.0",
     "sanitize-filename": "1.6.3",
     "stats-lite": "2.2.0",
-    "table": "6.0.9",
+    "table": "6.1.0",
     "telegraf": "4.3.0",
     "update-notifier": "5.1.0",
     "window-size": "1.1.1"
@@ -77,5 +77,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/wallets/*.js"
   },
-  "version": "8.0.6"
+  "version": "8.0.7"
 }

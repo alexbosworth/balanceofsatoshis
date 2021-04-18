@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.7
+
+- `increase-inbound-liquidity`: Allow for higher routing fee to start swap.
+
 ## Version 8.0.6
 
 - Add autocomplete guidance to the README

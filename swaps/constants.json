@@ -6,7 +6,7 @@
   "fuzzBlocks": 5,
   "maxCltvExpiration": 2016,
   "maxDepositTokens": 50000,
-  "maxExecutionFeeTokens": 100,
+  "maxExecutionFeeTokens": 1000,
   "maxFeeMultiplier": 1000,
   "maxFeeRate": 0.06,
   "maxPathfindingMs": 1200000,
