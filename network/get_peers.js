@@ -424,6 +424,7 @@ module.exports = (args, cbk) => {
             .map(n => n.fee_rate)
             .filter(n => n !== undefined);
 
+          const disabled = policies.map(n => !!n.is_disabled).filter(n => !!n);
           const feeRate = !feeRates.length ? undefined : max(...feeRates);
 
           let node = {alias: String(), public_key: publicKey};
@@ -452,6 +453,7 @@ module.exports = (args, cbk) => {
             inbound_fee_rate: feeRate,
             inbound_liquidity: sumOf(channels.map(n => n.remote_balance)),
             is_forwarding: hasHtlcChannel || undefined,
+            is_inbound_disabled: !!disabled.length || undefined,
             is_offline: !peer || undefined,
             is_pending: !!pendingChannels.length || undefined,
             is_private: isHidden || undefined,
@@ -502,6 +504,7 @@ module.exports = (args, cbk) => {
                 inbound_fee_rate: formatFeeRate({rate}).display,
                 inbound_liquidity: peer.inbound_liquidity,
                 is_forwarding: peer.is_forwarding,
+                is_inbound_disabled: peer.is_inbound_disabled,
                 is_offline: peer.is_offline,
                 is_pending: peer.is_pending,
                 is_private: peer.is_private,
@@ -526,6 +529,7 @@ module.exports = (args, cbk) => {
               inbound_fee_rate: n.inbound_fee_rate || undefined,
               inbound_liquidity: n.inbound_liquidity || undefined,
               is_forwarding: n.is_forwarding || undefined,
+              is_inbound_disabled: n.is_inbound_disabled || undefined,
               is_offline: n.is_offline || undefined,
               is_pending: n.is_pending || undefined,
               is_private: n.is_private || undefined,
@@ -574,6 +578,7 @@ module.exports = (args, cbk) => {
                 icons: !!nodeIcons ? nodeIcons.icons : undefined,
                 is_forwarding: peer.is_forwarding,
                 is_inactive: peer.is_offline,
+                is_inbound_disabled: peer.is_inbound_disabled,
                 is_pending: peer.is_pending,
                 is_private: peer.is_private,
                 is_thawing: peer.is_thawing,

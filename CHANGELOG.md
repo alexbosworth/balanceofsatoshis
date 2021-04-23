@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.8
+
+- `peers`: Show emoji when peer inbound forwarding is disabled
+
 ## Version 8.0.7
 
 - `increase-inbound-liquidity`: Allow for higher routing fee to start swap.
