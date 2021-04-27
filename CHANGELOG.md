@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.9
+
+- `increase-inbound-liquidity`: Fix `show-raw-recovery` when fees are very high
+
 ## Version 8.0.8
 
 - `peers`: Show emoji when peer inbound forwarding is disabled
