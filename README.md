@@ -200,8 +200,10 @@ configuration), two things need to be done:
 1. Create directory `~/.bos/`, and add node credentials in a format of: 
 
     `~/.bos/YOUR_NODE_NAME/credentials.json`
-    
-1. Each file should have the following format:
+
+Use any shorthand you'd like when choosing this profile node name
+
+2. Each file should have the following format:
 
     ```json
     {
@@ -403,6 +405,16 @@ Or on Linux:
 
 ```
 --network="host" -v $HOME/.lnd:/home/node/.lnd:ro
+```
+
+On Umbrel this would be:
+
+```
+# add Umbrel specific details:
+## --network="host"
+## --add-host=umbrel.local:192.168.1.23
+## -v $HOME/umbrel/lnd:/home/node/.lnd:ro
+docker run -it --rm --network="host" --add-host=umbrel.local:192.168.1.23 -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
 ```
 
 Otherwise you can just pass the local node credentials as shown above using the
