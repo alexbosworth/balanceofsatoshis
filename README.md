@@ -207,7 +207,7 @@ configuration), two things need to be done:
     {
       "cert": "base64 tls.cert value",
       "macaroon": "base64 .macaroon value",
-      "socket": "host:ip"
+      "socket": "host:port"
     }
     ```
 
@@ -221,7 +221,7 @@ configuration), two things need to be done:
     >base64 ~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon | tr -d '\n'
     >```
     >
-    > **Note_2:** `socket` should contain `host:ip` pointing to `lnd`'s gRPC interface, `localhost:10009` by convention.  
+    > **Note_2:** `socket` should contain `host:port` pointing to `lnd`'s gRPC interface, `localhost:10009` by convention.  
  
  You can also set `cert_path` and `macaroon_path` to the path of the relevant
  files instead.
