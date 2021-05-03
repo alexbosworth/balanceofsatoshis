@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.10
+
+- `fees`: Ignore pending closing channels when setting fees
+
 ## Version 8.0.9
 
 - `increase-inbound-liquidity`: Fix `show-raw-recovery` when fees are very high

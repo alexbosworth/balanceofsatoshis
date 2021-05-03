@@ -151,7 +151,7 @@ module.exports = (args, cbk) => {
         return asyncMap(peerKeys, (key, cbk) => {
           const channels = []
             .concat(getChannels.channels)
-            .concat(getPending.pending_channels)
+            .concat(getPending.pending_channels.filter(n => !!n.is_opening))
             .filter(channel => channel.partner_public_key === key);
 
           const inboundLiquidity = channels.reduce((sum, n) => {
