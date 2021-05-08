@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.11
+
+- `telegram`: Fix error on command /connect when already connected
+
 ## Version 8.0.10
 
 - `fees`: Ignore pending closing channels when setting fees
