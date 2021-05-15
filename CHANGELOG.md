@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.12
+
+- `open-balanced-channel`: Allow parent tx time to enter mempool before child spend
+
 ## Version 8.0.11
 
 - `telegram`: Fix error on command /connect when already connected

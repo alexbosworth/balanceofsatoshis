@@ -953,9 +953,9 @@ prog
 
   // Open a balanced channel with a peer
   .command('open-balanced-channel', 'Open a dual-funded channel with a node')
-  .help('Node must be prepared to receive this type of channel')
+  .help('Remote node must be prepared to receive this type of channel')
   .help('Channel details are negotiated with keysend so that is also required')
-  .option('--node <node_name>', 'Node to get outbound liquidity amount')
+  .option('--node <node_name>', 'Use saved node details instead of local node')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {

@@ -24,7 +24,7 @@ const familyMultiSig = 0;
 const familyTemporary = 805;
 const format = 'p2wpkh';
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
-const interval = 1000 * 30;
+const interval = 1000 * 15;
 const networkMainnet = 'btc';
 const networkTestnet = 'btctestnet';
 const {p2wpkh} = payments;
@@ -271,7 +271,7 @@ module.exports = ({after, ask, lnd, logger}, cbk) => {
 
               logger.info({broadcast: r.id});
 
-              return cbk();
+              return setTimeout(cbk, interval);
             });
           },
           cbk);
