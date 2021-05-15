@@ -1,5 +1,10 @@
 # Versions
 
+## Version 8.0.13
+
+- `pay`: Throw error when avoid is not a public key
+- `probe`: Throw error when avoid is not a public key
+
 ## Version 8.0.12
 
 - `open-balanced-channel`: Allow parent tx time to enter mempool before child spend
