@@ -416,6 +416,7 @@ On Umbrel this would be:
 ## -v $HOME/umbrel/lnd:/home/node/.lnd:ro
 docker run -it --rm --network="host" --add-host=umbrel.local:192.168.1.23 -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
 ```
+Note: For [umbrel-os](https://github.com/getumbrel/umbrel-os) users, when running the above docker run command, ensure the "192.168.1.23" portion of the command is updated to reflect the IP of the lnd container. You can find the IP by looking for the `LND_IP` value inside the `$HOME/umbrel/.env` file.
 
 Otherwise you can just pass the local node credentials as shown above using the
 saved nodes.
