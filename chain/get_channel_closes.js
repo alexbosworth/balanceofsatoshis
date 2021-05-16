@@ -81,6 +81,7 @@ module.exports = ({limit, lnd, request}, cbk) => {
       {
         const closedChannels = getClosed.channels
           .reverse()
+          .filter(channel => !!channel.close_transaction_id)
           .filter(channel => !channel.is_funding_cancel);
 
         const channels = closedChannels.slice(Number(), limit || defaultLimit);

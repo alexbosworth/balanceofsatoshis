@@ -1,5 +1,9 @@
 # Versions
 
+## Version 8.0.14
+
+- `closed`: Fix issue when proposed channels that never existed are abandoned
+
 ## Version 8.0.13
 
 - `pay`: Throw error when avoid is not a public key
