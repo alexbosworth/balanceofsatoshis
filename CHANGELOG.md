@@ -1,5 +1,9 @@
 # Versions
 
+## Version 9.1.0
+
+- `accounting`: Add `--disable-fiat` flag to avoid fiat conversions on rows
+
 ## Version 9.0.0
 
 - `inbound-channel-rules`: Show error when calling without arguments

@@ -20,6 +20,7 @@ const tableRowsFromCsv = require('./table_rows_from_csv');
     [currency]: <Currency Label String>
     [fiat]: <Fiat Type String>
     [is_csv]: <Return CSV Output Bool>
+    [is_fiat_disabled]: <Omit Fiat Conversion Bool>
     lnd: <Authenticated LND gRPC API Object>
     [month]: <Month for Report String>
     [node]: <Node Name String>
@@ -76,7 +77,7 @@ module.exports = (args, cbk) => {
           before: dateRange.before,
           category: categories[args.category],
           currency: args.currency || defaultCurrency,
-          fiat: args.fiat || defaultFiat,
+          fiat: !args.is_fiat_disabled ? (args.fiat || defaultFiat) : null,
           lnd: args.lnd,
           network: getNetwork.network,
           rate_provider: args.rate_provider || undefined,
@@ -114,7 +115,7 @@ module.exports = (args, cbk) => {
               return col;
             }
 
-            if (j === fiatIndex) {
+            if (j === fiatIndex && !!col) {
               return parseFloat(col).toFixed(2);
             }
 
