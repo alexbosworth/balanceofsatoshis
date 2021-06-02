@@ -175,6 +175,7 @@ bos utxos
 - The `accounting` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/bc71e6bf-f2aa-4bae-a3e8-b12e7be2284c)
 - The `open` [command howto](https://satbase.org/bos-open/)
 - The `rebalance` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/327ed9f6-3a73-41c2-a9c7-8c4e274bdd54)
+- Another `rebalance` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/30a7c519-0ec0-4644-b3aa-341c41bac296)
 
 ## Nodes
 
@@ -230,16 +231,17 @@ Use any shorthand you'd like when choosing this profile node name
 
 #### Umbrel Saved Node
 
-1. Create directory `~/.bos/`, (like `mkdir /home/umbrel/.bos`)
-2. Create a directory for your umbrel node credentials like `~/.bos/umbrel` (ie `mkdir /home/umbrel/.bos/umbrel`)
-3. Create a credentials.json file in this directory: `nano /home/umbrel/.bos/umbrel/credentials.json`
-4. In this file put the node credentials:
+1. Identify your Umbrel home dir, like /home/umbrel/umbrel
+2. Look in the .env file in that dir for the `LND_IP` to use as the socket to connect to
+
+You can also use umbrel.local if that is in your Umbrel TLS cert but you will have to make sure the
+hostname is known to the client.
 
 ```
 {
   "cert_path": "/home/umbrel/umbrel/lnd/tls.cert",
   "macaroon_path": "/home/umbrel/umbrel/lnd/data/chain/bitcoin/mainnet/admin.macaroon",
-  "socket": "umbrel.local:10009"
+  "socket": "LND_IP:10009"
 }
 ```
 
@@ -414,7 +416,7 @@ On Umbrel this would be:
 ## --network="host"
 ## --add-host=umbrel.local:192.168.1.23
 ## -v $HOME/umbrel/lnd:/home/node/.lnd:ro
-docker run -it --rm --network="host" --add-host=umbrel.local:192.168.1.23 -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
+docker run -it --rm --network="host" --add-host=umbrel.local:192.168.1.23 -v $HOME/.bos:/home/node/.bos -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
 ```
 Note: For [umbrel-os](https://github.com/getumbrel/umbrel-os) users, when running the above docker run command, ensure the "192.168.1.23" portion of the command is updated to reflect the IP of the lnd container. You can find the IP by looking for the `LND_IP` value inside the `$HOME/umbrel/.env` file.
 

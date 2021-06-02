@@ -237,42 +237,6 @@ prog
     });
   })
 
-  // Create on-chain submarine swap
-  .command('chain-receive', 'Receive funds on-chain via submarine swap')
-  .argument('[amount]', 'Amount to receive', INT, 1e6)
-  .option('--api-key <api_key>', 'Pre-paid API key to use', hexMatch)
-  .option('--in <peer>', 'Request receiving through a specific peer')
-  .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
-  .option('--no-color', 'Mute all colors')
-  .option('--node <node_name>', 'Node to receive funds on')
-  .option('--recovery <refund_recovery>', 'Attempt refund of swap', hexMatch)
-  .option('--refund-address <refund_address>', 'Refund address for swap')
-  .option('--service-socket <swap_service_socket>', 'host:port for service')
-  .option('--test-refund', 'Reduce refund timeout height to test refund')
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        return swaps.swapIn({
-          fetch,
-          logger,
-          api_key: options.apiKey || undefined,
-          in_through: options.in || undefined,
-          is_refund_test: options.testRefund,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          max_fee: options.maxFee,
-          node: options.node,
-          recovery: options.recovery,
-          refund_address: options.refundAddress,
-          socket: options.serviceSocket || undefined,
-          tokens: args.amount,
-        },
-        responses.returnObject({exit, logger, reject, resolve}));
-      } catch (err) {
-        return reject(err);
-      }
-    });
-  })
-
   // Get the current chain fee rates
   .command('chainfees', 'Get the current chain fee estimates')
   .help('Lookup chain fee estimates at various confirm targets')
@@ -300,6 +264,29 @@ prog
     });
   })
 
+  // Show a chart of chain fees paid
+  .command('chart-chain-fees', 'Get a chart of chain fee expenses')
+  .help('Show chart of mining fee expenditure over time')
+  .help('Privacy note: this requests tx data from third parties')
+  .option('--days <days>', 'Chart over the past number of days', INT, 60)
+  .option('--no-color', 'Disable colors')
+  .option('--node <node_name>', 'Chain fees from saved node(s)', REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return routing.getChainFeesChart({
+          request,
+          days: options.days,
+          is_monochrome: !!options.noColor,
+          lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
+        },
+        responses.returnChart({logger, reject, resolve, data: 'data'}));
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
   // Show a chart of fees earned
   .command('chart-fees-earned', 'Get a chart of earned routing fees')
   .argument('[via_peer]', 'Routing fees earned via a specified peer')
@@ -317,29 +304,6 @@ prog
           is_forwarded: options.forwarded,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
           via: args.viaPeer,
-        },
-        responses.returnChart({logger, reject, resolve, data: 'data'}));
-      } catch (err) {
-        return reject(err);
-      }
-    });
-  })
-
-  // Show a chart of chain fees paid
-  .command('chart-chain-fees', 'Get a chart of chain fee expenses')
-  .help('Show chart of mining fee expenditure over time')
-  .help('Privacy note: this requests tx data from third parties')
-  .option('--days <days>', 'Chart over the past number of days', INT, 60)
-  .option('--no-color', 'Disable colors')
-  .option('--node <node_name>', 'Chain fees from saved node(s)', REPEATABLE)
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        return routing.getChainFeesChart({
-          request,
-          days: options.days,
-          is_monochrome: !!options.noColor,
-          lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
@@ -506,6 +470,7 @@ prog
 
   // Fan out utxos
   .command('fanout', 'Fan out utxos')
+  .visible(false)
   .argument('<size>', 'UTXO minimum size', INT)
   .argument('<count>', 'Desired number of total utxos', INT)
   .help('Make a bunch of utxos by making a tx with a bunch of outputs')
@@ -581,7 +546,7 @@ prog
   })
 
   // Get forwards
-  .command('forwards', 'Get forwards')
+  .command('forwards', 'Show recent forwarding earnings')
   .help('Peers where routing has taken place from inbound and outbound sides')
   .option('--complete', 'Show complete set of records in non table view')
   .option('--days <days>', 'Number of past days to evaluate', INT)
@@ -702,7 +667,7 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        return peers.rejectInboundChannels({
+        return await peers.rejectInboundChannels({
           logger,
           lnd: (await lndForNode(logger, options.node)).lnd,
           reason: options.reason,
@@ -1143,30 +1108,6 @@ prog
     });
   })
 
-  // Request to receive a pong from a network node
-  .command('purchase-ping', 'Request a ping payment response from a node')
-  .argument('<to>', 'Send ping request to node with key or peer with name/key')
-  .option('--in <peer>', 'Request response payment inbound via peer')
-  .option('--node <node_name>', 'Saved node to use to make ping request')
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const {lnd} = await lndForNode(logger, options.node);
-
-        const destination = await lnSync.findKey({lnd, query: args.to});
-
-        return services.purchasePing({
-          lnd,
-          logger,
-          destination: destination.public_key,
-        },
-        responses.returnObject({exit, logger, reject, resolve}));
-      } catch (err) {
-        return reject(logger.error({err}));
-      }
-    });
-  })
-
   // Rebalance between peers
   .command('rebalance', 'Rebalance funds between peers')
   .help('Change the liquidity profile of two peers')
@@ -1337,47 +1278,46 @@ prog
     });
   })
 
-  // Respond to keysend service requests
-  .command('service-keysend-requests', 'Respond to keysend service requests')
-  .help('Offering keysend services requires --accept-keysend in LND')
-  .option('--node <node_name>', 'Saved node to respond to service requests')
-  .option('--payer <pay_with_node_name>', 'Node to pay response requests with')
+  // Offer paid services
+  .command('services', 'Run a KeySend paid services server')
+  .help('KeySend services are paid native Lightning Network services')
+  .option('--inbox-email-from', 'Inbox service email from address')
+  .option('--inbox-email-postmark-auth', 'Inbox service email to address')
+  .option('--inbox-email-to', 'Inbox service to email')
+  .option('--inbox-price', 'Required payment amount for inbox')
+  .option('--inbox-sms-from', 'Inbox service sms from number')
+  .option('--inbox-sms-to', 'Inbox service sms to number')
+  .option('--inbox-sms-twilio-sid', 'Inbox service Twilio account sid')
+  .option('--inbox-sms-twilio-auth', 'Inbox service Twilio auth token')
+  .option('--node <node_name>', 'Saved node')
+  .option('--payer <pay_with_node_name>', 'Node to pay request responses with')
+  .option('--profile <profile>', 'Share a profile with info about your node')
+  .option('--profile-link <link>', 'Add a link to your profile', REPEATABLE)
+  .option('--network <public_key>', 'Share other service node key', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         const {lnd} = await lndForNode(logger, options.node);
         const payer = options.payer === options.node ? null : options.payer;
 
-        await services.serviceKeySendRequests({
+        services.servicePaidRequests({
+          fetch,
           lnd,
           logger,
-          pay: !payer ? lnd : (await lndForNode(logger, payer)).lnd,
-        },
-        responses.returnObject({logger, reject, resolve}));
-      } catch (err) {
-        return reject(logger.error({err}));
-      }
-    });
-  })
-
-  // Simulate a keysend request by generating a special local invoice
-  .command('simulate-keysend-request', 'Create an invoice to simulate request')
-  .visible(false)
-  .argument('<amount>', 'Invoice amount to simulate receiving')
-  .argument('<number_value_pairs...>', 'TLV records: <number> <hex value>')
-  .help('Make an invoice that represents a fake keysend with records')
-  .help('This invoice can trigger keysend request services to test them out')
-  .option('--node <node_name>', 'Saved node to create simulated request')
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        await services.simulateKeySendRequest({
-          lnd: (await lndForNode(logger, options.node)).lnd,
-          tokens: Number(args.amount),
-          types: args.numberValuePairs.filter((n, i) => !(i % 2)),
-          values: args.numberValuePairs.filter((n, i) => i % 2),
-        },
-        responses.returnObject({logger, reject, resolve}));
+          inbox_email_from: options.inboxEmailFrom,
+          inbox_email_to: options.inboxEmailTo,
+          inbox_postmark_api_key: options.inboxEmailPostmarkAuth,
+          inbox_price: options.inboxPrice,
+          inbox_sms_from_number: options.inboxSmsFrom,
+          inbox_sms_to_number: options.inboxSmsTo,
+          inbox_twilio_account_sid: options.inboxSmsTwilioSid,
+          inbox_twilio_auth_token: options.inboxSmsTwilioAuth,
+          network: (await lnSync.getNetwork({lnd})).network,
+          network_nodes: flatten([options.network].filter(n => !!n)),
+          payer: !payer ? lnd : (await lndForNode(logger, payer)).lnd,
+          profile: options.profile,
+          profile_urls: flatten([options.profileLink].filter(n => !!n)),
+        });
       } catch (err) {
         return reject(logger.error({err}));
       }
@@ -1409,6 +1349,42 @@ prog
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
         return reject(err);
+      }
+    });
+  })
+
+  // Create submarine swap to convert on-chain funds to off-chain
+  .command('swap-in', 'Trade on-chain coins for off-chain via submarine swap')
+  .argument('[amount]', 'Amount to receive', INT, 1e6)
+  .option('--api-key <api_key>', 'Pre-paid API key to use', hexMatch)
+  .option('--in <peer>', 'Request receiving through a specific peer')
+  .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
+  .option('--no-color', 'Mute all colors')
+  .option('--node <node_name>', 'Node to receive funds on')
+  .option('--recovery <refund_recovery>', 'Attempt refund of swap', hexMatch)
+  .option('--refund-address <refund_address>', 'Refund address for swap')
+  .option('--service-socket <swap_service_socket>', 'host:port for service')
+  .option('--test-refund', 'Reduce refund timeout height to test refund')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return swaps.swapIn({
+          fetch,
+          logger,
+          api_key: options.apiKey || undefined,
+          in_through: options.in || undefined,
+          is_refund_test: options.testRefund,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          max_fee: options.maxFee,
+          node: options.node,
+          recovery: options.recovery,
+          refund_address: options.refundAddress,
+          socket: options.serviceSocket || undefined,
+          tokens: args.amount,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return reject(logger.error({err}));
       }
     });
   })
@@ -1482,6 +1458,30 @@ prog
         path_to_password_file: args.pathToPasswordFile,
       },
       responses.returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Use a paid service
+  .command('use', 'Use a paid KeySend service from a services provider')
+  .help('KeySend services are paid native Lightning Network services')
+  .help('All communication with these services uses LN payments')
+  .argument('<server_id>', 'Public key of services-offering node')
+  .option('--node <node_name>', 'Saved node')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const {lnd} = await lndForNode(logger, options.node);
+
+        return await services.usePaidService({
+          lnd,
+          logger,
+          ask: (n, cbk) => inquirer.prompt(n).then(res => cbk(res)),
+          network: (await lnSync.getNetwork({lnd})).network,
+          node: args.serverId,
+        });
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
     });
   })
 

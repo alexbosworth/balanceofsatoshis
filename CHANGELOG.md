@@ -1,5 +1,18 @@
 # Versions
 
+## Version 9.0.0
+
+- `inbound-channel-rules`: Show error when calling without arguments
+- `services`: Add command to respond to keysend paid service requests
+- `telegram`: Fix error message shown when trying to pay with no budget
+- `use`: Add command to make keysend paid service requests
+
+### Breaking Changes
+
+- `chain-receive`: Rename command to `swap-in`
+- `purchase-ping`: Remove command use `use` instead
+- `service-keysend-requests`: Remove command, use `services` instead
+
 ## Version 8.0.14
 
 - `closed`: Fix issue when proposed channels that never existed are abandoned

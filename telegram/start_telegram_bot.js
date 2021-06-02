@@ -326,7 +326,9 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           const budget = paymentsLimit;
 
           if (!budget) {
-            return reply(interaction.pay_budget_depleted);
+            reply(interaction.pay_budget_depleted);
+
+            return;
           }
 
           // Stop budget while payment is in flight
