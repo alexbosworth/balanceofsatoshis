@@ -1,5 +1,9 @@
 # Versions
 
+## Version 9.2.0
+
+- `fees`: Add support for setting fees on nodes by a tag, show tag icons
+
 ## Version 9.1.0
 
 - `accounting`: Add `--disable-fiat` flag to avoid fiat conversions on rows

@@ -18,6 +18,7 @@ const {updateRoutingFees} = require('ln-service');
 
 const {chartAliasForPeer} = require('./../display');
 const {formatFeeRate} = require('./../display');
+const {getIcons} = require('./../display');
 const updateChannelFee = require('./update_channel_fee');
 
 const asTxOut = n => `${n.transaction_id}:${n.transaction_vout}`;
@@ -35,6 +36,9 @@ const uniq = arr => Array.from(new Set(arr));
 
   {
     [fee_rate]: <Fee Rate Parts Per Million Number>
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     lnd: <Authenticated LND API Object>
     logger: <Winstone Logger Object>
     to: [<Adjust Routing Fee To Peer Alias or Public Key String>]
@@ -50,6 +54,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFsMethodsToAdjustFeeRates']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToAdjustFeeRates']);
         }
@@ -69,6 +77,9 @@ module.exports = (args, cbk) => {
       getChannels: ['validate', ({}, cbk) => {
         return getChannels({lnd: args.lnd}, cbk);
       }],
+
+      // Get node icons
+      getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
 
       // Get the pending channels
       getPending: ['validate', ({}, cbk) => {
@@ -96,13 +107,26 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the peers to assign fee rates towards
-      getPeers: ['getChannels', ({getChannels}, cbk) => {
+      getPeers: ['getChannels', 'getIcons', ({getChannels, getIcons}, cbk) => {
         const {channels} = getChannels;
 
         return asyncMap(args.to, (query, cbk) => {
+          const nodes = getIcons.nodes.filter(n => n.aliases.includes(query));
+
+          // Exit early when there is a tag match
+          if (!!nodes.length) {
+            return cbk(null, nodes.map(n => ({public_key: n.public_key})));
+          }
+
           return findKey({channels, query, lnd: args.lnd}, cbk);
         },
-        cbk);
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, flatten(res));
+        });
       }],
 
       // Get the policies of all channels
@@ -300,10 +324,19 @@ module.exports = (args, cbk) => {
       fees: [
         'getAliases',
         'getChannels',
+        'getIcons',
         'getPeers',
         'getPolicies',
         'getRates',
-        ({getAliases, getChannels, getPeers, getPolicies, getRates}, cbk) =>
+        ({
+          getAliases,
+          getChannels,
+          getIcons,
+          getPeers,
+          getPolicies,
+          getRates,
+        },
+        cbk) =>
       {
         const peersWithFees = getAliases.map(({alias, id}) => {
           const channels = getChannels.channels.filter(channel => {
@@ -322,8 +355,11 @@ module.exports = (args, cbk) => {
 
           const rate = max(...peerRates.map(n => n.fee_rate));
 
+          const nodeIcons = getIcons.nodes.find(n => n.public_key === id);
+
           const {display} = chartAliasForPeer({
             alias,
+            icons: !!nodeIcons ? nodeIcons.icons : undefined,
             is_inactive: channels.find(n => !n.is_active),
             public_key: id,
           });
@@ -337,15 +373,24 @@ module.exports = (args, cbk) => {
 
         const rows = []
           .concat([['Peer', 'Out Fee', 'Public Key']])
-          .concat(peersWithFees.map(peer => {
-            const isChange = getPeers.find(n => n.public_key === peer.id);
+          .concat(peersWithFees
+            .filter(peer => {
+              if (!args.to.length) {
+                return true;
+              }
 
-            return [
-              isChange ? green(peer.alias) : peer.alias,
-              isChange ? green(peer.out_fee) : peer.out_fee,
-              isChange ? green(peer.id) : peer.id,
-            ];
-          }));
+              return getPeers.find(n => n.public_key === peer.id);
+            })
+            .map(peer => {
+              const isChange = getPeers.find(n => n.public_key === peer.id);
+
+              return [
+                isChange ? green(peer.alias) : peer.alias,
+                isChange ? green(peer.out_fee) : peer.out_fee,
+                isChange ? green(peer.id) : peer.id,
+              ];
+            })
+          );
 
         return cbk(null, {rows});
       }],

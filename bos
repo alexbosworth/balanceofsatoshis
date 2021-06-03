@@ -517,6 +517,7 @@ prog
         return routing.adjustFees({
           logger,
           fee_rate: options.setFeeRate,
+          fs: {getFile: readFile},
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           to: flatten([options.to].filter(n => !!n)),
         },
