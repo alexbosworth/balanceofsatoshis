@@ -1284,6 +1284,8 @@ prog
   // Offer paid services
   .command('services', 'Run a KeySend paid services server')
   .help('KeySend services are paid native Lightning Network services')
+  .option('--activity-fees', 'Share routing fees earned vs num fwds')
+  .option('--activity-volume', 'Share routing total volume amount')
   .option('--inbox-email-from', 'Inbox service email from address')
   .option('--inbox-email-postmark-auth', 'Inbox service email to address')
   .option('--inbox-email-to', 'Inbox service to email')
@@ -1307,6 +1309,8 @@ prog
           fetch,
           lnd,
           logger,
+          activity_fees: options.activityFees,
+          activity_volume: options.activityVolume,
           inbox_email_from: options.inboxEmailFrom,
           inbox_email_to: options.inboxEmailTo,
           inbox_postmark_api_key: options.inboxEmailPostmarkAuth,

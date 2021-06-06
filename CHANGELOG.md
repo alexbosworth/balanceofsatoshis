@@ -1,5 +1,9 @@
 # Versions
 
+## Version 9.3.0
+
+- `services`: Add `activity` service support to share routing activity over keysend
+
 ## Version 9.2.0
 
 - `fees`: Add support for setting fees on nodes by a tag, show tag icons

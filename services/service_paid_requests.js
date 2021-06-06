@@ -1,8 +1,12 @@
 const {servicePaidRequests} = require('paid-services');
 
+const asFlag = n => !!n ? '1' : '0';
+
 /** Service KeySend payment requests
 
   {
+    [activity_fees]: <Share Routing Activity Fees Earned Bool>
+    [activity_volume]: <Share Routing Activity Total Routed Bool>
     fetch: <Fetch Function>
     [inbox_email_from]: <Inbox Email From Address String>
     [inbox_email_to]: <Inbox Email To Address String>
@@ -26,6 +30,8 @@ module.exports = args => {
     fetch: args.fetch,
     lnd: args.lnd,
     env: {
+      PAID_SERVICES_ACTIVITY_FEES: asFlag(args.activity_fees),
+      PAID_SERVICES_ACTIVITY_VOLUME: asFlag(args.activity_volume),
       PAID_SERVICES_INBOX_EMAIL_FROM: args.inbox_email_from,
       PAID_SERVICES_INBOX_EMAIL_TO: args.inbox_email_to,
       PAID_SERVICES_INBOX_POSTMARK_API_KEY: args.inbox_postmark_api_key,

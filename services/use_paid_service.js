@@ -8,6 +8,7 @@ const {pay} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const bigUnit = tokens => displayTokens({tokens, is_monochrome: true}).display;
+const byName = (a, b) => a.name < b.name ? -1 : 1;
 const defaultMaxFee = 1337;
 const isPublicKey = n => !!n && /^[0-9A-F]{66}$/i.test(n);
 const {keys} = Object;
@@ -58,7 +59,7 @@ module.exports = ({ask, lnd, logger, network, node}, cbk) => {
       // Select a service from the available services
       chooseService: ['getServices', ({getServices}, cbk) => {
         return ask([{
-          choices: getServices.services.map(n => n.name),
+          choices: getServices.services.slice().sort(byName).map(n => n.name),
           type: 'list',
           name: 'name',
           message: 'Choose service:',
