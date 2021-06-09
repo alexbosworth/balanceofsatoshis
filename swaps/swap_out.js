@@ -5,6 +5,7 @@ const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const asyncTimesSeries = require('async/timesSeries');
 const {attemptSweep} = require('goldengate');
+const {cancelSwapOut} = require('goldengate');
 const {checkSwapTiming} = require('goldengate');
 const {createChainAddress} = require('ln-service');
 const {createInvoice} = require('ln-service');
@@ -638,8 +639,17 @@ module.exports = (args, cbk) => {
       findRouteForExecution: [
         'channel',
         'decodeExecutionRequest',
+        'decodeFundingRequest',
         'getIgnores',
-        ({channel, decodeExecutionRequest, getIgnores}, cbk) =>
+        'getService',
+        ({
+          channel,
+          decodeExecutionRequest,
+          decodeFundingRequest,
+          getIgnores,
+          getService,
+        },
+        cbk) =>
       {
         // Exit early when there is a swap recovery
         if (!!args.recovery) {
@@ -663,12 +673,22 @@ module.exports = (args, cbk) => {
           tokens: decodeExecutionRequest.tokens,
         },
         (err, res) => {
-          if (!!err) {
-            return cbk([503, 'UnexpectedErrorFindingExecutionRoute', {err}]);
-          }
+          if (!!err || !res.route) {
+            return cancelSwapOut({
+              id: decodeFundingRequest.id,
+              metadata: getService.metadata,
+              payment: decodeFundingRequest.payment,
+              service: getService.service,
+            },
+            () => {
+              if (!!err) {
+                return cbk([503, 'UnexpectedErrorFindingExecutionRoute', {err}]);
+              }
 
-          if (!res.route) {
-            return cbk([503, 'FailedToFindAPathToPaySwapExecutionFee']);
+              if (!res.route) {
+                return cbk([503, 'FailedToFindAPathToPaySwapExecutionFee']);
+              }
+            });
           }
 
           return cbk(null, res.route);
@@ -708,7 +728,8 @@ module.exports = (args, cbk) => {
         'decodeFundingRequest',
         'getGateways',
         'getIgnores',
-        ({decodeFundingRequest, getGateways, getIgnores}, cbk) =>
+        'getService',
+        ({decodeFundingRequest, getGateways, getIgnores, getService}, cbk) =>
       {
         if (!!args.recovery) {
           return cbk();
@@ -778,11 +799,19 @@ module.exports = (args, cbk) => {
           const liquidity = paths.reduce((m, n) => m + n.liquidity, Number());
 
           if (decodeFundingRequest.tokens > liquidity) {
-            return cbk([
-              503,
-              'FailedToFindEnoughLiquidityOnPathsToFundSwap',
-              {available_liquidity: liquidity},
-            ]);
+            return cancelSwapOut({
+              id: decodeFundingRequest.id,
+              metadata: getService.metadata,
+              payment: decodeFundingRequest.payment,
+              service: getService.service,
+            },
+            () => {
+              return cbk([
+                503,
+                'FailedToFindEnoughLiquidityOnPathsToFundSwap',
+                {available_liquidity: liquidity},
+              ]);
+            });
           }
 
           return cbk(null, {paths});
@@ -796,12 +825,14 @@ module.exports = (args, cbk) => {
         'findPeer',
         'getFundingRoutes',
         'getIgnores',
+        'getService',
         'initiateSwap',
         ({
           channel,
           decodeFundingRequest,
           findPeer,
           getIgnores,
+          getService,
           initiateSwap,
         },
         cbk) =>
@@ -835,7 +866,15 @@ module.exports = (args, cbk) => {
           routes: decodeFundingRequest.routes,
           tokens: decodeFundingRequest.tokens,
         },
-        cbk);
+        (err, res) => {
+          return cancelSwapOut({
+            id: decodeFundingRequest.id,
+            metadata: getService.metadata,
+            payment: decodeFundingRequest.payment,
+            service: getService.service,
+          },
+          () => cbk(err, res));
+        });
       }],
 
       // Get info about the peer we are going to get inbound liquidity with
@@ -923,6 +962,7 @@ module.exports = (args, cbk) => {
         'findRoutesForFunding',
         'getFundingRoutes',
         'getLimits',
+        'getService',
         'getSwapPeers',
         'getQuote',
         ({
@@ -933,6 +973,7 @@ module.exports = (args, cbk) => {
           findRoutesForFunding,
           getFundingRoutes,
           getLimits,
+          getService,
           getSwapPeers,
         },
         cbk) =>
@@ -986,7 +1027,15 @@ module.exports = (args, cbk) => {
           });
 
           if (!!args.is_dry_run) {
-            return cbk([500, 'InboundLiquidityIncreaseDryRun']);
+            return cancelSwapOut({
+              id: decodeFundingRequest.id,
+              metadata: getService.metadata,
+              payment: decodeFundingRequest.payment,
+              service: getService.service,
+            },
+            err => {
+              return cbk([500, 'InboundLiquidityIncreaseDryRun']);
+            });
           }
 
           return cbk(null, {

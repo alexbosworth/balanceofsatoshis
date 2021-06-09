@@ -1,5 +1,9 @@
 # Versions
 
+## Version 9.4.0
+
+- `increase-inbound-liquidity`: Cleanly request cancel of open HTLC on failure
+
 ## Version 9.3.0
 
 - `services`: Add `activity` service support to share routing activity over keysend
