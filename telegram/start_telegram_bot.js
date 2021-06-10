@@ -40,6 +40,7 @@ const interaction = require('./interaction');
 const named = require('./../package').name;
 const {version} = require('./../package');
 
+let allNodes;
 let bot;
 const botKeyFile = 'telegram_bot_api_key';
 const delay = 1000 * 60;
@@ -172,6 +173,8 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
 
       // Setup the bot start action
       initBot: ['apiKey', 'getNodes', ({apiKey, getNodes}, cbk) => {
+        allNodes = getNodes;
+
         // Exit early when bot is already instantiated
         if (!!bot) {
           return cbk();
@@ -227,7 +230,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             from: message.from.id,
             id: connectedId,
             key: apiKey.key,
-            nodes: getNodes,
+            nodes: allNodes,
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
 
@@ -265,7 +268,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             from: ctx.message.from.id,
             id: connectedId,
             key: apiKey.key,
-            nodes: getNodes,
+            nodes: allNodes,
             reply: n => ctx.replyWithMarkdown(n),
             text: ctx.message.text,
           },
@@ -281,7 +284,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             from: message.from.id,
             id: connectedId,
             key: apiKey.key,
-            nodes: getNodes,
+            nodes: allNodes,
             text: message.text,
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
@@ -313,7 +316,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
                 from: message.from.id,
                 id: connectedId,
                 key: apiKey.key,
-                nodes: getNodes,
+                nodes: allNodes,
                 text: message.text,
               });
             });
@@ -341,7 +344,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             from: message.from.id,
             id: connectedId,
             key: apiKey.key,
-            nodes: getNodes,
+            nodes: allNodes,
             text: message.text,
           },
           (err, res) => {
@@ -363,7 +366,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             return await handlePendingCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: getNodes,
+              nodes: allNodes,
               reply: n => ctx.reply(n),
             });
           } catch (err) {

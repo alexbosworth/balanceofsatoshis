@@ -1,5 +1,9 @@
 # Versions
 
+## Version 9.4.1
+
+- `telegram`: Fix issue where auto-restarting due to loss of connectivity could break commands
+
 ## Version 9.4.0
 
 - `increase-inbound-liquidity`: Cleanly request cancel of open HTLC on failure
