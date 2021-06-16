@@ -271,6 +271,25 @@ You can also add a JSON file to your .bos directory: config.json, add
 
 Some commands are designed to return outputs that can be piped or used in other CLI programs.
 
+### Open many channels
+
+Make a textfile in the terminal with newline separated pubkeys and the capacity of the channels.
+
+```shell
+cat bos_channels.txt
+
+       │ File: bos_channels.txt
+───────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1   │ 0337...1986 --amount=3000000
+   2   │ 02a4...20de --amount=3000000
+   3   │ 023c...0dec --amount=1000000
+
+```
+
+```shell
+bos open $(cat bos_channels.txt)
+```
+
 ### Summarize Numbers
 
 ```shell
