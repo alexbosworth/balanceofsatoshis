@@ -30,6 +30,9 @@ const unsupported = 501;
   {
     [destination]: <Destination Public Key Hex String>
     [find_max]: <Find Maximum Payable On Probed Routes Below Tokens Number>
+    [fs]: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [ignore]: [{
       from_public_key: <Avoid Node With Public Key Hex String>
     }]
@@ -170,6 +173,7 @@ module.exports = (args, cbk) => {
         return probeDestination({
           tokens,
           destination: args.destination,
+          fs: args.fs,
           ignore: args.ignore,
           in_through: args.in_through,
           lnd: args.lnd,

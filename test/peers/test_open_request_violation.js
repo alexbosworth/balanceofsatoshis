@@ -1,4 +1,4 @@
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const openRequestViolation = require('./../../peers/open_request_violation');
 

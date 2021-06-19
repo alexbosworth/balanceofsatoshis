@@ -39,6 +39,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!Object.fromEntries) {
+          return cbk([400, 'ExpectedLaterVersionOfNodeJsInstalled']);
+        }
+
         if (!args.fs) {
           return cbk([400, 'ExpectedFsToConnectToTelegram']);
         }

@@ -1,4 +1,4 @@
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const getPastForwards = require('./../../routing/get_past_forwards');
 

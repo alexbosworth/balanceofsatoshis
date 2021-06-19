@@ -13,6 +13,7 @@ const {parseAmount} = require('./../display');
 const asOutpoint = utxo => `${utxo.transaction_id}:${utxo.transaction_vout}`;
 const asInput = n => ({transaction_id: n.id, transaction_vout: n.vout});
 const asUtxo = n => ({id: n.slice(0, 64), vout: Number(n.slice(65))});
+const dustValue = 293;
 const {isArray} = Array;
 const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
 const minConfs = 1;
@@ -98,6 +99,10 @@ module.exports = (args, cbk) => {
       fund: ['getFee', 'outputs', ({getFee, outputs}, cbk) => {
         const inputs = args.utxos.map(asUtxo).map(asInput);
         const fee = args.fee_tokens_per_vbyte || getFee.tokens_per_vbyte;
+
+        if (!!outputs.filter(n => n.tokens < dustValue).length) {
+          return cbk([400, 'ExpectedNonDustAmountValueForFundingAmount']);
+        }
 
         args.logger.info({
           fee_rate: fee,

@@ -70,7 +70,6 @@ const uniq = arr => Array.from(new Set(arr));
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
-    [is_avoiding_high_inbound]: <Avoid High Inbound Liquidity Bool>
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
     lnd: <Authenticated LND gRPC API Object>
@@ -435,10 +434,6 @@ module.exports = (args, cbk) => {
           .filter(n => n.partner_public_key === key)
           .map(n => n.remote_balance)
           .reduce((sum, n) => sum + n, minTokens);
-
-        if (args.is_avoiding_high_inbound && currentInbound > highInbound) {
-          return cbk([400, 'InboundIsAlreadyHigh', {inbound: currentInbound}]);
-        }
 
         return getNode({
           lnd,

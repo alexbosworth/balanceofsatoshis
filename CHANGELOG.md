@@ -1,5 +1,28 @@
 # Versions
 
+## Version 10.0.0
+
+- `increase-inbound-liquidity`: Fix erroneously canceling swap when using a single path
+- `increase-outbound-liquidity`: Fix erroneous chain-fee output for dry-run, specifying fee rate
+- `open`: Show `fund` formatted command arguments
+- `pay`: Fix paying payment requests that specify millitokens
+- `pay`: Show tag icons on path descriptions
+- `probe`: Show payment request details when specifying a payreq
+- `peers`: Return error when specifying an unknown tag
+- `probe`: Show tag icons on path descriptions
+- `probe`: Show payment request details when specifying a payreq
+- `services`: Fix restarting on connection failures
+- `services`: Add `relay` service to create a relaying payment request
+- `telegram`: Add `--reset-api-key` to allow changing the saved API key
+- `telegram`: Confirm supported nodejs version installed before attempting to start bot
+- `use`: Add support for payment request arguments
+- `use`: Fix interactively paying for a paywall
+
+### Breaking Changes
+
+- `rebalance`: Remove `--avoid-high-outbound`, use `--out-target-inbound` instead
+- `services`: Add support for requiring a payment request as an argument
+
 ## Version 9.4.1
 
 - `telegram`: Fix issue where auto-restarting due to loss of connectivity could break commands

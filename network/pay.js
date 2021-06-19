@@ -22,6 +22,9 @@ const singlePath = 1;
 /** Make a payment
 
   {
+    [fs]: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [ignore]: [{
       from_public_key: <From Public Key Hex String>
       [to_public_key]: <To Public Key Hex String>
@@ -120,6 +123,7 @@ module.exports = (args, cbk) => {
         }
 
         return probeDestination({
+          fs: args.fs,
           ignore: args.ignore,
           in_through: args.in_through,
           is_real_payment: true,

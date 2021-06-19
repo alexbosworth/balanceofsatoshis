@@ -371,6 +371,12 @@ module.exports = (args, cbk) => {
           funding_deadline: moment().add(10, 'minutes').calendar(),
         });
 
+        const fundSends = openChannels.pending.map(channel => {
+          return `${channel.address} ${channel.tokens}`;
+        });
+
+        args.logger.info({fund: `fund ${fundSends.join(' ')}`});
+
         const commaSends = openChannels.pending.map(channel => {
           return `${channel.address}, ${tokAsBigUnit(channel.tokens)}`;
         });

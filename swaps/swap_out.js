@@ -867,13 +867,17 @@ module.exports = (args, cbk) => {
           tokens: decodeFundingRequest.tokens,
         },
         (err, res) => {
-          return cancelSwapOut({
-            id: decodeFundingRequest.id,
-            metadata: getService.metadata,
-            payment: decodeFundingRequest.payment,
-            service: getService.service,
-          },
-          () => cbk(err, res));
+          if (!!err) {
+            return cancelSwapOut({
+              id: decodeFundingRequest.id,
+              metadata: getService.metadata,
+              payment: decodeFundingRequest.payment,
+              service: getService.service,
+            },
+            () => cbk(err, res));
+          }
+
+          return cbk(null, res);
         });
       }],
 

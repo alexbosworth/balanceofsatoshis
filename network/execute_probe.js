@@ -25,7 +25,6 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
       from_public_key: <Avoid Node With Public Key Hex String>
     }]
     [in_through]: <In Through Public Key Hex String>
-    [is_strict_hints]: <Interpret Routes Strictly Ignoring Other Paths Bool>
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
@@ -90,10 +89,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedDestinationToExecuteProbe']);
         }
 
-        if (!!args.is_strict_hints && !args.routes) {
-          return cbk([400, 'ExpectedRoutesWhenStrictHintsSpecified']);
-        }
-
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToExecuteProbe']);
         }
@@ -102,7 +97,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToExecuteProbe']);
         }
 
-        if (!args.tokens) {
+        if (!args.mtokens && !args.tokens) {
           return cbk([400, 'ExpectedTokensToExecuteProbe']);
         }
 
@@ -127,12 +122,12 @@ module.exports = (args, cbk) => {
         const timeoutMinutes = minutesAsMs((args.timeout_minutes || Number()));
 
         const sub = subscribeToProbeForRoute({
+          mtokens,
           cltv_delta: args.cltv_delta,
           destination: args.destination,
           features: args.features,
           ignore: args.ignore,
           incoming_peer: args.in_through,
-          is_strict_hints: !!args.is_strict_hints,
           lnd: args.lnd,
           max_fee: !args.is_strict_max_fee ? undefined : args.max_fee,
           max_timeout_height: args.max_timeout_height,
@@ -143,7 +138,7 @@ module.exports = (args, cbk) => {
           probe_timeout_ms: timeoutMinutes || undefined,
           routes: args.routes,
           tokens: args.tokens,
-          total_mtokens: mtokens,
+          total_mtokens: !!args.payment ? mtokens : undefined,
         });
 
         const finished = (err, res) => {

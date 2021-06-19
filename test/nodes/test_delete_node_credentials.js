@@ -1,4 +1,4 @@
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const deleteNodeCredentials = require('./../../nodes/delete_node_credentials');
 

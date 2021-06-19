@@ -231,6 +231,8 @@ Use any shorthand you'd like when choosing this profile node name
 
 #### Umbrel Saved Node
 
+Note: Umbrel is not FOSS software, use at your own risk.
+
 1. Identify your Umbrel home dir, like /home/umbrel/umbrel
 2. Look in the .env file in that dir for the `LND_IP` to use as the socket to connect to
 
@@ -418,10 +420,19 @@ On Umbrel this would be:
 ## -v $HOME/umbrel/lnd:/home/node/.lnd:ro
 docker run -it --rm --network="host" --add-host=umbrel.local:192.168.1.23 -v $HOME/.bos:/home/node/.bos -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
 ```
-Note: For [umbrel-os](https://github.com/getumbrel/umbrel-os) users, when running the above docker run command, ensure the "192.168.1.23" portion of the command is updated to reflect the IP of the lnd container. You can find the IP by looking for the `LND_IP` value inside the `$HOME/umbrel/.env` file.
+
+Note: For [umbrel-os](https://github.com/getumbrel/umbrel-os) users, when running the above
+docker run command, ensure the "192.168.1.23" portion of the command is updated to reflect the
+IP of the lnd container. You can find the IP by looking for the `LND_IP` value inside the
+`$HOME/umbrel/.env` file.
+
+(Note: Umbrel is not FOSS software, use at your own risk.)
 
 Otherwise you can just pass the local node credentials as shown above using the
 saved nodes.
+
+If you are running a long-running command like `telegram`, use  `-d --restart always` instead
+of `-it --rm` to run in daemon mode and auto-restart.
 
 Note: if you are used to using ctrl+c to terminate the process, that doesn't work on Docker.
 Instead, you can use ctrl+p and then ctrl+q to background the interactive mode, then do

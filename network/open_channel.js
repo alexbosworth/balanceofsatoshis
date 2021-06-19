@@ -279,21 +279,21 @@ module.exports = (args, cbk) => {
                   return cbk(null, false);
                 }
 
+                const normalFee = getNormalFee.tokens_per_vbyte;
+
+                const feeRate = args.chain_fee_rate || normalFee;
+
                 // Exit early when this is a dry run
                 if (!!args.is_dry_run) {
                   args.logger.info({
                     opening_with: node,
-                    chain_fee_tokens_per_vbyte: getNormalFee.tokens_per_vbyte,
+                    chain_fee_tokens_per_vbyte: feeRate,
                     is_dry_run: true,
                     new_channel_size: asBigTok(args.tokens || channelTokens),
                   });
 
                   return cbk(null, true);
                 }
-
-                const normalFee = getNormalFee.tokens_per_vbyte;
-
-                const feeRate = args.chain_fee_rate || normalFee;
 
                 return openChannel({
                   chain_fee_tokens_per_vbyte: feeRate,

@@ -1,4 +1,4 @@
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const avoidsAsIgnores = require('./../../swaps/avoids_as_ignores');
 const {chanInfoResponse} = require('./../fixtures');

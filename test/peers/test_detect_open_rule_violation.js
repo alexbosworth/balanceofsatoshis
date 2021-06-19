@@ -1,6 +1,6 @@
 const EventEmitter = require('events');
 
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const {chanInfoResponse} = require('./../fixtures');
 const detect = require('./../../peers/detect_open_rule_violation');

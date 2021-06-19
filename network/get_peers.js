@@ -186,6 +186,26 @@ module.exports = (args, cbk) => {
         return getPendingChannels({lnd: args.lnd}, cbk);
       }],
 
+      // Check tags
+      checkTags: ['getIcons', ({getIcons}, cbk) => {
+        // Exit early when there are no tags
+        if (!args.tags || !args.tags.length) {
+          return cbk();
+        }
+
+        const unknown = args.tags.filter(tag => {
+          return !getIcons.nodes.find(node => {
+            return node.aliases.includes(tag);
+          });
+        });
+
+        if (!!unknown.length) {
+          return cbk([400, 'UnknownTagSpecified', {unknown}]);
+        }
+
+        return cbk();
+      }],
+
       // Get channels
       getChannels: ['getIcons', ({getIcons}, cbk) => {
         return getChannels({

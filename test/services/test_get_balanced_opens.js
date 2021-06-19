@@ -1,7 +1,7 @@
 const {createSignedRequest} = require('invoices');
 const {createUnsignedRequest} = require('invoices');
 const sign = require('secp256k1').ecdsaSign;
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const getBalancedOpens = require('./../../services/get_balanced_opens');
 

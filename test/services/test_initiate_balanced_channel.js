@@ -2,7 +2,7 @@ const EventEmitter = require('events');
 
 const {ECPair} = require('bitcoinjs-lib');
 const {payments} = require('bitcoinjs-lib');
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {getInfoResponse} = require('./../fixtures');

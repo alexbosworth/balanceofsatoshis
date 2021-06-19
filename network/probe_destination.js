@@ -6,6 +6,7 @@ const {decodePaymentRequest} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
+const moment = require('moment');
 const {parsePaymentRequest} = require('invoices');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -34,6 +35,7 @@ const preimageByteLength = 32;
 const {now} = Date;
 const reserveRatio = 0.01;
 const signatureType = '34349337';
+const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
 
 /** Determine if a destination can be paid by probing it
 
@@ -118,6 +120,7 @@ module.exports = (args, cbk) => {
 
       // Destination to pay
       to: ['validate', ({}, cbk) => {
+        // Exit early when sending a push payment
         if (!!args.is_push) {
           const secret = randomBytes(preimageByteLength);
 
@@ -125,11 +128,17 @@ module.exports = (args, cbk) => {
             secret,
             destination: args.destination,
             id: createHash('sha256').update(secret).digest().toString('hex'),
+            mtokens: !args.tokens ? '0': tokAsMtok(args.tokens),
           });
         }
 
+        // Exit early when probing a destination
         if (!args.request && !!args.destination) {
-          return cbk(null, {destination: args.destination, routes: []});
+          return cbk(null, {
+            destination: args.destination,
+            mtokens: !args.tokens ? '0': tokAsMtok(args.tokens),
+            routes: [],
+          });
         }
 
         if (!args.request) {
@@ -137,6 +146,31 @@ module.exports = (args, cbk) => {
         }
 
         try {
+          const details = parsePaymentRequest({request: args.request});
+
+          if (details.is_expired) {
+            return cbk([400, 'InvoiceIsExpired']);
+          }
+
+          args.logger.info({
+            description: details.description || undefined,
+            destination: details.destination,
+            expires: moment(details.expires_at).fromNow(),
+            id: details.id,
+            tokens: details.tokens,
+          });
+
+          return cbk(null, {
+            cltv_delta: details.cltv_delta,
+            destination: details.destination,
+            features: details.features,
+            id: details.id,
+            mtokens: details.mtokens || '0',
+            payment: details.payment,
+            routes: details.routes,
+            tokens: details.tokens,
+          });
+
           return cbk(null, parsePaymentRequest({request: args.request}));
         } catch (err) {
           return cbk([400, 'FailedToDecodePaymentRequest', {err}]);
@@ -307,12 +341,12 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           logger: args.logger,
           max_fee: args.max_fee,
+          mtokens: !BigInt(to.mtokens) ? tokAsMtok(defaultTokens) : to.mtokens,
           outgoing_channel: outgoingChannelId,
           payment: to.payment,
           routes: to.routes,
           tagged: !!getIcons ? getIcons.nodes : undefined,
           timeout_minutes: args.timeout_minutes || undefined,
-          tokens: args.tokens || to.tokens || defaultTokens,
           total_mtokens: !!to.payment ? to.mtokens : undefined,
         },
         cbk);

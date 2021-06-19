@@ -59,6 +59,7 @@ const restartSubscriptionTimeMs = 1000 * 30;
   {
     fs: {
       getFile: <Get File Contents Function>
+      [is_reset_state]: <Reset File Status Bool>
       makeDirectory: <Make Directory Function>
       writeFile: <Write File Function>
     }
@@ -118,7 +119,8 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         const path = join(...[homedir(), home, botKeyFile]);
 
         return fs.getFile(path, (err, res) => {
-          if (!!err || !res || !res.toString()) {
+          // Exit early when resetting the API key
+          if (!!err || !res || !res.toString() || !!fs.is_reset_state) {
             const token = interaction.api_token_prompt;
 
             inquirer.prompt([token]).then(({key}) => cbk(null, {key}));

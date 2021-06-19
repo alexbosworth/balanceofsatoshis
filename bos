@@ -986,6 +986,7 @@ prog
         return network.pay({
           lnd,
           logger,
+          fs: {getFile: readFile},
           ignore: routing.ignoreFromAvoid({avoid: options.avoid}).ignore,
           in_through: inThrough.public_key,
           is_real_payment: true,
@@ -1097,6 +1098,7 @@ prog
           logger,
           destination: args.to.length === 66 ? args.to : undefined,
           find_max: !!options.findMax ? 16777215 : undefined,
+          fs: {getFile: readFile},
           ignore: routing.ignoreFromAvoid({avoid: options.avoid}).ignore,
           in_through: inThrough.public_key,
           max_paths: options.maxPaths,
@@ -1116,17 +1118,16 @@ prog
   .help('Change the liquidity profile of two peers')
   .help('When specifying amount you can use formulas or *k *m for *1e3, *1e6')
   .help('Specifying target liquidity you can use CAPACITY/2, other formulas')
-  .help('You can use tags with --avoid, --in, --out')
+  .help('You can specify tags for --avoid, --in, --out')
   .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
-  .option('--avoid-high-inbound', 'Avoid rebalancing when inbound is high')
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
   .option('--in-target-outbound <amt>', 'Balance up to outbound amount')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
   .option('--minutes <minutes>', 'Time-out route search after N minutes', INT)
   .option('--no-color', 'Mute all colors')
-  .option('--node <node_name>', 'Node to use for payment request check')
+  .option('--node <node_name>', 'Node to use for rebalance')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
   .option('--out-channel', 'Lock outbound rebalance to channels', REPEATABLE)
   .option('--out-target-inbound <amount>', 'Balance up to inbound amount')
@@ -1139,7 +1140,6 @@ prog
           fs: {getFile: readFile},
           in_through: options.in || undefined,
           in_outbound: options.inTargetOutbound || undefined,
-          is_avoiding_high_inbound: options.avoidHighInbound || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           max_fee: options.maxFee,
           max_fee_rate: options.maxFeeRate,
@@ -1299,15 +1299,12 @@ prog
   .option('--profile <profile>', 'Share a profile with info about your node')
   .option('--profile-link <link>', 'Add a link to your profile', REPEATABLE)
   .option('--network <public_key>', 'Share other service node key', REPEATABLE)
+  .option('--relay', 'Enable payments relay service', BOOL)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const {lnd} = await lndForNode(logger, options.node);
-        const payer = options.payer === options.node ? null : options.payer;
-
         services.servicePaidRequests({
           fetch,
-          lnd,
           logger,
           activity_fees: options.activityFees,
           activity_volume: options.activityVolume,
@@ -1319,9 +1316,10 @@ prog
           inbox_sms_to_number: options.inboxSmsTo,
           inbox_twilio_account_sid: options.inboxSmsTwilioSid,
           inbox_twilio_auth_token: options.inboxSmsTwilioAuth,
-          network: (await lnSync.getNetwork({lnd})).network,
+          is_relay_enabled: !!options.relay || undefined,
           network_nodes: flatten([options.network].filter(n => !!n)),
-          payer: !payer ? lnd : (await lndForNode(logger, payer)).lnd,
+          node: options.node,
+          payer: options.payer || options.node,
           profile: options.profile,
           profile_urls: flatten([options.profileLink].filter(n => !!n)),
         });
@@ -1429,6 +1427,7 @@ prog
   .option('--connect <connect_code>', 'Connection code', INT)
   .option('--ignore-forwards-below <amount>', 'Ignore forwards of value', INT)
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
+  .option('--reset-api-key', 'Reset the Telegram API key')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1439,6 +1438,7 @@ prog
             writeFile,
             getFile: readFile,
             getFileStatus: statSync,
+            is_reset_state: options.resetApiKey || undefined,
             makeDirectory: mkdir,
           },
           id: options.connect,
@@ -1483,6 +1483,7 @@ prog
           lnd,
           logger,
           ask: (n, cbk) => inquirer.prompt(n).then(res => cbk(res)),
+          fs: {getFile: readFile},
           network: (await lnSync.getNetwork({lnd})).network,
           node: args.serverId,
         });

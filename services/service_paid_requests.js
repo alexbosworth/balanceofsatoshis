@@ -1,6 +1,12 @@
+const asyncAuto = require('async/auto');
+const asyncForever = require('async/forever');
+const {getNetwork} = require('ln-sync');
 const {servicePaidRequests} = require('paid-services');
 
+const {authenticatedLnd} = require('./../lnd');
+
 const asFlag = n => !!n ? '1' : '0';
+const restartDelayMs = 1000 * 30;
 
 /** Service KeySend payment requests
 
@@ -16,41 +22,84 @@ const asFlag = n => !!n ? '1' : '0';
     [inbox_sms_to_number]: <Inbox SMS To Number String>
     [inbox_twilio_account_sid]: <Inbox Twilio Account Sid String>
     [inbox_twilio_auth_token]: <Inbox Twilio Auth Token String>
-    lnd: <Authenticated LND API Object>
+    [is_relay_enabled]: <Payment Relay Service Enabled Bool>
     logger: <Winston Logger Object>
-    network: <Network Name String>
     network_nodes: [<Network Node Public Key Hex String]
-    payer: <Payer Authenticated LND API Object>
+    [node]: <LND Node String>
+    [payer]: <Payer Node String>
     [profile]: <Node Profile String>
     profile_urls: [<Profile URL String>]
   }
 */
 module.exports = args => {
-  const sub = servicePaidRequests({
-    fetch: args.fetch,
-    lnd: args.lnd,
-    env: {
-      PAID_SERVICES_ACTIVITY_FEES: asFlag(args.activity_fees),
-      PAID_SERVICES_ACTIVITY_VOLUME: asFlag(args.activity_volume),
-      PAID_SERVICES_INBOX_EMAIL_FROM: args.inbox_email_from,
-      PAID_SERVICES_INBOX_EMAIL_TO: args.inbox_email_to,
-      PAID_SERVICES_INBOX_POSTMARK_API_KEY: args.inbox_postmark_api_key,
-      PAID_SERVICES_INBOX_PRICE: args.inbox_price,
-      PAID_SERVICES_INBOX_SMS_FROM_NUMBER: args.inbox_sms_from_number,
-      PAID_SERVICES_INBOX_SMS_TO_NUMBER: args.inbox_sms_to_number,
-      PAID_SERVICES_INBOX_TWILIO_ACCOUNT_SID: args.inbox_twilio_account_sid,
-      PAID_SERVICES_INBOX_TWILIO_AUTH_TOKEN: args.inbox_twilio_auth_token,
-      PAID_SERVICES_NETWORK_NODES: args.network_nodes.join(','),
-      PAID_SERVICES_PROFILE_FOR_NODE: args.profile,
-      PAID_SERVICES_PROFILE_URLS: args.profile_urls.join('\n'),
+  const env = {
+    PAID_SERVICES_ACTIVITY_FEES: asFlag(args.activity_fees),
+    PAID_SERVICES_ACTIVITY_VOLUME: asFlag(args.activity_volume),
+    PAID_SERVICES_INBOX_EMAIL_FROM: args.inbox_email_from,
+    PAID_SERVICES_INBOX_EMAIL_TO: args.inbox_email_to,
+    PAID_SERVICES_INBOX_POSTMARK_API_KEY: args.inbox_postmark_api_key,
+    PAID_SERVICES_INBOX_PRICE: args.inbox_price,
+    PAID_SERVICES_INBOX_SMS_FROM_NUMBER: args.inbox_sms_from_number,
+    PAID_SERVICES_INBOX_SMS_TO_NUMBER: args.inbox_sms_to_number,
+    PAID_SERVICES_INBOX_TWILIO_ACCOUNT_SID: args.inbox_twilio_account_sid,
+    PAID_SERVICES_INBOX_TWILIO_AUTH_TOKEN: args.inbox_twilio_auth_token,
+    PAID_SERVICES_NETWORK_NODES: args.network_nodes.join(','),
+    PAID_SERVICES_PROFILE_FOR_NODE: args.profile,
+    PAID_SERVICES_PROFILE_URLS: args.profile_urls.join('\n'),
+    PAID_SERVICES_RELAY: asFlag(args.is_relay_enabled),
+  };
+
+  return asyncForever(cbk => {
+    return asyncAuto({
+      // Get lnd
+      getLnd: cbk => {
+        return authenticatedLnd({logger: args.logger, node: args.node}, cbk);
+      },
+
+      // Get payer
+      getPayer: cbk => {
+        return authenticatedLnd({logger: args.logger, node: args.payer}, cbk);
+      },
+
+      // Get the network name
+      getNetwork: ['getLnd', ({getLnd}, cbk) => {
+        return getNetwork({lnd: getLnd.lnd}, cbk);
+      }],
+
+      // Service requests
+      service: [
+        'getLnd',
+        'getNetwork',
+        'getPayer',
+        ({getLnd, getNetwork, getPayer}, cbk) =>
+      {
+        const sub = servicePaidRequests({
+          env,
+          fetch: args.fetch,
+          lnd: getLnd.lnd,
+          network: getNetwork.network,
+          payer: getPayer.lnd,
+        });
+
+        sub.on('error', error => {
+          args.logger.error(error);
+
+          // Stop listening to the paid services
+          sub.removeAllListeners();
+
+          // Trigger a restart after a delay
+          return setTimeout(cbk, restartDelayMs);
+        });
+
+        sub.on('failure', failure => args.logger.error(failure));
+        sub.on('success', success => args.logger.info(success));
+
+        return;
+      }],
     },
-    network: args.network,
-    payer: args.payer,
+    cbk);
+  },
+  err => {
+    return args.logger.error({err});
   });
-
-  sub.on('error', error => args.logger.error(error));
-  sub.on('failure', failure => args.logger.error(failure));
-  sub.on('success', success => args.logger.info(success));
-
-  return;
 };

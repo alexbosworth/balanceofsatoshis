@@ -1,15 +1,18 @@
 const asyncAuto = require('async/auto');
 const {confirmServiceUse} = require('paid-services');
+const {formatTokens} = require('ln-sync');
 const {getServicesList} = require('paid-services');
 const {getServiceSchema} = require('paid-services');
 const {makeServiceRequest} = require('paid-services');
 const {parsePaymentRequest} = require('ln-service');
-const {pay} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const bigUnit = tokens => displayTokens({tokens, is_monochrome: true}).display;
+const {pay} = require('./../network')
+
+const bigUnit = tokens => formatTokens({tokens, is_monochrome: true}).display;
 const byName = (a, b) => a.name < b.name ? -1 : 1;
 const defaultMaxFee = 1337;
+const defaultMaxPaths = 1;
 const isPublicKey = n => !!n && /^[0-9A-F]{66}$/i.test(n);
 const {keys} = Object;
 
@@ -17,19 +20,26 @@ const {keys} = Object;
 
   {
     ask: <Inquirer Ask Function>
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     network: <Network Name String>
     node: <Node Public Key Hex String>
   }
 */
-module.exports = ({ask, lnd, logger, network, node}, cbk) => {
+module.exports = ({ask, fs, lnd, logger, network, node}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
         if (!ask) {
           return cbk([400, 'ExpectedAskFunctionToUsePaidService']);
+        }
+
+        if (!fs) {
+          return cbk([400, 'ExpectedFileSysttemMethodsToUsePaidService']);
         }
 
         if (!lnd) {
@@ -62,7 +72,7 @@ module.exports = ({ask, lnd, logger, network, node}, cbk) => {
           choices: getServices.services.slice().sort(byName).map(n => n.name),
           type: 'list',
           name: 'name',
-          message: 'Choose service:',
+          message: 'Choose service',
         }],
         res => cbk(null, res));
       }],
@@ -133,8 +143,7 @@ module.exports = ({ask, lnd, logger, network, node}, cbk) => {
         return ask([{
           type: 'confirm',
           name: 'confirm',
-          message: result.text || 'Confirm?',
-          prefix: `[Pay ${bigUnit(tokens)}]`,
+          message: `Pay ${bigUnit(tokens)}?`,
         }],
         res => cbk(null, res));
       }],
@@ -152,8 +161,12 @@ module.exports = ({ask, lnd, logger, network, node}, cbk) => {
         }
 
         return pay({
+          fs,
           lnd,
+          logger,
           max_fee: defaultMaxFee,
+          max_paths: defaultMaxPaths,
+          out: [],
           request: result.paywall,
         },
         cbk);
@@ -166,7 +179,7 @@ module.exports = ({ask, lnd, logger, network, node}, cbk) => {
           return cbk();
         }
 
-        logger.info({success: {paid: bigUnit(pay.tokens)}});
+        logger.info(pay);
 
         return cbk();
       }],

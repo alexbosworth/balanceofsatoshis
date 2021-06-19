@@ -1,4 +1,4 @@
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const writeJsonFile = require('./../../responses/write_json_file');
 

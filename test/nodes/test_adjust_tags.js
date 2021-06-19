@@ -1,4 +1,4 @@
-const {test} = require('tap');
+const {test} = require('@alexbosworth/tap');
 
 const adjustTags = require('./../../nodes/adjust_tags');
 
