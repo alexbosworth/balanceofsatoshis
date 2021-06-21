@@ -25,6 +25,7 @@ const {getIcons} = require('./../display');
 const {getPastForwards} = require('./../routing');
 const {sortBy} = require('./../arrays');
 
+const closedSorts = ['fee_earnings', 'first_connected'];
 const defaultInvoicesLimit = 200;
 const defaultSort = 'first_connected';
 const fromNow = epoch => !epoch ? undefined : moment(epoch * 1e3).fromNow();
@@ -101,8 +102,26 @@ module.exports = (args, cbk) => {
       // Get node icons
       getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
 
+      // Determine if closed channels should be included
+      isIncludingClosed: ['validate', ({}, cbk) => {
+        if (!!args.earnings_days || !!args.idle_days) {
+          return cbk(null, true);
+        }
+
+        if (closedSorts.includes(args.sort_by)) {
+          return cbk(null, true);
+        }
+
+        return cbk(null, false);
+      }],
+
       // Get closed channels
-      getClosed: ['validate', ({}, cbk) => {
+      getClosed: ['isIncludingClosed', ({isIncludingClosed}, cbk) => {
+        // Exit early when no closed channel data is needed
+        if (!isIncludingClosed) {
+          return cbk(null, {channels: []});
+        }
+
         return getClosedChannels({lnd: args.lnd}, cbk);
       }],
 

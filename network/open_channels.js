@@ -3,6 +3,7 @@ const {randomBytes} = require('crypto');
 const {addPeer} = require('ln-service');
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
+const asyncEachSeries = require('async/eachSeries');
 const asyncDetectSeries = require('async/detectSeries');
 const asyncMap = require('async/map');
 const asyncMapSeries = require('async/mapSeries');
@@ -23,6 +24,7 @@ const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
 const {transactionAsPsbt} = require('psbt');
 
+const adjustFees = require('./../routing/adjust_fees');
 const {getAddressUtxo} = require('./../chain');
 const {getRawTransaction} = require('./../chain');
 const {parseAmount} = require('./../display');
@@ -51,11 +53,15 @@ const utxoPollingTimes = 20;
   {
     ask: <Ask For Input Function>
     capacities: [<New Channel Capacity Tokens String>]
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     gives: [<New Channel Give Tokens Number>]
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     public_keys: [<Public Key Hex String>]
     request: <Request Function>
+    set_fee_rates: [<Fee Rate Number>]
     types: [<Channel Type String>]
   }
 
@@ -95,6 +101,7 @@ module.exports = (args, cbk) => {
 
         const hasCapacities = !!args.capacities.length;
         const hasGives = !!args.gives.length;
+        const hasFeeRates = !!args.set_fee_rates.length;
         const publicKeysLength = args.public_keys.length;
 
         if (!!hasCapacities && publicKeysLength !== args.capacities.length) {
@@ -103,6 +110,10 @@ module.exports = (args, cbk) => {
 
         if (!!hasGives && publicKeysLength !== args.gives.length) {
           return cbk([400, 'GivesMustBeSpecifiedForEveryPublicKey']);
+        }
+
+        if (!!hasFeeRates && publicKeysLength !== args.set_fee_rates.length) {
+          return cbk([400, 'MustSetFeeRateForEveryPublicKey']);
         }
 
         if (!args.request) {
@@ -180,6 +191,7 @@ module.exports = (args, cbk) => {
 
         return cbk(null, capacities);
       }],
+
 
       // Connect up to the peers
       connect: [
@@ -535,10 +547,36 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Set fee rates
+      setFeeRates: ['detectFunding', 'fundChannels', ({}, cbk) => {
+        // Exit early when not specifying fee rates
+        if (args.set_fee_rates.length !== args.public_keys.length) {
+          return cbk();
+        }
+
+        const feesToSet = args.set_fee_rates.map((rate, i) => ({
+          rate,
+          public_key: args.public_keys[i],
+        }));
+
+        return asyncEachSeries(feesToSet, (toSet, cbk) => {
+          return adjustFees({
+            fee_rate: toSet.rate,
+            fs: args.fs,
+            lnd: args.lnd,
+            logger: args.logger,
+            to: [toSet.public_key],
+          },
+          cbk);
+        },
+        cbk);
+      }],
+
       // Transaction complete
       completed: [
         'cancelPending',
         'fundingPsbt',
+        'setFeeRates',
         ({cancelPending, fundingPsbt}, cbk) =>
       {
         try {

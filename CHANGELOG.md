@@ -1,5 +1,10 @@
 # Versions
 
+## Version 10.1.0
+
+- `open`: Add `--set-fee-rate` to set forwarding fee rates after opening channels
+- `peers`: Increase execution speed when not specifying idle days or fee earnings
+
 ## Version 10.0.0
 
 - `increase-inbound-liquidity`: Fix erroneously canceling swap when using a single path

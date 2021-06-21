@@ -898,6 +898,7 @@ prog
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
   .option('--give <give_amount>', 'Amount to gift to peer', REPEATABLE)
   .option('--node <node_name>', 'Node to open channels')
+  .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
   .option('--type <type>', 'Type of channel (private/public)', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -907,9 +908,11 @@ prog
           request,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
           capacities: flatten([options.amount].filter(n => !!n)),
+          fs: {getFile: readFile},
           gives: flatten([options.give].filter(n => !!n)),
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           public_keys: args.peerPublicKeys,
+          set_fee_rates: flatten([options.setFeeRate]).filter(n => !!n),
           types: flatten([options.type].filter(n => !!n)),
         },
         responses.returnObject({logger, reject, resolve}));
@@ -1120,7 +1123,7 @@ prog
   .help('Specifying target liquidity you can use CAPACITY/2, other formulas')
   .help('You can specify tags for --avoid, --in, --out')
   .option('--amount <amount>', 'Maximum amount to rebalance')
-  .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
+  .option('--avoid <pubkey_or_chanid>', 'Avoid forwarding through', REPEATABLE)
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
   .option('--in-target-outbound <amt>', 'Balance up to outbound amount')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)

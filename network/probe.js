@@ -252,6 +252,11 @@ module.exports = (args, cbk) => {
 
           const liquidity = paths.reduce((m, n) => m + n.liquidity, Number());
 
+          // Exit early when there is only one path
+          if (args.max_paths === singlePath) {
+            return;
+          }
+
           return args.logger.info({
             found_liquidity: formatTokens({tokens: liquidity}).display,
             found_paths: paths.length,
@@ -277,12 +282,13 @@ module.exports = (args, cbk) => {
 
         sub.on('success', ({paths}) => {
           const liquidity = paths.reduce((m, n) => m + n.liquidity, Number());
+          const numPaths = paths.filter(n => !!n).length;
           const target = !args.find_max ? decodeRequest.tokens : undefined;
 
           return args.logger.info({
             target_amount: !!target ? formatTokens({tokens: target}) : target,
             total_liquidity: formatTokens({tokens: liquidity}).display,
-            total_paths: paths.filter(n => !!n).length,
+            total_paths: args.max_paths !== singlePath ? numPaths : undefined,
           });
 
           return cbk();
