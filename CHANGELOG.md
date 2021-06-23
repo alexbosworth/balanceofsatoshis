@@ -1,5 +1,11 @@
 # Versions
 
+## Version 10.1.1
+
+- `telegram`: Show errors when starting telegram bot fails
+- `telegram`: Reformat rebalance, forward, receive messages to use standard amount format
+- `telegram`: Add fee rate info to rebalance/forward messages
+
 ## Version 10.1.0
 
 - `open`: Add `--set-fee-rate` to set forwarding fee rates after opening channels
