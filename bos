@@ -504,12 +504,13 @@ prog
   .help('List out fee rates, fix problems with routing policies, set out fees')
   .help('When setting fee, if channels pending, will wait for confirm to set')
   .help('Set-fee-rate can use formulas: https://formulajs.info/functions/')
-  .help('You can use INBOUND_FEE_RATE to mirror an inbound fee')
   .help('Specify PERCENT(0.00) to set the fee as a fraction of routed amount')
   .help('Specify BIPS() to set the fee as parts per thousand')
   .help('You can use INBOUND and OUTBOUND in formulas for IF formulas')
-  .option('--node <node_name>', 'Node to find record on')
-  .option('--set-fee-rate <rate>', 'Forward fee in parts per million')
+  .help('You can use INBOUND_FEE_RATE to mirror an inbound fee')
+  .help('You can use FEE_RATE_OF_<PUBKEY> to reference other node rates')
+  .option('--node <node_name>', 'Saved node (not peer to set fees on)')
+  .option('--set-fee-rate <rate>', 'Fee in parts per million or use a formula')
   .option('--to <peer>', 'Peer public key or alias to set fees', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {

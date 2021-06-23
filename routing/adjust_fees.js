@@ -7,6 +7,7 @@ const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getFeeRates} = require('ln-service');
 const {getIdentity} = require('ln-service');
+const {getNode} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
 const {getPendingChannels} = require('ln-service');
 const {gray} = require('colorette');
@@ -27,7 +28,9 @@ const flatten = arr => [].concat(...arr);
 const interval = 1000 * 60 * 2;
 const {isArray} = Array;
 const {max} = Math;
+const nodeMatch = /\bFEE_RATE_OF_[0-9A-F]{66}\b/gim;
 const noFee = gray('Unknown Rate');
+const pubKeyForNodeMatch = n => n.substring(12).toLowerCase();
 const shortKey = key => key.substring(0, 20);
 const times = 360;
 const uniq = arr => Array.from(new Set(arr));
@@ -35,7 +38,7 @@ const uniq = arr => Array.from(new Set(arr));
 /** View and adjust routing fees
 
   {
-    [fee_rate]: <Fee Rate Parts Per Million Number>
+    [fee_rate]: <Fee Rate String>
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
@@ -129,6 +132,60 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Get referenced other node rates
+      getNodeRates: ['getPeers', ({getPeers}, cbk) => {
+        // Exit early when not referencing another node's fee rate
+        if (!args.fee_rate || !args.fee_rate.match(nodeMatch)) {
+          return cbk(null, []);
+        }
+
+        const [peer, otherPeer] = getPeers;
+
+        // Exit with error when multiple to peers are specified
+        if (!!otherPeer) {
+          return cbk([400, 'MultipleToNotSupportedWhenReferencingNodeRate']);
+        }
+
+        const nodeIds = args.fee_rate.match(nodeMatch).map(pubKeyForNodeMatch);
+
+        return getNode({
+          lnd: args.lnd,
+          public_key: peer.public_key,
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          // Map referenced node ids to their fee rates
+          const feeRates = nodeIds.map(key => {
+            // Relevant forwarding policies
+            const policies = res.channels
+              .filter(n => !!n.policies.find(n => n.public_key === key))
+              .map(({policies}) => policies.find(n => n.public_key === key))
+              .filter(n => !!n.updated_at);
+
+            // Exit early when there is no defined policy for an edge
+            if (!policies.length) {
+              return;
+            }
+
+            return {
+              key: `FEE_RATE_OF_${key.toUpperCase()}`,
+              rate: max(...policies.map(n => n.fee_rate)),
+            };
+          });
+
+          const rates = feeRates.filter(n => !!n);
+
+          if (!rates.length) {
+            return cbk([400, 'NoNodeRatesFoundToUpdateFeeRatesFromNode']);
+          }
+
+          return cbk(null, rates);
+        });
+      }],
+
       // Get the policies of all channels
       getPolicies: ['getChannels', ({getChannels}, cbk) => {
         return asyncMap(getChannels.channels, (channel, cbk) => {
@@ -151,6 +208,7 @@ module.exports = (args, cbk) => {
       feeUpdates: [
         'getChannels',
         'getFeeRates',
+        'getNodeRates',
         'getPeers',
         'getPending',
         'getPolicies',
@@ -158,6 +216,7 @@ module.exports = (args, cbk) => {
         ({
           getChannels,
           getFeeRates,
+          getNodeRates,
           getPeers,
           getPending,
           getPolicies,
@@ -202,6 +261,8 @@ module.exports = (args, cbk) => {
           parser.setVariable('INBOUND_FEE_RATE', inboundFeeRate);
           parser.setVariable('OUTBOUND', outboundLiquidity);
 
+          getNodeRates.forEach(({key, rate}) => parser.setVariable(key, rate));
+
           parser.setFunction('BIPS', params => {
             const [param] = params;
 
@@ -214,7 +275,7 @@ module.exports = (args, cbk) => {
             return params * 1e4;
           });
 
-          const parsedRate = parser.parse(args.fee_rate);
+          const parsedRate = parser.parse(args.fee_rate.toUpperCase());
 
           switch (parsedRate.error) {
           case '#DIV/0!':
@@ -290,7 +351,7 @@ module.exports = (args, cbk) => {
             return updateChannelFee({
               base_fee_mtokens: update.base_fee_mtokens,
               cltv_delta: update.cltv_delta,
-              fee_rate: update.fee_rate,
+              fee_rate: ceil(update.fee_rate),
               from: getPublicKey.public_key,
               lnd: args.lnd,
               transaction_id: update.transaction_id,

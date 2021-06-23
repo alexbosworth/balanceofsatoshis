@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.2.0
+
+- `fees`: Reference other nodes' fees in `--set-fee-rate` using `FEE_RATE_OF_<PUBKEY>`
+
 ## Version 10.1.1
 
 - `telegram`: Show errors when starting telegram bot fails
