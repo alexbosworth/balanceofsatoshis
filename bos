@@ -21,6 +21,7 @@ const request = importLazy('@alexbosworth/request');
 const {accountingCategories} = importLazy('./commands');
 const balances = importLazy('./balances');
 const chain = importLazy('./chain');
+const commands = importLazy('./commands');
 const encryption = importLazy('./encryption');
 const {exchanges} = importLazy('./commands');
 const fiat = importLazy('./fiat');
@@ -197,6 +198,25 @@ prog
           description: options.description,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           transaction: args.tx,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
+    });
+  })
+
+  // Call API directly
+  .command('call', 'Make a raw API call and to get a raw API response')
+  .argument('[method]', 'Method to call')
+  .option('--node <node_name>', 'Saved node to use for call')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return commands.callRawApi({
+          ask: (n, cbk) => inquirer.prompt([n]).then(n => cbk(null, n)),
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          method: args.method,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {

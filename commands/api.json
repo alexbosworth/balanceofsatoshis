@@ -1,0 +1,610 @@
+{
+  "calls": [
+    {
+      "arguments": [
+        {
+          "description": "Node identity hex encoded public key",
+          "named": "public_key",
+          "type": "public_key"
+        },
+        {
+          "description": "Node network address host:port",
+          "named": "socket"
+        }
+      ],
+      "method": "addPeer"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Requested chain fee tokens per vbyte",
+          "named": "tokens_per_vbyte",
+          "type": "number"
+        },
+        {
+          "description": "Hex encoded funding transaction id",
+          "named": "transaction_id",
+          "type": "hash"
+        },
+        {
+          "description": "Funding transaction output index",
+          "named": "transaction_vout",
+          "type": "number"
+        }
+      ],
+      "method": "closeChannel"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Final CLTV delta",
+          "named": "cltv_delta",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Description",
+          "named": "description",
+          "optional": true
+        },
+        {
+          "description": "Use predefined hex encoded secret preimage",
+          "named": "secret",
+          "optional": true
+        },
+        {
+          "description": "Millitokens to request",
+          "named": "mtokens",
+          "optional": true
+        }
+      ],
+      "method": "createInvoice"
+    },
+    {
+      "arguments": [
+        {
+          "description": "BOLT 11 encoded payment request",
+          "named": "request"
+        }
+      ],
+      "method": "decodePaymentRequest"
+    },
+    {
+      "method": "deleteForwardingReputations"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Key family for shared key",
+          "named": "key_family",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Key index for shared key",
+          "named": "key_index",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Partner hex encoded public key",
+          "named": "partner_public_key",
+          "type": "public_key"
+        }
+      ],
+      "method": "diffieHellmanComputeSecret"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Channel to disable funding hex-encoded tx id",
+          "named": "transaction_id",
+          "type": "hash"
+        },
+        {
+          "description": "Channel to disable funding transaction output index",
+          "named": "transaction_vout",
+          "type": "number"
+        }
+      ],
+      "method": "disableChannel"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Channel to enable funding hex-encoded tx id",
+          "named": "transaction_id",
+          "type": "hash"
+        },
+        {
+          "description": "Channel to enable funding transaction output index",
+          "named": "transaction_vout",
+          "type": "number"
+        }
+      ],
+      "method": "enableChannel"
+    },
+    {
+      "method": "getAccessIds"
+    },
+    {
+      "method": "getAutopilot"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Funding transaction id hex string",
+          "named": "transaction_id",
+          "type": "hash"
+        },
+        {
+          "description": "Funding transaction output index number",
+          "named": "transaction_vout",
+          "type": "number"
+        }
+      ],
+      "method": "getBackup"
+    },
+    {
+      "method": "getBackups"
+    },
+    {
+      "method": "getChainBalance"
+    },
+    {
+      "arguments": [{
+        "description": "Confirm within n target blocks",
+        "named": "confirmation_target",
+        "optional": true,
+        "type": "number"
+      }],
+      "method": "getChainFeeRate"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Confirmed after block height number",
+          "named": "after",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Confirmed before block height number",
+          "named": "before",
+          "optional": true,
+          "type": "number"
+        }
+      ],
+      "method": "getChainTransactions"
+    },
+    {
+      "arguments": [{
+        "description": "Channel id",
+        "named": "id",
+        "type": "channel"
+      }],
+      "method": "getChannel"
+    },
+    {
+      "method": "getChannelBalance"
+    },
+    {
+      "arguments": [{
+        "description": "Only channels with public key hex string",
+        "named": "partner_public_key",
+        "optional": true,
+        "type": "public_key"
+      }],
+      "method": "getChannels"
+    },
+    {
+      "method": "getClosedChannels"
+    },
+    {
+      "method": "getConnectedWatchtowers"
+    },
+    {
+      "method": "getFeeRates"
+    },
+    {
+      "arguments": [
+        {
+          "description": "From node hex encoded public key",
+          "named": "from",
+          "type": "public_key"
+        },
+        {
+          "description": "Millitokens to send",
+          "named": "mtokens"
+        },
+        {
+          "description": "To node hex encoded public key",
+          "named": "to",
+          "type": "public_key"
+        }
+      ],
+      "method": "getForwardingConfidence"
+    },
+    {
+      "method": "getForwardingReputations"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Results limit",
+          "named": "limit",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Paging token",
+          "named": "token",
+          "optional": true
+        }
+      ],
+      "method": "getForwards"
+    },
+    {
+      "method": "getHeight"
+    },
+    {
+      "method": "getIdentity"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Results limit",
+          "named": "limit",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Paging token",
+          "named": "token",
+          "optional": true
+        }
+      ],
+      "method": "getInvoices"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Invoice hex encoded payment hash",
+          "named": "id",
+          "type": "hash"
+        }
+      ],
+      "method": "getInvoice"
+    },
+    {
+      "method": "getLockedUtxos"
+    },
+    {
+      "method": "getNetworkCentrality"
+    },
+    {
+      "method": "getNetworkGraph"
+    },
+    {
+      "method": "getNetworkInfo"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Node hex encoded public key id",
+          "named": "public_key",
+          "type": "public_key"
+        }
+      ],
+      "method": "getNode"
+    },
+    {
+      "method": "getPathfindingSettings"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Payment hex encoded payment hash",
+          "named": "id",
+          "type": "hash"
+        }
+      ],
+      "method": "getPayment"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Results limit",
+          "named": "limit",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Paging token",
+          "named": "token",
+          "optional": true
+        }
+      ],
+      "method": "getPayments"
+    },
+    {
+      "method": "getPeers"
+    },
+    {
+      "method": "getPendingChainBalance"
+    },
+    {
+      "method": "getPendingChannels"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Key family number",
+          "named": "family",
+          "type": "number"
+        },
+        {
+          "description": "Key index number",
+          "named": "index",
+          "optional": true
+        }
+      ],
+      "method": "getPublicKey"
+    },
+    {
+      "method": "getSweepTransactions"
+    },
+    {
+      "method": "getTowerServerInfo"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Maximum confirmations for UTXO",
+          "named": "max_confirmations",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Minimum confirmations for UTXO",
+          "named": "min_confirmations",
+          "optional": true,
+          "type": "number"
+        }
+      ],
+      "method": "getUtxos"
+    },
+    {
+      "method": "getWalletInfo"
+    },
+    {
+      "method": "getWalletVersion"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Lock identifier hex encoded nonce",
+          "named": "id",
+          "optional": true,
+          "type": "hash"
+        },
+        {
+          "description": "UTXO hex encoded transaction id",
+          "named": "transaction_id",
+          "type": "hash"
+        },
+        {
+          "description": "UTXO hex encoded transaction output index",
+          "named": "transaction_vout",
+          "type": "number"
+        }
+      ],
+      "method": "lockUtxo"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Chain fee tokens per vbyte fee rate",
+          "named": "chain_fee_tokens_per_vbyte",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Gift tokens to peer on open",
+          "named": "give_tokens",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Local tokens to use to set channel total capacity",
+          "named": "local_tokens",
+          "type": "number"
+        },
+        {
+          "description": "Spend UTXOs with minimum of n confirmations",
+          "named": "min_confirmations",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Peer hex encoded public key",
+          "named": "partner_public_key",
+          "type": "public_key"
+        },
+        {
+          "description": "Peer's CSV delay value",
+          "named": "partner_csv_delay",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Node host:port to connect to",
+          "named": "partner_socket",
+          "optional": true
+        }
+      ],
+      "method": "openChannel"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Peer hex encoded public key id",
+          "named": "public_key",
+          "type": "public_key"
+        }
+      ],
+      "method": "removePeer"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Child fee bumping payment chain fee tokens/vbyte",
+          "named": "fee_tokens_per_vbyte",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "UTXO hex encoded transaction id",
+          "named": "transaction_id",
+          "type": "hash"
+        },
+        {
+          "description": "UTXO transaction output index number",
+          "named": "transaction_vout",
+          "type": "number"
+        }
+      ],
+      "method": "requestChainFeeIncrease"
+    },
+    {
+      "arguments": [{
+        "description": "Message to sign",
+        "named": "message"
+      }],
+      "method": "signMessage"
+    },
+    {
+      "method": "stopDaemon"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Lock identifier hex encoded nonce",
+          "named": "id",
+          "type": "hash"
+        },
+        {
+          "description": "UTXO hex encoded transaction id",
+          "named": "transaction_id",
+          "type": "hash"
+        },
+        {
+          "description": "UTXO hex encoded transaction output index",
+          "named": "transaction_vout",
+          "type": "number"
+        }
+      ],
+      "method": "unlockUtxo"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Transaction label",
+          "named": "description"
+        },
+        {
+          "description": "Transaction hex encoded id",
+          "named": "id",
+          "type": "hash"
+        }
+      ],
+      "method": "updateChainTransaction"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Assumed success count out of 1 million attempts",
+          "named": "baseline_success_rate",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Maximum historic payment records to keep",
+          "named": "max_payment_records",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Node avoidance due to failure rate out of 1 million",
+          "named": "node_ignore_rate",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Failure penalty half life milliseconds",
+          "named": "penalty_half_life_ms",
+          "optional": true,
+          "type": "number"
+        }
+      ],
+      "method": "updatePathfindingSettings"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Base fee millitokens to charge to forward",
+          "named": "base_fee_mtokens",
+          "optional": true
+        },
+        {
+          "description": "CLTV delta to add to forward",
+          "named": "cltv_delta",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Proportional fee rate in parts per million",
+          "named": "fee_rate",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Maximum payment forward amount millitokens",
+          "named": "max_htlc_mtokens",
+          "optional": true
+        },
+        {
+          "description": "Minimum payment forward amount millitokens",
+          "named": "min_htlc_mtokens",
+          "optional": true
+        },
+        {
+          "description": "Set only on channel with funding transaction id",
+          "named": "transaction_id",
+          "optional": true,
+          "type": "hash"
+        },
+        {
+          "description": "Set only on channel with funding transaction vout",
+          "named": "transaction_vout",
+          "optional": true,
+          "type": "number"
+        }
+      ],
+      "method": "updateRoutingFees"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Message that was signed",
+          "named": "message"
+        },
+        {
+          "description": "Message signature",
+          "named": "signature"
+        }
+      ],
+      "method": "verifyMessage"
+    }
+  ]
+}

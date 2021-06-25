@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncForever = require('async/forever');
+const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {servicePaidRequests} = require('paid-services');
 
@@ -61,6 +62,11 @@ module.exports = args => {
         return authenticatedLnd({logger: args.logger, node: args.payer}, cbk);
       },
 
+      // Get identity
+      getId: ['getLnd', ({getLnd}, cbk) => {
+        return getIdentity({lnd: getLnd.lnd}, cbk);
+      }],
+
       // Get the network name
       getNetwork: ['getLnd', ({getLnd}, cbk) => {
         return getNetwork({lnd: getLnd.lnd}, cbk);
@@ -68,10 +74,11 @@ module.exports = args => {
 
       // Service requests
       service: [
+        'getId',
         'getLnd',
         'getNetwork',
         'getPayer',
-        ({getLnd, getNetwork, getPayer}, cbk) =>
+        ({getId, getLnd, getNetwork, getPayer}, cbk) =>
       {
         const sub = servicePaidRequests({
           env,
@@ -93,6 +100,10 @@ module.exports = args => {
 
         sub.on('failure', failure => args.logger.error(failure));
         sub.on('success', success => args.logger.info(success));
+
+        args.logger.info({
+          listening_for_requests_via: `bos use ${getId.public_key}`,
+        });
 
         return;
       }],

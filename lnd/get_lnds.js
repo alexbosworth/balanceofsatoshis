@@ -5,6 +5,7 @@ const {returnResult} = require('asyncjs-util');
 const authenticatedLnd = require('./authenticated_lnd');
 
 const flatten = arr => [].concat(...arr);
+const uniq = arr => Array.from(new Set(arr));
 
 /** Get LNDs for specified nodes
 
@@ -36,7 +37,9 @@ module.exports = ({logger, nodes}, cbk) => {
           return cbk();
         }
 
-        return asyncMap(flatten([nodes].filter(n => !!n)), (node, cbk) => {
+        const nodesList = uniq(flatten([nodes].filter(n => !!n)));
+
+        return asyncMap(nodesList, (node, cbk) => {
           return authenticatedLnd({logger, node}, cbk);
         },
         cbk);

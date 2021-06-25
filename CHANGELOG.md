@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.3.0
+
+- `call`: Add method to call APIs directy
+
 ## Version 10.2.0
 
 - `fees`: Reference other nodes' fees in `--set-fee-rate` using `FEE_RATE_OF_<PUBKEY>`
