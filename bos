@@ -1476,6 +1476,41 @@ prog
     });
   })
 
+  // Transfer funds between own nodes
+  .command('transfer', 'Send funds to a saved node')
+  .argument('<to>', 'Saved node name')
+  .argument('[amount]', 'Amount to transfer', STRING, '1')
+  .help('Formulas are supported in amount')
+  .help('Also supported in formulas: OUT_LIQUIDITY (with outbound peer)')
+  .help('OUT_INBOUND, OUT_OUTBOUND (when specifying outbound peer)')
+  .option('--description', 'Label describing transfer')
+  .option('--dryrun', 'Avoid actually sending funds')
+  .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
+  .option('--max-fee-rate <rate>', 'Parts per million max fee rate', INT, 250)
+  .option('--no-color', 'Mute all colors')
+  .option('--node <name>', 'Node to send funds from')
+  .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return network.transferFunds({
+          logger,
+          amount: args.amount,
+          description: options.description || undefined,
+          in_through: options.in,
+          is_dry_run: options.dryrun,
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          max_fee_rate: options.maxFeeRate,
+          out_through: options.out,
+          to: (await lndForNode(logger, args.to)).lnd,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
+    });
+  })
+
   // Unlock wallet
   .command('unlock', 'Unlock wallet if locked')
   .help('Check if the wallet is locked, if so use a password file to unlock')

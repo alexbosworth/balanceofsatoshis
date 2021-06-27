@@ -1,8 +1,12 @@
 # Versions
 
+## Version 10.4.0
+
+- `transfer`: Add command to transfer funds between saved nodes
+
 ## Version 10.3.0
 
-- `call`: Add method to call APIs directy
+- `call`: Add command to call APIs directy
 
 ## Version 10.2.0
 
