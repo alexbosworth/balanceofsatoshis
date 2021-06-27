@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.4.1
+
+- `open`: Use BIP 0069 sorting when displaying addresses and amounts to send to
+
 ## Version 10.4.0
 
 - `transfer`: Add command to transfer funds between saved nodes

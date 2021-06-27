@@ -1,6 +1,7 @@
 const {randomBytes} = require('crypto');
 
 const {addPeer} = require('ln-service');
+const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncEachSeries = require('async/eachSeries');
@@ -31,6 +32,7 @@ const {parseAmount} = require('./../display');
 
 const addressesHeader = green('Addresses');
 const base64AsHex = n => Buffer.from(n, 'base64').toString('hex');
+const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const defaultChannelCapacity = 5e6;
 const format = 'p2wpkh';
 const getTxRetryCount = 10;
@@ -283,7 +285,27 @@ module.exports = (args, cbk) => {
           };
         });
 
-        return openChannels({channels, lnd: args.lnd}, cbk);
+        return openChannels({channels, lnd: args.lnd}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const pending = res.pending.slice();
+
+          // Sort outputs using BIP 69
+          try {
+            pending.sort((a, b) => {
+              // Sort by tokens ascending when no tie breaker needed
+              if (a.tokens !== b.tokens) {
+                return a.tokens - b.tokens;
+              }
+
+              return bech32AsData(a.address).compare(bech32AsData(b.address));
+            });
+          } catch (err) {}
+
+          return cbk(null, {pending});
+        });
       }],
 
       // Detect funding transaction
