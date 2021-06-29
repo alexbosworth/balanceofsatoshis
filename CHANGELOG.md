@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.4.3
+
+- `accounting`: Add support for AMP push payments
+
 ## Version 10.4.2
 
 - `peers`: Correct issue when receiving AMP push payments
