@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.4.2
+
+- `peers`: Correct issue when receiving AMP push payments
+
 ## Version 10.4.1
 
 - `open`: Use BIP 0069 sorting when displaying addresses and amounts to send to

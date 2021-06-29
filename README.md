@@ -177,6 +177,8 @@ bos utxos
 - The `rebalance` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/327ed9f6-3a73-41c2-a9c7-8c4e274bdd54)
 - Another `rebalance` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/30a7c519-0ec0-4644-b3aa-341c41bac296)
 
+Want to stack some sats? Write your own LN paywalled guide!
+
 ## Nodes
 
 By default `bos` expects `tls.cert` in the root of the default `lnd` directory and
@@ -382,6 +384,24 @@ Examples of shell scripts that could be executed by crontab:
 --subject="Low inbound liquidity warning: node1"
 
 # sends email if the inbound liquidity drops below a 1,000,000 sats
+```
+
+### Persist Long-Running Commands
+
+If you are running a long-running command and want it to persist, you will need something like
+Docker or nohup or tmux to assist you in that and then kill the process and restart it when
+updating.
+
+Nohup example:
+
+```shell
+nohup /home/bos/.npm-global/bin/bos telegram --connect CONNECT_CODE > /dev/null &
+```
+
+Docker example:
+
+```
+docker run -d --restart always -v $HOME/.bos:/home/node/.bos alexbosworth/balanceofsatoshis telegram --connect CONNECT_CODE
 ```
 
 ## Docker
