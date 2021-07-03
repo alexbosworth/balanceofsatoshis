@@ -1,4 +1,7 @@
 {
+  "emojiIcons": {
+    "disabled": "🚫"
+  },
   "peerSortOptions": [
     "alias",
     "fee_earnings",

@@ -16,6 +16,7 @@ const connectLimit = 5;
 const connectTimeoutMs = 1000 * 60 * 10;
 const notFound = -1;
 const timedOutCode = 'ETIMEDOUT';
+const minimumReconnectMs = 1000 * 60 * 60 * 3;
 const uniq = arr => Array.from(new Set(arr));
 
 /** Get channel peers that are disconnected and attempt to reconnect
@@ -49,16 +50,15 @@ module.exports = ({lnd, retries}, cbk) => {
       },
 
       // Get open, inactive channels
-      getChannels: ['validate', ({}, cbk) => {
-        return getChannels({lnd, is_offline: true}, cbk);
-      }],
+      getChannels: ['validate', ({}, cbk) => getChannels({lnd}, cbk)],
 
       // Get connected peers
       getPeers: ['validate', ({}, cbk) => getPeers({lnd}, cbk)],
 
       // Get disabled but active channels
       getDisabled: ['getChannels', ({getChannels}, cbk) => {
-        const active = getChannels.channels.filter(n => n.is_active);
+        // Look for channels that are marked as active but have disabled policy
+        const active = getChannels.channels.filter(n => !!n.is_active);
 
         return asyncFilter(active, (channel, cbk) => {
           return getChannel({lnd, id: channel.id}, (err, res) => {
@@ -67,16 +67,33 @@ module.exports = ({lnd, retries}, cbk) => {
               return cbk(null, false);
             }
 
-            const ownPolicy = res.policies
-              .find(n => n.public_key !== channel.partner_public_key);
+            const peerKey = channel.partner_public_key;
+
+            const ownPolicy = res.policies.find(n => n.public_key !== peerKey);
 
             // Exit early when there is no own policy found
             if (!ownPolicy) {
               return cbk(null, false);
             }
 
-            // Select for active channels that are marked disabled
-            return cbk(null, ownPolicy.is_disabled === true);
+            // Exit early when we disabled our edge out
+            if (ownPolicy.is_disabled === true) {
+              return cbk(null, true);
+            }
+
+            const inPolicy = res.policies.find(n => n.public_key === peerKey);
+
+            // Exit early when there is no peer policy
+            if (!inPolicy) {
+              return cbk(null, false);
+            }
+
+            // Exit early when the peer disabled their edge to us
+            if (inPolicy.is_disabled === true) {
+              return cbk(null, true);
+            }
+
+            return cbk(null, false);
           });
         },
         cbk);
@@ -92,18 +109,33 @@ module.exports = ({lnd, retries}, cbk) => {
         // Some peers have active channels but they are marked disabled
         const disabled = getDisabled.map(n => n.partner_public_key);
 
+        // Only look at channels that are inactive
+        const inactive = getChannels.channels.filter(n => !n.is_active);
+
         // Find peers that have an inactive channel but are connected peers
         const peers = getPeers.peers
           .filter(peer => {
-            return !!getChannels.channels.find(channel => {
+            return !!inactive.find(channel => {
               return channel.partner_public_key === peer.public_key;
             });
           })
           .map(n => n.public_key);
 
-        const remove = uniq([].concat(disabled).concat(peers));
+        const remove = uniq([].concat(disabled).concat(peers)).filter(key => {
+          const details = getPeers.peers.find(n => n.public_key === key);
+
+          if (!details || !details.last_reconnection) {
+            return true;
+          }
+
+          const lastReconnectAt = new Date(details.last_reconnection);
+
+
+          return new Date() - lastReconnectAt > minimumReconnectMs;
+        });
 
         return asyncMap(remove, (peer, cbk) => {
+console.log("PEER", peer)
           return removePeer({lnd, public_key: peer}, cbk);
         },
         err => {
@@ -125,6 +157,7 @@ module.exports = ({lnd, retries}, cbk) => {
         const connected = getPeers.peers.map(n => n.public_key);
 
         const disconnected = getChannels.channels
+          .filter(n => !n.is_active)
           .filter(n => connected.indexOf(n.partner_public_key) === notFound)
           .map(n => n.partner_public_key)
           .concat(disconnect);

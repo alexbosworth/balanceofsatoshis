@@ -15,28 +15,30 @@ const fetch = importLazy('node-fetch');
 const inquirer = importLazy('inquirer');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
-const prog = importLazy('caporal');
+const prog = require('caporal');
 const request = importLazy('@alexbosworth/request');
 
-const {accountingCategories} = importLazy('./commands');
+const commandConstants = require('./commands/constants');
+
+const {accountingCategories} = commandConstants;
 const balances = importLazy('./balances');
 const chain = importLazy('./chain');
 const commands = importLazy('./commands');
 const encryption = importLazy('./encryption');
-const {exchanges} = importLazy('./commands');
+const {exchanges} = commandConstants;
 const fiat = importLazy('./fiat');
 const lnd = importLazy('./lnd');
-const {marketPairs} = importLazy('./commands');
+const {marketPairs} = commandConstants;
 const network = importLazy('./network');
 const nodes = importLazy('./nodes');
-const {peerSortOptions} = importLazy('./commands');
+const {peerSortOptions} = commandConstants;
 const peers = importLazy('./peers');
-const {priceProviders} = importLazy('./commands');
-const {rateProviders} = importLazy('./commands');
+const {priceProviders} = commandConstants;
+const {rateProviders} = commandConstants;
 const responses = importLazy('./responses');
 const routing = importLazy('./routing');
 const services = importLazy('./services');
-const {swapTypes} = importLazy('./commands');
+const {swapTypes} = commandConstants;
 const swaps = importLazy('./swaps');
 const telegram = importLazy('./telegram');
 const wallets = importLazy('./wallets');
@@ -671,6 +673,30 @@ prog
         responses.returnNumber({logger, number, reject, resolve}));
       } catch (err) {
         return reject(err);
+      }
+    });
+  })
+
+  // Get the edges of a given node
+  .command('graph', 'List out the connections a node has with other nodes')
+  .argument('<alias_or_public_key>', 'Node in the graph to look up')
+  .option('--node <node_name>', 'Node to use for lookup')
+  .option('--sort <sort_connections_by', 'Sort peers by field')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const {lnd} = await lndForNode(logger, options.node);
+
+        return network.getGraphEntry({
+          lnd,
+          logger,
+          fs: {getFile: readFile},
+          query: args.aliasOrPublicKey.trim(),
+          sort: options.sort,
+        },
+        responses.returnObject({logger, reject, resolve, table: 'rows'}));
+      } catch (err) {
+        return reject(logger.error({err}));
       }
     });
   })

@@ -1,5 +1,11 @@
 # Versions
 
+## Version 10.5.0
+
+- `call`: Fix regression in 10.3.0 that introduced additional command latency
+- `graph`: Add new command to lookup a node and its peers in the graph
+- `reconnect`: Change to be more aggressive in reconnecting disabled peers
+
 ## Version 10.4.3
 
 - `accounting`: Add support for AMP push payments
