@@ -6,6 +6,7 @@ const {getInfoResponse} = require('./../fixtures');
 const {getPeers} = require('./../../network');
 const {listChannelsResponse} = require('./../fixtures');
 const {pendingChannelsResponse} = require('./../fixtures');
+const {versionInfoResponse} = require('./../fixtures');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 
@@ -30,6 +31,9 @@ const makeArgs = overrides => {
         listChannels: ({}, cbk) => cbk(null, {channels: []}),
         listPeers: ({}, cbk) => cbk(null, {peers: []}),
         pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
+      },
+      version: {
+        getVersion: ({}, cbk) => cbk(null, versionInfoResponse),
       },
     },
     omit: [],
@@ -157,6 +161,9 @@ const tests = [
           }]}),
           listPeers: ({}, cbk) => cbk(null, {peers: []}),
         },
+        version: {
+          getVersion: ({}, cbk) => cbk(null, versionInfoResponse),
+        },
       },
     }),
     description: 'Getting peers with a channel returns peers',
@@ -251,6 +258,9 @@ const tests = [
           }]}),
           listPeers: ({}, cbk) => cbk(null, {peers: []}),
           pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
+        },
+        version: {
+          getVersion: ({}, cbk) => cbk(null, versionInfoResponse),
         },
       },
       outbound_liquidity_below: 1000,

@@ -3,6 +3,7 @@ const {test} = require('@alexbosworth/tap');
 const {chanInfoResponse} = require('./../fixtures');
 const {getFeesChart} = require('./../../routing');
 const {getNodeInfoResponse} = require('./../fixtures');
+const {versionInfoResponse} = require('./../fixtures');
 
 const lnds = [{
   default: {
@@ -13,6 +14,9 @@ const lnds = [{
     getChanInfo: ({}, cbk) => cbk(null, chanInfoResponse),
     getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
     listChannels: ({}, cbk) => cbk(null, {channels: []}),
+  },
+  version: {
+    getVersion: ({}, cbk) => cbk(null, versionInfoResponse),
   },
 }];
 
@@ -60,6 +64,9 @@ const tests = [
             });
           },
           listChannels: ({}, cbk) => cbk(null, {channels: []}),
+        },
+        version: {
+          getVersion: ({}, cbk) => cbk(null, versionInfoResponse),
         },
       }],
       via: Buffer.alloc(33).toString('hex'),

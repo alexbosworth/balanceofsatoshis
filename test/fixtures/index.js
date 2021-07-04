@@ -7,6 +7,7 @@ const listChannelsResponse = require('./list_channels_response');
 const listPeersResponse = require('./list_peers_response');
 const pendingChannelsResponse = require('./pending_channels_response');
 const queryRoutesResponse = require('./query_routes_response');
+const versionInfoResponse = require('./version_info_response');
 
 module.exports = {
   chanInfoResponse,
@@ -18,4 +19,5 @@ module.exports = {
   listPeersResponse,
   pendingChannelsResponse,
   queryRoutesResponse,
+  versionInfoResponse,
 };

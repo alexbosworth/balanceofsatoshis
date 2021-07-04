@@ -5,6 +5,7 @@ const {test} = require('@alexbosworth/tap');
 const {chanInfoResponse} = require('./../fixtures');
 const detect = require('./../../peers/detect_open_rule_violation');
 const {getNodeInfoResponse} = require('./../fixtures');
+const {versionInfoResponse} = require('./../fixtures');
 
 const makeArgs = overrides => {
   const args = {
@@ -27,6 +28,9 @@ const makeArgs = overrides => {
       default: {
         getChanInfo: (args, cbk) => cbk(null, chanInfoResponse),
         getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
+      },
+      version: {
+        getVersion: ({}, cbk) => cbk(null, versionInfoResponse),
       },
     },
     local_balance: 1,

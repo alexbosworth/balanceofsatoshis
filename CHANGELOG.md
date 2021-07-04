@@ -1,5 +1,10 @@
 # Versions
 
+## Version 10.5.1
+
+- `telegram`: Aggregate forward notifications between identical simultaneous pairs
+- `utxos`: On LND 0.13.0 support listing locked UTXOs in output
+
 ## Version 10.5.0
 
 - `call`: Fix regression in 10.3.0 that introduced additional command latency
