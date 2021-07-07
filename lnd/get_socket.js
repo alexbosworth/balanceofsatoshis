@@ -9,6 +9,7 @@ const lndDirectory = require('./lnd_directory');
 
 const applicationOptions = 'Application Options';
 const confPath = ['lnd.conf'];
+const isOnion = socket => /^[^\s]+\.onion/.test(socket.split(':').shift());
 const {keys} = Object;
 const scheme = 'rpc://';
 
@@ -93,6 +94,10 @@ module.exports = ({fs, node, os}, cbk) => {
         const {tlsextradomain} = parseConf[applicationOptions] || {};
 
         if (!tlsextradomain) {
+          return cbk();
+        }
+
+        if (isOnion(tlsextradomain)) {
           return cbk();
         }
 

@@ -71,6 +71,25 @@ const tests = [
     description: 'Ip and rpclisten returns a domain',
     expected: {socket: 'domain:1'},
   },
+  {
+    args: {
+      os,
+      fs: {
+        getFile: ({}, cbk) => cbk(
+          null,
+          Buffer.from(
+            [
+              '[Application Options]',
+              'rpclisten=0.0.0.0:1',
+              'tlsextradomain=lksdjlajdsflkj.onion:1009',
+            ].join('\n'),
+          )
+        ),
+      },
+    },
+    description: 'Onion address returns no socket',
+    expected: {},
+  },
 ];
 
 tests.forEach(({args, description, error, expected}) => {

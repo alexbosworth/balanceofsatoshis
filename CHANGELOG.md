@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.5.2
+
+Avoid auto-detecting LND socket when TLS + Tor is configured
+
 ## Version 10.5.1
 
 - `telegram`: Aggregate forward notifications between identical simultaneous pairs
