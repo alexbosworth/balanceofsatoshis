@@ -1,5 +1,11 @@
 # Versions
 
+## Version 10.6.0
+
+Fixed issues with LND builds that do not report a commit hash in version information
+
+- `open-balanced-channel`: Add `--recover` option to recover funds accidentally sent
+
 ## Version 10.5.2
 
 Avoid auto-detecting LND socket when TLS + Tor is configured

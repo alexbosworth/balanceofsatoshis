@@ -974,6 +974,7 @@ prog
   .help('Remote node must be prepared to receive this type of channel')
   .help('Channel details are negotiated with keysend so that is also required')
   .option('--node <node_name>', 'Use saved node details instead of local node')
+  .option('--recover <address>', 'Recover funds sent to an address by mistake')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -982,6 +983,7 @@ prog
           after: new Date(Date.now() - (1000 * 60 * 60 * 6)).toISOString(),
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          recover: options.recover,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {

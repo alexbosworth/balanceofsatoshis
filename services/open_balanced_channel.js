@@ -18,6 +18,7 @@ const acceptBalancedChannel = require('./accept_balanced_channel');
 const getBalancedOpens = require('./get_balanced_opens');
 const getNetwork = require('./../network/get_network');
 const initiateBalancedChannel = require('./initiate_balanced_channel');
+const recoverTransitFunds = require('./recover_transit_funds');
 
 const bufferAsHex = buffer => buffer.toString('hex');
 const familyMultiSig = 0;
@@ -37,11 +38,12 @@ const times = 60;
     ask: <Ask Function>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
+    [recover]: <Recover Funds Sent To Address String>
   }
 
   @returns via cbk or Promise
 */
-module.exports = ({after, ask, lnd, logger}, cbk) => {
+module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -61,16 +63,8 @@ module.exports = ({after, ask, lnd, logger}, cbk) => {
         return cbk();
       },
 
-      // Make a refund address for if things go wrong
-      createRefundAddress: ['validate', ({}, cbk) => {
-        return createChainAddress({format, lnd}, cbk);
-      }],
-
       // Get the network name
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd}, cbk)],
-
-      // Get the set of open requests
-      getOpenRequests: ['validate', ({}, cbk) => getBalancedOpens({lnd}, cbk)],
 
       // Determine the bitcoinjs network
       network: ['getNetwork', ({getNetwork}, cbk) => {
@@ -85,6 +79,37 @@ module.exports = ({after, ask, lnd, logger}, cbk) => {
           return cbk([400, 'UnsupportedNetworkForBalanceChannelOpen']);
         }
       }],
+
+      // Recover funds sent to an address
+      recover: ['getNetwork', ({getNetwork}, cbk) => {
+        // Exit early when not in a recovery scenario
+        if (!recover) {
+          return cbk();
+        }
+
+        return recoverTransitFunds({
+          ask,
+          lnd,
+          logger,
+          recover,
+          network: getNetwork.network,
+        },
+        err => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk([400, 'BalancedChannelRecoveryComplete']);
+        });
+      }],
+
+      // Make a refund address for if things go wrong
+      createRefundAddress: ['recover', ({}, cbk) => {
+        return createChainAddress({format, lnd}, cbk);
+      }],
+
+      // Get the set of open requests
+      getOpenRequests: ['recover', ({}, cbk) => getBalancedOpens({lnd}, cbk)],
 
       // Confirm an incoming channel request
       confirmContinue: ['getOpenRequests', ({getOpenRequests}, cbk) => {
