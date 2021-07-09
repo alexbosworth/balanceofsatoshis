@@ -26,6 +26,7 @@ const familyTemporary = 805;
 const format = 'p2wpkh';
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const interval = 1000 * 15;
+const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
 const networkMainnet = 'btc';
 const networkTestnet = 'btctestnet';
 const {p2wpkh} = payments;
@@ -58,6 +59,10 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
 
         if (!logger) {
           return cbk([400, 'ExpectedWinstonLoggerToOpenBalancedChannel']);
+        }
+
+        if (isOldNodeVersion()) {
+          return cbk([400, 'ExpectedLaterNodeJsVersionToOpenBalancedChan']);
         }
 
         return cbk();

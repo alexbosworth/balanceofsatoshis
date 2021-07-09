@@ -104,8 +104,8 @@ module.exports = ({fs, lnd, logger, query, sort}, cbk) => {
         const matching = getGraph.nodes.filter(node => {
           const alias = node.alias || String();
 
-          const isAliasMatch = alias.toLowerCase().includes(key);
-          const isPublicKeyMatch = node.public_key.startsWith(key);
+          const isAliasMatch = alias.toLowerCase().includes(query);
+          const isPublicKeyMatch = node.public_key.startsWith(query);
 
           return isAliasMatch || isPublicKeyMatch;
         });

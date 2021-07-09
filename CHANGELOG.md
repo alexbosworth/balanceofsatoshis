@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.6.1
+
+- `graph`: Fix error when querying for a node by its alias or public key start
+
 ## Version 10.6.0
 
 Fixed issues with LND builds that do not report a commit hash in version information
