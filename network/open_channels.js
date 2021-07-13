@@ -602,7 +602,9 @@ module.exports = (args, cbk) => {
         ({cancelPending, fundingPsbt}, cbk) =>
       {
         try {
-          const {transaction} = extractTransaction({psbt: fundingPsbt.psbt});
+          const decoded = decodePsbt({psbt: fundingPsbt.psbt});
+
+          const transaction = decoded.unsigned_transaction;
 
           return cbk(null, {
             transaction_id: Transaction.fromHex(transaction).getId(),

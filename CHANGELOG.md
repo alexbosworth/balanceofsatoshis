@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.6.2
+
+- `open`: Fix ExpectedFinalScriptSigsAndWitnesses error when supplying some PSBTs
+
 ## Version 10.6.1
 
 - `graph`: Fix error when querying for a node by its alias or public key start
