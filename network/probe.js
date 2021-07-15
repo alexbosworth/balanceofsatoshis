@@ -4,6 +4,8 @@ const asyncWhilst = require('async/whilst');
 const {findKey} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getChannel} = require('ln-service');
+const {getChannels} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getSyntheticOutIgnores} = require('probing');
 const {getWalletVersion} = require('ln-service');
@@ -13,6 +15,8 @@ const {subscribeToMultiPathProbe} = require('probing');
 
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
+const {getIgnores} = require('./../routing');
+const {getTags} = require('./../tags');
 const {parseAmount} = require('./../display');
 const probeDestination = require('./probe_destination');
 
@@ -28,14 +32,12 @@ const unsupported = 501;
 /** Probe a destination, looking for multiple non-overlapping paths
 
   {
+    avoid: [<Avoid Forwarding Through String>]
     [destination]: <Destination Public Key Hex String>
     [find_max]: <Find Maximum Payable On Probed Routes Below Tokens Number>
     [fs]: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
-    [ignore]: [{
-      from_public_key: <Avoid Node With Public Key Hex String>
-    }]
     [in_through]: <Pay In Through Public Key Hex String>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
@@ -59,6 +61,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!isArray(args.avoid)) {
+          return cbk([400, 'ExpectedAvoidArrayToProbe']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndApiObjectToProbe']);
         }
@@ -82,21 +88,6 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Determine if this wallet is a legacy
-      isLegacy: ['validate', ({}, cbk) => {
-        return getWalletVersion({lnd: args.lnd}, err => {
-          if (!!err && err.slice().shift === unsupported) {
-            return cbk(null, true);
-          }
-
-          if (!!err) {
-            return cbk(err);
-          }
-
-          return cbk(null, false);
-        });
-      }],
-
       // Decode payment request
       decodeRequest: ['validate', ({}, cbk) => {
         // Exit early when there is no request to decode
@@ -114,12 +105,57 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Get channels for figuring out avoid flags
+      getChannels: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getChannels({lnd: args.lnd}, cbk);
+      }],
+
+      // Get the node public key
+      getIdentity: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getIdentity({lnd: args.lnd}, cbk);
+      }],
+
       // Find public keys to pay out through
       getOuts: ['validate', ({}, cbk) => {
         return asyncMap(args.out, (query, cbk) => {
           return findKey({query, lnd: args.lnd}, cbk);
         },
         cbk);
+      }],
+
+      // Get tags for figuring out avoid flags
+      getTags: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getTags({fs: args.fs}, cbk);
+      }],
+
+      // Determine if this wallet is a legacy
+      isLegacy: ['validate', ({}, cbk) => {
+        return getWalletVersion({lnd: args.lnd}, err => {
+          if (!!err && err.slice().shift === unsupported) {
+            return cbk(null, true);
+          }
+
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, false);
+        });
       }],
 
       // Parse amount to probe
@@ -136,8 +172,36 @@ module.exports = (args, cbk) => {
         }
       }],
 
+      // Get base ignores
+      getBaseIgnores: [
+        'getChannels',
+        'getIdentity',
+        'getTags',
+        ({getChannels, getIdentity, getTags}, cbk) =>
+      {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk(null, {ignore: []});
+        }
+
+        return getIgnores({
+          avoid: args.avoid,
+          channels: getChannels.channels,
+          in_through: args.in_through,
+          lnd: args.lnd,
+          logger: args.logger,
+          public_key: getIdentity.public_key,
+          tags: getTags.tags,
+        },
+        cbk);
+      }],
+
       // Get synthetic ignores to approximate out
-      getIgnores: ['getOuts', ({getOuts}, cbk) => {
+      getIgnores: [
+        'getBaseIgnores',
+        'getOuts',
+        ({getBaseIgnores, getOuts}, cbk) =>
+      {
         // Exit early when not doing a multi-path
         if (!args.find_max && args.max_paths === singlePath) {
           return cbk();
@@ -145,11 +209,11 @@ module.exports = (args, cbk) => {
 
         // Exit early when there is no outbound restriction
         if (!getOuts.length) {
-          return cbk(null, {ignore: args.ignore});
+          return cbk(null, {ignore: getBaseIgnores.ignore});
         }
 
         return getSyntheticOutIgnores({
-          ignore: args.ignore,
+          ignore: getBaseIgnores.ignore,
           lnd: args.lnd,
           out: getOuts.map(n => n.public_key),
         },
@@ -157,7 +221,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Probe just through a single path
-      singleProbe: ['getOuts', 'tokens', ({getOuts, tokens}, cbk) => {
+      singleProbe: [
+        'getBaseIgnores',
+        'getOuts',
+        'tokens',
+        ({getBaseIgnores, getOuts, tokens}, cbk) =>
+      {
         // Exit early when not finding max
         if (!!args.find_max || args.max_paths !== singlePath) {
           return cbk();
@@ -174,7 +243,7 @@ module.exports = (args, cbk) => {
           tokens,
           destination: args.destination,
           fs: args.fs,
-          ignore: args.ignore,
+          ignore: getBaseIgnores.ignore,
           in_through: args.in_through,
           lnd: args.lnd,
           logger: args.logger,

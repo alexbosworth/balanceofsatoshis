@@ -164,6 +164,7 @@ module.exports = ({ask, fs, lnd, logger, network, node}, cbk) => {
           fs,
           lnd,
           logger,
+          avoid: [],
           max_fee: defaultMaxFee,
           max_paths: defaultMaxPaths,
           out: [],

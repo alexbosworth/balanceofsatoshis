@@ -47,6 +47,7 @@ const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
     }
     [ignore]: [{
       from_public_key: <Avoid Node With Public Key Hex String>
+      [to_public_key]: <Avoid Routing To Node With Public Key Hex String>
     }]
     [in_through]: <Pay In Through Public Key Hex String>
     [is_push]: <Is Push Payment Bool>

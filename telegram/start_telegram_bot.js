@@ -327,11 +327,11 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           }
         });
 
-        bot.command('pay', async ({message, reply}) => {
+        bot.command('pay', async ctx => {
           const budget = paymentsLimit;
 
           if (!budget) {
-            reply(interaction.pay_budget_depleted);
+            ctx.reply(interaction.pay_budget_depleted);
 
             return;
           }
@@ -341,13 +341,13 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
 
           handlePayCommand({
             budget,
-            reply,
             request,
-            from: message.from.id,
+            from: ctx.message.from.id,
             id: connectedId,
             key: apiKey.key,
             nodes: allNodes,
-            text: message.text,
+            reply: ctx.reply,
+            text: ctx.message.text,
           },
           (err, res) => {
             if (!!err) {

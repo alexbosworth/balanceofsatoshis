@@ -1,5 +1,12 @@
 # Versions
 
+## Version 10.7.0
+
+- `pay`: Expand `--avoid` support to avoiding channels and tags and peer aliases/pubkeys
+- `probe`: Expand `--avoid` support to avoiding channels and tags and peer aliases/pubkeys
+- `telegram`: Fix `/pay` command when paying to nodes that require payment nonces
+- `telegram`: Fix `/pay` command responding with error when no budget is set for payments
+
 ## Version 10.6.2
 
 - `open`: Fix ExpectedFinalScriptSigsAndWitnesses error when supplying some PSBTs

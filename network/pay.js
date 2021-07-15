@@ -3,6 +3,7 @@ const asyncMap = require('async/map');
 const {findKey} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {getSyntheticOutIgnores} = require('probing');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -11,6 +12,8 @@ const {subscribeToMultiPathProbe} = require('probing');
 
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
+const {getIgnores} = require('./../routing');
+const {getTags} = require('./../tags');
 const probeDestination = require('./probe_destination');
 
 const cltvDeltaBuffer = 3;
@@ -22,13 +25,10 @@ const singlePath = 1;
 /** Make a payment
 
   {
+    avoid: [<Avoid Forwarding Through String>]
     [fs]: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
-    [ignore]: [{
-      from_public_key: <From Public Key Hex String>
-      [to_public_key]: <To Public Key Hex String>
-    }]
     [in_through]: <Pay In Through Node With Public Key Hex String>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
@@ -44,6 +44,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!isArray(args.avoid)) {
+          return cbk([400, 'ExpectedAvoidArrayToPayPaymentRequest']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToPayPaymentRequest']);
         }
@@ -81,6 +85,26 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Get channels for figuring out avoid flags
+      getChannels: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getChannels({lnd: args.lnd}, cbk);
+      }],
+
+      // Get the node public key
+      getIdentity: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getIdentity({lnd: args.lnd}, cbk);
+      }],
+
       // Find public keys to pay out through
       getOuts: ['validate', ({}, cbk) => {
         return asyncMap(args.out, (query, cbk) => {
@@ -89,8 +113,46 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Get tags for figuring out avoid flags
+      getTags: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getTags({fs: args.fs}, cbk);
+      }],
+
+      // Get base ignores
+      getBaseIgnores: [
+        'getChannels',
+        'getIdentity',
+        'getTags',
+        ({getChannels, getIdentity, getTags}, cbk) =>
+      {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk(null, {ignore: []});
+        }
+
+        return getIgnores({
+          avoid: args.avoid,
+          channels: getChannels.channels,
+          in_through: args.in_through,
+          lnd: args.lnd,
+          logger: args.logger,
+          public_key: getIdentity.public_key,
+          tags: getTags.tags,
+        },
+        cbk);
+      }],
+
       // Get synthetic ignores to approximate out
-      getIgnores: ['getOuts', ({getOuts}, cbk) => {
+      getIgnores: [
+        'getBaseIgnores',
+        'getOuts',
+        ({getBaseIgnores, getOuts}, cbk) =>
+      {
         // Exit early when not doing a multi-path
         if (args.max_paths === singlePath) {
           return cbk();
@@ -98,11 +160,11 @@ module.exports = (args, cbk) => {
 
         // Exit early when there is no outbound restriction
         if (!getOuts.length) {
-          return cbk(null, {ignore: args.ignore});
+          return cbk(null, {ignore: getBaseIgnores.ignore});
         }
 
         return getSyntheticOutIgnores({
-          ignore: args.ignore,
+          ignore: getBaseIgnores.ignore,
           lnd: args.lnd,
           out: getOuts.map(n => n.public_key),
         },
@@ -110,7 +172,10 @@ module.exports = (args, cbk) => {
       }],
 
       // Make single-path payment
-      singlePathPay: ['getOuts', ({getOuts}, cbk) => {
+      singlePathPay: [
+        'getBaseIgnores',
+        'getOuts', ({getBaseIgnores, getOuts}, cbk) =>
+      {
         // Exit early when doing a multi-path
         if (args.max_paths !== singlePath) {
           return cbk();
@@ -124,7 +189,7 @@ module.exports = (args, cbk) => {
 
         return probeDestination({
           fs: args.fs,
-          ignore: args.ignore,
+          ignore: getBaseIgnores.ignore,
           in_through: args.in_through,
           is_real_payment: true,
           logger: args.logger,

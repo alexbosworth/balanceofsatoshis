@@ -1020,7 +1020,7 @@ prog
   // Pay a payment request, probing first
   .command('pay', 'Pay a payment request, probing first')
   .argument('<request>', 'Payment Request')
-  .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
+  .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT, 1337)
   .option('--max-paths <paths>', 'Maximum paths to use', INT, 1)
@@ -1038,8 +1038,8 @@ prog
         return network.pay({
           lnd,
           logger,
+          avoid: flatten([options.avoid].filter(n => !!n)),
           fs: {getFile: readFile},
-          ignore: routing.ignoreFromAvoid({avoid: options.avoid}).ignore,
           in_through: inThrough.public_key,
           is_real_payment: true,
           max_fee: options.maxFee,
@@ -1131,7 +1131,7 @@ prog
   .help('Simulate paying a payment request without actually paying it')
   .argument('<to>', 'Payment request or node public key')
   .argument('[amount]', 'Amount to probe, default: request amount')
-  .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
+  .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
   .option('--find-max', 'Find the maximum routeable amount on success route')
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-paths <max>', 'Maximum paths to use for find-max', INT, 1)
@@ -1148,10 +1148,10 @@ prog
         return network.probe({
           lnd,
           logger,
+          avoid: flatten([options.avoid].filter(n => !!n)),
           destination: args.to.length === 66 ? args.to : undefined,
           find_max: !!options.findMax ? 16777215 : undefined,
           fs: {getFile: readFile},
-          ignore: routing.ignoreFromAvoid({avoid: options.avoid}).ignore,
           in_through: inThrough.public_key,
           max_paths: options.maxPaths,
           out: flatten([options.out].filter(n => !!n)),

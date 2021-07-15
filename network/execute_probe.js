@@ -23,6 +23,7 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
     }]
     [ignore]: [{
       from_public_key: <Avoid Node With Public Key Hex String>
+      [to_public_key]: <Avoid Routing To Node With Public Key Hex String>
     }]
     [in_through]: <In Through Public Key Hex String>
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
