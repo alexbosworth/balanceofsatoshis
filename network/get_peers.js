@@ -39,6 +39,11 @@ const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const uniq = arr => Array.from(new Set(arr));
 const wideSizeCols = 150;
 
+const sumOfBig = a => a.reduce((sum, n) => sum + BigInt(n || '0'), BigInt(0));
+const mtokensAsTokens = mtokens => Number(mtokens / BigInt(1000));
+const isStandardMaxHtlc = (n, total) => !n || n === Math.ceil(total * 0.99);
+const maxPaySize = 4294967;
+
 /** Get channel-connected peers
 
   {
@@ -465,6 +470,14 @@ module.exports = (args, cbk) => {
 
           const disabled = policies.map(n => !!n.is_disabled).filter(n => !!n);
           const feeRate = !feeRates.length ? undefined : max(...feeRates);
+          const maxHtlcSizes = policies.map(n => n.max_htlc_mtokens);
+          const totalCapacity = sumOf(active.map(n => n.capacity));
+
+          const totalMaxHtlc = mtokensAsTokens(sumOfBig(maxHtlcSizes));
+
+          const isCustomMax = !isStandardMaxHtlc(totalMaxHtlc, totalCapacity);
+
+          const isSmallMaxHtlc = !!isCustomMax && totalMaxHtlc < maxPaySize;
 
           let node = {alias: String(), public_key: publicKey};
 
@@ -496,6 +509,7 @@ module.exports = (args, cbk) => {
             is_offline: !peer || undefined,
             is_pending: !!pendingChannels.length || undefined,
             is_private: isHidden || undefined,
+            is_small_max_htlc: isSmallMaxHtlc || undefined,
             is_thawing: hasThawChannel || undefined,
             last_activity: args.idle_days !== undefined ? lastActivity : null,
             outbound_liquidity: sumOf(channels.map(n => n.local_balance)),
@@ -547,6 +561,7 @@ module.exports = (args, cbk) => {
                 is_offline: peer.is_offline,
                 is_pending: peer.is_pending,
                 is_private: peer.is_private,
+                is_small_max_htlc: peer.is_small_max_htlc || undefined,
                 is_thawing: peer.is_thawing,
                 outbound_liquidity: peer.outbound_liquidity,
                 public_key: peer.public_key,
@@ -572,6 +587,7 @@ module.exports = (args, cbk) => {
               is_offline: n.is_offline || undefined,
               is_pending: n.is_pending || undefined,
               is_private: n.is_private || undefined,
+              is_small_max_htlc: n.is_small_max_htlc || undefined,
               is_thawing: n.is_thawing || undefined,
               outbound_liquidity: n.outbound_liquidity || undefined,
               public_key: n.public_key || undefined,
@@ -620,6 +636,7 @@ module.exports = (args, cbk) => {
                 is_inbound_disabled: peer.is_inbound_disabled,
                 is_pending: peer.is_pending,
                 is_private: peer.is_private,
+                is_small_max_htlc: peer.is_small_max_htlc,
                 is_thawing: peer.is_thawing,
                 public_key: peer.public_key,
               });

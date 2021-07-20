@@ -1,5 +1,15 @@
 # Versions
 
+## Version 10.7.1
+
+Update dependencies to improve support for LND 0.13.1
+
+- `fees`: Show error when trying to set fees but not specifying any peers to set fees to
+- `graph`: Change query via alias to only work on direct peers
+- `peers`: Add icon to indicate if a peer is restricting their maximum HTLC size
+- `tags`: Fix issues with entering uppercase tag names
+- `transfer`: Add default description for transfer invoices
+
 ## Version 10.7.0
 
 - `pay`: Expand `--avoid` support to avoiding channels and tags and peer aliases/pubkeys

@@ -10,6 +10,7 @@ const {returnResult} = require('asyncjs-util');
 const {parseAmount} = require('./../display');
 const probeDestination = require('./probe_destination');
 
+const defaultDescription = 'bos transfer between saved nodes';
 const feeForRate = (rate, n) => Number(BigInt(n) * BigInt(rate) / BigInt(1e6));
 const {isArray} = Array;
 const rateForFee = (n, fee) => Number(BigInt(fee) * BigInt(1e6) / BigInt(n));
@@ -230,7 +231,7 @@ module.exports = (args, cbk) => {
         }
 
         return createInvoice({
-          description: args.description,
+          description: args.description || defaultDescription,
           lnd: args.to,
           tokens: parseAmount.tokens,
         },

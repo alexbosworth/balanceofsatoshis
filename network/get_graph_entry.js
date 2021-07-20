@@ -3,6 +3,7 @@ const {isIP} = require('net');
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {decodeChanId} = require('bolt07');
+const {findKey} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getHeight} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
@@ -84,49 +85,11 @@ module.exports = ({fs, lnd, logger, query, sort}, cbk) => {
       // Get the tagged node icons
       getIcons: ['validate', ({}, cbk) => getIcons({fs}, cbk)],
 
-      // Get the overall network graph if we need to find a match to the query
-      getGraph: ['validate', ({}, cbk) => {
-        // Exit early when the query is a public key
-        if (!!isPublicKey(query)) {
-          return cbk();
-        }
+      // Determine the public key to use
+      getKey: ['validate', ({}, cbk) => findKey({lnd, query}, cbk)],
 
-        return getNetworkGraph({lnd}, cbk);
-      }],
-
-      // Figure out the public key the query is referring to
-      key: ['getGraph', ({getGraph}, cbk) => {
-        // Exit early when the query is a public key
-        if (!!isPublicKey(query)) {
-          return cbk(null, query);
-        }
-
-        const matching = getGraph.nodes.filter(node => {
-          const alias = node.alias || String();
-
-          const isAliasMatch = alias.toLowerCase().includes(query);
-          const isPublicKeyMatch = node.public_key.startsWith(query);
-
-          return isAliasMatch || isPublicKeyMatch;
-        });
-
-        const [match, moreMatches] = matching;
-
-        if (!match) {
-          return cbk([400, 'FailedToFindMatchingNode']);
-        }
-
-        if (!!moreMatches) {
-          return cbk([400, 'AmbiguousAliasSpecifiedForNode', {
-            matching: matching.map(node => ({
-              alias: node.alias,
-              public_key: node.public_key,
-            })),
-          }]);
-        }
-
-        return cbk(null, match.public_key);
-      }],
+      // Pull out the public key from getKey result
+      key: ['getKey', ({getKey}, cbk) => cbk(null, getKey.public_key)],
 
       // Get the node details
       getNode: ['key', ({key}, cbk) => getNode({lnd, public_key: key}, cbk)],

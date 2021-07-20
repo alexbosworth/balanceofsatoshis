@@ -1060,6 +1060,7 @@ prog
   .help(`Sort options: ${peerSortOptions.join(', ')}`)
   .help('Icons: 🤢 often d/c, 💸 active HTLC, 💀 d/c, 🌚 private')
   .help('Icons: 🧊 delayed coop close, ⏳ pending channel, 🚫 in disabled')
+  .help('Icons: 🦐 limited max htlc')
   .option('--active', 'Only active peer channels')
   .option('--complete', 'Show complete set of records in non table view')
   .option('--fee-days <past_days>', 'Include fees earned over n days', INT)
@@ -1462,7 +1463,7 @@ prog
           icon: options.icon,
           is_avoided: options.avoid,
           remove: flatten([options.remove].filter(n => !!n)),
-          tag: args.tag,
+          tag: !!args.tag ? args.tag.toLowerCase() : undefined,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {

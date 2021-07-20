@@ -72,7 +72,7 @@ const uniq = arr => Array.from(new Set(arr));
     }
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
@@ -524,7 +524,7 @@ module.exports = (args, cbk) => {
         });
 
         // Exit early when there is no obvious inbound peer
-        if (!array.length) {
+        if (!findInKey && !array.length) {
           return cbk([400, 'NoHighInboundLowFeeChannelToReceiveRebalance']);
         }
 

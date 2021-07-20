@@ -8,6 +8,7 @@ const pendingEmoji = '⏳';
 const privateEmoji = '🌚'
 const separator = ' ';
 const shortKey = key => key.substring(0, 16);
+const smallHtlc = '🦐';
 const thawingEmoji = '🧊';
 const unreliableEmoji = '🤢';
 
@@ -23,6 +24,7 @@ const unreliableEmoji = '🤢';
     [is_inactive]: <Peer Channels Are Disabled Bool>
     [is_pending]: <Peer Has Pending Liquidity Bool>
     [is_private]: <Peer is Privately Connected Bool>
+    [is_small_max_htlc]: <Peer Has Small Max HTLC Bool>
     [is_thawing]: <Peer Channel is Coop Close Restricted Bool>
     public_key: <Node Identity Public Key Hex String>
   }
@@ -42,6 +44,7 @@ module.exports = args => {
   const pendingLiquidity = !!args.is_pending ? pendingEmoji : String();
   const privatePeer = !!args.is_private ? privateEmoji : String();
   const regularAlias = args.alias.replace(isEmoji, String()).trim();
+  const smallMaxHtlc = !!args.is_small_max_htlc ? smallHtlc : String();
   const thawing = !!args.is_thawing ? thawingEmoji : String();
 
   const handle = regularAlias || shortKey(args.public_key);
@@ -60,6 +63,7 @@ module.exports = args => {
       forwarding,
       pendingLiquidity,
       privatePeer,
+      smallMaxHtlc,
       thawing,
       unreliable,
     ]);

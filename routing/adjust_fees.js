@@ -44,7 +44,7 @@ const uniq = arr => Array.from(new Set(arr));
     }
     lnd: <Authenticated LND API Object>
     logger: <Winstone Logger Object>
-    to: [<Adjust Routing Fee To Peer Alias or Public Key String>]
+    to: [<Adjust Routing Fee To Peer Alias or Public Key or Tag String>]
   }
 
   @returns via cbk or Promise
@@ -71,6 +71,10 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.to)) {
           return cbk([400, 'ExpectedArrayOfPeersToAdjustFeesTowards']);
+        }
+
+        if (args.fee_rate !== undefined && !args.to.length) {
+          return cbk([400, 'SettingGlobalFeeRateNotSupported']);
         }
 
         return cbk();
