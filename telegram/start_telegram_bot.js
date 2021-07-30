@@ -53,6 +53,7 @@ const maxCommandDelayMs = 1000 * 10;
 const msSince = epoch => Date.now() - (epoch * 1e3);
 const network = 'btc';
 const restartSubscriptionTimeMs = 1000 * 30;
+const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
 
 /** Start a Telegram bot
 
@@ -140,10 +141,15 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               return cbk([503, 'FailedToGetNodeInfo', {err}]);
             }
 
+            const named = fromName({
+              alias: res.alias,
+              public_key: res.public_key,
+            });
+
             return cbk(null, {
               lnd,
               alias: res.alias,
-              from: fromName({alias: res.alias, public_key: res.public_key}),
+              from: sanitize(named),
               public_key: res.public_key,
             });
           });

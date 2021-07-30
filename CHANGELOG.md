@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.7.3
+
+- `telegram`: Fix issues running on nodes that have special characters in their alias
+
 ## Version 10.7.2
 
 - `pay`, `probe`, `rebalance` - add support for pubKey/pubKey in `--avoid` for avoiding a pair
