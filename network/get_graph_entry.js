@@ -132,6 +132,7 @@ module.exports = ({fs, lnd, logger, query, sort}, cbk) => {
         });
 
         logger.info({
+          id: key,
           node: mainAlias.display,
           capacity: displayTokens(getNode.capacity),
           is_accepting_large_channels: isLarge(getNode.features) || undefined,

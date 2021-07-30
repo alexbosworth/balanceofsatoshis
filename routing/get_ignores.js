@@ -4,10 +4,13 @@ const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const decodePair = n => n.split('/');
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
 const isChannel = n => /^\d*x\d*x\d*$/.test(n);
+const isPair = n => !!n && /^0[2-3][0-9A-F]{64}\/0[2-3][0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
+const pairAsIgnore = (a, b) => ({from_public_key: a, to_public_key: b});
 const uniq = arr => Array.from(new Set(arr));
 
 /** Get ignores for avoids
@@ -95,6 +98,11 @@ module.exports = (args, cbk) => {
           // Exit early when the id is a channel
           if (isChannel(id)) {
             return {channel: id};
+          }
+
+          // Exit early when the id is a pair of nodes
+          if (isPair(id)) {
+            return {node: pairAsIgnore(...decodePair(id))};
           }
 
           const tagByAlias = args.tags.find(n => n.alias === id);

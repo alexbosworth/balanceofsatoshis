@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.7.2
+
+- `pay`, `probe`, `rebalance` - add support for pubKey/pubKey in `--avoid` for avoiding a pair
+
 ## Version 10.7.1
 
 Update dependencies to improve support for LND 0.13.1

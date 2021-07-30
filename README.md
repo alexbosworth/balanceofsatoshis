@@ -318,12 +318,14 @@ update-fees.sh:
 
 ### Auto Balance Liquidity Between Two Nodes
 
-Keep a channel balanced between two nodes
+Keep a channel balanced between two of your own nodes
 
 ```
 # Cron: every 30 minutes send funds to reach 50:50
 */30 * * * * /home/ubuntu/.npm-global/bin/bos send PUBKEY --max-fee 0 --message="rebalance" --amount="IF(OUTBOUND+1*m>(LIQUIDITY/2), OUTBOUND-(LIQUIDITY/2), 0)"
 ```
+
+If you want to 50:50 rebalance with a peer node, you can use --out-target-inbound=capacity/2
 
 ## Alerts and Reports with `sendnotification`
 

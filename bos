@@ -1485,7 +1485,7 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        return telegram.connectToTelegram({
+        return await telegram.connectToTelegram({
           logger,
           request,
           fs: {

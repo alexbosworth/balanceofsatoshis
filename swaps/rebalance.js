@@ -21,6 +21,7 @@ const {routeFromChannels} = require('ln-service');
 
 const {findTagMatch} = require('./../peers');
 const {formatFeeRate} = require('./../display');
+const {getIgnores} = require('./../routing');
 const {parseAmount} = require('./../display');
 const {probeDestination} = require('./../network');
 const {shuffle} = require('./../arrays');
@@ -164,7 +165,7 @@ module.exports = (args, cbk) => {
 
       // Get the set of tags
       getTags: ['validate', ({}, cbk) => {
-        const defaultTags = {avoids: [], tags: []};
+        const defaultTags = {tags: []};
 
         return args.fs.getFile(tagFilePath(), (err, res) => {
           if (!!err || !res) {
@@ -174,10 +175,7 @@ module.exports = (args, cbk) => {
           try {
             const {tags} = parse(res.toString());
 
-            // Find global avoids in tags
-            const avoids = tags.filter(n => !!n.is_avoided).map(n => n.nodes);
-
-            return cbk(null, {tags, avoids: flatten(avoids)});
+            return cbk(null, {tags});
           } catch (err) {
             return cbk(null, defaultTags);
           }
@@ -198,89 +196,21 @@ module.exports = (args, cbk) => {
         'lnd',
         ({getInitialLiquidity, getPublicKey, getTags, lnd}, cbk) =>
       {
-        const avoids = [].concat(args.avoid).concat(getTags.avoids)
-          .filter(n => n !== getPublicKey.public_key);
-
-        return asyncMap(avoids, (id, cbk) => {
-          // Exit early when the id is a public key
-          if (isPublicKey(id)) {
-            return cbk(null, {from_public_key: id});
-          }
-
-          const isChannel = !!channelMatch.test(id);
-
-          // Exit early when the id matches a tag alias
-          if (!isChannel && getTags.tags.find(n => n.alias === id)) {
-            const {nodes} = getTags.tags.find(n => n.alias === id);
-
-            args.logger.info({avoiding_tag: `${id}: ${nodes.length} nodes`});
-
-            return cbk(null, nodes.map(n => ({from_public_key: n})));
-          }
-
-          // Exit early when the id matches a tag id
-          if (!isChannel && getTags.tags.find(n => n.id === id)) {
-            const {nodes} = getTags.tags.find(n => n.id === id);
-
-            args.logger.info({avoiding_tag: `${id}: ${nodes.length} nodes`});
-
-            return cbk(null, nodes.map(n => ({from_public_key: n})));
-          }
-
-          // Exit early when the id is a peer query
-          if (!isChannel) {
-            return findKey({
-              lnd,
-              channels: getInitialLiquidity.channels,
-              query: id,
-            },
-            (err, res) => {
-              if (!!err) {
-                return cbk(err);
-              }
-
-              return cbk(null, {from_public_key: res.public_key});
-            });
-          }
-
-          return getChannel({id, lnd: args.lnd}, (err, res) => {
-            if (!!err) {
-              return cbk([404, 'FailedToFindChannelToAvoid', {err, id}]);
-            }
-
-            const [node1, node2] = res.policies.map(n => n.public_key);
-
-            const ignore = [
-              {channel: id, from_public_key: node1, to_public_key: node2},
-              {channel: id, from_public_key: node2, to_public_key: node1},
-            ];
-
-            return cbk(null, ignore);
-          });
+        return getIgnores({
+          lnd,
+          avoid: args.avoid,
+          channels: getInitialLiquidity.channels,
+          in_through: args.in_through,
+          logger: args.logger,
+          public_key: getPublicKey.public_key,
+          tags: getTags.tags,
         },
-        (err, ignore) => {
+        (err, res) => {
           if (!!err) {
             return cbk(err);
           }
 
-          const allIgnores = flatten(ignore).filter(n => {
-            const isFromInThrough = n.from_public_key === args.in_through;
-            const isFromSelf = n.from_public_key === getPublicKey.public_key;
-            const isToOutThrough = n.to_public_key === args.out_through;
-            const isToSelf = n.to_public_key === getPublicKey.public_key;
-
-            if (isFromSelf && isToOutThrough) {
-              return false;
-            }
-
-            if (isToSelf && isFromInThrough) {
-              return false;
-            }
-
-            return true;
-          });
-
-          return cbk(null, allIgnores);
+          return cbk(null, res.ignore);
         });
       }],
 
