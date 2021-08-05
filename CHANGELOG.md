@@ -1,5 +1,10 @@
 # Versions
 
+## Version 10.7.4
+
+- `call`: Update help to show how to use when a method name is unknown
+- `reconnect`: Remove logging when removing a peer for cycling
+
 ## Version 10.7.3
 
 - `telegram`: Fix issues running on nodes that have special characters in their alias

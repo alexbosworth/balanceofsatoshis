@@ -210,6 +210,7 @@ prog
 
   // Call API directly
   .command('call', 'Make a raw API call and to get a raw API response')
+  .help('If you do not specify a method it will list the supported methods')
   .argument('[method]', 'Method to call')
   .option('--node <node_name>', 'Saved node to use for call')
   .action((args, options, logger) => {

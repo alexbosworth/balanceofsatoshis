@@ -135,7 +135,6 @@ module.exports = ({lnd, retries}, cbk) => {
         });
 
         return asyncMap(remove, (peer, cbk) => {
-console.log("PEER", peer)
           return removePeer({lnd, public_key: peer}, cbk);
         },
         err => {
