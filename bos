@@ -621,7 +621,7 @@ prog
           addresses: args.addressAmount.filter((n, i) => !(i % 2)),
           amounts: args.addressAmount.filter((n, i) => i % 2),
           fee_tokens_per_vbyte: options.feeRate,
-          is_dry_run: !!args.dryrun,
+          is_dry_run: !!options.dryrun,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           utxos: flatten([options.utxo].filter(n => !!n)),
         },

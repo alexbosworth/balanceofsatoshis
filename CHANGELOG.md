@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.7.5
+
+- `fund`: Fix `--dryrun` to unlock UTXOs after funding
+
 ## Version 10.7.4
 
 - `call`: Update help to show how to use when a method name is unknown
