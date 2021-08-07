@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.7.6
+
+- `fund`: Show the sum of all outputs when funding a transaction
+
 ## Version 10.7.5
 
 - `fund`: Fix `--dryrun` to unlock UTXOs after funding

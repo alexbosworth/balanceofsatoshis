@@ -3,7 +3,6 @@ const asyncEach = require('async/each');
 const {formatTokens} = require('ln-sync');
 const {fundPsbt} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
-const {getUtxos} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {signPsbt} = require('ln-service');
 const {unlockUtxo} = require('ln-service');
@@ -17,6 +16,7 @@ const dustValue = 293;
 const {isArray} = Array;
 const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
 const minConfs = 1;
+const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 
 /** Fund and sign a transaction
 
@@ -75,13 +75,8 @@ module.exports = (args, cbk) => {
       // Get the current fee rate
       getFee: ['validate', ({}, cbk) => getChainFeeRate({lnd: args.lnd}, cbk)],
 
-      // Get the UTXOs
-      getUtxos: ['validate', ({}, cbk) => {
-        return getUtxos({lnd: args.lnd, min_confirmations: minConfs}, cbk);
-      }],
-
       // Derive exact outputs
-      outputs: ['getUtxos', ({getUtxos}, cbk) => {
+      outputs: ['validate', ({}, cbk) => {
         try {
           const outputs = args.addresses.map((address, i) => {
             const {tokens} = parseAmount({amount: args.amounts[i]});
@@ -142,11 +137,13 @@ module.exports = (args, cbk) => {
       // Sign the funded PSBT
       sign: ['fund', ({fund}, cbk) => {
         const [change] = fund.outputs.filter(n => !!n.is_change);
+        const total = sumOf(fund.outputs.map(n => n.tokens));
 
         const tokens = !!change ? change.tokens : undefined;
 
         args.logger.info({
           change: !!tokens ? formatTokens({tokens}).display : undefined,
+          sum_of_outputs: formatTokens({tokens: total}).display,
           spending_utxos: fund.inputs.map(asOutpoint),
         });
 
