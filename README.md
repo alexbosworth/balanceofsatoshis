@@ -130,7 +130,7 @@ bos open "public_keys..."
 # Outputs the sum total of local channel liquidity
 bos outbound-liquidity
 
-# Pay a payment request, probing first
+# Pay a payment request (invoice), probing first
 bos pay "payment_request"
 
 # Show channel-connected peers
@@ -154,7 +154,7 @@ bos remove-peer
 # Get a general report of the node activity
 bos report
 
-# Send funds and an optional message to a node
+# Send funds using keysend and an optional message to a node
 bos send
 
 # Service keysend-requests
