@@ -29,6 +29,7 @@ const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
     logger: <Winston Logger Object>
     max_fee_rate: <Maximum Fee Rate Number>
     [out_through]: <Transfer Out Through Peer String>
+    [through]: <Transfer In and Out Through Peer String>
     to: <Send To Authenticated LND API Object>
   }
 */
@@ -61,6 +62,14 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MultipleOutThroughPeersNotSupported']);
         }
 
+        if (!!args.through && !!isArray(args.through)) {
+          return cbk([400, 'MultipleThroughPeersNotSupported']);
+        }
+
+        if (!!args.through && (!!args.in_through || !!args.out_through)) {
+          return cbk([400, 'EitherInAndOutOrThroughSupportedNotBoth']);
+        }
+
         if (!args.to) {
           return cbk([400, 'ExpectedDestinationSavedNodeToTransferFundsTo']);
         }
@@ -84,6 +93,16 @@ module.exports = (args, cbk) => {
       // Get the key of the node we are sending to
       getToKey: ['validate', ({}, cbk) => getIdentity({lnd: args.to}, cbk)],
 
+      // Inbound peer to reduce inbound on
+      inPeer: ['validate', ({}, cbk) => {
+        return cbk(null, args.in_through || args.through);
+      }],
+
+      // Outbound peer to increase inbound on
+      outPeer: ['validate', ({}, cbk) => {
+        return cbk(null, args.out_through || args.through);
+      }],
+
       // Make sure that this is a transfer and not a send-to-self
       checkDestination: [
         'getFromKey',
@@ -98,31 +117,35 @@ module.exports = (args, cbk) => {
       }],
 
       // Determine the inbound peer public key
-      getInKey: ['getRemoteChannels', ({getRemoteChannels}, cbk) => {
+      getInKey: [
+        'getRemoteChannels',
+        'inPeer',
+        ({getRemoteChannels, inPeer}, cbk) =>
+      {
         // Exit early when there is no inbound constraint
-        if (!args.in_through) {
+        if (!inPeer) {
           return cbk(null, {});
         }
 
         return findKey({
           channels: getRemoteChannels.channels,
           lnd: args.to,
-          query: args.in_through,
+          query: inPeer,
         },
         cbk);
       }],
 
       // Determine the outbound peer public key
-      getOutKey: ['getChannels', ({getChannels}, cbk) => {
+      getOutKey: ['getChannels', 'outPeer', ({getChannels, outPeer}, cbk) => {
         // Exit early when there is no outbound constraint
-        if (!args.out_through) {
+        if (!outPeer) {
           return cbk(null, {});
         }
 
         return findKey({
           channels: getChannels.channels,
           lnd: args.lnd,
-          query: args.out_through,
+          query: outPeer,
         },
         cbk);
       }],
@@ -132,7 +155,8 @@ module.exports = (args, cbk) => {
         'getChannels',
         'getOutKey',
         'getToKey',
-        ({getChannels, getOutKey, getToKey}, cbk) =>
+        'outPeer',
+        ({getChannels, getOutKey, getToKey, outPeer}, cbk) =>
       {
         // Calculate the outbound peer inbound liquidity
         const outInbound = getChannels.channels
@@ -172,7 +196,7 @@ module.exports = (args, cbk) => {
           out_outbound: outOutbound,
         };
 
-        if (!!args.out_through) {
+        if (!!outPeer) {
           args.logger.info(variables);
         }
 
@@ -272,14 +296,18 @@ module.exports = (args, cbk) => {
       }],
 
       // Get adjusted iinbound liquidity after transfer
-      getAdjustedInbound: ['transfer', ({transfer}, cbk) => {
+      getAdjustedInbound: [
+        'outPeer',
+        'transfer',
+        ({outPeer, transfer}, cbk) =>
+      {
         // Exit early when the payment failed
         if (!transfer.preimage) {
           return cbk([503, 'UnexpectedSendPaymentFailure']);
         }
 
         // Exit early when there is no outbound constraint
-        if (!args.out_through) {
+        if (!outPeer) {
           return cbk();
         }
 
@@ -294,14 +322,18 @@ module.exports = (args, cbk) => {
       }],
 
       // Get adjusted outbound liquidity after transfer
-      getAdjustedOutbound: ['transfer', ({transfer}, cbk) => {
+      getAdjustedOutbound: [
+        'outPeer',
+        'transfer',
+        ({outPeer, transfer}, cbk) =>
+      {
         // Exit early when the payment failed
         if (!transfer.preimage) {
           return cbk([503, 'UnexpectedSendPaymentFailure']);
         }
 
         // Exit early when there is no outbound constraint
-        if (!args.out_through) {
+        if (!outPeer) {
           return cbk();
         }
 

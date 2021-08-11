@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.7.7
+
+- `transfer`: Add `--through` flag as a shorthand for setting equal `--in` and `--out`
+
 ## Version 10.7.6
 
 - `fund`: Show the sum of all outputs when funding a transaction

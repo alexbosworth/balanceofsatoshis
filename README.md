@@ -109,6 +109,9 @@ bos help "command"
 # Run gateway service for https://ln-operator.github.io/ UI
 bos gateway
 
+# Look up the channels and fee rates of a node by its public key
+bos graph "pubkey"
+
 # Output the sum total of remote channel liquidity
 bos inbound-liquidity
 

@@ -975,7 +975,7 @@ prog
   .help('Remote node must be prepared to receive this type of channel')
   .help('Channel details are negotiated with keysend so that is also required')
   .option('--node <node_name>', 'Use saved node details instead of local node')
-  .option('--recover <address>', 'Recover funds sent to an address by mistake')
+  .option('--recover <addr>', 'Recover if funds sent to an address by mistake')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1521,6 +1521,7 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <name>', 'Node to send funds from')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
+  .option('--through <pubkey_or_alias>', 'Route in and out through a peer')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1533,6 +1534,7 @@ prog
           lnd: (await lndForNode(logger, options.node)).lnd,
           max_fee_rate: options.maxFeeRate,
           out_through: options.out,
+          through: options.through,
           to: (await lndForNode(logger, args.to)).lnd,
         },
         responses.returnObject({exit, logger, reject, resolve}));
