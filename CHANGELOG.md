@@ -1,5 +1,10 @@
 # Versions
 
+## Version 10.7.8
+
+- `price`: Add hints for which rate providers are supported
+- `telegram`: Add response consistency to /pending with /liquidity and /backup on no connect id
+
 ## Version 10.7.7
 
 - `transfer`: Add `--through` flag as a shorthand for setting equal `--in` and `--out`

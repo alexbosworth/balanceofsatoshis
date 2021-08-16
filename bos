@@ -1107,6 +1107,8 @@ prog
 
   // Get the current fiat exchange price
   .command('price', 'Get the price')
+  .help('Price is denominated in cents or equivalent')
+  .help('Rate provider options: coindesk or coingecko')
   .argument('[symbols...]', 'Desired fiat tickers')
   .option('--file <path>', 'Write the output to a JSON file at desired path')
   .option('--from <provider>', 'Rate provider', priceProviders, 'coindesk')
