@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.7.9
+
+- `probe`: Improve compatibility with destinations that require a payment nonces on lnd 0.12.1
+
 ## Version 10.7.8
 
 - `price`: Add hints for which rate providers are supported

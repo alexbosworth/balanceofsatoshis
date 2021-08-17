@@ -29,6 +29,7 @@ const {floor} = Math;
 const fromKeyType = '34349339';
 const {isArray} = Array;
 const keySendPreimageType = '5482373484';
+const makeNonce = () => randomBytes(32).toString('hex');
 const messageType = '34349334';
 const nodeKeyFamily = 6;
 const preimageByteLength = 32;
@@ -138,6 +139,7 @@ module.exports = (args, cbk) => {
           return cbk(null, {
             destination: args.destination,
             mtokens: !args.tokens ? '0': tokAsMtok(args.tokens),
+            payment: makeNonce(),
             routes: [],
           });
         }
