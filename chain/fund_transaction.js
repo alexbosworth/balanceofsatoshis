@@ -15,6 +15,7 @@ const asUtxo = n => ({id: n.slice(0, 64), vout: Number(n.slice(65))});
 const dustValue = 293;
 const {isArray} = Array;
 const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
+const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const minConfs = 1;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 
@@ -59,6 +60,10 @@ module.exports = (args, cbk) => {
 
         if (args.addresses.length !== args.amounts.length) {
           return cbk([400, 'ExpectedAmountOfFundsToSendToAddress']);
+        }
+
+        if (!!args.addresses.find(n => isPublicKey(n))) {
+          return cbk([400, 'ExpectedFundPayingToAddressesNotPublicKeys']);
         }
 
         if (!isArray(args.utxos)) {

@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.7.10
+
+- `fund`: Disallow funding outputs that are public keys instead of regular chain-addresses
+
 ## Version 10.7.9
 
 - `probe`: Improve compatibility with destinations that require a payment nonces on lnd 0.12.1
