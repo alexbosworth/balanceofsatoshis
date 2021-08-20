@@ -560,6 +560,7 @@ module.exports = (args, cbk) => {
         // Cancel outstanding pending channels when there is an error
         return asyncEach(openChannels.pending, (channel, cbk) => {
           return cancelPendingChannel({id: channel.id, lnd: args.lnd}, () => {
+            // Ignore errors when trying to cancel a pending channel
             return cbk();
           });
         },
@@ -570,7 +571,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Set fee rates
-      setFeeRates: ['detectFunding', 'fundChannels', ({}, cbk) => {
+      setFeeRates: [
+        'cancelPending',
+        'detectFunding',
+        'fundChannels',
+        ({}, cbk) =>
+      {
         // Exit early when not specifying fee rates
         if (args.set_fee_rates.length !== args.public_keys.length) {
           return cbk();

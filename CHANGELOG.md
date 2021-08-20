@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.7.11
+
+- `remove-peer`: When specifying a public key directly, check to confirm can cooperative close
+
 ## Version 10.7.10
 
 - `fund`: Disallow funding outputs that are public keys instead of regular chain-addresses

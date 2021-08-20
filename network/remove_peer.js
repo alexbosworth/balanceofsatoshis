@@ -7,13 +7,13 @@ const {getNetwork} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const {getMempoolSize} = require('./../chain');
+const getPeers = require('./get_peers');
 
 const asOutpoint = n => `${n.transaction_id}:${n.transaction_vout}`;
 const fastConf = 6;
 const {floor} = Math;
 const defaultDays = 365 * 2;
 const getMempoolRetries = 10;
-const getPeers = require('./get_peers');
 const {isArray} = Array;
 const maxMempoolSize = 2e6;
 const regularConf = 72;
@@ -131,6 +131,41 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Check channels for peer to make sure that they can be cleanly closed
+      checkChannels: ['getChannels', ({getChannels}, cbk) => {
+        // Exit early when a peer is not specified or force closing is OK
+        if (!args.public_key || !!args.is_forced) {
+          return cbk();
+        }
+
+        const [cannotCoopClose] = getChannels.channels.filter(channel => {
+          // Ignore channels that are not the specified public key
+          if (channel.partner_public_key !== args.public_key) {
+            return false;
+          }
+
+          // Inactive channels cannot be cooperatively closed
+          if (!channel.is_active) {
+            return true;
+          }
+
+          // Channels with pending payments cannot be cooperatively closed
+          if (channel.pending_payments.length) {
+            return true;
+          }
+
+          // Channel with the peer can be cooperatively closed
+          return false;
+        });
+
+        // Exit with error when there is a channel that cannot be coop closed
+        if (!!cannotCoopClose) {
+          return cbk([400, 'CannotCurrentlyCooperativelyCloseWithPeer']);
+        }
+
+        return cbk();
+      }],
+
       // Get mempool size
       getMempool: ['getNetwork', ({getNetwork}, cbk) => {
         return getMempoolSize({
@@ -214,8 +249,9 @@ module.exports = (args, cbk) => {
         return cbk(null, peer);
       }],
 
-      // Determine which channels need to be closed
+      // Determine which channels need to be closed and close them
       channelsToClose: [
+        'checkChannels',
         'getChannels',
         'getNormalFee',
         'selectPeer',
@@ -249,7 +285,7 @@ module.exports = (args, cbk) => {
           fee_rate: !args.is_forced ? feeRate : undefined,
         });
 
-        if (!!args.is_dry_run){
+        if (!!args.is_dry_run) {
           args.logger.info({is_dry_run: true});
 
           return cbk();
