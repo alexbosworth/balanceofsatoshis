@@ -15,6 +15,7 @@
     "asciichart": "1.5.25",
     "async": "3.2.1",
     "asyncjs-util": "1.2.6",
+    "bip66": "1.1.5",
     "bitcoin-ops": "1.4.1",
     "bitcoinjs-lib": "5.2.0",
     "bolt01": "1.2.2",
@@ -78,5 +79,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/wallets/*.js"
   },
-  "version": "10.7.11"
+  "version": "10.8.0"
 }

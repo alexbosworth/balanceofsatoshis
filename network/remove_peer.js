@@ -150,7 +150,7 @@ module.exports = (args, cbk) => {
           }
 
           // Channels with pending payments cannot be cooperatively closed
-          if (channel.pending_payments.length) {
+          if (!!channel.pending_payments.length) {
             return true;
           }
 

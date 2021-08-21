@@ -1230,6 +1230,28 @@ prog
     });
   })
 
+  // Recover funds sent to p2pk using the node identity key
+  .command('recover-p2pk', 'Recover chain funds sent to the node identity key')
+  .help('Sweep funds sent to your node public key into your regular wallet')
+  .argument('<id>', 'Transaction id of funds sent to p2pk')
+  .argument('<vout>', 'Transaction output index of funds sent to p2pk', INT)
+  .option('--node <node_name>', 'Node to attempt p2pk recovery on')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return chain.recoverP2pk({
+          request,
+          id: args.id,
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          vout: args.vout,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
+    });
+  })
+
   // Remove a peer
   .command('remove-peer', 'Close out with a channel-connected peer')
   .argument('[public_key]', 'Choose a specific peer to close with')

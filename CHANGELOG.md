@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.8.0
+
+- `recover-p2pk`: Add hidden command to allow recovering funds sent to the node identity key
+
 ## Version 10.7.11
 
 - `remove-peer`: When specifying a public key directly, check to confirm can cooperative close
