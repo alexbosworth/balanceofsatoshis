@@ -138,12 +138,22 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const [cannotCoopClose] = getChannels.channels.filter(channel => {
+        const selectedChannels = getChannels.channels.filter(channel => {
           // Ignore channels that are not the specified public key
           if (channel.partner_public_key !== args.public_key) {
             return false;
           }
 
+          // Exit early when there are no outpoints, consider all peer channels
+          if (!args.outpoints.length) {
+            return true;
+          }
+
+          // Only include selected channels
+          return args.outpoints.includes(asOutpoint(channel));
+        });
+
+        const [cannotCoopClose] = selectedChannels.filter(channel => {
           // Inactive channels cannot be cooperatively closed
           if (!channel.is_active) {
             return true;
@@ -160,7 +170,10 @@ module.exports = (args, cbk) => {
 
         // Exit with error when there is a channel that cannot be coop closed
         if (!!cannotCoopClose) {
-          return cbk([400, 'CannotCurrentlyCooperativelyCloseWithPeer']);
+          return cbk([400, 'CannotCurrentlyCooperativelyCloseWithPeer', {
+            is_active: cannotCoopClose.is_active,
+            pending: cannotCoopClose.pending_payments,
+          }]);
         }
 
         return cbk();

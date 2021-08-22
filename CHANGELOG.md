@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.8.1
+
+- `remove-peer`: Allow coop closing channel with peer when unselected chan has pending htlcs
+
 ## Version 10.8.0
 
 - `recover-p2pk`: Add hidden command to allow recovering funds sent to the node identity key
