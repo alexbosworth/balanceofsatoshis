@@ -940,7 +940,7 @@ prog
   })
 
   // Open channels
-  .command('open', 'Open channels using an external wallet for funding')
+  .command('open', 'Open channels, optionally using an external wallet')
   .help('Create channels from an external wallet. Note: do not self-broadcast')
   .argument('<peer_public_keys...>', 'With nodes with public keys')
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)

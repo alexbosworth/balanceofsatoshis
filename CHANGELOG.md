@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.9.0
+
+- `open`: Add support for using internal funds to open channels
+
 ## Version 10.8.1
 
 - `remove-peer`: Allow coop closing channel with peer when unselected chan has pending htlcs

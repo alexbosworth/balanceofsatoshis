@@ -7,18 +7,17 @@ const asyncEach = require('async/each');
 const asyncEachSeries = require('async/eachSeries');
 const asyncDetectSeries = require('async/detectSeries');
 const asyncMap = require('async/map');
-const asyncMapSeries = require('async/mapSeries');
+const asyncReflect = require('async/reflect');
 const asyncRetry = require('async/retry');
 const {cancelPendingChannel} = require('ln-service');
 const {decodePsbt} = require('psbt');
-const {extractTransaction} = require('psbt');
-const {finalizePsbt} = require('psbt');
 const {fundPendingChannels} = require('ln-service');
+const {getFundedTransaction} = require('goldengate');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
+const {getPsbtFromTransaction} = require('goldengate');
 const {getWalletVersion} = require('ln-service');
-const {green} = require('colorette');
 const {openChannels} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
@@ -27,20 +26,15 @@ const {transactionAsPsbt} = require('psbt');
 
 const adjustFees = require('./../routing/adjust_fees');
 const {getAddressUtxo} = require('./../chain');
-const {getRawTransaction} = require('./../chain');
 const {parseAmount} = require('./../display');
 
-const addressesHeader = green('Addresses');
-const base64AsHex = n => Buffer.from(n, 'base64').toString('hex');
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const defaultChannelCapacity = 5e6;
 const format = 'p2wpkh';
-const getTxRetryCount = 10;
-const interrogationSeparator = ' and \n  ';
 const {isArray} = Array;
-const isHex = n => !!n && !(n.length % 2) && /^[0-9A-F]*$/i.test(n);
+const lineBreak = '\n';
 const knownTypes = ['private', 'public'];
-const makeId = () => randomBytes(32).toString('hex');
+const noInternalFundingVersions = ['0.11.0-beta', '0.11.1-beta'];
 const notFound = -1;
 const peerAddedDelayMs = 1000 * 5;
 const per = (a, b) => (a / b).toFixed(2);
@@ -137,6 +131,19 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Parse capacities
+      capacities: ['validate', ({}, cbk) => {
+        const capacities = args.capacities.map(amount => {
+          try {
+            return parseAmount({amount}).tokens;
+          } catch (err) {
+            return cbk([400, err.message]);
+          }
+        });
+
+        return cbk(null, capacities);
+      }],
+
       // Get network name
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
@@ -172,28 +179,14 @@ module.exports = (args, cbk) => {
 
       // Get the wallet version and check if it is compatible
       getWalletVersion: ['validate', ({}, cbk) => {
-        return getWalletVersion({lnd: args.lnd}, err => {
+        return getWalletVersion({lnd: args.lnd}, (err, res) => {
           if (!!err) {
             return cbk([400, 'BackingLndCannotBeUsedToOpenChannels', {err}]);
           }
 
-          return cbk();
+          return cbk(null, {version: res.version});
         });
       }],
-
-      // Parse capacities
-      capacities: ['validate', ({}, cbk) => {
-        const capacities = args.capacities.map(amount => {
-          try {
-            return parseAmount({amount}).tokens;
-          } catch (err) {
-            return cbk([400, err.message]);
-          }
-        });
-
-        return cbk(null, capacities);
-      }],
-
 
       // Connect up to the peers
       connect: [
@@ -265,11 +258,37 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Determine if internal funding should be used
+      isExternal: [
+        'capacities',
+        'connect',
+        'getWalletVersion',
+        ({getWalletVersion}, cbk) =>
+      {
+        // Early versions of LND do not support internal PSBT funding
+        if (noInternalFundingVersions.includes(getWalletVersion.version)) {
+          return cbk(null, true);
+        }
+
+        // Peers are connected - what type of funding will be used?
+        args.logger.info(lineBreak);
+
+        // Prompt to make sure that internal funding should really be used
+        return args.ask({
+          default: true,
+          message: 'Use internal wallet funds?',
+          name: 'internal',
+          type: 'confirm',
+        },
+        ({internal}) => cbk(null, !internal));
+      }],
+
       // Initiate open requests
       openChannels: [
         'capacities',
         'connect',
         'getWalletVersion',
+        'isExternal',
         ({capacities}, cbk) =>
       {
         const channels = args.public_keys.map((key, i) => {
@@ -338,45 +357,15 @@ module.exports = (args, cbk) => {
 
             const foundTx = res.transaction;
 
-            const inputs = Transaction.fromHex(foundTx).ins;
-
-            const hashes = inputs.map(n => n.hash.toString('hex'));
-
-            const spendIds = hashes
-              .map(n => Buffer.from(n, 'hex').reverse())
-              .map(n => n.toString('hex'));
-
-            return asyncMapSeries(spendIds, (id, cbk) => {
-              return getRawTransaction({
-                id,
-                network: getNetwork.network,
-                request: args.request,
-                retries: getTxRetryCount,
-              },
-              cbk);
+            return getPsbtFromTransaction({
+              network: getNetwork.network,
+              request: args.request,
+              transaction: foundTx,
             },
             (err, res) => {
               if (!!err) {
-                return cbk(null, {err: [400, 'FailedToGetInputs', {err}]});
+                return cbk();
               }
-
-              const spending = res.map(n => n.transaction);
-
-              try {
-                const {psbt} = transactionAsPsbt({
-                  spending,
-                  transaction: foundTx,
-                });
-
-                finalizePsbt({psbt});
-              } catch (err) {
-                return cbk([404, 'TransactionCannotHavePsbtDerived']);
-              }
-
-              const signed = transactionAsPsbt({
-                spending,
-                transaction: foundTx,
-              });
 
               args.logger.info({
                 funding_detected: Transaction.fromHex(foundTx).getId(),
@@ -384,12 +373,10 @@ module.exports = (args, cbk) => {
 
               return fundPendingChannels({
                 channels: openChannels.pending.map(n => n.id),
-                funding: finalizePsbt({psbt: signed.psbt}).psbt,
+                funding: res.psbt,
                 lnd: args.lnd,
               },
-              () => {
-                return cbk();
-              });
+              () => cbk());
             });
           });
         },
@@ -400,125 +387,61 @@ module.exports = (args, cbk) => {
       }],
 
       // Prompt for a PSBT or a signed transaction
-      getFunding: ['openChannels', ({openChannels}, cbk) => {
+      getFunding: [
+        'isExternal',
+        'openChannels',
+        asyncReflect(({isExternal, openChannels}, cbk) =>
+      {
         args.logger.info({
           funding_deadline: moment().add(10, 'minutes').calendar(),
         });
 
-        const fundSends = openChannels.pending.map(channel => {
-          return `${channel.address} ${channel.tokens}`;
-        });
+        return getFundedTransaction({
+          ask: args.ask,
+          is_external: isExternal,
+          lnd: args.lnd,
+          logger: args.logger,
+          outputs: openChannels.pending.map(({address, tokens}) => ({
+            address,
+            tokens,
+          })),
+        },
+        cbk);
+      })],
 
-        args.logger.info({fund: `fund ${fundSends.join(' ')}`});
-
-        const commaSends = openChannels.pending.map(channel => {
-          return `${channel.address}, ${tokAsBigUnit(channel.tokens)}`;
-        });
-
-        args.logger.info(`\n${addressesHeader}:\n${commaSends.join('\n')}\n`);
-
-        const payTo = openChannels.pending
-          .map(channel => {
-            return `${tokAsBigUnit(channel.tokens)} to ${channel.address}`;
-          })
-          .join(interrogationSeparator);
-
-        const or = 'or press enter to cancel funding.\n';
-
-        const funding = {
-          message: `Enter signed transaction or PSBT that pays ${payTo} ${or}`,
-          name: 'fund',
-        };
-
-        return args.ask(funding, ({fund}) => cbk(null, fund));
-      }],
-
-      // Translate funding data into hex
-      fundingHex: ['getFunding', ({getFunding}, cbk) => {
-        // Exit early when there is no funding
-        if (!getFunding) {
-          return cbk(null, {err: [400, 'ExpectedFundingTransaction']});
-        }
-
-        // Exit early when funding data is already hex
-        if (isHex(getFunding.trim())) {
-          return cbk(null, {hex: getFunding.trim()});
-        }
-
-        try {
-          return cbk(null, {hex: base64AsHex(getFunding.trim())});
-        } catch (err) {
-          return cbk(null, {err: [400, 'UnexpectedEncodingForFundingTx']});
-        }
-      }],
-
-      // Funding PSBT
+      // Derive the funding PSBT which is needed for the funding flow
       fundingPsbt: [
-        'fundingHex',
+        'getFunding',
         'getNetwork',
         'openChannels',
-        ({fundingHex, getNetwork, openChannels}, cbk) =>
+        asyncReflect(({getFunding, getNetwork, openChannels}, cbk) =>
       {
-        // Exit early when there was an error with the funding hex
-        if (!!fundingHex.err) {
+        // Exit early when there was an error with the funding
+        if (!!getFunding.error) {
           return cbk(null, {});
         }
 
-        try {
-          decodePsbt({psbt: fundingHex.hex});
-
-          // The PSBT is a valid funding PSBT
-          return cbk(null, {psbt: fundingHex.hex});
-        } catch (err) {}
-
-        try {
-          Transaction.fromHex(fundingHex.hex);
-        } catch (err) {
-          return cbk(null, {err: [400, 'ExpectedValidTxOrPsbtToFundChans']});
+        // Exit early when there was a PSBT entered
+        if (!!getFunding.value.psbt) {
+          return cbk(null, {psbt: getFunding.value.psbt});
         }
 
-        const transaction = fundingHex.hex;
-
-        const {ins} = Transaction.fromHex(transaction);
-
-        const ids = ins.map(n => n.hash.reverse().toString('hex'));
-
-        return asyncMapSeries(ids, (id, cbk) => {
-          return getRawTransaction({
-            id,
-            network: getNetwork.network,
-            request: args.request,
-            retries: getTxRetryCount,
-          },
-          cbk);
+        return getPsbtFromTransaction({
+          network: getNetwork.network,
+          request: args.request,
+          transaction: getFunding.value.transaction,
         },
-        (err, res) => {
-          if (!!err) {
-            return cbk(null, {err: [400, 'FailedToGetFundingInputs', {err}]});
-          }
-
-          const spending = res.map(n => n.transaction);
-
-          try {
-            const {psbt} = transactionAsPsbt({spending, transaction});
-
-            const finalized = finalizePsbt({psbt});
-
-            return cbk(null, {psbt: finalized.psbt});
-          } catch (err) {
-            return cbk(null, {err: [400, 'FailedToConvertTxToPsbt', {err}]});
-          }
-        });
-      }],
+        cbk);
+      })],
 
       // Fund the channels using the PSBT
       fundChannels: [
         'fundingPsbt',
         'openChannels',
-        ({fundingPsbt, openChannels}, cbk) =>
+        asyncReflect(({fundingPsbt, openChannels}, cbk) =>
       {
         // Exit early when there is no funding PSBT
-        if (!fundingPsbt.psbt) {
+        if (!fundingPsbt.value || !fundingPsbt.value.psbt) {
           return cbk(null, {});
         }
 
@@ -528,28 +451,26 @@ module.exports = (args, cbk) => {
 
         return fundPendingChannels({
           channels: openChannels.pending.map(n => n.id),
-          funding: fundingPsbt.psbt,
+          funding: fundingPsbt.value.psbt,
           lnd: args.lnd,
         },
-        err => {
-          if (!!err) {
-            return cbk(null, {err});
-          }
-
-          return cbk(null, {});
-        });
-      }],
+        cbk);
+      })],
 
       // Cancel pending if there is an error
       cancelPending: [
         'fundChannels',
-        'fundingHex',
         'fundingPsbt',
+        'getFunding',
         'openChannels',
-        ({fundChannels, fundingHex, fundingPsbt, openChannels}, cbk) =>
+        ({fundChannels, fundingPsbt, getFunding, openChannels}, cbk) =>
       {
-        // Exit early when there were no errors
-        if (!fundChannels.err && !fundingHex.err && !fundingPsbt.err) {
+        const fundingError = getFunding.error || fundingPsbt.error;
+
+        const error = fundChannels.error || fundingError;
+
+        // Exit early when there were no errors at any step
+        if (!error) {
           return cbk();
         }
 
@@ -565,8 +486,8 @@ module.exports = (args, cbk) => {
           });
         },
         () => {
-          // Return the error that canceled the finalization
-          return cbk(fundChannels.err || fundingHex.err || fundingPsbt.err);
+          // Return the original error that canceled the finalization
+          return cbk(error);
         });
       }],
 
@@ -605,10 +526,10 @@ module.exports = (args, cbk) => {
         'cancelPending',
         'fundingPsbt',
         'setFeeRates',
-        ({cancelPending, fundingPsbt}, cbk) =>
+        ({fundingPsbt}, cbk) =>
       {
         try {
-          const decoded = decodePsbt({psbt: fundingPsbt.psbt});
+          const decoded = decodePsbt({psbt: fundingPsbt.value.psbt});
 
           const transaction = decoded.unsigned_transaction;
 
