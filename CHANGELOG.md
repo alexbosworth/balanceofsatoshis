@@ -3,6 +3,7 @@
 ## Version 10.9.0
 
 - `open`: Add support for using internal funds to open channels
+- `open`: Add `--external-funding` flag to force external funding flow
 
 ## Version 10.8.1
 

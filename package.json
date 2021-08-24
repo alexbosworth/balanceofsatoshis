@@ -27,7 +27,7 @@
     "colorette": "1.3.0",
     "crypto-js": "4.1.1",
     "csv-parse": "4.16.0",
-    "goldengate": "10.2.0",
+    "goldengate": "10.3.0",
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
     "ini": "2.0.0",

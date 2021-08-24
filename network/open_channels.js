@@ -2,6 +2,7 @@ const {randomBytes} = require('crypto');
 
 const {addPeer} = require('ln-service');
 const {address} = require('bitcoinjs-lib');
+const {askForFeeRate} = require('goldengate');
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncEachSeries = require('async/eachSeries');
@@ -53,6 +54,7 @@ const utxoPollingTimes = 20;
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     gives: [<New Channel Give Tokens Number>]
+    [is_external]: <Use External Funds to Open Channels Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     public_keys: [<Public Key Hex String>]
@@ -265,6 +267,11 @@ module.exports = (args, cbk) => {
         'getWalletVersion',
         ({getWalletVersion}, cbk) =>
       {
+        // Exit early when external directive is supplied
+        if (!!args.is_external) {
+          return cbk(null, args.is_external);
+        }
+
         // Early versions of LND do not support internal PSBT funding
         if (noInternalFundingVersions.includes(getWalletVersion.version)) {
           return cbk(null, true);
@@ -281,6 +288,16 @@ module.exports = (args, cbk) => {
           type: 'confirm',
         },
         ({internal}) => cbk(null, !internal));
+      }],
+
+      // Ask for the fee rate to use for internally funded opens
+      askForFeeRate: ['isExternal', ({isExternal}, cbk) => {
+        // Exit early when there are no internal funds being spent
+        if (!!isExternal) {
+          return cbk(null, {});
+        }
+
+        return askForFeeRate({ask: args.ask, lnd: args.lnd}, cbk);
       }],
 
       // Initiate open requests
@@ -388,16 +405,21 @@ module.exports = (args, cbk) => {
 
       // Prompt for a PSBT or a signed transaction
       getFunding: [
+        'askForFeeRate',
         'isExternal',
         'openChannels',
-        asyncReflect(({isExternal, openChannels}, cbk) =>
+        asyncReflect(({askForFeeRate, isExternal, openChannels}, cbk) =>
       {
-        args.logger.info({
-          funding_deadline: moment().add(10, 'minutes').calendar(),
-        });
+        // Warn external funding that funds are expected within 10 minutes
+        if (!!isExternal) {
+          args.logger.info({
+            funding_deadline: moment().add(10, 'minutes').calendar(),
+          });
+        }
 
         return getFundedTransaction({
           ask: args.ask,
+          chain_fee_tokens_per_vbyte: askForFeeRate.tokens_per_vbyte,
           is_external: isExternal,
           lnd: args.lnd,
           logger: args.logger,
@@ -421,7 +443,7 @@ module.exports = (args, cbk) => {
           return cbk(null, {});
         }
 
-        // Exit early when there was a PSBT entered
+        // Exit early when there was a PSBT entered and no need to convert a tx
         if (!!getFunding.value.psbt) {
           return cbk(null, {psbt: getFunding.value.psbt});
         }

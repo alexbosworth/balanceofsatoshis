@@ -944,6 +944,7 @@ prog
   .help('Create channels from an external wallet. Note: do not self-broadcast')
   .argument('<peer_public_keys...>', 'With nodes with public keys')
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
+  .option('--external-funding', 'Use external funds for the channel open')
   .option('--give <give_amount>', 'Amount to gift to peer', REPEATABLE)
   .option('--node <node_name>', 'Node to open channels')
   .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
@@ -958,6 +959,7 @@ prog
           capacities: flatten([options.amount].filter(n => !!n)),
           fs: {getFile: readFile},
           gives: flatten([options.give].filter(n => !!n)),
+          is_external: options.externalFunding,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           public_keys: args.peerPublicKeys,
           set_fee_rates: flatten([options.setFeeRate]).filter(n => !!n),
