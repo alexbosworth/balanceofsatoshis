@@ -33,7 +33,7 @@ const makeArgs = overrides => {
     request: ({}, cbk) => cbk(
       null,
       {statusCode: 200},
-      {data: [{date: new Date(1).toISOString(), priceUsd: 12.3401}]}
+      {market_data: {current_price: {usd: 12.34}}},
     ),
   };
 
