@@ -1,6 +1,6 @@
 const {stringify} = require('querystring');
 
-const {AbortController} = require("abort-controller")
+const {AbortController} = require('abort-controller');
 
 const encodeQs = qs => !qs ? '' : '?' + stringify(qs);
 const timeoutSignals = new WeakMap();

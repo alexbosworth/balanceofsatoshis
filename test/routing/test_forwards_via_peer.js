@@ -5,6 +5,7 @@ const forwardsViaPeer = require('./../../routing/forwards_via_peer');
 const tests = [
   {
     args: {
+      closed_channels: [],
       forwards: [
         {incoming_channel: '1x1x1'},
         {outgoing_channel: '2x2x2'},

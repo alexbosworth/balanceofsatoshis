@@ -27,7 +27,6 @@ const uniq = arr => Array.from(new Set(arr));
     [is_confirmed]: <Return Only Confirmed Utxos Bool>
     lnd: <Authenticated gRPC LND API Object>
     [min_tokens]: <Return Utxos of Value Above Tokens Size Number>
-    [node]: <Node Name String>
   }
 
   // Non-count response

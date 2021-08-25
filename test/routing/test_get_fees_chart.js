@@ -7,6 +7,7 @@ const {versionInfoResponse} = require('./../fixtures');
 
 const lnds = [{
   default: {
+    closedChannels: ({}, cbk) => cbk(null, {channels: []}),
     forwardingHistory: ({}, cbk) => cbk(null, {
       forwarding_events: [],
       last_offset_index: '0',
@@ -44,6 +45,7 @@ const tests = [
       days: 100,
       lnds: [{
         default: {
+          closedChannels: ({}, cbk) => cbk(null, {channels: []}),
           forwardingHistory: ({}, cbk) => cbk(null, {
             forwarding_events: [],
             last_offset_index: '0',

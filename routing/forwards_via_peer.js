@@ -4,6 +4,10 @@ const uniq = arr => Array.from(new Set(arr));
 /** Filter out forwards via a peer
 
   {
+    closed_channels: [{
+      [id]: <Closed Channel Id String>
+      partner_public_key: <Partner Public Key Hex String>
+    }]
     forwards: [{
       created_at: <Forward Record Created At ISO 8601 Date String>
       fee: <Fee Tokens Charged Number>
@@ -41,13 +45,22 @@ module.exports = args => {
     return {forwards: args.forwards};
   }
 
+  const closedChans = args.closed_channels
+    .filter(channel => channel.partner_public_key === args.via)
+    .map(({id}) => id);
+
   const privateChans = args.private_channels
     .filter(channel => channel.partner_public_key === args.via)
     .map(({id}) => id);
 
   const publicChans = args.public_channels.map(({id}) => id);
 
-  const channelIds = uniq([].concat(privateChans).concat(publicChans));
+  const allChans = []
+    .concat(closedChans)
+    .concat(privateChans)
+    .concat(publicChans);
+
+  const channelIds = uniq(allChans);
 
   const forwards = args.forwards.filter(forward => {
     if (channelIds.indexOf(forward.incoming_channel) !== notFound) {

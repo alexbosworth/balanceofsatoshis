@@ -1,5 +1,11 @@
 # Versions
 
+## Version 10.9.2
+
+- `chart-fees-earned`: Fix forwards in closed channels not counting for pubkey charts
+- `forwards`: Show HTLC in-flight indicator when there is a pending payment
+- `open-balanced-channel`: Reduce superfluous tx broadcast error reporting
+
 ## Version 10.9.1
 
 - `accounting`: Change default fiat rate provider to coingecko

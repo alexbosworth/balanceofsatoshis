@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncUntil = require('async/until');
 const {getChannels} = require('ln-service');
+const {getClosedChannels} = require('ln-service');
 const {getForwards} = require('ln-service');
 const {getNode} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -50,6 +51,16 @@ module.exports = ({after, lnd, via}, cbk) => {
 
         return cbk();
       },
+
+      // Get closed channels with via peer
+      getClosedChannels: ['validate', ({}, cbk) => {
+        // Exit early when there is no via node specified
+        if (!via) {
+          return cbk();
+        }
+
+        return getClosedChannels({lnd}, cbk);
+      }],
 
       // Get forwards
       getForwards: ['validate', ({}, cbk) => {
@@ -117,13 +128,15 @@ module.exports = ({after, lnd, via}, cbk) => {
 
       // Full set of forwards
       forwards: [
+        'getClosedChannels',
         'getForwards',
         'getNode',
         'getPrivateChannels',
-        ({getForwards, getNode, getPrivateChannels}, cbk) =>
+        ({getClosedChannels, getForwards, getNode, getPrivateChannels}, cbk) =>
       {
         const {forwards} = forwardsViaPeer({
           via,
+          closed_channels: !!via ? getClosedChannels.channels : [],
           forwards: getForwards,
           private_channels: !!via ? getPrivateChannels.channels : [],
           public_channels: !!via ? getNode.channels : [],

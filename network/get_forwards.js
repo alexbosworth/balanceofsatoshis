@@ -221,6 +221,9 @@ module.exports = (args, cbk) => {
             .filter(n => n.is_opening)
             .filter(n => n.partner_public_key === node.id);
 
+          const hasHtlcChannel = connected
+            .find(n => !!n.pending_payments.length);
+
           const local = [].concat(nodeChannels).concat(pending)
             .filter(n => !!n.local_balance)
             .reduce((sum, n) => sum + n.local_balance, Number());
@@ -239,6 +242,7 @@ module.exports = (args, cbk) => {
             earned_outbound_fees: forwards.reduce((sum, n) => sum + n.fee, 0),
             icons: !!nodeIcons ? nodeIcons.icons : undefined,
             is_disconnected: isDisconnected || undefined,
+            is_forwarding: hasHtlcChannel || undefined,
             is_inactive: !isDisconnected && !active.length || undefined,
             is_pending: !!pending.length || undefined,
             is_private: !!isHidden || undefined,
@@ -292,6 +296,7 @@ module.exports = (args, cbk) => {
                   alias: peer.alias,
                   icons: peer.icons,
                   is_disconnected: peer.is_disconnected,
+                  is_forwarding: peer.is_forwarding,
                   is_inactive: peer.is_inactive,
                   is_pending: peer.is_pending,
                   is_private: peer.is_private,

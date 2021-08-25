@@ -27,6 +27,7 @@ const format = 'p2wpkh';
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const interval = 1000 * 15;
 const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
+const minErrorCount = 4;
 const networkMainnet = 'btc';
 const networkTestnet = 'btctestnet';
 const {p2wpkh} = payments;
@@ -281,6 +282,7 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
         'initiate',
         ({accept, initiate}, cbk) =>
       {
+        const broadcastErrors = [];
         const ready = accept || initiate;
 
         logger.info({
@@ -292,6 +294,15 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
         return asyncEachSeries(ready.transactions, (transaction, cbk) => {
           return asyncRetry({interval, times}, cbk => {
             return broadcastChainTransaction({lnd, transaction}, (err, r) => {
+              if (!!err) {
+                broadcastErrors.push(err);
+              }
+
+              // Exit early when there are not many errors yet
+              if (!!err && broadcastErrors.length < minErrorCount) {
+                return cbk(err);
+              }
+
               // Exit early when there is an error broadcasting the tx
               if (!!err) {
                 logger.error({err});

@@ -15,6 +15,7 @@ const {floor} = Math;
 const defaultDays = 365 * 2;
 const getMempoolRetries = 10;
 const {isArray} = Array;
+const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const maxMempoolSize = 2e6;
 const regularConf = 72;
 const slowConf = 144;
@@ -65,6 +66,10 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.outpoints)) {
           return cbk([400, 'ExpectedSpecificOutpointsToRemoveFromPeer']);
+        }
+
+        if (!!args.public_key && !isPublicKey(args.public_key)) {
+          return cbk([400, 'ExpectedPublicKeyOfPeerToRemove']);
         }
 
         if (!args.request) {

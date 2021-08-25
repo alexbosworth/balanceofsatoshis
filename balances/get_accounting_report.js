@@ -86,7 +86,7 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Accounting
+      // Convert the accounting CSV into rows for table display output
       accounting: ['getAccounting', ({getAccounting}, cbk) => {
         const csvType = `${categories[args.category]}_csv`;
 
