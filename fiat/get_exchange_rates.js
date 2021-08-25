@@ -3,7 +3,6 @@ const {homedir} = require('os');
 const {readFile} = require('fs');
 
 const asyncAuto = require('async/auto');
-const defaultRequest = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 
 const apiKeyFile = 'bitcoinaverage_api_key';

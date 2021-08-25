@@ -230,15 +230,16 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           return ctx.replyWithMarkdown(interaction.start_message);
         });
 
-        bot.command('backup', ({message, reply}) => {
+        bot.command('backup', ctx => {
           handleBackupCommand({
             logger,
-            reply,
             request,
-            from: message.from.id,
+            from: ctx.message.from.id,
             id: connectedId,
             key: apiKey.key,
             nodes: allNodes,
+            reply: ctx.reply,
+            send: file => ctx.replyWithDocument(file),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
 
@@ -451,10 +452,10 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             postBackupTimeoutHandle = setTimeout(() => {
               return postUpdatedBackup({
                 backup,
-                request,
                 id: connectedId,
                 key: apiKey.key,
                 node: {alias: node.alias, public_key: node.public_key},
+                send: (id, file) => bot.telegram.sendDocument(id, file),
               },
               err => !!err ? logger.error({post_backup_err: err}) : null);
             },

@@ -13,7 +13,7 @@ If you want to try out any command without npm install, you can also do `npx
 balanceofsatoshis` to run a command directly.
 
 If you have [Docker](https://docs.docker.com/get-docker/) installed, you can
-[run through Docker](#Docker) instead.
+[run through Docker](#docker) instead.
 
 ```shell
 npm install -g balanceofsatoshis

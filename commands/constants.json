@@ -40,6 +40,6 @@
     "public_key"
   ],
   "priceProviders": ["coindesk", "coingecko"],
-  "rateProviders": ["coincap", "coindesk"],
+  "rateProviders": ["coindesk", "coingecko"],
   "swapTypes": ["inbound", "outbound"]
 }

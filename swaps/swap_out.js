@@ -30,7 +30,6 @@ const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
 const {payViaRoutes} = require('ln-service');
 const {releaseSwapOutSecret} = require('goldengate');
-const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToBlocks} = require('ln-service');
 const {subscribeToMultiPathPay} = require('probing');
@@ -112,6 +111,7 @@ const uniq = arr => Array.from(new Set(arr));
     [out_address]: <Out Address String>
     [peer]: <Peer Public Key Hex String>
     [recovery]: <Recover In-Progress Swap Hex String>
+    request: <Request Function>
     [socket]: <Custom Backing Service Host:Port String>
     [spend_address]: <Attempt Spend Out To Address String>
     [spend_tokens]: <Spend Address Exact Tokens Number>
@@ -145,6 +145,10 @@ module.exports = (args, cbk) => {
 
         if (!!args.out_address && !addressMatch.test(args.out_address)) {
           return cbk([400, 'UnrecognizedFormatOfOutAddress']);
+        }
+
+        if (!args.request) {
+          return cbk([400, 'ExpectedRequestFunctionToInitiateSwapOut']);
         }
 
         if (!!args.spend_address && !args.spend_tokens) {
@@ -1218,10 +1222,10 @@ module.exports = (args, cbk) => {
 
         return findDeposit({
           network,
-          request,
           address: initiateSwap.address,
           after: startHeight - fuzzBlocks,
           confirmations: [].length,
+          request: args.request,
           timeout: maxPathfindingMs,
           tokens: !!recover ? recover.tokens : args.tokens,
         },
@@ -1420,7 +1424,6 @@ module.exports = (args, cbk) => {
         blocksSubscription.on('block', ({height}) => {
           return attemptSweep({
             network,
-            request,
             sends,
             tokens,
             current_height: height,
@@ -1429,6 +1432,7 @@ module.exports = (args, cbk) => {
             max_fee_multiplier: maxFeeMultiplier,
             min_fee_rate: getMinSweepFee.tokens_per_vbyte,
             private_key: claim.private_key,
+            request: args.request,
             secret: claim.secret,
             start_height: startingHeight - fuzzBlocks,
             sweep_address: createAddress.address,

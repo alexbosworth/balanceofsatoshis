@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.9.1
+
+- `accounting`: Change default fiat rate provider to coingecko
+
 ## Version 10.9.0
 
 - `open`: Add support for using internal funds to open channels

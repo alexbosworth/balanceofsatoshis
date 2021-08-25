@@ -21,7 +21,6 @@ const {getSwapInTerms} = require('goldengate');
 const moment = require('moment');
 const qrcode = require('qrcode-terminal');
 const {refundTransaction} = require('goldengate');
-const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToBlocks} = require('goldengate');
 const {subscribeToInvoice} = require('ln-service');
@@ -51,6 +50,7 @@ const waitForDepositMs = 1000 * 60 * 60 * 24;
     [max_fee]: <Maximum Fee Tokens to Pay Number>
     [recovery]: <Recover In-Progress Swap String>
     [refund_address]: <Refund Address String>
+    [request]: <Request Function>
     [socket]: <Swap Socket String>
     [tokens]: <Tokens Number>
   }
@@ -385,11 +385,11 @@ module.exports = (args, cbk) => {
       }
 
       return findDeposit({
-        request,
         address: swap.address,
         after: swap.start_height,
         confirmations: [].length,
         network: getNetwork.network,
+        request: args.request,
         timeout: waitForDepositMs,
         tokens: swap.tokens,
       },

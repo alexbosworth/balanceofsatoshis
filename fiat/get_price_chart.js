@@ -3,7 +3,6 @@ const {decodePaymentRequest} = require('ln-service');
 const {getHeight} = require('ln-service');
 const moment = require('moment');
 const {payViaPaymentRequest} = require('ln-service');
-const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');
@@ -28,6 +27,7 @@ const titleCase = str => `${str.charAt(0).toUpperCase()}${str.slice(1)}`;
     [fee]: <Desired Maximum Fee Tokens Number>
     [node]: <Saved Node Name String>
     pair: <Pair String>
+    request: <Request Function>
   }
 
   @returns via cbk or Promise
@@ -36,7 +36,7 @@ const titleCase = str => `${str.charAt(0).toUpperCase()}${str.slice(1)}`;
     prices: [<Price on Day String>]
   }
 */
-module.exports = ({exchange, fee, node, pair}, cbk) => {
+module.exports = ({exchange, fee, node, pair, request}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Get lnd

@@ -16,7 +16,6 @@ const inquirer = importLazy('inquirer');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
 const prog = require('caporal');
-const request = importLazy('@alexbosworth/request');
 
 const commandConstants = require('./commands/constants');
 
@@ -79,7 +78,6 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return balances.getAccountingReport({
-          request,
           category: args.category,
           is_csv: !!options.csv,
           is_fiat_disabled: options.disableFiat,
@@ -87,6 +85,7 @@ prog
           month: options.month,
           node: options.node,
           rate_provider: options.rateProvider,
+          request: commands.fetchRequest({fetch}),
           year: options.year,
         },
         responses.returnObject({logger, reject, resolve, table}));
@@ -129,12 +128,12 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return network.setAutopilot({
-          request,
           is_dry_run: !!options.dryrun,
           is_enabled: args.status === 'on',
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           mirrors: flatten([options.mirror].filter(n => !!n)),
           node: options.node,
+          request: commands.fetchRequest({fetch}),
           urls: flatten([options.url].filter(n => !!n)),
         },
         responses.returnObject({logger, reject, resolve}));
@@ -300,10 +299,10 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return routing.getChainFeesChart({
-          request,
           days: options.days,
           is_monochrome: !!options.noColor,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
+          request: commands.fetchRequest({fetch}),
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
@@ -400,9 +399,9 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return chain.getChannelCloses({
-          request,
           limit: options.limit,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          request: commands.fetchRequest({fetch}),
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
@@ -743,13 +742,13 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return balances.getLiquidity({
-          request,
           above: options.above || undefined,
           below: options.below || undefined,
           is_top: options.top || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           max_fee_rate: options.maxFeeRate || undefined,
           min_node_score: options.minScore || undefined,
+          request: commands.fetchRequest({fetch}),
           with: options.with || undefined,
         },
         responses.returnNumber({logger, reject, resolve, number: 'balance'}));
@@ -803,6 +802,7 @@ prog
           out_address: options.address || undefined,
           peer: options.with || undefined,
           recovery: options.recovery,
+          request: commands.fetchRequest({fetch}),
           socket: options.serviceSocket || undefined,
           spend_address: options.spendAddress || undefined,
           spend_tokens: options.spendAmount || undefined,
@@ -830,12 +830,12 @@ prog
       try {
         return network.openChannel({
           logger,
-          request,
           chain_fee_rate: options.feeRate || undefined,
           is_dry_run: options.dryrun,
           is_private: options.private,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           peer: options.with || undefined,
+          request: commands.fetchRequest({fetch}),
           tokens: options.amount,
         },
         responses.returnObject({logger, reject, resolve}));
@@ -890,6 +890,7 @@ prog
   .help('A chart of historic prices. Note: SuredBits price history has a fee!')
   .help(`Pairs: ${Array.from(new Set(marketPairs.map(n => n.toUpperCase())))}`)
   .help(`Markets: ${Array.from(new Set(exchanges.map(n => n.toLowerCase())))}`)
+  .visible(false)
   .argument('[pair]', 'Market pair', marketPairs, 'BTCUSD')
   .argument('[exchange]', 'Exchange', exchanges, 'kraken')
   .option('--max-fee <max_fee>', 'Maximum amount to pay for data', INT, 5)
@@ -901,6 +902,7 @@ prog
         fee: options.maxFee,
         node: options.node,
         pair: args.pair.toLowerCase(),
+        request: commands.fetchRequest({fetch}),
       },
       responses.returnChart({logger, reject, resolve, data: 'prices'}));
     });
@@ -954,7 +956,6 @@ prog
       try {
         return network.openChannels({
           logger,
-          request,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
           capacities: flatten([options.amount].filter(n => !!n)),
           fs: {getFile: readFile},
@@ -962,6 +963,7 @@ prog
           is_external: options.externalFunding,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           public_keys: args.peerPublicKeys,
+          request: commands.fetchRequest({fetch}),
           set_fee_rates: flatten([options.setFeeRate]).filter(n => !!n),
           types: flatten([options.type].filter(n => !!n)),
         },
@@ -1118,8 +1120,8 @@ prog
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
       return fiat.getPrices({
-        request,
         from: options.from,
+        request: commands.fetchRequest({fetch}),
         symbols: args.symbols.map(n => n.toUpperCase()),
       },
       responses.returnObject({
@@ -1242,9 +1244,9 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return chain.recoverP2pk({
-          request,
           id: args.id,
           lnd: (await lndForNode(logger, options.node)).lnd,
+          request: commands.fetchRequest({fetch}),
           vout: args.vout,
         },
         responses.returnObject({logger, reject, resolve}));
@@ -1280,7 +1282,6 @@ prog
         return network.removePeer({
           lnd,
           logger,
-          request,
           address: options.address,
           chain_fee_rate: options.feeRate || undefined,
           fs: {getFile: readFile},
@@ -1296,6 +1297,7 @@ prog
           outbound_liquidity_below: options.outboundBelow,
           outpoints: flatten([options.outpoint].filter(n => !!n)),
           public_key: args.publicKey,
+          request: commands.fetchRequest({fetch}),
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
@@ -1313,6 +1315,7 @@ prog
       return wallets.getReport({
         fs: {getFile: readFile},
         node: options.node,
+        request: commands.fetchRequest({fetch}),
         style: !!options.styled ? 'styled' : undefined,
       },
       responses.returnOutput({logger, reject, resolve}));
@@ -1344,7 +1347,6 @@ prog
         return network.pushPayment({
           lnd,
           logger,
-          request,
           amount: options.amount,
           destination: destination.public_key,
           in_through: options.in,
@@ -1353,6 +1355,7 @@ prog
           message: options.message,
           quiz_answers: flatten([options.quiz].filter(n => !!n)),
           out_through: options.out,
+          request: commands.fetchRequest({fetch}),
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
@@ -1464,6 +1467,7 @@ prog
           node: options.node,
           recovery: options.recovery,
           refund_address: options.refundAddress,
+          request: commands.fetchRequest({fetch}),
           socket: options.serviceSocket || undefined,
           tokens: args.amount,
         },
@@ -1514,7 +1518,6 @@ prog
       try {
         return await telegram.connectToTelegram({
           logger,
-          request,
           fs: {
             writeFile,
             getFile: readFile,
@@ -1525,7 +1528,8 @@ prog
           id: options.connect,
           min_forward_tokens: options.ignoreForwardsBelow || undefined,
           nodes: flatten([options.node].filter(n => !!n)),
-          payments: {limit: options.budget}
+          payments: {limit: options.budget},
+          request: commands.fetchRequest({fetch}),
         });
       } catch (err) {
         return reject(logger.error({err}));

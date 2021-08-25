@@ -17,7 +17,6 @@ const {getWalletInfo} = require('ln-service');
 const {italicize} = require('@alexbosworth/html2unicode');
 const moment = require('moment');
 const {parsePaymentRequest} = require('ln-service');
-const request = require('@alexbosworth/request');
 const {returnResult} = require('asyncjs-util');
 
 const {authenticatedLnd} = require('./../lnd');
@@ -45,13 +44,14 @@ const styled = 'styled';
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     [node]: <Node Name String>
+    request: <Request Function>
     [style]: <Style Type String>
   }
 
   @returns via cbk
   {}
 */
-module.exports = ({fs, node, style}, cbk) => {
+module.exports = ({fs, node, request, style}, cbk) => {
   return asyncAuto({
     // Get authenticated lnd connection
     getLnd: cbk => authenticatedLnd({node}, cbk),
