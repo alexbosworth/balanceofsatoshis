@@ -96,6 +96,14 @@ const makeArgs = overrides => {
       signer: {
         signOutputRaw: ({}, cbk) => cbk(null, {raw_sigs: [Buffer.alloc(1)]}),
       },
+      version: {
+        getVersion: ({}, cbk) => cbk(null, {
+          app_minor: 1,
+          app_patch: 1,
+          build_tags: ['autopilotrpc'],
+          commit_hash: Buffer.alloc(20).toString('hex'),
+        }),
+      },
       wallet: {
         deriveKey: ({}, cbk) => cbk(null, {
           key_loc: {key_index: 0},

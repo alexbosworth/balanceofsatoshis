@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.10.0
+
+- `open-balanced-channel`: Add support for using internal wallet funds to initiate open
+
 ## Version 10.9.2
 
 - `chart-fees-earned`: Fix forwards in closed channels not counting for pubkey charts

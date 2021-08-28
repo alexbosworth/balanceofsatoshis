@@ -10,9 +10,11 @@ const {createInvoice} = require('ln-service');
 const {createPsbt} = require('psbt');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
+const {getFundedTransaction} = require('goldengate');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPublicKey} = require('ln-service');
+const {maintainUtxoLocks} = require('goldengate');
 const {networks} = require('bitcoinjs-lib');
 const {openChannels} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
@@ -65,6 +67,7 @@ const {p2ms} = payments;
 const {p2pkh} = payments;
 const {p2wsh} = payments;
 const refundTxSize = 125;
+const relockIntervalMs = 1000 * 20;
 const {round} = Math;
 const sendChannelRequestMtokens = '10000';
 const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
@@ -354,19 +357,22 @@ module.exports = (args, cbk) => {
         const tokens = fundingAmount(askForCapacity, askForFeeRate);
         const transitOutput = toOutputScript(args.transit_address, network);
 
-        const payTo = `${tokAsBigUnit(tokens)} to ${args.transit_address}`;
+        return getFundedTransaction({
+          ask: args.ask,
+          chain_fee_tokens_per_vbyte: askForFeeRate,
+          lnd: args.lnd,
+          logger: args.logger,
+          outputs: [{tokens, address: args.transit_address}],
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
 
-        const funding = {
-          message: `Enter a signed transaction that pays EXACTLY ${payTo}`,
-          name: 'fund',
-        };
+          const fund = res.transaction;
 
-        return args.ask(funding, ({fund}) => {
-          // The transaction must be valid
-          try {
-            fromHex(fund);
-          } catch (err) {
-            return cbk([400, 'ExpectedValidTransactionToFundBalancedChannel']);
+          if (!fund) {
+            return cbk([400, 'ExpectedTransactionToInitiateBalancedOpen']);
           }
 
           const txVout = fromHex(fund).outs.findIndex(({script}) => {
@@ -374,7 +380,7 @@ module.exports = (args, cbk) => {
           });
 
           if (txVout === notFoundIndex) {
-            return cbk([400, 'ExpectedTransactionOutputPayingToAddress']);
+            return cbk([400, 'ExpectedInitTxOutputPayingToTransitAddress']);
           }
 
           // The transaction must have an output sending to the address
@@ -382,10 +388,22 @@ module.exports = (args, cbk) => {
             return cbk([400, 'UnexpectedFundingAmountPayingToTransitAddress']);
           }
 
+          if (!!res.inputs) {
+            // Maintain a lock on the UTXOs until the tx confirms
+            maintainUtxoLocks({
+              id: res.id,
+              inputs: res.inputs,
+              interval: relockIntervalMs,
+              lnd: args.lnd,
+            },
+            () => {});
+          }
+
           return cbk(null, {
             tokens,
+            inputs: res.inputs,
             transaction: fund,
-            transaction_id: fromHex(fund).getId(),
+            transaction_id: res.id,
             transaction_vout: txVout,
           });
         });
@@ -540,9 +558,10 @@ module.exports = (args, cbk) => {
 
       // Wait for response to the payment req
       waitForAccept: [
+        'askForFunding',
         'createAcceptRequest',
         'pushRequest',
-        ({createAcceptRequest}, cbk) =>
+        ({askForFunding, createAcceptRequest}, cbk) =>
       {
         args.logger.info({waiting_for_peer_balanced_channel_acceptance: true});
 

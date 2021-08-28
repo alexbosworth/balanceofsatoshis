@@ -173,12 +173,13 @@ bos unlock "path_to_password_file"
 bos utxos
 ```
 
-## HowTos:
+## Community HowTos:
 
 - The `accounting` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/bc71e6bf-f2aa-4bae-a3e8-b12e7be2284c)
 - The `open` [command howto](https://satbase.org/bos-open/)
 - The `rebalance` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/327ed9f6-3a73-41c2-a9c7-8c4e274bdd54)
 - Another `rebalance` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/30a7c519-0ec0-4644-b3aa-341c41bac296)
+- Running `rebalance` [video (In German)](https://www.youtube.com/watch?v=EimVHnv-SUk)
 - Running `telegram` [via nohup/tmux howto](https://plebnet.wiki/wiki/Umbrel_-_Installing_BoS)
 
 Want to stack some sats? Write your own LN paywalled guide!

@@ -147,7 +147,9 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
               type: 'confirm',
             };
 
-            return ask(confirmIncomingChannel, ({accept}) => cbk(null, accept));
+            return ask(confirmIncomingChannel, ({accept}) => {
+              return cbk(null, accept);
+            });
           });
         },
         cbk);
@@ -288,7 +290,7 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
         logger.info({
           channel_transaction_id: ready.transaction_id,
           channel_transaction_vout: ready.transaction_vout,
-          transactions_to_broadcast: ready.transactions
+          transactions_to_broadcast: ready.transactions,
         });
 
         return asyncEachSeries(ready.transactions, (transaction, cbk) => {

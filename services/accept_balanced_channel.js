@@ -2,9 +2,11 @@ const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncRetry = require('async/retry');
 const {formatTokens} = require('ln-sync');
+const {getFundedTransaction} = require('goldengate');
 const {getPeers} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const {getPublicKey} = require('ln-service');
+const {maintainUtxoLocks} = require('goldengate');
 const {networks} = require('bitcoinjs-lib');
 const {pay} = require('ln-service');
 const {payments} = require('bitcoinjs-lib');
@@ -35,6 +37,7 @@ const paddedHexNumber = n => n.length % 2 ? `0${n}` : n;
 const {p2ms} = payments;
 const {p2pkh} = payments;
 const {p2wsh} = payments;
+const relockIntervalMs = 1000 * 20;
 const times = 60 * 6;
 const {toOutputScript} = address;
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
@@ -181,19 +184,22 @@ module.exports = (args, cbk) => {
         const tokens = fundingAmount(args.capacity, args.fee_rate);
         const transitOutput = toOutputScript(args.transit_address, network);
 
-        const payTo = `${tokAsBigUnit(tokens)} to ${args.transit_address}`;
+        return getFundedTransaction({
+          ask: args.ask,
+          chain_fee_tokens_per_vbyte: args.fee_rate,
+          lnd: args.lnd,
+          logger: args.logger,
+          outputs: [{tokens, address: args.transit_address}],
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
 
-        const funding = {
-          message: `Enter a signed transaction that pays EXACTLY ${payTo}`,
-          name: 'fund',
-        };
+          const fund = res.transaction;
 
-        return args.ask(funding, ({fund}) => {
-          // The transaction must be valid
-          try {
-            fromHex(fund);
-          } catch (err) {
-            return cbk([400, 'ExpectedValidTxToAcceptBalancedChannel', {err}]);
+          if (!fund) {
+            return cbk([400, 'ExpectedFundedTransactionToAcceptBalancedOpen']);
           }
 
           const txVout = fromHex(fund).outs.findIndex(({script}) => {
@@ -213,10 +219,22 @@ module.exports = (args, cbk) => {
             ]);
           }
 
+          if (!!res.inputs) {
+            // Maintain a lock on the UTXOs until the tx confirms
+            maintainUtxoLocks({
+              id: res.id,
+              inputs: res.inputs,
+              interval: relockIntervalMs,
+              lnd: args.lnd,
+            },
+            () => {});
+          }
+
           return cbk(null, {
             tokens,
+            inputs: res.inputs,
             transaction: fund,
-            transaction_id: fromHex(fund).getId(),
+            transaction_id: res.id,
             transaction_vout: txVout,
           });
         });

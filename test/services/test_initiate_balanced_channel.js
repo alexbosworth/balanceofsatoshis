@@ -239,7 +239,7 @@ const makeArgs = overrides => {
 
           return eventEmitter;
         },
-        sendToRoute: (args, cbk) => {
+        sendToRouteV2: (args, cbk) => {
           overrides.state.attempts++;
 
           if (overrides.state.attempts === 3) {
@@ -259,6 +259,14 @@ const makeArgs = overrides => {
       },
       signer: {
         signOutputRaw: ({}, cbk) => cbk(null, {raw_sigs: [Buffer.alloc(72)]}),
+      },
+      version: {
+        getVersion: ({}, cbk) => cbk(null, {
+          app_minor: 1,
+          app_patch: 1,
+          build_tags: ['autopilotrpc'],
+          commit_hash: Buffer.alloc(20).toString('hex'),
+        }),
       },
       wallet: {
         deriveKey: ({}, cbk) => cbk(null, {

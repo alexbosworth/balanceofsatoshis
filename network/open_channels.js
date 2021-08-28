@@ -20,6 +20,7 @@ const {getPeers} = require('ln-service');
 const {getPsbtFromTransaction} = require('goldengate');
 const {getWalletVersion} = require('ln-service');
 const {openChannels} = require('ln-service');
+const {maintainUtxoLocks} = require('goldengate');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
@@ -39,6 +40,7 @@ const noInternalFundingVersions = ['0.11.0-beta', '0.11.1-beta'];
 const notFound = -1;
 const peerAddedDelayMs = 1000 * 5;
 const per = (a, b) => (a / b).toFixed(2);
+const relockIntervalMs = 1000 * 20;
 const times = 10;
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const uniq = arr => Array.from(new Set(arr));
@@ -446,6 +448,17 @@ module.exports = (args, cbk) => {
         // Exit early when there was a PSBT entered and no need to convert a tx
         if (!!getFunding.value.psbt) {
           return cbk(null, {psbt: getFunding.value.psbt});
+        }
+
+        if (!!res.inputs) {
+          // Maintain a lock on the UTXOs until the tx confirms
+          maintainUtxoLocks({
+            id: getFunding.value.id,
+            inputs: getFunding.value.inputs,
+            interval: relockIntervalMs,
+            lnd: args.lnd,
+          },
+          () => {});
         }
 
         return getPsbtFromTransaction({
