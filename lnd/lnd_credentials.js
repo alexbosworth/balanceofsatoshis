@@ -227,7 +227,7 @@ module.exports = (args, cbk) => {
           return cbk(null, {
             macaroon: restrictMacaroon.macaroon,
             cert: credentials.cert,
-            socket: credentials.socket,
+            socket: credentials.socket.trim(),
           });
         }
 

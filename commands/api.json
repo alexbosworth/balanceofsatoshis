@@ -557,13 +557,13 @@
           "optional": true
         },
         {
-          "description": "CLTV delta to add to forward",
+          "description": "CLTV delta to add to forward or use minimal default",
           "named": "cltv_delta",
           "optional": true,
           "type": "number"
         },
         {
-          "description": "Proportional fee rate in parts per million",
+          "description": "Proportional fee rate ppm or use a minimal default",
           "named": "fee_rate",
           "optional": true,
           "type": "number"

@@ -12,6 +12,7 @@ const probeDestination = require('./probe_destination');
 
 const coins = ['BTC', 'LTC'];
 const fiats = ['EUR', 'USD'];
+const hasFiat = n => /(eur|usd)/gim.test(n);
 const {isArray} = Array;
 const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
 const maxQuizLength = 10;
@@ -107,6 +108,11 @@ module.exports = (args, cbk) => {
 
       // Get the current price of BTCUSD
       getFiatPrice: ['validate', ({}, cbk) => {
+        // Exit early when no fiat is referenced
+        if (!hasFiat(args.amount)) {
+          return cbk();
+        }
+
         return getCoingeckoRates({
           request: args.request,
           symbols: [].concat(coins).concat(fiats),
@@ -162,6 +168,11 @@ module.exports = (args, cbk) => {
         'getNetwork',
         ({getFiatPrice, getNetwork}, cbk) =>
       {
+        // Exit early when there is no fiat
+        if (!getFiatPrice) {
+          return cbk();
+        }
+
         const coin = getFiatPrice.tickers.find(({ticker}) => {
           return ticker === networks[getNetwork.network];
         });
@@ -237,11 +248,14 @@ module.exports = (args, cbk) => {
           },
           Number());
 
+        const eur = !!fiatRates ? fiatRates.find(n => n.fiat === 'EUR') : null;
+        const usd = !!fiatRates ? fiatRates.find(n => n.fiat === 'USD') : null;
+
         // Variables to use in amount
         const variables = {
           inbound,
           outbound,
-          eur: fiatRates.find(n => n.fiat === 'EUR').unit,
+          eur: !!eur ? eur.unit : undefined,
           liquidity: sumOf(
             getChannels.channels
               .filter(n => n.partner_public_key === args.destination)
@@ -254,7 +268,7 @@ module.exports = (args, cbk) => {
               .map(n => n.capacity)
           ),
           out_outbound: outOutbound,
-          usd: fiatRates.find(n => n.fiat === 'USD').unit,
+          usd: !!usd ? usd.unit : undefined,
         };
 
         try {

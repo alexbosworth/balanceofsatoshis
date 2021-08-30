@@ -450,7 +450,7 @@ module.exports = (args, cbk) => {
           return cbk(null, {psbt: getFunding.value.psbt});
         }
 
-        if (!!res.inputs) {
+        if (!!getFunding.value.inputs) {
           // Maintain a lock on the UTXOs until the tx confirms
           maintainUtxoLocks({
             id: getFunding.value.id,

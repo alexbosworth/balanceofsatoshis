@@ -423,7 +423,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
 
         inquirer.prompt([interaction.user_id_prompt]).then(({code}) => {
           if (!code) {
-            return cbk([400, 'ExpectedConnectCode']);
+            return cbk([400, 'ExpectedNumericConnectCode']);
           }
 
           connectedId = code;

@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.10.1
+
+- `open`: Fix crash when using external funds
+
 ## Version 10.10.0
 
 - `open-balanced-channel`: Add support for using internal wallet funds to initiate open
