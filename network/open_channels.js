@@ -445,13 +445,8 @@ module.exports = (args, cbk) => {
           return cbk(null, {});
         }
 
-        // Exit early when there was a PSBT entered and no need to convert a tx
-        if (!!getFunding.value.psbt) {
-          return cbk(null, {psbt: getFunding.value.psbt});
-        }
-
-        if (!!getFunding.value.inputs) {
-          // Maintain a lock on the UTXOs until the tx confirms
+        // Maintain a lock on any UTXO inputs until the tx confirms
+        if (isArray(getFunding.value.inputs)) {
           maintainUtxoLocks({
             id: getFunding.value.id,
             inputs: getFunding.value.inputs,
@@ -459,6 +454,11 @@ module.exports = (args, cbk) => {
             lnd: args.lnd,
           },
           () => {});
+        }
+
+        // Exit early when there was a PSBT entered and no need to convert a tx
+        if (!!getFunding.value.psbt) {
+          return cbk(null, {psbt: getFunding.value.psbt});
         }
 
         return getPsbtFromTransaction({

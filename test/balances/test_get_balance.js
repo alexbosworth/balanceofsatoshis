@@ -34,17 +34,17 @@ const tests = [
   {
     args: {lnd: makeLnd({})},
     description: 'Get balances',
-    expected: {balance: 3, channel_balance: 0},
+    expected: {balance: 5, channel_balance: 2},
   },
   {
     args: {is_offchain_only: true, lnd: makeLnd({})},
     description: 'Get balances offchain',
-    expected: {balance: 1, channel_balance: 0},
+    expected: {balance: 3, channel_balance: 2},
   },
   {
     args: {lnd: makeLnd({unconfirmedBalance: '0'})},
     description: 'Get balances confirmed',
-    expected: {balance: 2, channel_balance: 0},
+    expected: {balance: 4, channel_balance: 2},
   },
 ];
 

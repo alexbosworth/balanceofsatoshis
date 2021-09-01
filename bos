@@ -145,7 +145,7 @@ prog
 
   // Get local balance information
   .command('balance', 'Get total tokens')
-  .help('Sums balances on-chain, in channels, and pending, minus commit fees')
+  .help('Sums balances on-chain, in channels, and pending, plus commit fees')
   .option('--above <tokens>', 'Return tokens above watermark', INT)
   .option('--below <tokens>', 'Return tokens below watermark', INT)
   .option('--confirmed', 'Return confirmed funds only')

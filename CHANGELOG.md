@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.10.2
+
+- `balance`: For off-chain balances, switch commitment fee adjustment to credit for commit fees
+
 ## Version 10.10.1
 
 - `open`: Fix crash when using external funds

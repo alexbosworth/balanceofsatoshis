@@ -88,7 +88,7 @@ module.exports = (args, cbk) => {
         const balances = [
           !!args.is_offchain_only ? none : getChainBalance.chain_balance,
           !!args.is_onchain_only ? none : getChanBalance.channel_balance,
-          !!args.is_onchain_only ? none : -futureCommitFees,
+          !!args.is_onchain_only ? none : futureCommitFees,
           pendingChain,
           pendingChanToks,
         ];
@@ -101,7 +101,7 @@ module.exports = (args, cbk) => {
 
         return cbk(null, {
           balance,
-          channel_balance: getChanBalance.channel_balance - futureCommitFees,
+          channel_balance: getChanBalance.channel_balance + futureCommitFees,
         });
       }],
     },
