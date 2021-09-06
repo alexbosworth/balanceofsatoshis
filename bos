@@ -1176,9 +1176,15 @@ prog
   // Rebalance between peers
   .command('rebalance', 'Rebalance funds between peers')
   .help('Change the liquidity profile of two peers')
-  .help('When specifying amount you can use formulas or *k *m for *1e3, *1e6')
   .help('Specifying target liquidity you can use CAPACITY/2, other formulas')
-  .help('You can specify tags for --avoid, --in, --out')
+  .help('You can specify tags for --avoid, --in, --out (see help tags)')
+  .help('--amount can take m/k variables: 5*m for 5 million, 250*k = 0.0025')
+  .help('--avoid can take a channel id or a public key to avoid')
+  .help('--avoid can take a public_key/public_key to avoid a directed pair')
+  .help('--avoid can take a FORMULA/public_key to avoid inbound peers')
+  .help('--avoid FORMULA variables: FEE_RATE, BASE_FEE, HEIGHT')
+  .help('--in decreases the inbound liquidity with a specific peer/tag')
+  .help('--out increases the inbound liquidity with a specific peer/tag')
   .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey_or_chanid>', 'Avoid forwarding through', REPEATABLE)
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
@@ -1194,25 +1200,24 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        return swaps.rebalance({
+        return swaps.manageRebalance({
           logger,
           avoid: flatten([options.avoid].filter(n => !!n)),
           fs: {getFile: readFile},
-          in_through: options.in || undefined,
           in_outbound: options.inTargetOutbound || undefined,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          in_through: options.in || undefined,
+          lnd: (await lndForNode(logger, options.node)).lnd,
           max_fee: options.maxFee,
           max_fee_rate: options.maxFeeRate,
           max_rebalance: options.amount,
-          node: options.node || undefined,
           out_channels: flatten([options.outChannel].filter(n => !!n)),
           out_inbound: options.outTargetInbound,
           out_through: options.out || undefined,
           timeout_minutes: options.minutes || undefined,
         },
-        responses.returnObject({exit, logger, reject, resolve}));
+        responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
@@ -1559,6 +1564,7 @@ prog
           logger,
           amount: args.amount,
           description: options.description || undefined,
+          fs: {getFile: readFile},
           in_through: options.in,
           is_dry_run: options.dryrun,
           lnd: (await lndForNode(logger, options.node)).lnd,

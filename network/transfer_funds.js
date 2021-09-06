@@ -23,6 +23,9 @@ const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
   {
     amount: <Amount to Transfer Tokens String>
     [description]: <Description String>
+    [fs]: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [in_through]: <Transfer In Through Peer String>
     [is_dry_run]: <Do Not Transfer Bool>
     lnd: <Authenticated LND API Object>
@@ -40,6 +43,10 @@ module.exports = (args, cbk) => {
       validate: cbk => {
         if (!args.amount) {
           return cbk([400, 'ExpectedAmountToTransferFundsToSavedNode']);
+        }
+
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFileSystemMethodsToTransferFundsToNode']);
         }
 
         if (!!args.in_through && !!isArray(args.in_through)) {
@@ -221,6 +228,7 @@ module.exports = (args, cbk) => {
 
         return probeDestination({
           destination: getToKey.public_key,
+          fs: args.fs,
           lnd: args.lnd,
           logger: args.logger,
           in_through: getInKey.public_key,

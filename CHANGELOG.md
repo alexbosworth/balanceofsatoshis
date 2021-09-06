@@ -1,5 +1,14 @@
 # Versions
 
+## Version 10.11.0
+
+- `accounting`: Remove non-fee sweep amounts
+- `open`: Wait for chain fee entry before attempting channel open when using internal funds
+- `open`: Increase speed of internal UTXO lock canceling when internal funding open fails
+- `rebalance`: Add formula support to avoids for in-policy avoiding
+- `rebalance`: Automatically retry on liquidity contention and other remote errors
+- `transfer`: Add tag icons to route evaluation output
+
 ## Version 10.10.2
 
 - `balance`: For off-chain balances, switch commitment fee adjustment to credit for commit fees

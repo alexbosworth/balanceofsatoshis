@@ -64,9 +64,6 @@ bos cert-validity-days
 # Receive on-chain funds via a regular address
 bos chain-deposit
 
-# Receive funds via swap on-chain
-bos chain-receive "amount"
-
 # See the current fee estimates confirmation targets
 bos chainfees
 
@@ -87,9 +84,6 @@ bos closed
 
 # Export credentials
 bos credentials
-
-# Create a utxo fan-out with on-chain funds
-bos fanout "amount" "count"
 
 # View outbound fee rates and update outbound fee rates to peers
 bos fees
@@ -127,7 +121,7 @@ bos increase-outbound-liquidity
 # View and adjust list of saved nodes
 bos nodes
 
-# Open channels to public keys using external funding
+# Open channels to public keys in a batch transaction
 bos open "public_keys..."
 
 # Outputs the sum total of local channel liquidity
@@ -145,9 +139,6 @@ bos price
 # Test if funds can be sent to a destination
 bos probe "payment_request/public_key"
 
-# Make a ping keysend-request to a node
-bos purchase-ping "public_key"
-
 # Rebalance funds between peers
 bos rebalance
 
@@ -159,9 +150,6 @@ bos report
 
 # Send funds using keysend and an optional message to a node
 bos send
-
-# Service keysend-requests
-bos service-keysend-requests
 
 # Connect up to a Telegram bot
 bos telegram

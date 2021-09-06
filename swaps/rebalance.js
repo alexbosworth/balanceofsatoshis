@@ -38,6 +38,7 @@ const defaultMaxFeeTotal = Math.floor(5e6 * 0.0025);
 const flatten = arr => [].concat(...arr);
 const highInbound = 4500000;
 const initialProbeTokens = size => Math.round((Math.random() * size) + size);
+const interval = 1000 * 10;
 const {isArray} = Array;
 const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
 const legacyMaxRebalanceTokens = 4294967;
@@ -60,6 +61,7 @@ const rateDivisor = 1e6;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
 const tagFilePath = () => join(...[homedir(), '.bos', 'tags.json']);
+const times = 6;
 const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
 const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
 const uniq = arr => Array.from(new Set(arr));
@@ -588,7 +590,6 @@ module.exports = (args, cbk) => {
           logger: args.logger,
           lnd: args.lnd,
           max_fee: defaultMaxFeeTotal,
-          node: args.node,
           out_through: getOutbound.public_key,
           timeout_minutes: args.timeout_minutes,
         },
@@ -728,20 +729,17 @@ module.exports = (args, cbk) => {
 
       // Execute the rebalance
       pay: ['invoice', 'lnd', 'routes', ({invoice, lnd, routes}, cbk) => {
-        return asyncRetry({}, cbk => {
-          return payViaRoutes({lnd, routes, id: invoice.id}, (err, res) => {
-            if (!!err) {
-              return cbk([503, 'UnexpectedErrExecutingRebalance', {err}]);
-            }
+        return payViaRoutes({lnd, routes, id: invoice.id}, (err, res) => {
+          if (!!err) {
+            return cbk([503, 'UnexpectedErrExecutingRebalance', {err}]);
+          }
 
-            return cbk(null, {
-              fee: res.fee,
-              id: invoice.id,
-              tokens: res.tokens,
-            });
+          return cbk(null, {
+            fee: res.fee,
+            id: invoice.id,
+            tokens: res.tokens,
           });
-        },
-        cbk);
+        });
       }],
 
       // Get adjusted inbound liquidity after rebalance

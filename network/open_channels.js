@@ -25,6 +25,7 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
 const {transactionAsPsbt} = require('psbt');
+const {unlockUtxo} = require('ln-service');
 
 const adjustFees = require('./../routing/adjust_fees');
 const {getAddressUtxo} = require('./../chain');
@@ -304,6 +305,7 @@ module.exports = (args, cbk) => {
 
       // Initiate open requests
       openChannels: [
+        'askForFeeRate',
         'capacities',
         'connect',
         'getWalletVersion',
@@ -522,7 +524,43 @@ module.exports = (args, cbk) => {
         },
         () => {
           // Return the original error that canceled the finalization
-          return cbk(error);
+          return cbk(null, error);
+        });
+      }],
+
+      // Cancel UTXO locks if they are present
+      cancelLocks: [
+        'cancelPending',
+        'getFunding',
+        ({cancelPending, getFunding}, cbk) =>
+      {
+        // Exit early when there is no error that caused a cancel
+        if (!cancelPending) {
+          return cbk();
+        }
+
+        // Exit early when there is no UTXOs to unlock
+        if (!isArray(getFunding.inputs)) {
+          return cbk(cancelPending);
+        }
+
+        // Unlock UTXOs locked from internal funding
+        return asyncEach(getFunding.inputs, (input, cbk) => {
+          // Potentially the UTXO will be relocked with a new id, but attempt
+          return unlockUtxo({
+            id: input.lock_id,
+            lnd: args.lnd,
+            transaction_id: input.transaction_id,
+            transaction_vout: input.transaction_vout,
+          },
+          () => {
+            //Ignore errors when trying to cancel a locked UTXO, it'll timeout
+            return cbk();
+          });
+        },
+        () => {
+          // Return the original error that caused the cancel
+          return cbk(cancelPending);
         });
       }],
 

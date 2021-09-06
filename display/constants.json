@@ -1,0 +1,10 @@
+{
+  "parseErrors": {
+    "#DIV/0!": "CannotDivideByZeroInFormula",
+    "#ERROR!":  "FailedToParseFormula",
+    "#N/A": "UnrecognizedVariableOrFunctionInFormula",
+    "#NAME?": "UnrecognizedVariableOrFunctionInFormula",
+    "#NUM!": "InvalidNumberFoundInFormula",
+    "#VALUE!": "UnexpectedValueTypeInFormula"
+  }
+}

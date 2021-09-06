@@ -2,14 +2,22 @@ const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
+const {getNode} = require('ln-service');
+const {Parser} = require('hot-formula-parser');
 const {returnResult} = require('asyncjs-util');
 
+const {describeParseError} = require('./../display');
+
+const asFormula = n => ({formula: n.slice(0, n.length-67), key: n.slice(-66)});
 const decodePair = n => n.split('/');
 const flatten = arr => [].concat(...arr);
+const heightFromId = id => Number(id.split('x').shift());
 const {isArray} = Array;
 const isChannel = n => /^\d*x\d*x\d*$/.test(n);
+const isFormula = n => /(.*)\/0[2-3][0-9A-F]{64}$/gim.test(n);
 const isPair = n => !!n && /^0[2-3][0-9A-F]{64}\/0[2-3][0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
+const {keys} = Object;
 const pairAsIgnore = (a, b) => ({from_public_key: a, to_public_key: b});
 const uniq = arr => Array.from(new Set(arr));
 
@@ -90,6 +98,11 @@ module.exports = (args, cbk) => {
       // Avoids sorted by type
       sortedAvoids: ['avoids', ({avoids}, cbk) => {
         const withKeys = avoids.map(id => {
+          // Exit early when the id is a formula
+          if (isFormula(id)) {
+            return asFormula(id);
+          }
+
           // Exit early when the id is a public key
           if (isPublicKey(id)) {
             return {node: {from_public_key: id}};
@@ -146,6 +159,68 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Get formula avoids
+      getFormulaIgnores: ['sortedAvoids', ({sortedAvoids}, cbk) => {
+        const formulas = sortedAvoids.filter(n => n.formula);
+
+        return asyncMap(formulas, ({formula, key}, cbk) => {
+          return getNode({lnd: args.lnd, public_key: key}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            const inboundAvoids = res.channels
+              .map(({id, policies}) => {
+                const height = heightFromId(id);
+                const inPolicy = policies.find(n => n.public_key !== key);
+
+                if (!inPolicy) {
+                  return;
+                }
+
+                const parser = new Parser();
+
+                const variables = {
+                  height,
+                  base_fee: Number(inPolicy.base_fee_mtokens) || Number(),
+                  fee_rate: inPolicy.fee_rate || Number(),
+                };
+
+                keys(variables).forEach(key => {
+                  parser.setVariable(key.toLowerCase(), variables[key]);
+                  parser.setVariable(key.toUpperCase(), variables[key]);
+
+                  return;
+                });
+
+                const parsed = parser.parse(formula);
+
+                if (!!parsed.error) {
+                  return {error: describeParseError({error: parsed.error})};
+                }
+
+                if (parsed.result === false) {
+                  return;
+                }
+
+                return {
+                  from_public_key: inPolicy.public_key,
+                  to_public_key: key,
+                };
+              });
+
+            const {error} = inboundAvoids.find(n => !!n && !!n.error) || {};
+
+            if (!!error) {
+              return cbk([400, 'InvalidAvoidDirective', {error, formula}]);
+            }
+
+            return cbk(null, inboundAvoids.filter(n => !!n));
+          });
+        },
+        cbk);
+      }],
+
       // Resolve referenced queries
       getQueryIgnores: ['sortedAvoids', ({sortedAvoids}, cbk) => {
         const queries = sortedAvoids.map(n => n.query).filter(n => !!n);
@@ -170,14 +245,23 @@ module.exports = (args, cbk) => {
       // Combine ignores together
       combinedIgnores: [
         'getChannelIgnores',
+        'getFormulaIgnores',
         'getQueryIgnores',
         'sortedAvoids',
-        ({getChannelIgnores, getQueryIgnores, sortedAvoids}, cbk) =>
+        ({
+          getChannelIgnores,
+          getFormulaIgnores,
+          getQueryIgnores,
+          sortedAvoids,
+        },
+        cbk) =>
       {
-        const chanIgnores = flatten(getChannelIgnores);
-        const nodeIgnores = sortedAvoids.map(n => n.node).filter(n => !!n);
-
-        const ignore = [chanIgnores, getQueryIgnores, nodeIgnores];
+        const ignore = [
+          flatten(getChannelIgnores),
+          flatten(getFormulaIgnores),
+          getQueryIgnores,
+          sortedAvoids.map(n => n.node).filter(n => !!n),
+        ];
 
         const allIgnores = flatten(ignore).filter(avoid => {
           const isFromInThrough = avoid.from_public_key === args.in_through;

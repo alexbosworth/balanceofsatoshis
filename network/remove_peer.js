@@ -9,6 +9,7 @@ const {returnResult} = require('asyncjs-util');
 const {getMempoolSize} = require('./../chain');
 const getPeers = require('./get_peers');
 
+const arrayWithEntries = arr => !!arr.length ? arr : undefined;
 const asOutpoint = n => `${n.transaction_id}:${n.transaction_vout}`;
 const fastConf = 6;
 const {floor} = Math;
@@ -158,6 +159,11 @@ module.exports = (args, cbk) => {
           return args.outpoints.includes(asOutpoint(channel));
         });
 
+        const costToClose = selectedChannels
+          .filter(n => n.is_partner_initiated === false)
+          .map(n => n.commit_transaction_fee)
+          .reduce((sum, n) => sum + n, Number());
+
         const [cannotCoopClose] = selectedChannels.filter(channel => {
           // Inactive channels cannot be cooperatively closed
           if (!channel.is_active) {
@@ -177,7 +183,8 @@ module.exports = (args, cbk) => {
         if (!!cannotCoopClose) {
           return cbk([400, 'CannotCurrentlyCooperativelyCloseWithPeer', {
             is_active: cannotCoopClose.is_active,
-            pending: cannotCoopClose.pending_payments,
+            pending: arrayWithEntries(cannotCoopClose.pending_payments),
+            cost_to_force_close: costToClose,
           }]);
         }
 
