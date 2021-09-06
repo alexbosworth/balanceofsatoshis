@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.11.1
+
+- `rebalance`: Fix recognition of pubkey/pubkey style directed pair avoidance
+
 ## Version 10.11.0
 
 - `accounting`: Remove non-fee sweep amounts

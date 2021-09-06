@@ -98,6 +98,11 @@ module.exports = (args, cbk) => {
       // Avoids sorted by type
       sortedAvoids: ['avoids', ({avoids}, cbk) => {
         const withKeys = avoids.map(id => {
+          // Exit early when the id is a pair of nodes
+          if (isPair(id)) {
+            return {node: pairAsIgnore(...decodePair(id))};
+          }
+
           // Exit early when the id is a formula
           if (isFormula(id)) {
             return asFormula(id);
@@ -111,11 +116,6 @@ module.exports = (args, cbk) => {
           // Exit early when the id is a channel
           if (isChannel(id)) {
             return {channel: id};
-          }
-
-          // Exit early when the id is a pair of nodes
-          if (isPair(id)) {
-            return {node: pairAsIgnore(...decodePair(id))};
           }
 
           const tagByAlias = args.tags.find(n => n.alias === id);
