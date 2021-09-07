@@ -1215,7 +1215,7 @@ prog
           out_through: options.out || undefined,
           timeout_minutes: options.minutes || undefined,
         },
-        responses.returnObject({logger, reject, resolve}));
+        responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
         return reject(logger.error({err}));
       }
@@ -1334,6 +1334,7 @@ prog
   .help('OUT_INBOUND, OUT_OUTBOUND (when specifying outbound peer)')
   .argument('<to>', 'Send to node with public key')
   .option('--amount <amount>', 'Amount to send to destination', STRING, '1')
+  .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
   .option('--dryrun', 'Avoid actually sending funds')
   .option('--in <pubkey_or_alias>', 'Route in through a specific node')
   .option('--max-fee <fee>', 'Maximum fee tokens', INT, 1337)
@@ -1353,7 +1354,9 @@ prog
           lnd,
           logger,
           amount: options.amount,
+          avoid: flatten([options.avoid].filter(n => !!n)),
           destination: destination.public_key,
+          fs: {getFile: readFile},
           in_through: options.in,
           is_dry_run: options.dryrun,
           max_fee: options.maxFee,

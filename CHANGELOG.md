@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.12.0
+
+- `send`: Add `--avoid` to avoid keys/channels/tags/formulas in pathfinding
+
 ## Version 10.11.1
 
 - `rebalance`: Fix recognition of pubkey/pubkey style directed pair avoidance

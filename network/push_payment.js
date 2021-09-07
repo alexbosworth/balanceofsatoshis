@@ -2,11 +2,14 @@ const asyncAuto = require('async/auto');
 const {findKey} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getPeerLiquidity} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const {getCoingeckoRates} = require('./../fiat');
+const {getIgnores} = require('./../routing');
+const {getTags} = require('./../tags');
 const {parseAmount} = require('./../display');
 const probeDestination = require('./probe_destination');
 
@@ -29,7 +32,11 @@ const utf8AsHex = n => Buffer.from(n, 'utf8').toString('hex');
 
   {
     amount: <Amount to Push Tokens String>
+    avoid: [<Avoid Forwarding Through String>]
     destination: <Destination Public Key Hex String>
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [in_through]: <Pay In Through Peer String>
     [is_dry_run]: <Do Not Push Payment Bool>
     lnd: <Authenticated LND API Object>
@@ -51,8 +58,16 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedAmountToSendInPushPayment']);
         }
 
+        if (!isArray(args.avoid)) {
+          return cbk([400, 'ExpectedArrayOfAvoidDirectivesToSendPushPayment']);
+        }
+
         if (!isPublicKey(args.destination)) {
           return cbk([400, 'ExpectedDestinationToPushPaymentTo']);
+        }
+
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFileSystemMethodsToPushPayment']);
         }
 
         if (!!args.in_through && !!isArray(args.in_through)) {
@@ -103,6 +118,16 @@ module.exports = (args, cbk) => {
         return getChannels({lnd: args.lnd}, cbk);
       }],
 
+      // Get the node identity public key
+      getIdentity: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getIdentity({lnd: args.lnd}, cbk);
+      }],
+
       // Get network name
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
@@ -116,6 +141,40 @@ module.exports = (args, cbk) => {
         return getCoingeckoRates({
           request: args.request,
           symbols: [].concat(coins).concat(fiats),
+        },
+        cbk);
+      }],
+
+      // Get tags for figuring out avoid flags
+      getTags: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getTags({fs: args.fs}, cbk);
+      }],
+
+      // Get ignores
+      getIgnores: [
+        'getChannels',
+        'getIdentity',
+        'getTags',
+        ({getChannels, getIdentity, getTags}, cbk) =>
+      {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk(null, {ignore: []});
+        }
+
+        return getIgnores({
+          avoid: args.avoid,
+          channels: getChannels.channels,
+          in_through: args.in_through,
+          lnd: args.lnd,
+          logger: args.logger,
+          public_key: getIdentity.public_key,
+          tags: getTags.tags,
         },
         cbk);
       }],
@@ -280,10 +339,11 @@ module.exports = (args, cbk) => {
 
       // Push the amount to the destination
       push: [
+        'getIgnores',
         'getInKey',
         'getOutKey',
         'parseAmount',
-        ({getInKey, getOutKey, parseAmount}, cbk) =>
+        ({getIgnores, getInKey, getOutKey, parseAmount}, cbk) =>
       {
         if (parseAmount.tokens < minTokens) {
           return cbk([400, 'ExpectedNonZeroAmountToPushPayment']);
@@ -300,6 +360,8 @@ module.exports = (args, cbk) => {
 
         return probeDestination({
           destination: args.destination,
+          fs: args.fs,
+          ignore: getIgnores.ignore,
           lnd: args.lnd,
           logger: args.logger,
           in_through: getInKey,

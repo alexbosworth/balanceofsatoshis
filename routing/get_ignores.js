@@ -16,7 +16,7 @@ const {isArray} = Array;
 const isChannel = n => /^\d*x\d*x\d*$/.test(n);
 const isFormula = n => /(.*)\/0[2-3][0-9A-F]{64}$/gim.test(n);
 const isPair = n => !!n && /^0[2-3][0-9A-F]{64}\/0[2-3][0-9A-F]{64}$/i.test(n);
-const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
+const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/gim.test(n);
 const {keys} = Object;
 const pairAsIgnore = (a, b) => ({from_public_key: a, to_public_key: b});
 const uniq = arr => Array.from(new Set(arr));
@@ -88,8 +88,7 @@ module.exports = (args, cbk) => {
 
         // Mix global avoids with explicit avoids
         const avoids = [].concat(args.avoid).concat(tagAvoids)
-          .filter(n => n !== args.public_key)
-          .map(n => n.toLowerCase());
+          .filter(n => n !== args.public_key);
 
         // Never avoid the source key
         return cbk(null, uniq(avoids));
