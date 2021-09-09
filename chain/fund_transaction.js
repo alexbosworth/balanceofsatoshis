@@ -3,12 +3,14 @@ const asyncEach = require('async/each');
 const {formatTokens} = require('ln-sync');
 const {fundPsbt} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
+const {getUtxos} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {signPsbt} = require('ln-service');
 const {unlockUtxo} = require('ln-service');
 
 const {parseAmount} = require('./../display');
 
+const asBigUnit = n => (n / 1e8).toFixed(8);
 const asOutpoint = utxo => `${utxo.transaction_id}:${utxo.transaction_vout}`;
 const asInput = n => ({transaction_id: n.id, transaction_vout: n.vout});
 const asUtxo = n => ({id: n.slice(0, 64), vout: Number(n.slice(65))});
@@ -24,9 +26,11 @@ const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
   {
     addresses: [<Address String>]
     amounts: [<Amount String>]
+    ask: <Ask Function>
     spend: [<Coin Outpoint String>]
     [fee_tokens_per_vbyte]: <Fee Tokens Per Virtual Byte Number>
     is_dry_run: <Release Locks on Transaction Bool>
+    [is_selecting_utxos]: <Interactively Select UTXOs to Spend Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     utxos: [<Unspent Transaction Outpoint String>]
@@ -66,12 +70,20 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedFundPayingToAddressesNotPublicKeys']);
         }
 
+        if (!args.ask) {
+          return cbk([400, 'ExpectedAskFunctionToFundTransaction']);
+        }
+
         if (!isArray(args.utxos)) {
           return cbk([400, 'ExpectedArrayOfUtxosToSpendToFundTransaction']);
         }
 
         if (args.utxos.find(n => !isOutpoint(n))) {
           return cbk([400, 'ExpectedOutpointFormattedUtxoToFundTransaction']);
+        }
+
+        if (!!args.utxos.length && !!args.is_selecting_utxos) {
+          return cbk([400, 'ExpectedEitherSelectUtxosOrExplicitUtxosNotBoth']);
         }
 
         return cbk();
@@ -95,9 +107,67 @@ module.exports = (args, cbk) => {
         }
       }],
 
+      // Get UTXOs
+      getUtxos: ['validate', ({}, cbk) => {
+        // Exit early when not selecting UTXOs
+        if (!args.is_selecting_utxos) {
+          return cbk();
+        }
+
+        return getUtxos({lnd: args.lnd, min_confirmations: minConfs}, cbk);
+      }],
+
+      // Select inputs to spend
+      utxos: ['getUtxos', 'outputs', ({getUtxos, outputs}, cbk) => {
+        // Exit early when UTXOs are specified already
+        if (!!args.utxos.length) {
+          return cbk(null, args.utxos);
+        }
+
+        // Exit early when not selecting UTXOs interactively
+        if (!args.is_selecting_utxos) {
+          return cbk(null, []);
+        }
+
+        // Make sure there are some UTXOs to select
+        if (!getUtxos.utxos.length) {
+          return cbk([400, 'WalletHasZeroConfirmedUtxos']);
+        }
+
+        const amounts = outputs.map(n => n.tokens);
+
+        return args.ask({
+          choices: getUtxos.utxos.map(utxo => ({
+            name: `${asBigUnit(utxo.tokens)} ${asOutpoint(utxo)}`,
+            value: asOutpoint(utxo),
+          })),
+          loop: false,
+          name: 'inputs',
+          type: 'checkbox',
+          validate: input => {
+            if (!input.length) {
+              return false;
+            }
+
+            const tokens = sumOf(input.map(utxo => {
+              return getUtxos.utxos.find(n => asOutpoint(n) === utxo).tokens;
+            }));
+
+            const missingTok = asBigUnit(sumOf(amounts) - tokens);
+
+            if (tokens < sumOf(amounts)) {
+              return `Selected ${asBigUnit(tokens)}, need ${missingTok} more`;
+            }
+
+            return true;
+          }
+        },
+        ({inputs}) => cbk(null, inputs));
+      }],
+
       // Create a funded PSBT
-      fund: ['getFee', 'outputs', ({getFee, outputs}, cbk) => {
-        const inputs = args.utxos.map(asUtxo).map(asInput);
+      fund: ['getFee', 'outputs', 'utxos', ({getFee, outputs, utxos}, cbk) => {
+        const inputs = utxos.map(asUtxo).map(asInput);
         const fee = args.fee_tokens_per_vbyte || getFee.tokens_per_vbyte;
 
         if (!!outputs.filter(n => n.tokens < dustValue).length) {

@@ -1,5 +1,11 @@
 # Versions
 
+## Version 10.13.0
+
+- `fund`: Add `--select-utxos` option to interactively select UTXOs for funding
+- `rebalance`: Fix minutes timeout not terminating rebalance on time
+- `services`: Fix responding to service requests
+
 ## Version 10.12.0
 
 - `send`: Add `--avoid` to avoid keys/channels/tags/formulas in pathfinding

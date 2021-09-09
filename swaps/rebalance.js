@@ -701,12 +701,20 @@ module.exports = (args, cbk) => {
             return cbk([503, 'EncounteredUnexpectedRouteLiquidityFailure']);
           }
 
+          const [highFeeAt] = sortBy({
+            array: endRoute.hops.map(hop => ({
+              to: hop.public_key,
+              fee: hop.fee,
+            })),
+            attribute: 'fee',
+          }).sorted.reverse().map(n => n.to);
+
           // Exit early when a max fee is specified and exceeded
           if (!!maxFee && endRoute.fee > maxFee) {
             return cbk([
               400,
               'RebalanceTotalFeeTooHigh',
-              {needed_max_fee: endRoute.fee.toString()},
+              {needed_max_fee: endRoute.fee.toString(), high_fee: highFeeAt},
             ]);
           }
 
@@ -717,7 +725,7 @@ module.exports = (args, cbk) => {
             return cbk([
               400,
               'RebalanceFeeRateTooHigh',
-              {needed_max_fee_rate: feeRate.toString()},
+              {needed_max_fee_rate: feeRate.toString(), high_fee: highFeeAt},
             ]);
           }
 

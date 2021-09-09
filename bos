@@ -11,7 +11,7 @@ const {writeFile} = require('fs');
 
 const importLazy = require('import-lazy')(require);
 
-const fetch = importLazy('node-fetch');
+const fetch = importLazy('@alexbosworth/node-fetch');
 const inquirer = importLazy('inquirer');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
@@ -611,6 +611,7 @@ prog
   .option('--dryrun', 'Avoid locking up UTXOs')
   .option('--fee-rate <fee>', 'Per vbyte fee rate for on-chain tx fee', INT)
   .option('--node <node_name>', 'Node to spend coins')
+  .option('--select-utxos', 'Specify UTXOs to spend interactively from a list')
   .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -619,8 +620,10 @@ prog
           logger,
           addresses: args.addressAmount.filter((n, i) => !(i % 2)),
           amounts: args.addressAmount.filter((n, i) => i % 2),
+          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
           fee_tokens_per_vbyte: options.feeRate,
           is_dry_run: !!options.dryrun,
+          is_selecting_utxos: options.selectUtxos,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           utxos: flatten([options.utxo].filter(n => !!n)),
         },

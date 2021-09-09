@@ -58,10 +58,15 @@ module.exports = (args, cbk) => {
               return false;
             }
 
-            const [code] = err;
+            const [code, type] = err;
 
             // Do not retry on client errors
-            if (code === 400) {
+            if (code >= 400 && code < 500) {
+              return false;
+            }
+
+            // Do not retry on timeout errors
+            if (code === 503 && type === 'ProbeTimeout') {
               return false;
             }
 
