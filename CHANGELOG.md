@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.13.1
+
+- `services`: Fix fee calculation on relay service requests
+
 ## Version 10.13.0
 
 - `fund`: Add `--select-utxos` option to interactively select UTXOs for funding
