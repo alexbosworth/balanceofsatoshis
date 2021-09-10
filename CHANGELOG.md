@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.14.0
+
+- `services`: Add support for `--connect` to enable requesting a peer connection
+
 ## Version 10.13.1
 
 - `services`: Fix fee calculation on relay service requests

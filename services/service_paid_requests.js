@@ -23,6 +23,7 @@ const restartDelayMs = 1000 * 30;
     [inbox_sms_to_number]: <Inbox SMS To Number String>
     [inbox_twilio_account_sid]: <Inbox Twilio Account Sid String>
     [inbox_twilio_auth_token]: <Inbox Twilio Auth Token String>
+    [is_connect_enabled]: <Connect Service Enabled Bool>
     [is_relay_enabled]: <Payment Relay Service Enabled Bool>
     logger: <Winston Logger Object>
     network_nodes: [<Network Node Public Key Hex String]
@@ -36,6 +37,7 @@ module.exports = args => {
   const env = {
     PAID_SERVICES_ACTIVITY_FEES: asFlag(args.activity_fees),
     PAID_SERVICES_ACTIVITY_VOLUME: asFlag(args.activity_volume),
+    PAID_SERVICES_CONNECT: asFlag(args.is_connect_enabled),
     PAID_SERVICES_INBOX_EMAIL_FROM: args.inbox_email_from,
     PAID_SERVICES_INBOX_EMAIL_TO: args.inbox_email_to,
     PAID_SERVICES_INBOX_POSTMARK_API_KEY: args.inbox_postmark_api_key,

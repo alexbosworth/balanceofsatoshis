@@ -1380,6 +1380,7 @@ prog
   .help('KeySend services are paid native Lightning Network services')
   .option('--activity-fees', 'Share routing fees earned vs num fwds')
   .option('--activity-volume', 'Share routing total volume amount')
+  .option('--connect', 'Enable requesting an inbound peer connection')
   .option('--inbox-email-from', 'Inbox service email from address')
   .option('--inbox-email-postmark-auth', 'Inbox service email to address')
   .option('--inbox-email-to', 'Inbox service to email')
@@ -1410,6 +1411,7 @@ prog
           inbox_sms_to_number: options.inboxSmsTo,
           inbox_twilio_account_sid: options.inboxSmsTwilioSid,
           inbox_twilio_auth_token: options.inboxSmsTwilioAuth,
+          is_connect_enabled: !!options.connect || undefined,
           is_relay_enabled: !!options.relay || undefined,
           network_nodes: flatten([options.network].filter(n => !!n)),
           node: options.node,
