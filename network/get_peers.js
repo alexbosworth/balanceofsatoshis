@@ -36,6 +36,7 @@ const notNull = array => array.filter(n => n !== null);
 const notFoundIndex = -1;
 const {round} = Math;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
+const sumMtokens = arr => arr.reduce((sum, n) => sum + BigInt(n), BigInt(0));
 const uniq = arr => Array.from(new Set(arr));
 const wideSizeCols = 150;
 
@@ -314,7 +315,7 @@ module.exports = (args, cbk) => {
 
           return {
             created_at: forward.created_at,
-            fee: forward.fee,
+            fee_mtokens: forward.fee_mtokens,
             inbound: !!inKey ? inKey.key : null,
             outbound: !!outKey ? outKey.key : null,
           };
@@ -424,6 +425,7 @@ module.exports = (args, cbk) => {
             attribute: 'height',
           });
 
+          const feeMtokens = sumMtokens(feeEarnings.map(n => n.fee_mtokens));
           const [newest] = channelHeights.sorted.slice().reverse();
           const [oldest] = channelHeights.sorted;
 
@@ -500,7 +502,7 @@ module.exports = (args, cbk) => {
           return {
             alias: node.alias,
             downtime_percentage: round(100 * (downtime / (downtime + uptime))),
-            fee_earnings: sumOf(feeEarnings.map(n => n.fee)),
+            fee_earnings: mtokensAsTokens(feeMtokens),
             first_connected: moment().subtract(blocks * mpb, 'minutes').unix(),
             inbound_fee_rate: feeRate,
             inbound_liquidity: sumOf(channels.map(n => n.remote_balance)),

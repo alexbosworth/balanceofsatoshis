@@ -1,5 +1,13 @@
 # Versions
 
+## Version 10.14.2
+
+- `peers`: Use full fee values to calculate fees earned to improve accuracy of earnings
+
+## Version 10.14.1
+
+- `services`: Fix `--relay` service to charge correct amount
+
 ## Version 10.14.0
 
 - `services`: Add support for `--connect` to enable requesting a peer connection
