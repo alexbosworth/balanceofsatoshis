@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.15.0
+
+- `increase-inbound-liquidity`: Add support for avoiding channels, tags, formulas
+
 ## Version 10.14.3
 
 - `open`: Run preflight checks on nodes to confirm opening parameters will be accepted

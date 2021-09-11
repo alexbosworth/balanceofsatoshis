@@ -767,7 +767,7 @@ prog
   .help('If you want to control chain fee increases, use show-raw-recoveries')
   .option('--address <out_address>', 'Out chain address to send funds out to')
   .option('--api-key <api_key>', 'Pre-paid API key to use')
-  .option('--avoid <pubkey>', 'Avoid forwarding through node', REPEATABLE)
+  .option('--avoid <pubkey/chan/tag>', 'Avoid forwarding through', REPEATABLE)
   .option('--amount <amount>', 'Amount to increase liquidity', INT, 5e5)
   .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
   .option('--dryrun', 'Only show cost estimate for increase')
@@ -793,6 +793,7 @@ prog
           api_key: options.apiKey || undefined,
           avoid: flatten([options.avoid].filter(n => !!n)),
           confs: options.confs,
+          fs: {getFile: readFile},
           is_fast: options.fast || false,
           is_raw_recovery_shown: options.showRawRecovery || undefined,
           is_dry_run: options.dryrun || false,

@@ -19,6 +19,7 @@ const {formatTokens} = require('ln-sync');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getHeight} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
@@ -40,7 +41,6 @@ const {subscribeToSwapOutStatus} = require('goldengate');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {authenticatedLnd} = require('./../lnd');
-const avoidsAsIgnores = require('./avoids_as_ignores');
 const {chains} = require('./../network/networks');
 const channelForSend = require('./channel_for_send');
 const {cltvDeltaBuffer} = require('./constants');
@@ -52,9 +52,12 @@ const {executeProbe} = require('./../network');
 const {fastDelayMinutes} = require('./constants');
 const {feeRateDenominator} = require('./constants');
 const {fuzzBlocks} = require('./constants');
+const {getIcons} = require('./../display');
+const {getIgnores} = require('./../routing');
 const getRoutesForFunding = require('./get_routes_for_funding');
 const getPaidService = require('./get_paid_service');
 const getRawRecoveries = require('./get_raw_recoveries');
+const {getTags} = require('./../tags');
 const {maxCltvExpiration} = require('./constants');
 const {maxDepositTokens} = require('./constants');
 const {maxExecutionFeeTokens} = require('./constants');
@@ -95,9 +98,12 @@ const uniq = arr => Array.from(new Set(arr));
 
   {
     [api_key]: <API Key CBOR String>
-    [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
+    avoid: [<Avoid Forwarding Through Node With Public Key Hex String>]
     confs: <Confirmations to Wait for Deposit Number>
     fetch: <Fetch Function>
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [is_fast]: <Execute Swap Immediately Bool>
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
     [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
@@ -127,12 +133,20 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!isArray(args.avoid)) {
+          return cbk([400, 'ExpectedAvoidArrayToInitiateSwapOut']);
+        }
+
         if (args.confs === undefined) {
           return cbk([400, 'ExpectedConfirmationsCountToConsiderReorgSafe']);
         }
 
         if (!args.fetch) {
           return cbk([400, 'ExpectedFetchFunctionToInitiateSwapOut']);
+        }
+
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFileSystemFunctionsToInitiateSwapOut']);
         }
 
         if (!args.lnd) {
@@ -195,8 +209,37 @@ module.exports = (args, cbk) => {
       // Get the current block height
       getHeight: ['validate', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
 
+      // Get node icons
+      getIcons: ['validate', ({}, cbk) => {
+        if (!args.fs) {
+          return cbk();
+        }
+
+        return getIcons({fs: args.fs}, cbk);
+      }],
+
+      // Get the node public key
+      getIdentity: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getIdentity({lnd: args.lnd}, cbk);
+      }],
+
       // Get the network this swap is taking place on
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
+
+      // Get tags for figuring out avoid flags
+      getTags: ['validate', ({}, cbk) => {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk();
+        }
+
+        return getTags({fs: args.fs}, cbk);
+      }],
 
       // Get peer details
       getPeerDetails: ['findPeer', ({findPeer}, cbk) => {
@@ -243,6 +286,11 @@ module.exports = (args, cbk) => {
         return createChainAddress({format: 'p2wpkh', lnd: args.lnd}, cbk);
       }],
 
+      // Network for swap
+      network: ['getNetwork', ({getNetwork}, cbk) => {
+        return cbk(null, getNetwork.network);
+      }],
+
       // The start height of the swap
       startHeight: ['getHeight', 'recover', ({getHeight, recover}, cbk) => {
         // Exit early when recovering from an in-progress swap
@@ -274,37 +322,46 @@ module.exports = (args, cbk) => {
         return cbk(null, {id});
       }],
 
-      // Converrt avoids to ignores
-      avoidsAsIgnores: ['getChannels', ({getChannels}, cbk) => {
-        return avoidsAsIgnores({
+      // Get base ignores
+      getBaseIgnores: [
+        'getChannels',
+        'getIdentity',
+        'getTags',
+        ({getChannels, getIdentity, getTags}, cbk) =>
+      {
+        // Exit early when there are no avoids
+        if (!args.avoid.length) {
+          return cbk(null, {ignore: []});
+        }
+
+        return getIgnores({
           avoid: args.avoid,
           channels: getChannels.channels,
           lnd: args.lnd,
+          logger: args.logger,
+          public_key: getIdentity.public_key,
+          tags: getTags.tags,
         },
         cbk);
       }],
 
       // Get the ignore list from avoid directives
       getIgnores: [
-        'avoidsAsIgnores',
         'findPeer',
-        ({avoidsAsIgnores, findPeer}, cbk) =>
+        'getBaseIgnores',
+        ({findPeer, getBaseIgnores}, cbk) =>
       {
+        // Exit early when there is no specific peer
         if (!findPeer.public_key) {
-          return cbk(null, {ignore: avoidsAsIgnores.ignore});
+          return cbk(null, {ignore: getBaseIgnores.ignore});
         }
 
         return getSyntheticOutIgnores({
-          ignore: avoidsAsIgnores.ignore,
+          ignore: getBaseIgnores.ignore,
           lnd: args.lnd,
           out: [findPeer.public_key],
         },
         cbk);
-      }],
-
-      // Network for swap
-      network: ['getNetwork', ({getNetwork}, cbk) => {
-        return cbk(null, getNetwork.network);
       }],
 
       // Currency of swap
@@ -644,12 +701,14 @@ module.exports = (args, cbk) => {
         'channel',
         'decodeExecutionRequest',
         'decodeFundingRequest',
+        'getIcons',
         'getIgnores',
         'getService',
         ({
           channel,
           decodeExecutionRequest,
           decodeFundingRequest,
+          getIcons,
           getIgnores,
           getService,
         },
@@ -674,6 +733,7 @@ module.exports = (args, cbk) => {
           outgoing_channel: !!channel ? channel.id : undefined,
           payment: decodeExecutionRequest.payment,
           routes: decodeExecutionRequest.routes,
+          tagged: !!getIcons ? getIcons.nodes : undefined,
           tokens: decodeExecutionRequest.tokens,
         },
         (err, res) => {
@@ -1168,7 +1228,13 @@ module.exports = (args, cbk) => {
         'initiateSwap',
         ({channel, decodeExecutionRequest, initiateSwap}, cbk) =>
       {
+        // Exit early when the swap is in a recovery mode already
         if (!!args.recovery) {
+          return cbk();
+        }
+
+        // Exit early when the swap is a dry run, do not pay execution request
+        if (!!args.is_dry_run) {
           return cbk();
         }
 
