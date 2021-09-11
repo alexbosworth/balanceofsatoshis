@@ -28,11 +28,11 @@ const {transactionAsPsbt} = require('psbt');
 const {unlockUtxo} = require('ln-service');
 
 const adjustFees = require('./../routing/adjust_fees');
+const channelsFromArguments = require('./channels_from_arguments');
 const {getAddressUtxo} = require('./../chain');
 const {parseAmount} = require('./../display');
 
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
-const defaultChannelCapacity = 5e6;
 const format = 'p2wpkh';
 const {isArray} = Array;
 const lineBreak = '\n';
@@ -200,10 +200,11 @@ module.exports = (args, cbk) => {
         'getPeers',
         ({capacities, getNodes, getPeers}, cbk) =>
       {
-        const channels = args.public_keys.map((key, i) => {
-          const total = capacities[i] || defaultChannelCapacity;
-
-          return {total, public_key: key};
+        const {channels} = channelsFromArguments({
+          capacities,
+          gives: args.gives,
+          nodes: args.public_keys,
+          types: args.types,
         });
 
         const nodes = getNodes.filter(n => !!n.channels_count).map(node => {
@@ -217,9 +218,11 @@ module.exports = (args, cbk) => {
         args.logger.info(nodes);
 
         const openingTo = getNodes.map(node => {
-          const {total} = channels.find(n => n.public_key === node.public_key);
+          const {capacity} = channels.find(channel => {
+            return channel.partner_public_key === node.public_key;
+          });
 
-          return `${node.alias || node.public_key}: ${tokAsBigUnit(total)}`;
+          return `${node.alias || node.public_key}: ${tokAsBigUnit(capacity)}`;
         });
 
         args.logger.info({opening_to: openingTo});
@@ -263,9 +266,49 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Check all nodes that they will allow an inbound channel
+      checkAcceptance: [
+        'capacities',
+        'connect',
+        ({capacities, connect}, cbk) => 
+      {
+        const {channels} = channelsFromArguments({
+          capacities,
+          gives: args.gives,
+          nodes: args.public_keys,
+          types: args.types,
+        });
+
+        return asyncEachSeries(channels, (channel, cbk) => {
+          const to = channel.partner_public_key;
+
+          return openChannels({
+            channels: [channel],
+            lnd: args.lnd,
+          },
+          (err, res) => {
+            if (!!err) {
+              return cbk([503, 'UnexpectedErrorProposingChannel', {to, err}]);
+            }
+
+            const [{id}] = res.pending;
+
+            return cancelPendingChannel({id, lnd: args.lnd}, (err, res) => {
+              if (!!err) {
+                return cbk([503, 'UnexpectedErrorCancelingChannel', {err}]);
+              }
+
+              return cbk(null, false);
+            });
+          });
+        },
+        cbk);
+      }],
+
       // Determine if internal funding should be used
       isExternal: [
         'capacities',
+        'checkAcceptance',
         'connect',
         'getWalletVersion',
         ({getWalletVersion}, cbk) =>
@@ -312,17 +355,11 @@ module.exports = (args, cbk) => {
         'isExternal',
         ({capacities}, cbk) =>
       {
-        const channels = args.public_keys.map((key, i) => {
-          const capacity = capacities[i] || defaultChannelCapacity;
-          const give = args.gives[i] || undefined;
-          const type = args.types[i] || undefined;
-
-          return {
-            capacity,
-            give_tokens: give,
-            is_private: !!type && type === 'private',
-            partner_public_key: key,
-          };
+        const {channels} = channelsFromArguments({
+          capacities,
+          gives: args.gives,
+          nodes: args.public_keys,
+          types: args.types,
         });
 
         return openChannels({channels, lnd: args.lnd}, (err, res) => {

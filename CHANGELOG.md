@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.14.3
+
+- `open`: Run preflight checks on nodes to confirm opening parameters will be accepted
+
 ## Version 10.14.2
 
 - `peers`: Use full fee values to calculate fees earned to improve accuracy of earnings

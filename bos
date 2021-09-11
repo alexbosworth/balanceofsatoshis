@@ -957,7 +957,7 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        return network.openChannels({
+        return peers.openChannels({
           logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
           capacities: flatten([options.amount].filter(n => !!n)),
