@@ -10,6 +10,7 @@ const defaultInvoicesLimit = 100;
 
   {
     [confirmed_after]: <Confirmed At or After ISO 8601 Date String>
+    [created_after]: <Confirmed At or After ISO 8601 Date String>
     lnd: <Authenticated LND API Object>
   }
 
@@ -74,7 +75,8 @@ module.exports = (args, cbk) => {
 
       // Get all the invoices
       getInvoices: ['validate', ({}, cbk) => {
-        const after = args.confirmed_after;
+        const confAfter = args.confirmed_after;
+        const createdAfter = args.created_after;
         const invoices = [];
         let token;
 
@@ -94,8 +96,16 @@ module.exports = (args, cbk) => {
               token = res.next || false;
 
               res.invoices
-                .filter(n => !after || n.confirmed_at >= after)
+                .filter(n => !confAfter || n.confirmed_at >= confAfter)
+                .filter(n => !createdAfter || n.created_at >= createdAfter)
                 .forEach(n => invoices.push(n));
+
+              const createdAt = res.invoices.map(n => n.created_at);
+
+              // Stop paging when created after is set
+              if (!!createdAfter && createdAt.find(n => n < createdAfter)) {
+                token = false;
+              }
 
               return cbk();
             });

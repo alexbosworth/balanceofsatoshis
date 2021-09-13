@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.16.0
+
+- `chart-fees-paid`: Add `--rebalances` for looking up only rebalancing fees paid
+
 ## Version 10.15.0
 
 - `increase-inbound-liquidity`: Add support for avoiding channels, tags, formulas

@@ -27,26 +27,6 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (args.above !== undefined) {
-          return cbk([400, 'AboveQueryNotSupportedInDetailedBalanceLookup']);
-        }
-
-        if (args.below !== undefined) {
-          return cbk([400, 'BelowQueryNotSupportedInDetailedBalanceLookup']);
-        }
-
-        if (args.is_confirmed) {
-          return cbk([400, 'ConfirmedNotSupportedInDetailedBalanceLookup']);
-        }
-
-        if (args.is_offchain_only) {
-          return cbk([400, 'OffchainOnlyNotSupportedInDetailedBalanceLookup']);
-        }
-
-        if (args.is_onchain_only) {
-          return cbk([400, 'OnchainOnlyNotSupportedInDetailedBalanceLookup']);
-        }
-
         if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToGetDetailedBalance']);
         }

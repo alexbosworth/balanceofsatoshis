@@ -7,8 +7,10 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
+const getRebalancePayments = require('./get_rebalance_payments');
 const {sortBy} = require('./../arrays');
 
+const by = 'confirmed_at';
 const daysPerWeek = 7;
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
@@ -91,6 +93,21 @@ module.exports = (args, cbk) => {
 
       // Get payments
       getPayments: ['start', 'validate', ({start}, cbk) => {
+        // Exit early when only considering rebalance payments
+        if (!!args.is_rebalances_only) {
+          return getRebalancePayments({
+            after: start.toISOString(),
+            lnds: args.lnds,
+          },
+          (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            return cbk(null, res.payments);
+          });
+        }
+
         return asyncMap(args.lnds, (lnd, cbk) => {
           return getPayments({after: start.toISOString(), lnd}, cbk);
         },
@@ -106,7 +123,7 @@ module.exports = (args, cbk) => {
       // Filter the payments
       forwards: ['getPayments', 'start', ({getPayments, start}, cbk) => {
         const payments = getPayments.filter(payment => {
-          return payment.created_at > start.toISOString();
+          return payment.confirmed_at > start.toISOString();
         });
 
         return cbk(null, payments);
@@ -118,9 +135,15 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const fees = forwards.reduce((sum, {attempts}) => {
-          attempts.filter(n => !!n.is_confirmed).forEach(({route}) => {
-            return route.hops.slice().reverse().forEach((hop, i) => {
+        const confirmed = arr => arr.filter(n => !!n.is_confirmed);
+
+        const fees = forwards.reduce((sum, {attempts, paths}) => {
+          const confirmedPaths = !!attempts ? confirmed(attempts) : paths;
+
+          confirmedPaths.forEach(({hops, route}) => {
+            const usedHops = !!route ? route.hops : hops;
+
+            return usedHops.slice().reverse().forEach((hop, i) => {
               if (!i) {
                 return;
               }
@@ -139,9 +162,13 @@ module.exports = (args, cbk) => {
         },
         {});
 
-        const forwarded = forwards.reduce((sum, {attempts}) => {
-          attempts.filter(n => !!n.is_confirmed).forEach(({route}) => {
-            return route.hops.slice().reverse().forEach((hop, i) => {
+        const forwarded = forwards.reduce((sum, {attempts, paths}) => {
+          const confirmedPaths = !!attempts ? confirmed(attempts) : paths;
+
+          confirmedPaths.forEach(({hops, route}) => {
+            const usedHops = !!route ? route.hops : hops;
+
+            return usedHops.slice().reverse().forEach((hop, i) => {
               if (!i) {
                 return;
               }
@@ -238,7 +265,7 @@ module.exports = (args, cbk) => {
         'segments',
         ({forwards, measure, segments}, cbk) =>
       {
-        return cbk(null, feesForSegment({forwards, measure, segments}));
+        return cbk(null, feesForSegment({by, forwards, measure, segments}));
       }],
 
       // Summary description of the fees paid

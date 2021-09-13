@@ -339,12 +339,14 @@ prog
   // Show a chart of routing fees paid
   .command('chart-fees-paid', 'Get a chart of paid routing fees')
   .help('Show the routing fees paid to forwarding nodes')
+  .help('--rebalances can return results much more quickly')
   .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
   .option('--most-fees', 'View table of fees paid per node')
   .option('--most-forwarded', 'View table of forwarded per node')
   .option('--network', 'Show only non-peers in table view')
   .option('--node <node_name>', 'Get fees chart for saved node(s)', REPEATABLE)
   .option('--peers', 'Show only peers in table view')
+  .option('--rebalances', 'Only consider fees paid in self-to-self transfers')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       const data = 'data';
@@ -360,6 +362,7 @@ prog
           is_most_forwarded_table: options.mostForwarded,
           is_network: options.network,
           is_peer: options.peers,
+          is_rebalances_only: options.rebalances,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
         },
         (options.mostFees || options.mostForwarded) ? asTable : chart);
