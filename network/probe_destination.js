@@ -32,6 +32,7 @@ const keySendPreimageType = '5482373484';
 const makeNonce = () => randomBytes(32).toString('hex');
 const {max} = Math;
 const messageType = '34349334';
+const {min} = Math;
 const nodeKeyFamily = 6;
 const preimageByteLength = 32;
 const {now} = Date;
@@ -377,11 +378,15 @@ module.exports = (args, cbk) => {
         sub.once('error', err => cbk(err));
 
         // Did not find any higher value routes
-        sub.once('failure', () => cbk(null, {maximum: probe.route.tokens}));
+        sub.once('failure', () => {
+          return cbk(null, {maximum: min(args.find_max, probe.route.tokens)});
+        });
 
         // Found a successful high value route
         sub.once('success', ({maximum}) => {
-          return cbk(null, {maximum: max(maximum, probe.route.tokens)});
+          return cbk(null, {
+            maximum: min(args.find_max, max(maximum, probe.route.tokens)),
+          });
         });
 
         return;

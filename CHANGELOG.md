@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.16.1
+
+- `chart-chain-fees`: Increase execution speed for non-exhaustive charts
+
 ## Version 10.16.0
 
 - `chart-fees-paid`: Add `--rebalances` for looking up only rebalancing fees paid
