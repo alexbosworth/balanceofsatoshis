@@ -3,11 +3,13 @@ const asyncMap = require('async/map');
 const {getNode} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getPayments} = require('ln-sync');
+const {getRebalancePayments} = require('ln-sync');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
+const {chartAliasForPeer} = require('./../display');
 const feesForSegment = require('./fees_for_segment');
-const getRebalancePayments = require('./get_rebalance_payments');
+const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
 const by = 'confirmed_at';
@@ -27,6 +29,9 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 
   {
     days: <Fees Earned Over Days Count Number>
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [is_most_fees_table]: <Is Most Fees Table Bool>
     [is_most_forwarded_table]: <Is Most Forwarded Bool>
     [is_network]: <Show Only Non-Peers In Table Bool>
@@ -48,6 +53,10 @@ module.exports = (args, cbk) => {
       validate: cbk => {
         if (!args.days) {
           return cbk([400, 'ExpectedNumberOfDaysToGetFeesOverForChart']);
+        }
+
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFsMethodsToGetRoutingFeesPaid']);
         }
 
         if (!!args.is_network && !!args.is_peer) {
@@ -74,6 +83,9 @@ module.exports = (args, cbk) => {
           return cbk(null, flatten(res.map(n => n.channels)));
         });
       }],
+
+      // Get node icons
+      getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
 
       // Segment measure
       measure: ['validate', ({}, cbk) => {
@@ -130,7 +142,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Fees paid to specific forwarding peers
-      rows: ['forwards', 'getChannels', ({forwards, getChannels}, cbk) => {
+      rows: [
+        'forwards',
+        'getChannels',
+        'getIcons',
+        ({forwards, getChannels, getIcons}, cbk) =>
+      {
         if (!args.is_most_forwarded_table && !args.is_most_fees_table) {
           return cbk();
         }
@@ -224,12 +241,22 @@ module.exports = (args, cbk) => {
 
               return !!args.is_peer ? isPeer : !isPeer;
             })
-            .map(n => {
+            .map(node => {
+              const key = node.public_key;
+
+              const nodeIcons = getIcons.nodes.find(n => n.public_key === key);
+
+              const {display} = chartAliasForPeer({
+                alias: node.alias || ' ',
+                icons: !!nodeIcons ? nodeIcons.icons : undefined,
+                public_key: key,
+              });
+
               return [
-                n.alias,
-                n.public_key,
-                mtokensAsBigUnit(n.fees_paid),
-                mtokensAsBigUnit(n.forwarded),
+                display,
+                key,
+                mtokensAsBigUnit(node.fees_paid),
+                mtokensAsBigUnit(node.forwarded),
               ];
             });
 

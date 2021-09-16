@@ -227,7 +227,12 @@ Use any shorthand you'd like when choosing this profile node name
 
 #### Umbrel Saved Node
 
-Note: Umbrel is not FOSS software, use at your own risk.
+*Note: Umbrel is not FOSS software, use at your own risk.*
+
+If you are using Umbrel and you have already installed but you get an error like
+`Name resolution failed for target dns:umbrel.local:10009` then try adding umbrel.local
+to your `/etc/hosts` file, like `sudo nano /etc/hosts` and add a line
+`127.0.0.1 umbrel.local`
 
 1. Identify your Umbrel home dir, like /home/umbrel/umbrel
 2. Look in the .env file in that dir for the `LND_IP` to use as the socket to connect to

@@ -358,6 +358,7 @@ prog
       try {
         return routing.getFeesPaid({
           days: options.days,
+          fs: {getFile: readFile},
           is_most_fees_table: options.mostFees,
           is_most_forwarded_table: options.mostForwarded,
           is_network: options.network,

@@ -1,5 +1,10 @@
 # Versions
 
+## Version 10.17.0
+
+- `chart-fees-paid`: Add tag icons to nodes in table view
+- `telegram`: Add `/costs` command to report rebalance and chain fees
+
 ## Version 10.16.2
 
 - `chart-chain-fees`: Add mempool space chain fee lookup redundancy

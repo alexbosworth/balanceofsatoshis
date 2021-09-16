@@ -13,6 +13,7 @@ const {getWalletInfo} = require('ln-service');
 const {handleBackupCommand} = require('ln-telegram');
 const {handleBlocknotifyCommand} = require('ln-telegram');
 const {handleConnectCommand} = require('ln-telegram');
+const {handleCostsCommand} = require('ln-telegram');
 const {handleEarningsCommand} = require('ln-telegram');
 const {handleInvoiceCommand} = require('ln-telegram');
 const {handleLiquidityCommand} = require('ln-telegram');
@@ -194,6 +195,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           {command: 'backup', description: 'Get node backup file'},
           {command: 'blocknotify', description: 'Get notified on next block'},
           {command: 'connect', description: 'Get connect code for the bot'},
+          {command: 'costs', description: 'Show costs over the week'},
           {command: 'earnings', description: 'Show earnings over the week'},
           {command: 'invoice', description: 'Create an invoice'},
           {command: 'liquidity', description: 'Get liquidity [with-peer]'},
@@ -272,14 +274,27 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           return;
         });
 
+        bot.command('costs', ctx => {
+          handleCostsCommand({
+            request,
+            from: ctx.message.from.id,
+            id: connectedId,
+            nodes: allNodes,
+            reply: n => ctx.replyWithMarkdown(n),
+            working: () => ctx.replyWithChatAction('typing'),
+          },
+          err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
+
+          return;
+        });
+
         bot.command('earnings', ctx => {
           handleEarningsCommand({
             from: ctx.message.from.id,
             id: connectedId,
-            key: apiKey.key,
             nodes: allNodes,
             reply: n => ctx.replyWithMarkdown(n),
-            text: ctx.message.text,
+            working: () => ctx.replyWithChatAction('typing'),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
 
@@ -397,6 +412,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             '/backup - Get node backup file',
             '/blocknotify - Notification on next block',
             '/connect - Connect bot',
+            '/costs - View costs over the past week',
             '/earnings - View earnings over the past week',
             '/invoice - Make an invoice',
             '/liquidity [with] - View node liquidity',
