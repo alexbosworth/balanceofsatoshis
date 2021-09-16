@@ -1,5 +1,10 @@
 # Versions
 
+## Version 10.16.2
+
+- `chart-chain-fees`: Add mempool space chain fee lookup redundancy
+- `open-balanced-channel`: Add additional logging on initial connectivity probe
+
 ## Version 10.16.1
 
 - `chart-chain-fees`: Increase execution speed for non-exhaustive charts

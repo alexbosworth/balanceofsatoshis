@@ -32,10 +32,10 @@
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
     "ini": "2.0.0",
-    "inquirer": "8.1.3",
+    "inquirer": "8.1.5",
     "invoices": "2.0.0",
-    "ln-accounting": "5.0.2",
-    "ln-service": "52.3.0",
+    "ln-accounting": "5.0.3",
+    "ln-service": "52.4.0",
     "ln-sync": "1.0.0",
     "ln-telegram": "3.2.11",
     "moment": "2.29.1",
@@ -80,5 +80,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/wallets/*.js"
   },
-  "version": "10.16.1"
+  "version": "10.16.2"
 }

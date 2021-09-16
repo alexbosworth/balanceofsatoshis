@@ -27,6 +27,8 @@ const {subscribeToProbeForRoute} = require('ln-service');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {balancedChannelKeyTypes} = require('./service_key_types');
+const {describeRoute} = require('./../display');
+const {describeRoutingFailure} = require('./../display');
 const getBalancedRefund = require('./get_balanced_refund');
 
 const acceptBalancedType = '547418';
@@ -203,12 +205,25 @@ module.exports = (args, cbk) => {
           return cbk();
         });
 
-        sub.on('probing', ({route}) => {
-          return args.logger.info({checking_route_to_node: true});
+        sub.on('probing', async ({route}) => {
+          const {description} = await describeRoute({route, lnd: args.lnd});
+
+          return args.logger.info({checking_route: description});
         });
 
         sub.on('end', () => {
           return cbk([503, 'FailedToFindRouteToNode']);
+        });
+
+        sub.on('routing_failure', async failure => {
+          const {description} = await describeRoutingFailure({
+            index: failure.index,
+            lnd: args.lnd,
+            reason: failure.reason,
+            route: failure.route,
+          });
+
+          return args.logger.info({failure: description});
         });
       }],
 
@@ -547,12 +562,25 @@ module.exports = (args, cbk) => {
           cbk);
         });
 
-        sub.on('probing', ({route}) => {
-          return args.logger.info({checking_route_to_node: true});
+        sub.on('probing', async ({route}) => {
+          const {description} = await describeRoute({route, lnd: args.lnd});
+
+          return args.logger.info({finding_route: description});
         });
 
         sub.on('end', () => {
           return cbk([503, 'OpenBalancedChannelMessageDeliveryFailedToNode']);
+        });
+
+        sub.on('routing_failure', async failure => {
+          const {description} = await describeRoutingFailure({
+            index: failure.index,
+            lnd: args.lnd,
+            reason: failure.reason,
+            route: failure.route,
+          });
+
+          return args.logger.info({failure: description});
         });
       }],
 

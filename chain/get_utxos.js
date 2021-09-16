@@ -33,11 +33,13 @@ const uniq = arr => Array.from(new Set(arr));
   @returns via cbk or Promise
   {
     utxos: [{
-      outpoint: <Coin Outpoint String>
+      address: <Chain Address String>
       amount: <Coins Amount String>
       [confirmations]: <Confirmation Count Number>
+      outpoint: <Coin Outpoint String>
       [is_unconfirmed]: <UTXO is Confirmed Bool>
-      address: <Chain Address String>
+      [locked]: <UTXO Lock Id Hex String>
+      [lock_expires_at]: <UTXO Lock Expiration ISO 8601 Date String>
       [related_description]: <Transaction Description String>
       [related_channels]: [<Related Channel Description String>]
     }]
