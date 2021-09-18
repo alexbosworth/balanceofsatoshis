@@ -134,11 +134,11 @@ module.exports = ({ask, fs, lnd, logger, network, node}, cbk) => {
       // Confirm payment of a paywall
       confirmPayment: ['result', ({result}, cbk) => {
         // Exit early when there is no paywall to confirm
-        if (!result.paywall) {
+        if (!result.invoice) {
           return cbk();
         }
 
-        const {tokens} = parsePaymentRequest({request: result.paywall});
+        const {tokens} = parsePaymentRequest({request: result.invoice});
 
         return ask([{
           type: 'confirm',
@@ -151,7 +151,7 @@ module.exports = ({ask, fs, lnd, logger, network, node}, cbk) => {
       // Send the paywall payment
       pay: ['confirmPayment', 'result', ({confirmPayment, result}, cbk) => {
         // Exit early when there is no paywall
-        if (!result.paywall) {
+        if (!result.invoice) {
           return cbk();
         }
 
@@ -168,7 +168,7 @@ module.exports = ({ask, fs, lnd, logger, network, node}, cbk) => {
           max_fee: defaultMaxFee,
           max_paths: defaultMaxPaths,
           out: [],
-          request: result.paywall,
+          request: result.invoice,
         },
         cbk);
       }],

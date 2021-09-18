@@ -2,11 +2,13 @@ const asyncAuto = require('async/auto');
 const asyncForever = require('async/forever');
 const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
+const {getNodeAlias} = require('ln-sync');
 const {servicePaidRequests} = require('paid-services');
 
 const {authenticatedLnd} = require('./../lnd');
 
 const asFlag = n => !!n ? '1' : '0';
+const mtokAsBig = n => (Number(BigInt(n) / BigInt(1e3)) / 1e8).toFixed(8);
 const restartDelayMs = 1000 * 30;
 
 /** Service KeySend payment requests
@@ -24,6 +26,7 @@ const restartDelayMs = 1000 * 30;
     [inbox_twilio_account_sid]: <Inbox Twilio Account Sid String>
     [inbox_twilio_auth_token]: <Inbox Twilio Auth Token String>
     [is_connect_enabled]: <Connect Service Enabled Bool>
+    [is_invoice_enabled]: <Invoice Service Enabled Bool>
     [is_relay_enabled]: <Payment Relay Service Enabled Bool>
     logger: <Winston Logger Object>
     network_nodes: [<Network Node Public Key Hex String]
@@ -46,6 +49,7 @@ module.exports = args => {
     PAID_SERVICES_INBOX_SMS_TO_NUMBER: args.inbox_sms_to_number,
     PAID_SERVICES_INBOX_TWILIO_ACCOUNT_SID: args.inbox_twilio_account_sid,
     PAID_SERVICES_INBOX_TWILIO_AUTH_TOKEN: args.inbox_twilio_auth_token,
+    PAID_SERVICES_INVOICE: asFlag(args.is_invoice_enabled),
     PAID_SERVICES_NETWORK_NODES: args.network_nodes.join(','),
     PAID_SERVICES_PROFILE_FOR_NODE: args.profile,
     PAID_SERVICES_PROFILE_URLS: args.profile_urls.join('\n'),
@@ -101,7 +105,21 @@ module.exports = args => {
         });
 
         sub.on('failure', failure => args.logger.error(failure));
-        sub.on('success', success => args.logger.info(success));
+
+        sub.on('success', async ({service, node, received}) => {
+          const date = new Date().toISOString();
+          const got = `received ${mtokAsBig(received)}`;
+
+          if (!node) {
+            return args.logger.info(`${date} ${got} ${service}`);
+          }
+
+          const {alias} = await getNodeAlias({id: node, lnd: getLnd.lnd});
+
+          const from = `- ${node} ${alias}`.trim();
+
+          return args.logger.info(`${date} ${got} ${service} ${from}`);
+        });
 
         args.logger.info({
           listening_for_requests_via: `bos use ${getId.public_key}`,

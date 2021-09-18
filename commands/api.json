@@ -17,6 +17,40 @@
     {
       "arguments": [
         {
+          "description": "Raw hex encoded signed raw transaction",
+          "named": "transaction"
+        },
+        {
+          "description": "Transaction description label",
+          "named": "description",
+          "optional": true
+        }
+      ],
+      "method": "broadcastChainTransaction"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Id of invoice to cancel",
+          "named": "id",
+          "type": "hash"
+        }
+      ],
+      "method": "cancelHodlInvoice"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Id of pending channel to cancel",
+          "named": "id",
+          "type": "hash"
+        }
+      ],
+      "method": "cancelPendingChannel"
+    },
+    {
+      "arguments": [
+        {
           "description": "Requested chain fee tokens per vbyte",
           "named": "tokens_per_vbyte",
           "type": "number"
@@ -33,6 +67,42 @@
         }
       ],
       "method": "closeChannel"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Chain address format, np2wpkh or p2wpkh",
+          "named": "format"
+        }
+      ],
+      "method": "createChainAddress"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Final CLTV delta",
+          "named": "cltv_delta",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Description",
+          "named": "description",
+          "optional": true
+        },
+        {
+          "description": "Hash",
+          "named": "id",
+          "optional": true,
+          "type": "hash"
+        },
+        {
+          "description": "Millitokens to request",
+          "named": "mtokens",
+          "optional": true
+        }
+      ],
+      "method": "createHodlInvoice"
     },
     {
       "arguments": [
@@ -71,6 +141,9 @@
     },
     {
       "method": "deleteForwardingReputations"
+    },
+    {
+      "method": "deletePayments"
     },
     {
       "arguments": [
@@ -253,6 +326,16 @@
     {
       "arguments": [
         {
+          "description": "Invoice hex encoded payment hash",
+          "named": "id",
+          "type": "hash"
+        }
+      ],
+      "method": "getInvoice"
+    },
+    {
+      "arguments": [
+        {
           "description": "Results limit",
           "named": "limit",
           "optional": true,
@@ -265,16 +348,6 @@
         }
       ],
       "method": "getInvoices"
-    },
-    {
-      "arguments": [
-        {
-          "description": "Invoice hex encoded payment hash",
-          "named": "id",
-          "type": "hash"
-        }
-      ],
-      "method": "getInvoice"
     },
     {
       "method": "getLockedUtxos"
@@ -477,6 +550,15 @@
       "method": "requestChainFeeIncrease"
     },
     {
+      "arguments": [
+        {
+          "description": "Hex encoded secret preimage",
+          "named": "secret"
+        }
+      ],
+      "method": "settleHodlInvoice"
+    },
+    {
       "arguments": [{
         "description": "Message to sign",
         "named": "message"
@@ -485,6 +567,54 @@
     },
     {
       "method": "stopDaemon"
+    },
+    {
+      "events": ["backup"],
+      "method": "subscribeToBackups"
+    },
+    {
+      "events": ["block"],
+      "method": "subscribeToBlocks"
+    },
+    {
+      "events": [
+        "channel_active_changed",
+        "channel_closed",
+        "channel_opened",
+        "channel_opening"
+      ],
+      "method": "subscribeToChannels"
+    },
+    {
+      "events": ["forward"],
+      "method": "subscribeToForwards"
+    },
+    {
+      "events": ["channel_closed", "channel_updated", "node_updated"],
+      "method": "subscribeToGraph"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Invoice preimage hash hex encoded",
+          "named": "id",
+          "type": "hash"
+        }
+      ],
+      "events": ["invoice_updated"],
+      "method": "subscribeToInvoice"
+    },
+    {
+      "events": ["invoice_updated"],
+      "method": "subscribeToInvoices"
+    },
+    {
+      "events": ["connected", "disconnected"],
+      "method": "subscribeToPeers"
+    },
+    {
+      "events": ["chain_transaction"],
+      "method": "subscribeToTransactions"
     },
     {
       "arguments": [

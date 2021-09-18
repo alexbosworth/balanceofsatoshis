@@ -10,19 +10,21 @@ const isHash = n => !!n && /^[0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const {keys} = Object;
 const lower = n => n.toLowerCase();
+const methodDetails = (calls, method) => calls.find(n => n.method === method);
 
 /** Call the raw API
 
   {
     ask: <Inquirer Function> ({message, name, type}, cbk) => {}
     lnd: <Authenticated LND API Object>
+    logger: <Winston Logger Object>
     [method]: <Method to Call String>
   }
 
   @returns via cbk or Promise
   <Result Object>
 */
-module.exports = ({ask, lnd, method}, cbk) => {
+module.exports = ({ask, lnd, logger, method}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -33,6 +35,10 @@ module.exports = ({ask, lnd, method}, cbk) => {
 
         if (!lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToCallApi']);
+        }
+
+        if (!logger) {
+          return cbk([400, 'ExpectedLoggerToCallApi']);
         }
 
         if (!!method && !calls.find(n => lower(n.method) === lower(method))) {
@@ -118,8 +124,8 @@ module.exports = ({ask, lnd, method}, cbk) => {
         cbk);
       }],
 
-      // Call API
-      call: ['getArguments', 'getMethod', ({getArguments, getMethod}, cbk) => {
+      // Derive arguments
+      arguments: ['getArguments', ({getArguments}, cbk) => {
         const arguments = getArguments.reduce((sum, answer) => {
           keys(answer).forEach(key => {
             if (answer[key] === Number()) {
@@ -132,6 +138,34 @@ module.exports = ({ask, lnd, method}, cbk) => {
           return sum;
         },
         {lnd});
+
+        return cbk(null, arguments);
+      }],
+
+      // Set up subscription
+      subscribe: ['arguments', 'getMethod', ({arguments, getMethod}, cbk) => {
+        // Exit early when this is a request/response API
+        if (!methodDetails(calls, getMethod.method).events) {
+          return cbk();
+        }
+
+        const sub = lnService[getMethod.method](arguments);
+
+        sub.on('error', err => cbk([503, 'ApiSubscriptionError', {err}]));
+
+        const {events} = methodDetails(calls, getMethod.method);
+
+        logger.info({listening_for: events});
+
+        events.forEach(n => sub.on(n, data => logger.info({[n]: data})));
+      }],
+
+      // Call API
+      call: ['arguments', 'getMethod', ({arguments, getMethod}, cbk) => {
+        // Exit early when this is an event-based API
+        if (!!methodDetails(calls, getMethod.method).events) {
+          return cbk();
+        }
 
         return lnService[getMethod.method](arguments, cbk);
       }],

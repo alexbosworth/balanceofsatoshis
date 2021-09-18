@@ -1,5 +1,16 @@
 # Versions
 
+## Version 10.18.0
+
+- `call`: Add support for `broadcastChainTransaction`, `cancelHodlInvoice`
+    `cancelPendingChannel`, `createChainAddress`, `createHodlInvoice`, `deletePayments`,
+    `settleHodlInvoice`, `subscribeToBackups`, `subscribeToBlocks`,
+    `subscribeToChannels`, `subscribeToForwards`, `subscribeToGraph`,
+    `subscribeToInvoice`, `subscribeToInvoices`, `subscribeToPeers`,
+    `subscribeToTransactions`.
+- `services`: Add service `--invoice` to create invoices on request
+- `services`: Automatically retry on `relay` service if destination payment fails
+
 ## Version 10.17.0
 
 - `chart-fees-paid`: Add tag icons to nodes in table view

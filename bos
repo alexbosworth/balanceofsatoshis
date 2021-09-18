@@ -216,6 +216,7 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return commands.callRawApi({
+          logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(n => cbk(null, n)),
           lnd: (await lndForNode(logger, options.node)).lnd,
           method: args.method,
@@ -1394,6 +1395,7 @@ prog
   .option('--inbox-sms-to', 'Inbox service sms to number')
   .option('--inbox-sms-twilio-sid', 'Inbox service Twilio account sid')
   .option('--inbox-sms-twilio-auth', 'Inbox service Twilio auth token')
+  .option('--invoice', 'Enable creating custom invoices on demand')
   .option('--node <node_name>', 'Saved node')
   .option('--payer <pay_with_node_name>', 'Node to pay request responses with')
   .option('--profile <profile>', 'Share a profile with info about your node')
@@ -1417,6 +1419,7 @@ prog
           inbox_twilio_account_sid: options.inboxSmsTwilioSid,
           inbox_twilio_auth_token: options.inboxSmsTwilioAuth,
           is_connect_enabled: !!options.connect || undefined,
+          is_invoice_enabled: !!options.invoice || undefined,
           is_relay_enabled: !!options.relay || undefined,
           network_nodes: flatten([options.network].filter(n => !!n)),
           node: options.node,
