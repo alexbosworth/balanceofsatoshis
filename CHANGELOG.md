@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.18.1
+
+- `open`: In final tx id indication use original external tx id when available
+
 ## Version 10.18.0
 
 - `call`: Add support for `broadcastChainTransaction`, `cancelHodlInvoice`

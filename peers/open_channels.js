@@ -35,6 +35,7 @@ const {parseAmount} = require('./../display');
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const format = 'p2wpkh';
 const {isArray} = Array;
+const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const lineBreak = '\n';
 const knownTypes = ['private', 'public'];
 const noInternalFundingVersions = ['0.11.0-beta', '0.11.1-beta'];
@@ -98,6 +99,10 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.public_keys)) {
           return cbk([400, 'ExpectedPublicKeysToOpenChannels']);
+        }
+
+        if (!!args.public_keys.filter(n => !isPublicKey(n)).length) {
+          return cbk([400, 'NodesToOpenWithMustBeSpecifiedWithPublicKeyOnly']);
         }
 
         const hasCapacities = !!args.capacities.length;
@@ -635,13 +640,16 @@ module.exports = (args, cbk) => {
       completed: [
         'cancelPending',
         'fundingPsbt',
+        'getFunding',
         'setFeeRates',
-        ({fundingPsbt}, cbk) =>
+        ({getFunding, fundingPsbt}, cbk) =>
       {
         try {
+          const tx = getFunding.value.transaction;
+
           const decoded = decodePsbt({psbt: fundingPsbt.value.psbt});
 
-          const transaction = decoded.unsigned_transaction;
+          const transaction = tx || decoded.unsigned_transaction;
 
           return cbk(null, {
             transaction_id: Transaction.fromHex(transaction).getId(),
