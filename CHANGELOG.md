@@ -1,5 +1,12 @@
 # Versions
 
+## Version 10.19.0
+
+- `balance`: Included locked UTXO value as on-chain value in `--detailed` balance output
+- `increase-inbound-liquidity|pay|probe|rebalance|send`: Add `AGE` to avoid formulas
+- `peers`: Avoid errors when network name is unknown
+- `push`: Add `--message-omit-from-key` to send messages without including "from" key
+
 ## Version 10.18.1
 
 - `open`: In final tx id indication use original external tx id when available

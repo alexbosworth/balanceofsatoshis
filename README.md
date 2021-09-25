@@ -12,8 +12,8 @@ Commands for working with LND balances.
 If you want to try out any command without npm install, you can also do `npx
 balanceofsatoshis` to run a command directly.
 
-If you have [Docker](https://docs.docker.com/get-docker/) installed, you can
-[run through Docker](#docker) instead.
+If you have [Docker](https://docs.docker.com/get-docker/) installed or are using a Docker based
+platform like Umbrel or BTCPayServer, you can [run through Docker](#docker) instead.
 
 ```shell
 npm install -g balanceofsatoshis
@@ -449,6 +449,17 @@ Or on Linux:
 
 ```
 --network="host" -v $HOME/.lnd:/home/node/.lnd:ro
+```
+
+On BTCpayServer:
+
+Create the credential.json file as explained in the saved nodes section, and for socket put:
+`"socket": "lnd_bitcoin:10009"`
+
+For Docker network use the Docker bridged network:
+
+```
+docker run -it --rm --network="generated_default" -v $HOME/.bos:/home/node/.bos alexbosworth/balanceofsatoshis balance --node SAVEDNODENAME
 ```
 
 On Umbrel this would be:

@@ -21,14 +21,14 @@ const topPercentile = 0.9;
     [below]: <Tokens Below Tokens Number>
     [is_outbound]: <Return Outbound Liquidity Bool>
     [is_top]: <Return Top Liquidity Bool>
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
     [min_node_score]: <Minimum Node Score Number>
     [max_fee_rate]: <Max Inbound Fee Rate Parts Per Million Number>
     [request]: <Request Function>
     [with]: <Liquidity With Specific Node Public Key Hex String>
   }
 
-  @returns via cbk
+  @returns via cbk or Promise
   {
     balance: <Liquid Tokens Number>
   }

@@ -21,7 +21,7 @@ const none = 0;
     lnd: <Authenticated LND API Object>
   }
 
-  @returns via cbk
+  @returns via cbk or Promise
   {
     balance: <Tokens Number>
     channel_balance: <Channel Balance Minus Commit Fees Tokens Number>

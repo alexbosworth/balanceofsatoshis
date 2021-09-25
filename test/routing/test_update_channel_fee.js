@@ -68,7 +68,7 @@ const makeLnd = overrides => {
           overrides.pendingChannelsResponse || pendingChannelsResponse
         );
       },
-      updateChannelPolicy: ({}, cbk) => cbk(null, {}),
+      updateChannelPolicy: ({}, cbk) => cbk(null, {failed_updates: []}),
     },
   };
 };

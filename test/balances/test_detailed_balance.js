@@ -19,6 +19,9 @@ const tests = [
           pending_payments: [{is_outgoing: false, tokens: 6}],
         },
       ],
+      locked: [{
+        tokens: 1,
+      }],
       pending: [
         {
           is_closing: true,
@@ -92,12 +95,12 @@ const tests = [
       closing_balance: 1,
       offchain_balance: 14,
       offchain_pending: 35,
-      onchain_balance: 3,
+      onchain_balance: 4,
       onchain_vbytes: 211,
     },
   },
   {
-    args: {channels: [], pending: [], transactions: [], utxos: []},
+    args: {channels: [], locked: [], pending: [], transactions: [], utxos: []},
     description: 'Balance totals are calculated when there are no funds',
     expected: {
       closing_balance: 0,

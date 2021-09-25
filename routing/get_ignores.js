@@ -2,6 +2,7 @@ const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getNode} = require('ln-service');
 const {Parser} = require('hot-formula-parser');
 const {returnResult} = require('asyncjs-util');
@@ -158,8 +159,24 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Get the block height for use in formulas
+      getHeight: ['sortedAvoids', ({sortedAvoids}, cbk) => {
+        const formulas = sortedAvoids.filter(n => n.formula);
+
+        // Exit early when there are no formulas
+        if (!formulas.length) {
+          return cbk();
+        }
+
+        return getHeight({lnd: args.lnd}, cbk);
+      }],
+
       // Get formula avoids
-      getFormulaIgnores: ['sortedAvoids', ({sortedAvoids}, cbk) => {
+      getFormulaIgnores: [
+        'getHeight',
+        'sortedAvoids',
+        ({getHeight, sortedAvoids}, cbk) =>
+      {
         const formulas = sortedAvoids.filter(n => n.formula);
 
         return asyncMap(formulas, ({formula, key}, cbk) => {
@@ -181,6 +198,7 @@ module.exports = (args, cbk) => {
 
                 const variables = {
                   height,
+                  age: getHeight.current_block_height - height,
                   base_fee: Number(inPolicy.base_fee_mtokens) || Number(),
                   fee_rate: inPolicy.fee_rate || Number(),
                 };

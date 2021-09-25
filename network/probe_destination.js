@@ -53,6 +53,7 @@ const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
       [to_public_key]: <Avoid Routing To Node With Public Key Hex String>
     }]
     [in_through]: <Pay In Through Public Key Hex String>
+    [is_omitting_message_from]: <Omit Message From Fields Bool>
     [is_push]: <Is Push Payment Bool>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
@@ -238,14 +239,17 @@ module.exports = (args, cbk) => {
 
         date.writeUIntBE(now(), Number(), datePrecisionLength);
 
+        // Add message
         if (!!args.message) {
-          messages.push({type: dateType, value: date.toString('hex')});
-
           messages.push({
             type: messageType,
             value: Buffer.from(args.message).toString('hex'),
           });
+        }
 
+        // Add message from fields
+        if (!!args.message && !args.is_omitting_message_from) {
+          messages.push({type: dateType, value: date.toString('hex')});
           messages.push({type: fromKeyType, value: getIdentity.public_key});
 
           const preimage = Buffer.concat([

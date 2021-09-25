@@ -31,6 +31,9 @@ const witnessSizeCounterVByteLength = 0.25;
         tokens: <Payment Size Tokens Number>
       }]
     }]
+    locked: [{
+      tokens: <Unspent Tokens Number>
+    }]
     pending: [{
       is_opening: <Channel is Pending Bool>
       is_partner_initiated: <Partner Responsible For Chain Fees Bool>
@@ -64,7 +67,7 @@ const witnessSizeCounterVByteLength = 0.25;
     onchain_vbytes: <Estimated Virtual Bytes to Spend On-Chain Funds Number>
   }
 */
-module.exports = ({channels, pending, transactions, utxos}) => {
+module.exports = ({channels, locked, pending, transactions, utxos}) => {
   const channelBalances = channels.map(n => n.local_balance);
   const confirmedUtxos = utxos.filter(n => !!n.confirmation_count);
 
@@ -115,6 +118,7 @@ module.exports = ({channels, pending, transactions, utxos}) => {
   const chainBalance = sumOf([]
     .concat(confirmedUtxos)
     .concat(changeUtxos)
+    .concat(locked)
     .map(n => n.tokens)
   );
 

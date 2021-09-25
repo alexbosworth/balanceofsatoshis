@@ -952,7 +952,7 @@ prog
 
   // Open channels
   .command('open', 'Open channels, optionally using an external wallet')
-  .help('Create channels from an external wallet. Note: do not self-broadcast')
+  .help('When creating channels from an external wallet do not self-broadcast')
   .argument('<peer_public_keys...>', 'With nodes with public keys')
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
   .option('--external-funding', 'Use external funds for the channel open')
@@ -1191,7 +1191,7 @@ prog
   .help('--avoid can take a channel id or a public key to avoid')
   .help('--avoid can take a public_key/public_key to avoid a directed pair')
   .help('--avoid can take a FORMULA/public_key to avoid inbound peers')
-  .help('--avoid FORMULA variables: FEE_RATE, BASE_FEE, HEIGHT')
+  .help('--avoid FORMULA variables: FEE_RATE, BASE_FEE, HEIGHT, AGE')
   .help('--in decreases the inbound liquidity with a specific peer/tag')
   .help('--out increases the inbound liquidity with a specific peer/tag')
   .option('--amount <amount>', 'Maximum amount to rebalance')
@@ -1348,6 +1348,7 @@ prog
   .option('--in <pubkey_or_alias>', 'Route in through a specific node')
   .option('--max-fee <fee>', 'Maximum fee tokens', INT, 1337)
   .option('--message <message>', 'Message to include with payment')
+  .option('--message-omit-from-key', 'Leave out the from key on messages')
   .option('--no-color', 'Mute all colors')
   .option('--node <name>', 'Node to send funds from')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
@@ -1368,6 +1369,7 @@ prog
           fs: {getFile: readFile},
           in_through: options.in,
           is_dry_run: options.dryrun,
+          is_omitting_message_from: options.messageOmitFromKey,
           max_fee: options.maxFee,
           message: options.message,
           quiz_answers: flatten([options.quiz].filter(n => !!n)),

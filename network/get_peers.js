@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const asyncReflect = require('async/reflect');
 const asyncUntil = require('async/until');
 const {bold} = require('colorette');
 const {decodeChanId} = require('bolt07');
@@ -191,6 +192,11 @@ module.exports = (args, cbk) => {
         );
       }],
 
+      // Get the network name
+      getNetwork: ['validate', asyncReflect(({}, cbk) => {
+        return getNetwork({lnd: args.lnd}, cbk);
+      })],
+
       // Get payments
       getPayments: ['validate', ({}, cbk) => {
         // Exit early and skip long payments lookup when idle days not needed
@@ -330,6 +336,7 @@ module.exports = (args, cbk) => {
         'forwards',
         'getChannels',
         'getInvoices',
+        'getNetwork',
         'getPayments',
         'getPeers',
         'getPending',
@@ -339,6 +346,7 @@ module.exports = (args, cbk) => {
           forwards,
           getChannels,
           getInvoices,
+          getNetwork,
           getPayments,
           getPeers,
           getPending,
@@ -400,7 +408,7 @@ module.exports = (args, cbk) => {
 
         const maxInbound = args.inbound_liquidity_below;
         const maxOutbound = args.outbound_liquidity_below;
-        const {network} = await getNetwork({lnd: args.lnd});
+        const {network} = getNetwork.value || {};
         const peerKeys = getChannels.channels.map(n => n.partner_public_key);
         const wallet = await getHeight({lnd: args.lnd});
 

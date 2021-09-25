@@ -39,6 +39,7 @@ const utf8AsHex = n => Buffer.from(n, 'utf8').toString('hex');
     }
     [in_through]: <Pay In Through Peer String>
     [is_dry_run]: <Do Not Push Payment Bool>
+    [is_omitting_message_from]: <Do Not Include From Key In Message Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     max_fee: <Maximum Fee Tokens Number>
@@ -72,6 +73,10 @@ module.exports = (args, cbk) => {
 
         if (!!args.in_through && !!isArray(args.in_through)) {
           return cbk([400, 'MultipleInboundPeersNotSupported']);
+        }
+
+        if (!!args.is_omitting_message_from && !args.message) {
+          return cbk([400, 'ExpectedMessageToSendWhenSpecifyingOmitFromKey']);
         }
 
         if (!args.lnd) {
@@ -365,6 +370,7 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           logger: args.logger,
           in_through: getInKey,
+          is_omitting_message_from: args.is_omitting_message_from,
           is_push: true,
           is_real_payment: true,
           max_fee: args.max_fee,
