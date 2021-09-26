@@ -24,6 +24,7 @@ const {chartAliasForPeer} = require('./../display');
 const {formatFeeRate} = require('./../display');
 const {getIcons} = require('./../display');
 const {getPastForwards} = require('./../routing');
+const {isMatchingFilters} = require('./../display');
 const {sortBy} = require('./../arrays');
 
 const closedSorts = ['fee_earnings', 'first_connected'];
@@ -50,6 +51,7 @@ const maxPaySize = 4294967;
 
   {
     [earnings_days]: <Routing Fee Earnings Days Number>
+    [filters]: [<Formula Expression String>]
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
@@ -418,7 +420,7 @@ module.exports = (args, cbk) => {
 
         const mpb = minutesPerBlock(network);
 
-        const peers = await asyncMap(uniq(peerKeys), async publicKey => {
+        const peers = (await asyncMap(uniq(peerKeys), async publicKey => {
           const forwarded = lastForwardedPayment[publicKey];
           const gotLast = lastReceivedPayment[publicKey];
           const peer = getPeers.peers.find(n => n.public_key === publicKey);
@@ -491,13 +493,27 @@ module.exports = (args, cbk) => {
 
           let node = {alias: String(), public_key: publicKey};
 
-          try {
-            node = await getNode({
-              is_omitting_channels: true,
-              lnd: args.lnd,
-              public_key: publicKey,
-            });
-          } catch (err) {}
+          // Check if the peer matches filters
+          const matching = isMatchingFilters({
+            filters: args.filters || [],
+            variables: {
+              age: blocks,
+              fee_earnings: mtokensAsTokens(feeMtokens),
+              inbound_fee_rate: feeRate,
+              inbound_liquidity: sumOf(channels.map(n => n.remote_balance)),
+              outbound_liquidity: sumOf(channels.map(n => n.local_balance)),
+            },
+          });
+
+          // Exit early when there is a filter error
+          if (!!matching.failure) {
+            throw new Error(matching.failure.error);
+          }
+
+          // Exit early when the peer is not matching provided filters
+          if (!matching.is_matching) {
+            return;
+          }
 
           const lastActivity = max(...[
             moment().subtract(blocks * mpb, 'minutes').unix(),
@@ -506,6 +522,14 @@ module.exports = (args, cbk) => {
             !forwarded ? Number() : moment(forwarded).unix(),
             !lastPaidThrough ? Number() : moment(lastPaidThrough).unix(),
           ].filter(n => !!n));
+
+          try {
+            node = await getNode({
+              is_omitting_channels: true,
+              lnd: args.lnd,
+              public_key: publicKey,
+            });
+          } catch (err) {}
 
           return {
             alias: node.alias,
@@ -525,7 +549,7 @@ module.exports = (args, cbk) => {
             outbound_liquidity: sumOf(channels.map(n => n.local_balance)),
             public_key: publicKey,
           };
-        });
+        })).filter(n => !!n);
 
         return {
           peers: sortBy({array: peers, attribute: args.sort_by || defaultSort})

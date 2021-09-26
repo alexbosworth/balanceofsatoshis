@@ -688,6 +688,7 @@ prog
   // Get the edges of a given node
   .command('graph', 'List out the connections a node has with other nodes')
   .argument('<alias_or_public_key>', 'Node in the graph to look up')
+  .option('--filter <formula>', 'Filter formula to apply', REPEATABLE)
   .option('--node <node_name>', 'Node to use for lookup')
   .option('--sort <sort_connections_by', 'Sort peers by field')
   .action((args, options, logger) => {
@@ -698,6 +699,7 @@ prog
         return network.getGraphEntry({
           lnd,
           logger,
+          filters: flatten([options.filter].filter(n => !!n)),
           fs: {getFile: readFile},
           query: args.aliasOrPublicKey.trim(),
           sort: options.sort,
@@ -1075,9 +1077,12 @@ prog
   .help('Icons: 🤢 often d/c, 💸 active HTLC, 💀 d/c, 🌚 private')
   .help('Icons: 🧊 delayed coop close, ⏳ pending channel, 🚫 in disabled')
   .help('Icons: 🦐 limited max htlc')
+  .help('Filters can take formula expressions like inbound_liquidity > 1*m')
+  .help('Filter formula variables: AGE|INBOUND_LIQUIDITY|OUTBOUND_LIQUIDITY')
   .option('--active', 'Only active peer channels')
   .option('--complete', 'Show complete set of records in non table view')
   .option('--fee-days <past_days>', 'Include fees earned over n days', INT)
+  .option('--filter <formula>', 'Filter formula to apply', REPEATABLE)
   .option('--idle-days <days>', 'No receives or routes for n days', INT)
   .option('--inbound-below <amount>', 'Inbound liquidity below amount', INT)
   .option('--no-color', 'Mute all colors')
@@ -1096,6 +1101,7 @@ prog
       try {
         return network.getPeers({
           earnings_days: options.feeDays,
+          filters: flatten([options.filter].filter(n => !!n)),
           fs: {getFile: readFile},
           idle_days: options.idleDays || undefined,
           inbound_liquidity_below: options.inboundBelow,

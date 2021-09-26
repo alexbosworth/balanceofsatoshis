@@ -1,5 +1,9 @@
 # Versions
 
+## Version 10.20.0
+
+- `graph`, `peers`: Add `--filter` option to filter out peers that do not match formulas
+
 ## Version 10.19.0
 
 - `balance`: Included locked UTXO value as on-chain value in `--detailed` balance output

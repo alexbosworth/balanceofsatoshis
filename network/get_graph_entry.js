@@ -13,9 +13,10 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const {chartAliasForPeer} = require('./../display');
+const {emojiIcons} = require('./constants');
 const {formatFeeRate} = require('./../display');
 const {getIcons} = require('./../display');
-const {emojiIcons} = require('./constants');
+const {isMatchingFilters} = require('./../display');
 
 const ageMs = time => moment(new Date(Date.now() - time)).fromNow(true);
 const blockTime = (current, start) => 1000 * 60 * 10 * (current - start);
@@ -24,6 +25,7 @@ const disableTag = isDisabled => isDisabled ? `${emojiIcons.disabled} ` : '';
 const displayFee = (n, rate) => n.length ? formatFeeRate({rate}).display : ' ';
 const displayTokens = tokens => formatTokens({tokens}).display;
 const header = [['Alias','Age','In Fee','Capacity','Out Fee','Public Key']];
+const {isArray} = Array;
 const isClear = sockets => !!sockets.find(n => !!isIP(n.socket.split(':')[0]));
 const isLarge = features => !!features.find(n => n.type === 'large_channels');
 const isOnion = sockets => !!sockets.find(n => /onion/.test(n.socket));
@@ -37,6 +39,7 @@ const uniq = arr => Array.from(new Set(arr));
 /** Get a graph entry
 
   {
+    filters: [<Filter Expression String>]
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
@@ -51,11 +54,15 @@ const uniq = arr => Array.from(new Set(arr));
     rows: [[<Table Cell String>]]
   }
 */
-module.exports = ({fs, lnd, logger, query, sort}, cbk) => {
+module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!isArray(filters)) {
+          return cbk([400, 'ExpectedArrayOfFiltersToGetGraphEntry']);
+        }
+
         if (!fs) {
           return cbk([400, 'ExpectedFsMethodsToGetGraphEntry']);
         }
@@ -107,14 +114,6 @@ module.exports = ({fs, lnd, logger, query, sort}, cbk) => {
         return cbk(null, uniq(peerKeys));
       }],
 
-      // Get the aliases for the peer nodes
-      getAliases: ['peerKeys', ({peerKeys}, cbk) => {
-        return asyncMap(peerKeys, (id, cbk) => {
-          return getNodeAlias({id, lnd}, cbk);
-        },
-        cbk);
-      }],
-
       // Log the high-level node details
       nodeDetails: [
         'getIcons',
@@ -145,14 +144,13 @@ module.exports = ({fs, lnd, logger, query, sort}, cbk) => {
         return cbk();
       }],
 
-      // Final table rows of peers
-      rows: [
-        'getAliases',
+      // Final set of peers
+      peers: [
         'getHeight',
         'getIcons',
         'getNode',
         'peerKeys',
-        ({getAliases, getHeight, getIcons, getNode, peerKeys}, cbk) =>
+        ({getHeight, getIcons, getNode, peerKeys}, cbk) =>
       {
         const sorting = sort || defaultSort;
 
@@ -160,14 +158,6 @@ module.exports = ({fs, lnd, logger, query, sort}, cbk) => {
           const capacity = getNode.channels
             .filter(n => !!n.policies.find(n => n.public_key === peerKey))
             .reduce((sum, {capacity}) => sum + capacity, Number());
-
-          const nodeIcons = getIcons.nodes.find(n => n.public_key === peerKey);
-
-          const chartAlias = chartAliasForPeer({
-            alias: getAliases.find(n => n.id === peerKey).alias,
-            icons: !!nodeIcons ? nodeIcons.icons : undefined,
-            public_key: peerKey,
-          });
 
           const connectHeight = min(...getNode.channels
             .filter(n => !!n.policies.find(n => n.public_key === peerKey))
@@ -197,8 +187,29 @@ module.exports = ({fs, lnd, logger, query, sort}, cbk) => {
             out_fee: outFeeRate,
           };
 
+          // Check if the peer matches filters
+          const matching = isMatchingFilters({
+            filters,
+            variables: {
+              capacity,
+              age: getHeight.current_block_height - connectHeight,
+              height: connectHeight,
+              in_fee_rate: inboundFeeRate,
+              out_fee_rate: outFeeRate,
+            },
+          });
+
+          // Exit early when there is a filter error
+          if (!!matching.failure) {
+            return matching.failure;
+          }
+
+          // Exit early when the peer is not matching provided filters
+          if (!matching.is_matching) {
+            return;
+          }
+
           const row = [
-            chartAlias.display,
             ageMs(blockTime(getHeight.current_block_height, connectHeight)),
             disableTag(isInDisabled) + displayFee(inPolicies, inboundFeeRate),
             displayTokens(capacity),
@@ -207,13 +218,47 @@ module.exports = ({fs, lnd, logger, query, sort}, cbk) => {
           ];
 
           return {sorts, row};
-        });
+        })
+        .filter(n => !!n);
+
+        // Exit early when there was an error in one of the filters
+        if (!!peers.find(n => !!n.error)) {
+          return cbk([500, 'FailedToParseFilter', peers.find(n => n.error)]);
+        }
 
         peers.sort((a, b) => sortBy(a.sorts[sorting], b.sorts[sorting]));
 
-        const rows = [].concat(header).concat(peers.map(({row}) => row));
+        return cbk(null, peers.map(n => n.row));
+      }],
 
-        return cbk(null, {rows});
+      // Get rows with peer aliases
+      getRowsWithAliases: ['getIcons', 'peers', ({getIcons, peers}, cbk) => {
+        return asyncMap(peers, (peer, cbk) => {
+          // The public key is the final column
+          const [id] = peer.slice().reverse();
+
+          const nodeIcons = getIcons.nodes.find(n => n.public_key === id);
+
+          return getNodeAlias({id, lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            const chartAlias = chartAliasForPeer({
+              alias: res.alias,
+              icons: !!nodeIcons ? nodeIcons.icons : undefined,
+              public_key: id,
+            });
+
+            return cbk(null, [chartAlias.display].concat(peer));
+          });
+        },
+        cbk);
+      }],
+
+      // Final set of rows
+      rows: ['getRowsWithAliases', ({getRowsWithAliases}, cbk) => {
+        return cbk(null, {rows: [].concat(header).concat(getRowsWithAliases)});
       }],
     },
     returnResult({reject, resolve, of: 'rows'}, cbk));
