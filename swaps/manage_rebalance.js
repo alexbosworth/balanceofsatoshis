@@ -13,6 +13,7 @@ const {isArray} = Array;
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
+    [in_filters]: [<Inbound Filter Formula String>]
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
     lnd: <Authenticated LND API Object>
@@ -21,7 +22,7 @@ const {isArray} = Array;
     [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
     [max_rebalance]: <Maximum Amount to Rebalance Tokens String>
     [node]: <Node Name String>
-    [out_channels]: [<Exclusively Rebalance Through Channel Ids String>]
+    [out_filters]: [<Outbound Filter Formula String>]
     [out_inbound]: <Outbound Target Inbound Liquidity Tokens Number>
     [out_through]: <Pay Out Through Peer String>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
@@ -79,6 +80,7 @@ module.exports = (args, cbk) => {
           return rebalance({
             avoid: args.avoid,
             fs: args.fs,
+            in_filters: args.in_filters,
             in_outbound: args.in_outbound,
             in_through: args.in_through,
             lnd: args.lnd,
@@ -86,7 +88,7 @@ module.exports = (args, cbk) => {
             max_fee: args.max_fee,
             max_fee_rate: args.max_fee_rate,
             max_rebalance: args.max_rebalance,
-            out_channels: args.out_channels,
+            out_filters: args.out_filters,
             out_inbound: args.out_inbound,
             out_through: args.out_through,
             timeout_minutes: args.timeout_minutes,

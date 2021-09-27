@@ -24,7 +24,6 @@ const {formatFeeRate} = require('./../display');
 const {getIgnores} = require('./../routing');
 const {parseAmount} = require('./../display');
 const {probeDestination} = require('./../network');
-const {shuffle} = require('./../arrays');
 const {sortBy} = require('./../arrays');
 
 const asRate = (fee, tokens) => ({rate: Math.ceil(fee / tokens * 1e6)});
@@ -73,6 +72,7 @@ const uniq = arr => Array.from(new Set(arr));
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
+    [in_filters]: [<Inbound Filter Formula String>]
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
     lnd: <Authenticated LND API Object>
@@ -81,7 +81,7 @@ const uniq = arr => Array.from(new Set(arr));
     [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
     [max_rebalance]: <Maximum Amount to Rebalance Tokens String>
     [node]: <Node Name String>
-    [out_channels]: [<Exclusively Rebalance Through Channel Ids String>]
+    [out_filters]: [<Outbound Filter Formula String>]
     [out_inbound]: <Outbound Target Inbound Liquidity Tokens Number>
     [out_through]: <Pay Out Through Peer String>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
@@ -227,11 +227,17 @@ module.exports = (args, cbk) => {
         'getTags',
         ({getInitialLiquidity, getTags}, cbk) =>
       {
-        const {match, matches} = findTagMatch({
+        const {failure, match, matches} = findTagMatch({
           channels: getInitialLiquidity.channels.filter(n => n.is_active),
+          filters: args.in_filters,
           tags: getTags.tags,
           query: args.in_through,
         });
+
+        // Exit early when there is a filter error
+        if (!!failure) {
+          return cbk([400, 'FailedToParseFilter', failure]);
+        }
 
         if (!!matches) {
           return cbk([400, 'MultipleTagMatchesFoundForInPeer', {matches}]);
@@ -273,13 +279,17 @@ module.exports = (args, cbk) => {
         'lnd',
         ({findInTag, getInitialLiquidity, getTags, lnd}, cbk) =>
       {
-        const {match, matches} = findTagMatch({
-          channels: getInitialLiquidity.channels
-            .filter(n => n.is_active)
-            .filter(n => n.partner_public_key !== findInTag),
+        const {failure, match, matches} = findTagMatch({
+          channels: getInitialLiquidity.channels.filter(n => n.is_active),
+          filters: args.out_filters,
           tags: getTags.tags,
           query: args.out_through,
         });
+
+        // Exit early when there is a filter error
+        if (!!failure) {
+          return cbk([400, 'FailedToParseFilter', failure]);
+        }
 
         if (!!matches) {
           return cbk([400, 'MultipleTagMatchesFoundForOutPeer', {matches}]);
@@ -342,20 +352,6 @@ module.exports = (args, cbk) => {
         // Exit early with error when an outbound channel cannot be guessed
         if (!args.out_through && !channels.length) {
           return cbk([400, 'NoOutboundChannelNeedsRebalance']);
-        }
-
-        if (!!args.out_through && !!args.out_channels.length) {
-          const outChannels = getInitialLiquidity.channels
-            .filter(n => n.partner_public_key === findOutKey)
-            .map(n => n.id);
-
-          if (outChannels.length !== args.out_channels.length) {
-            return cbk([400, 'ExpectedAllOutChannels', {chans: outChannels}]);
-          }
-
-          if (!outChannels.every(n => args.out_channels.includes(n))) {
-            return cbk([400, 'ExpectedAllOutChannels', {chans: outChannels}]);
-          }
         }
 
         const {sorted} = sortBy({array: channels, attribute: 'remote'});

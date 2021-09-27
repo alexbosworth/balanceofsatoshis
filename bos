@@ -257,7 +257,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
@@ -896,29 +896,6 @@ prog
     });
   })
 
-  // Get the history of prices
-  .command('market', 'Get the history of prices on a market')
-  .help('A chart of historic prices. Note: SuredBits price history has a fee!')
-  .help(`Pairs: ${Array.from(new Set(marketPairs.map(n => n.toUpperCase())))}`)
-  .help(`Markets: ${Array.from(new Set(exchanges.map(n => n.toLowerCase())))}`)
-  .visible(false)
-  .argument('[pair]', 'Market pair', marketPairs, 'BTCUSD')
-  .argument('[exchange]', 'Exchange', exchanges, 'kraken')
-  .option('--max-fee <max_fee>', 'Maximum amount to pay for data', INT, 5)
-  .option('--node <node_name>', 'Node to use to pay for price data')
-  .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
-      return fiat.getPriceChart({
-        exchange: args.exchange.toLowerCase(),
-        fee: options.maxFee,
-        node: options.node,
-        pair: args.pair.toLowerCase(),
-        request: commands.fetchRequest({fetch}),
-      },
-      responses.returnChart({logger, reject, resolve, data: 'prices'}));
-    });
-  })
-
   // Saved nodes
   .command('nodes', 'List and edit saved nodes')
   .help('Locking and unlocking requires existing installation of GPG')
@@ -1199,10 +1176,13 @@ prog
   .help('--avoid can take a FORMULA/public_key to avoid inbound peers')
   .help('--avoid FORMULA variables: FEE_RATE, BASE_FEE, HEIGHT, AGE')
   .help('--in decreases the inbound liquidity with a specific peer/tag')
+  .help('--in-filter vars: HEIGHTS, INBOUND_LIQUIDITY/OUTBOUND_LIQUIDITY')
   .help('--out increases the inbound liquidity with a specific peer/tag')
+  .help('--out-filter vars: HEIGHTS, INBOUND_LIQUIDITY/OUTBOUND_LIQUIDITY')
   .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey_or_chanid>', 'Avoid forwarding through', REPEATABLE)
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
+  .option('--in-filter <in_filter>', 'Filter inbound tag nodes', REPEATABLE)
   .option('--in-target-outbound <amt>', 'Balance up to outbound amount')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT)
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
@@ -1210,7 +1190,7 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for rebalance')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
-  .option('--out-channel', 'Lock outbound rebalance to channels', REPEATABLE)
+  .option('--out-filter <out_filter>', 'Filter outbound tag nodes', REPEATABLE)
   .option('--out-target-inbound <amount>', 'Balance up to inbound amount')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -1219,13 +1199,14 @@ prog
           logger,
           avoid: flatten([options.avoid].filter(n => !!n)),
           fs: {getFile: readFile},
+          in_filters: flatten([options.inFilter].filter(n => !!n)),
           in_outbound: options.inTargetOutbound || undefined,
           in_through: options.in || undefined,
           lnd: (await lndForNode(logger, options.node)).lnd,
           max_fee: options.maxFee,
           max_fee_rate: options.maxFeeRate,
           max_rebalance: options.amount,
-          out_channels: flatten([options.outChannel].filter(n => !!n)),
+          out_filters: flatten([options.outFilter].filter(n => !!n)),
           out_inbound: options.outTargetInbound,
           out_through: options.out || undefined,
           timeout_minutes: options.minutes || undefined,
@@ -1239,8 +1220,10 @@ prog
 
   // Attempt reconnecting to disconnected channel partners
   .command('reconnect', 'Reconnect to disconnected channel partners')
+  .help('Inactive channels are also treated as disconnected channels')
+  .help('This reconnects to all peers. Do not use --node to specify a peer')
   .option('--no-color', 'Mute all colors')
-  .option('--node <node_name>', 'Node to attempt reconnects on')
+  .option('--node <node_name>', 'Saved node to attempt reconnects on')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1260,6 +1243,7 @@ prog
   .argument('<id>', 'Transaction id of funds sent to p2pk')
   .argument('<vout>', 'Transaction output index of funds sent to p2pk', INT)
   .option('--node <node_name>', 'Node to attempt p2pk recovery on')
+  .visible(false)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1449,6 +1433,7 @@ prog
   .option('--node <node_name>', 'Node to use to pay for API key')
   .option('--preimage <preimage>', 'Hex encoded preimage of swap API key')
   .option('--service-socket <swap_service_socket>', 'host:port for service')
+  .visible(false)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1509,6 +1494,7 @@ prog
 
   // Adjust the set of tagged nodes
   .command('tags', 'View or adjust the set of tagged nodes')
+  .help('Tags can be used in other commands via --tag and --avoid options')
   .argument('[tag]', 'Adjust or view a specific tag')
   .option('--add <public_key', 'Add a public key to a tag', REPEATABLE)
   .option('--avoid', 'Mark to globally avoid all tagged nodes', BOOL, true)
@@ -1535,7 +1521,8 @@ prog
   // Link up Telegram bot
   .command('telegram', 'Post updates to a Telegram bot')
   .help('Connect to a Telegram bot. Create bot: tg://resolve?domain=botfather')
-  .help('Supported updates: forwards, received payments')
+  .help('After creating the bot start chatting with the bot for connect code')
+  .help('Supported updates: forwards, received payments, etc')
   .help('See README for info on persisting the bot through Docker/nohup')
   .option('--budget <amount>', 'Spending amount to allow', INT, Number())
   .option('--connect <connect_code>', 'Connection code', INT)
@@ -1624,6 +1611,7 @@ prog
   .command('use', 'Use a paid KeySend service from a services provider')
   .help('KeySend services are paid native Lightning Network services')
   .help('All communication with these services uses LN payments')
+  .help('Run services using the services command')
   .argument('<server_id>', 'Public key of services-offering node')
   .option('--node <node_name>', 'Saved node')
   .action((args, options, logger) => {

@@ -1,5 +1,15 @@
 # Versions
 
+## Version 11.0.0
+
+- `rebalance`: Add `--in-filter` to filter inbound tagged nodes
+- `rebalance`: Add `--out-filter` to filter outbound tagged nodes
+
+### Breaking Changes
+
+- `market`: Remove command, 3rd party service powering fiat rates was discontinued
+- `rebalance`: Remove `--out-channel` support, use `--out-filter` vs `heights` instead
+
 ## Version 10.20.0
 
 - `graph`, `peers`: Add `--filter` option to filter out peers that do not match formulas

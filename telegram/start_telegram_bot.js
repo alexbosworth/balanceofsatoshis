@@ -387,24 +387,28 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
 
         bot.command('pending', async ctx => {
           try {
-            return await handlePendingCommand({
+            await handlePendingCommand({
               from: ctx.message.from.id,
               id: connectedId,
               nodes: allNodes,
               reply: n => ctx.reply(n),
             });
           } catch (err) {
-            return logger.error({err});
+            logger.error({err});
           }
         });
 
         bot.command('version', async ctx => {
-          return await handleVersionCommand({
-            named,
-            request,
-            version,
-            reply: n => ctx.replyWithMarkdown(n),
-          });
+          try {
+            await handleVersionCommand({
+              named,
+              request,
+              version,
+              reply: n => ctx.replyWithMarkdown(n),
+            });
+          } catch (err) {
+            logger.error({err});
+          }
         });
 
         bot.help(ctx => {

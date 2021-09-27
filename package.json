@@ -25,7 +25,7 @@
     "caporal": "1.4.0",
     "cbor": "8.0.0",
     "cert-info": "1.5.1",
-    "colorette": "2.0.11",
+    "colorette": "2.0.12",
     "crypto-js": "4.1.1",
     "csv-parse": "4.16.3",
     "goldengate": "10.4.0",
@@ -80,5 +80,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/fiat/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/wallets/*.js"
   },
-  "version": "10.20.0"
+  "version": "11.0.0"
 }
