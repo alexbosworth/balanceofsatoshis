@@ -163,9 +163,33 @@ module.exports = ({lnd}, cbk) => {
         return cbk(null, balancedChannelRequests.filter(n => !!n));
       }],
 
+      // Filter out incoming opens that were already accepted
+      unacceptedOpens: ['incomingOpens', ({incomingOpens}, cbk) => {
+        const asyncFilter = require('async/filter');
+        const {getPayment} = require('ln-service');
+        return asyncFilter(incomingOpens, (incoming, cbk) => {
+          const {id} = parsePaymentRequest({request: incoming.accept_request});
+
+          return getPayment({id, lnd}, (err, res) => {
+            // An unknown payment means the open was not ack'ed
+            if (!!err && err.slice().shift() === 404) {
+              return cbk(null, true);
+            }
+
+            if (!!err) {
+              return cbk(err);
+            }
+
+            // If an accept request was not paid nothing happened yet
+            return cbk(null, !!res.is_failed);
+          });
+        },
+        cbk);
+      }],
+
       // Final set of active balanced open requests
-      opens: ['incomingOpens', ({incomingOpens}, cbk) => {
-        return cbk(null, {incoming: incomingOpens});
+      opens: ['unacceptedOpens', ({unacceptedOpens}, cbk) => {
+        return cbk(null, {incoming: unacceptedOpens});
       }],
     },
     returnResult({reject, resolve, of: 'opens'}, cbk));

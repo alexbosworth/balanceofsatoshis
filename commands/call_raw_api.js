@@ -77,6 +77,16 @@ module.exports = ({ask, lnd, logger, method}, cbk) => {
         }
 
         return asyncMapSeries(arguments, (argument, cbk) => {
+          if (argument.type === 'boolean') {
+            return ask({
+              default: false,
+              name: argument.named,
+              message: argument.description,
+              type: 'confirm',
+            },
+            cbk);
+          }
+
           return ask({
             default: () => !!argument.optional ? String() : undefined,
             message: argument.description,

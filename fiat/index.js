@@ -3,7 +3,6 @@ const getCoindeskCurrentPrice = require('./get_coindesk_current_price');
 const getCoindeskRates = require('./get_coindesk_rates');
 const getCoingeckoRates = require('./get_coingecko_rates');
 const getExchangeRates = require('./get_exchange_rates');
-const getPriceChart = require('./get_price_chart');
 const getPrices = require('./get_prices');
 const marketPairs = require('./market').pairs;
 const priceProviders = require('./market').price_providers;
@@ -22,7 +21,6 @@ module.exports = {
   getCoindeskRates,
   getCoingeckoRates,
   getExchangeRates,
-  getPriceChart,
   getPrices,
   pairs,
   priceProviders,

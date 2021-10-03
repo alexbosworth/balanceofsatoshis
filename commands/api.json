@@ -51,9 +51,20 @@
     {
       "arguments": [
         {
+          "description": "Request close out to address for cooperative close",
+          "named": "address",
+          "optional": true
+        },
+        {
           "description": "Requested chain fee tokens per vbyte",
           "named": "tokens_per_vbyte",
+          "optional": true,
           "type": "number"
+        },
+        {
+          "description": "Force close the channel",
+          "named": "is_force_close",
+          "type": "boolean"
         },
         {
           "description": "Hex encoded funding transaction id",

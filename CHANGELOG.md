@@ -1,5 +1,14 @@
 # Versions
 
+## Version 11.1.0
+
+- `avoid`: Add `capacity` to reference channel capacity amount
+- `call`: Add support for force closing a channel
+- `find`: Improve lookup speed when querying a tx id or peer
+- `open-balanced-channel`: Avoid showing incoming requests that were accepted
+- `rebalance`: Add `capacity` variable to `--in-filter` and `--out-filter`
+- `transfer`: Add `in_inbound` and `in_outbound` variables to amount formulas
+
 ## Version 11.0.0
 
 - `rebalance`: Add `--in-filter` to filter inbound tagged nodes

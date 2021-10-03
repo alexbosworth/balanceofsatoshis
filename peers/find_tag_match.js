@@ -83,7 +83,10 @@ module.exports = ({channels, filters, tags, query}) => {
       const matching = isMatchingFilters({
         filters: filters || [],
         variables: {
-          heights: withPeer.map(n => decodeChanId({channel: n.id}).block_height),
+          capacity: sumOf(withPeer.map(n => n.capacity)),
+          heights: withPeer.map(n => {
+            return decodeChanId({channel: n.id}).block_height;
+          }),
           inbound_liquidity: sumOf(withPeer.map(n => n.remote_balance)),
           outbound_liquidity: sumOf(withPeer.map(n => n.local_balance)),
         },

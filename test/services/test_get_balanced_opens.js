@@ -1,3 +1,5 @@
+const EventEmitter = require('events');
+
 const {createSignedRequest} = require('invoices');
 const {createUnsignedRequest} = require('invoices');
 const sign = require('secp256k1').ecdsaSign;
@@ -105,6 +107,15 @@ const makeArgs = overrides => {
             }],
             last_index_offset: '1',
           });
+        },
+      },
+      router: {
+        trackPaymentV2: ({}) => {
+          const emitter = new EventEmitter();
+
+          process.nextTick(() => emitter.emit('data', {status: 'FAILED'}));
+
+          return emitter;
         },
       },
     },

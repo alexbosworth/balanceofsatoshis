@@ -9,7 +9,9 @@ const {returnResult} = require('asyncjs-util');
 
 const {describeParseError} = require('./../display');
 
+const amountVariables = {btc: 1e8, k: 1e3, m: 1e6, mm: 1e6};
 const asFormula = n => ({formula: n.slice(0, n.length-67), key: n.slice(-66)});
+const {assign} = Object;
 const decodePair = n => n.split('/');
 const flatten = arr => [].concat(...arr);
 const heightFromId = id => Number(id.split('x').shift());
@@ -181,12 +183,17 @@ module.exports = (args, cbk) => {
 
         return asyncMap(formulas, ({formula, key}, cbk) => {
           return getNode({lnd: args.lnd, public_key: key}, (err, res) => {
+            // Exit early when the node in question is unknown
+            if (isArray(err) && err.slice().shift() === 404) {
+              return cbk(null, []);
+            }
+
             if (!!err) {
               return cbk(err);
             }
 
             const inboundAvoids = res.channels
-              .map(({id, policies}) => {
+              .map(({capacity, id, policies}) => {
                 const height = heightFromId(id);
                 const inPolicy = policies.find(n => n.public_key !== key);
 
@@ -195,13 +202,17 @@ module.exports = (args, cbk) => {
                 }
 
                 const parser = new Parser();
+                const variables = {};
 
-                const variables = {
+                assign(variables, amountVariables);
+
+                assign(variables, {
+                  capacity,
                   height,
                   age: getHeight.current_block_height - height,
                   base_fee: Number(inPolicy.base_fee_mtokens) || Number(),
                   fee_rate: inPolicy.fee_rate || Number(),
-                };
+                });
 
                 keys(variables).forEach(key => {
                   parser.setVariable(key.toLowerCase(), variables[key]);

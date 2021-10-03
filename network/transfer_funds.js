@@ -160,11 +160,48 @@ module.exports = (args, cbk) => {
       // Parse the amount specified
       parseAmount: [
         'getChannels',
+        'getInKey',
         'getOutKey',
+        'getRemoteChannels',
         'getToKey',
         'outPeer',
-        ({getChannels, getOutKey, getToKey, outPeer}, cbk) =>
+        ({
+          getChannels,
+          getInKey,
+          getOutKey,
+          getRemoteChannels,
+          getToKey,
+          outPeer,
+        },
+        cbk) =>
       {
+        // Calculate the inbound peer inbound liquidity
+        const inInbound = getRemoteChannels.channels
+          .filter(n => n.partner_public_key === getInKey.public_key)
+          .reduce((sum, chan) => {
+            // Treat incoming payment as if they were still remote balance
+            const inbound = chan.pending_payments.filter(n => !n.is_outgoing);
+
+            const pending = sumOf(inbound.map(({tokens}) => tokens));
+
+            return sum + chan.remote_balance + pending;
+          },
+          Number());
+
+        // Calculate the inbound peer outbound liquidity
+        const inOutbound = getRemoteChannels.channels
+          .filter(n => n.partner_public_key === getInKey.public_key)
+          .reduce((sum, chan) => {
+            // Treat outgoing payment as if they were still local balance
+            const outbound = chan.pending_payments
+              .filter(n => !!n.is_outgoing);
+
+            const pending = sumOf(outbound.map(({tokens}) => tokens));
+
+            return sum + chan.local_balance + pending;
+          },
+          Number());
+
         // Calculate the outbound peer inbound liquidity
         const outInbound = getChannels.channels
           .filter(n => n.partner_public_key === getOutKey.public_key)
@@ -194,6 +231,8 @@ module.exports = (args, cbk) => {
 
         // Variables to use in amount
         const variables = {
+          in_inbound: inInbound,
+          in_outbound: inOutbound,
           out_inbound: outInbound,
           out_liquidity: sumOf(
             getChannels.channels

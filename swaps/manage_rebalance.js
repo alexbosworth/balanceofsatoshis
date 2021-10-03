@@ -43,6 +43,14 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToManageRebalance'])
         }
 
+        if (isArray(args.max_fee)) {
+          return cbk([400, 'ExpectedSingleMaxFeeValue']);
+        }
+
+        if (isArray(args.max_fee_rate)) {
+          return cbk([400, 'ExpectedSingleMaxFeeValue']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToManageRebalance']);
         }
@@ -85,8 +93,8 @@ module.exports = (args, cbk) => {
             in_through: args.in_through,
             lnd: args.lnd,
             logger: args.logger,
-            max_fee: args.max_fee,
-            max_fee_rate: args.max_fee_rate,
+            max_fee: Number(args.max_fee) || undefined,
+            max_fee_rate: Number(args.max_fee_rate) || undefined,
             max_rebalance: args.max_rebalance,
             out_filters: args.out_filters,
             out_inbound: args.out_inbound,

@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncReflect = require('async/reflect');
 const {chanFormat} = require('bolt07');
 const {formatTokens} = require('ln-sync');
 const {getChannel} = require('ln-service');
@@ -6,17 +7,21 @@ const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
 const {getHeight} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
+const {getNode} = require('ln-service');
 const {getPayment} = require('ln-service');
 const {getTransactionRecord} = require('ln-sync');
 const {gray} = require('colorette');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
+const {findKey} = require('ln-sync');
+
 const asBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const balance = ({display}) => display.trim() || gray('0.00000000');
 const blocksTime = (n, p) => moment.duration(n * 10, 'minutes').humanize(p);
 const {isArray} = Array;
 const isHash = n => !!n && /^[0-9A-F]{64}$/i.test(n);
+const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const notFound = 404;
 const standardIdHexLength = Buffer.alloc(32).toString('hex').length;
 
@@ -77,8 +82,47 @@ module.exports = ({lnd, query}, cbk) => {
       // Get closed
       getClosed: ['validate', ({}, cbk) => getClosedChannels({lnd}, cbk)],
 
+      // Determine the public key to use
+      getKey: ['validate', asyncReflect(({}, cbk) => {
+        if (query.length === standardIdHexLength) {
+          return cbk();
+        }
+
+        return findKey({lnd, query}, cbk);
+      })],
+
       // Get graph
-      getGraph: ['validate', ({}, cbk) => getNetworkGraph({lnd}, cbk)],
+      getGraph: ['getKey', ({getKey}, cbk) => {
+        if (query.length === standardIdHexLength) {
+          return cbk(null, {channels: [], nodes: []});
+        }
+
+        if (!!getKey.value) {
+          return getNode({
+            lnd,
+            public_key: getKey.value.public_key,
+          },
+          (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            return cbk(null, {
+              channels: res.channels,
+              nodes: [{
+                alias: res.alias,
+                color: res.color,
+                features: res.features,
+                public_key: getKey.value.public_key,
+                sockets: res.sockets,
+                updated_at: res.last_updated,
+              }],
+            });
+          });
+        }
+
+        return getNetworkGraph({lnd}, cbk);
+      }],
 
       // Get blockchain height
       getHeight: ['validate', ({}, cbk) => getHeight({lnd}, cbk)],

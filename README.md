@@ -524,3 +524,134 @@ You can also create an alias to run a command in the background
 ```shell
 alias bosd="docker run -d --rm -v $HOME/.bos:/home/node/.bos alexbosworth/balanceofsatoshis"
 ```
+
+## Formulas
+
+Some commands take formula arguments. Formulas are expressions that allow you to perform
+functions and reference variables.
+
+There is a dynamic playground here where you can play with expressions:
+https://formulajs.info/functions/
+
+### `amount`
+
+Formula amounts are supported in the following commands:
+
+- `fund`
+- `inbound-channel-rules`
+- `open`
+- `probe`
+- `rebalance`
+- `send`
+
+When passing an amount you can pass a formula expression, and the following variables are
+defined:
+
+- `k`: 1,000
+- `m`: 1,000,000
+
+Examples:
+
+```
+bos fund <address> 7*m
+// Fund address with value 7,000,000
+
+bos probe <key> 100*k
+// Probe to key amount 100,000
+
+bos send <key> m/2
+// Push 500,000 to key
+```
+
+#### `rebalance`
+
+Rebalance defines additional variables for `--amount`:
+
+-  `capacity`: The total of inbound and outbound
+
+And for `--in-filter` and `--out-filter`:
+
+- `capacity`: The total capacity with the peer
+- `heights`: The set of heights of the channels with the peer
+- `inbound_liquidity`: The inbound liquidity with the peer
+- `outbound_liquidity`: The outbound liquidity with the peer
+
+Example:
+
+```
+// Rebalance with a target of 1,000,000
+bos rebalance --amount 1*m
+```
+
+#### `send`
+
+Send defines additional variables:
+
+- `eur`: The value of 1 Euro as defined by rate provider
+- `inbound`: The inbound liquidity with the destination
+- `liquidity`: The total capacity with the destination
+- `outbound`: The inbound liquidity with the destination
+- `usd`: The value of 1 US Dollar as defined by rate provider
+
+Example:
+
+```
+// Send node $1
+bos send <key> --amount 1*usd
+```
+
+#### `transfer`
+
+Transfer variables:
+
+- `out_inbound`: The outbound liquidity with the outbound peer
+- `out_liquidity`: The total inbound+outbound with the outbound peer
+- `out_outbound`: The total outbound liquidity with the outbound peer
+
+Example:
+
+```
+// Equalize inbound with a mutual peer
+bos transfer node "in_inbound - (in_inbound + out_inbound)/2" --through peer
+```
+
+### `fees`
+
+Variables can be referenced for `--set-fee-rate`
+
+- `fee_rate_of_<pubkey>`: Reference other node's fee rate
+- `inbound`: Remote balance with peer
+- `inbound_fee_rate`: Incoming fee rate
+- `outbound`: Local balance with peer
+
+You can also use functions:
+
+- `bips(n)`: Set fee as parts per thousand
+- `percent(0.00)`: Set fee as fractional percentage
+
+Example:
+
+```
+// Set the fee rate to a tag to 1% of the value forwarded
+bos fees --to tag --set-fee-rate "percent(1)"
+```
+
+### `inbound-channel-rules`
+
+Pass formulas for rules with `--rule`.
+
+Formula variables:
+
+- `capacities`: sizes of the peer's public channels
+- `capacity`: size of the inbound channel
+- `channel_ages`: block ages of the peer's public channels
+- `fee_rates`: outbound fee rates for the peer
+- `local_balance`: gifted amount on the incoming channel
+- `public_key`: key of the incoming peer
+
+Example:
+
+```
+// Reject channels that are smaller than 2,000,000 capacity
+bos inbound-channel-rules "capacity < 2*m"
+```
