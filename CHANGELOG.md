@@ -1,5 +1,9 @@
 # Versions
 
+## Version 11.2.1
+
+- Improve support for LND v0.13.3
+
 ## Version 11.2.0
 
 - `rebalance`: Add support for `key/formula` expressions in `--avoid`
