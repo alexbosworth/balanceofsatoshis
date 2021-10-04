@@ -11,6 +11,7 @@ const {describeParseError} = require('./../display');
 
 const amountVariables = {btc: 1e8, k: 1e3, m: 1e6, mm: 1e6};
 const asFormula = n => ({formula: n.slice(0, n.length-67), key: n.slice(-66)});
+const asOutFilter = n => ({out_filter: n.slice(67), key: n.slice(0, 66)});
 const {assign} = Object;
 const decodePair = n => n.split('/');
 const flatten = arr => [].concat(...arr);
@@ -18,6 +19,7 @@ const heightFromId = id => Number(id.split('x').shift());
 const {isArray} = Array;
 const isChannel = n => /^\d*x\d*x\d*$/.test(n);
 const isFormula = n => /(.*)\/0[2-3][0-9A-F]{64}$/gim.test(n);
+const isOutFilter = n => /^0[2-3][0-9A-F]{64}\/(.*)/gim.test(n);
 const isPair = n => !!n && /^0[2-3][0-9A-F]{64}\/0[2-3][0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/gim.test(n);
 const {keys} = Object;
@@ -110,6 +112,11 @@ module.exports = (args, cbk) => {
             return asFormula(id);
           }
 
+          // Exit early when the id is an out filter
+          if (isOutFilter(id)) {
+            return asOutFilter(id);
+          }
+
           // Exit early when the id is a public key
           if (isPublicKey(id)) {
             return {node: {from_public_key: id}};
@@ -163,14 +170,94 @@ module.exports = (args, cbk) => {
 
       // Get the block height for use in formulas
       getHeight: ['sortedAvoids', ({sortedAvoids}, cbk) => {
-        const formulas = sortedAvoids.filter(n => n.formula);
+        const hasFormula = !!sortedAvoids.find(n => !!n.formula);
+        const hasOutFilter = !!sortedAvoids.find(n => !!n.out_filter);
 
         // Exit early when there are no formulas
-        if (!formulas.length) {
+        if (!hasFormula &&  !hasOutFilter) {
           return cbk();
         }
 
         return getHeight({lnd: args.lnd}, cbk);
+      }],
+
+      // Get out filter avoids
+      getOutFilterIgnores: [
+        'getHeight',
+        'sortedAvoids',
+        ({getHeight, sortedAvoids}, cbk) =>
+      {
+        const filters = sortedAvoids
+          .filter(n => !!n.out_filter)
+          .map(n => ({formula: n.out_filter, key: n.key}));
+
+        return asyncMap(filters, ({formula, key}, cbk) => {
+          return getNode({lnd: args.lnd, public_key: key}, (err, res) => {
+            // Exit early when the node in question is unknown
+            if (isArray(err) && err.slice().shift() === 404) {
+              return cbk(null, []);
+            }
+
+            if (!!err) {
+              return cbk(err);
+            }
+
+            const outboundAvoids = res.channels
+              .map(({capacity, id, policies}) => {
+                const height = heightFromId(id);
+                const outPolicy = policies.find(n => n.public_key === key);
+                const peerPolicy = policies.find(n => n.public_key !== key);
+
+                if (!outPolicy || !peerPolicy) {
+                  return;
+                }
+
+                const parser = new Parser();
+                const variables = {};
+
+                assign(variables, amountVariables);
+
+                assign(variables, {
+                  capacity,
+                  height,
+                  age: getHeight.current_block_height - height,
+                  base_fee: Number(outPolicy.base_fee_mtokens) || Number(),
+                  fee_rate: outPolicy.fee_rate || Number(),
+                });
+
+                keys(variables).forEach(key => {
+                  parser.setVariable(key.toLowerCase(), variables[key]);
+                  parser.setVariable(key.toUpperCase(), variables[key]);
+
+                  return;
+                });
+
+                const parsed = parser.parse(formula);
+
+                if (!!parsed.error) {
+                  return {error: describeParseError({error: parsed.error})};
+                }
+
+                if (parsed.result === false) {
+                  return;
+                }
+
+                return {
+                  from_public_key: key,
+                  to_public_key: peerPolicy.public_key,
+                };
+              });
+
+            const {error} = outboundAvoids.find(n => !!n && !!n.error) || {};
+
+            if (!!error) {
+              return cbk([400, 'InvalidAvoidDirective', {error, formula}]);
+            }
+
+            return cbk(null, outboundAvoids.filter(n => !!n));
+          });
+        },
+        cbk);
       }],
 
       // Get formula avoids
@@ -274,11 +361,13 @@ module.exports = (args, cbk) => {
       combinedIgnores: [
         'getChannelIgnores',
         'getFormulaIgnores',
+        'getOutFilterIgnores',
         'getQueryIgnores',
         'sortedAvoids',
         ({
           getChannelIgnores,
           getFormulaIgnores,
+          getOutFilterIgnores,
           getQueryIgnores,
           sortedAvoids,
         },
@@ -287,6 +376,7 @@ module.exports = (args, cbk) => {
         const ignore = [
           flatten(getChannelIgnores),
           flatten(getFormulaIgnores),
+          flatten(getOutFilterIgnores),
           getQueryIgnores,
           sortedAvoids.map(n => n.node).filter(n => !!n),
         ];

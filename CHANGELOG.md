@@ -1,5 +1,9 @@
 # Versions
 
+## Version 11.2.0
+
+- `rebalance`: Add support for `key/formula` expressions in `--avoid`
+
 ## Version 11.1.0
 
 - `avoid`: Add `capacity` to reference channel capacity amount

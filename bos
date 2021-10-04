@@ -1174,6 +1174,7 @@ prog
   .help('--avoid can take a channel id or a public key to avoid')
   .help('--avoid can take a public_key/public_key to avoid a directed pair')
   .help('--avoid can take a FORMULA/public_key to avoid inbound peers')
+  .help('--avoid can take a public_key/FORMULA to avoid outbound peers')
   .help('--avoid FORMULA variables: FEE_RATE, BASE_FEE, HEIGHT, AGE')
   .help('--in decreases the inbound liquidity with a specific peer/tag')
   .help('--in-filter vars: CAPACITY/HEIGHTS/(INBOUND|OUTBOUND)_LIQUIDITY')
