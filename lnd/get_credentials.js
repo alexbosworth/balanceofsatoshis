@@ -16,6 +16,7 @@ const {pemAsDer} = require('./../encryption');
     is_nospend: <Restrict Credentials To Non-Spending Permissions Bool>
     is_readonly: <Restrict Credentials To Read-Only Permissions Bool>
     logger: <Winston Logger Object> ({info}) => ()
+    [methods]: [<Allow Specific Method String>]
     [node]: <Node Name String>
   }
 
@@ -81,6 +82,7 @@ module.exports = (args, cbk) => {
           is_nospend: args.is_nospend,
           is_readonly: args.is_readonly,
           logger: args.logger,
+          methods: args.methods,
           node: args.node,
         },
         cbk);

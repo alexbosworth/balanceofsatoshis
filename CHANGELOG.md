@@ -1,5 +1,9 @@
 # Versions
 
+## Version 11.3.0
+
+- `credentials`: Allow specifying specific methods to allow in a credential
+
 ## Version 11.2.1
 
 - Improve support for LND v0.13.3

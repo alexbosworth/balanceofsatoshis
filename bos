@@ -420,6 +420,7 @@ prog
   .help('Output encrypted remote access credentials. Use with "nodes --add"')
   .option('--cleartext', 'Output remote access credentials without encryption')
   .option('--days <days>', 'Expiration days for credentials', INT, 365)
+  .option('--method <method_name>', 'White-list specific method', REPEATABLE)
   .option('--node <node_name>', 'Get credentials for a saved node')
   .option('--nospend', 'Credentials do not include spending privileges')
   .option('--readonly', 'Credentials only include read permissions')
@@ -432,6 +433,7 @@ prog
         is_cleartext: options.cleartext,
         is_nospend: options.nospend,
         is_readonly: options.readonly,
+        methods: flatten([options.method].filter(n => !!n)),
         node: options.node,
       },
       responses.returnObject({logger, reject, resolve}));

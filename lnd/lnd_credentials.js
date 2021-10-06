@@ -12,6 +12,7 @@ const {grantAccess} = require('ln-service');
 const {restrictMacaroon} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const credentialRestrictions = require('./credential_restrictions');
 const {decryptCiphertext} = require('./../encryption');
 const {derAsPem} = require('./../encryption');
 const getCert = require('./get_cert');
@@ -38,6 +39,7 @@ const socket = 'localhost:10009';
     [is_readonly]: <Restrict Credentials To Read-Only Permissions Bool>
     [key]: <Encrypt to Public Key DER Hex String>
     [logger]: <Winston Logger Object>
+    [methods]: [<Allow Specific Method String>]
     [node]: <Node Name String> // Defaults to default local mainnet node creds
   }
 
@@ -199,8 +201,14 @@ module.exports = (args, cbk) => {
         'macaroon',
         ({credentials, macaroon}, cbk) =>
       {
+        const {allow} = credentialRestrictions({
+          is_nospend: args.is_nospend,
+          is_readonly: args.is_readonly,
+          methods: args.methods,
+        });
+
         // Exit early when readonly credentials are not requested
-        if (!args.is_readonly && !args.is_nospend) {
+        if (!allow) {
           return cbk(null, {macaroon});
         }
 
@@ -210,9 +218,12 @@ module.exports = (args, cbk) => {
           socket: credentials.socket,
         });
 
-        const permissions = !!args.is_readonly ? readPerms : noSpendPerms;
-
-        return grantAccess({lnd, permissions}, cbk);
+        return grantAccess({
+          lnd,
+          methods: allow.methods,
+          permissions: allow.permissions,
+        },
+        cbk);
       }],
 
       // Final credentials with encryption applied
