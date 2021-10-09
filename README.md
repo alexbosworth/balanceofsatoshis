@@ -16,7 +16,7 @@ If you have [Docker](https://docs.docker.com/get-docker/) installed or are using
 platform like Umbrel or BTCPayServer, you can [run through Docker](#docker) instead.
 
 ```shell
-npm install -g balanceofsatoshis --no-audit
+npm install -g balanceofsatoshis
 ```
 
 Verify it's installed:

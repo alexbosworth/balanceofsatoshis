@@ -212,6 +212,7 @@ prog
   .help('If you do not specify a method it will list the supported methods')
   .argument('[method]', 'Method to call')
   .option('--node <node_name>', 'Saved node to use for call')
+  .option('--param <param>', 'query encoded name=value', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -220,6 +221,7 @@ prog
           ask: (n, cbk) => inquirer.prompt([n]).then(n => cbk(null, n)),
           lnd: (await lndForNode(logger, options.node)).lnd,
           method: args.method,
+          params: flatten([options.param].filter(n => !!n)),
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {

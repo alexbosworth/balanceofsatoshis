@@ -1,5 +1,9 @@
 # Versions
 
+## Version 11.4.0
+
+- `call`: Add `--param` flag to pass arguments directly instead of interactively
+
 ## Version 11.3.0
 
 - `credentials`: Allow specifying specific methods to allow in a credential

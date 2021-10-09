@@ -1,3 +1,5 @@
+const {parse} = require('querystring');
+
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
 const lnService = require('ln-service');
@@ -5,6 +7,7 @@ const {returnResult} = require('asyncjs-util');
 
 const {calls} = require('./api');
 
+const {assign} = Object;
 const isChannel = n => !!n && /^\d*x\d*x\d*$/.test(n);
 const isHash = n => !!n && /^[0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
@@ -19,12 +22,13 @@ const methodDetails = (calls, method) => calls.find(n => n.method === method);
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [method]: <Method to Call String>
+    [params]: [<Querystring Encoded Parameter String>]
   }
 
   @returns via cbk or Promise
   <Result Object>
 */
-module.exports = ({ask, lnd, logger, method}, cbk) => {
+module.exports = ({ask, lnd, logger, method, params}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -76,12 +80,36 @@ module.exports = ({ask, lnd, logger, method}, cbk) => {
           return cbk(null, []);
         }
 
+        const parameters = (params || [])
+          .map(encoded => parse(encoded))
+          .reduce((sum, n) => assign(sum, n), {});
+
+        // Parameters must all match method parameters
+        const unknown = keys(parameters).find(param => {
+          return !arguments.find(({named}) => named === param);
+        });
+
+        if (!!unknown) {
+          return cbk([400, 'UnknownParameterProvided', {unknown}]);
+        }
+
         return asyncMapSeries(arguments, (argument, cbk) => {
+          const {named} = argument;
+
+          if (!!parameters[named] && argument.type === 'boolean') {
+            return cbk(null, {[named]: parameters[named] === 'true'});
+          }
+
+          if (parameters[named] !== undefined) {
+            return cbk(null, {[named]: parameters[named]});
+          }
+
           if (argument.type === 'boolean') {
             return ask({
               default: false,
-              name: argument.named,
+              name: named,
               message: argument.description,
+              prefix: `[${named}]`,
               type: 'confirm',
             },
             cbk);
@@ -90,7 +118,8 @@ module.exports = ({ask, lnd, logger, method}, cbk) => {
           return ask({
             default: () => !!argument.optional ? String() : undefined,
             message: argument.description,
-            name: argument.named,
+            name: named,
+            prefix: `[${named}]`,
             suffix: !!argument.optional ? ' (Optional)' : String(),
             type: argument.type || 'input',
             validate: input => {
