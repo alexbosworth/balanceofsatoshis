@@ -533,6 +533,22 @@ functions and reference variables.
 There is a dynamic playground here where you can play with expressions:
 https://formulajs.info/functions/
 
+### `--avoid`
+
+In `--avoid` flag commands like rebalance, a formula can be applied directionally:
+
+`--avoid "fee_rate < 100/<PUBKEY>"` to avoid channels forwarding to the public key that
+charge a fee rate under 100 PPM.
+
+Available variables:
+
+- `age`: Age of the channel vs the current height
+- `base_fee`: Base fee to be charged to route
+- `capacity`: Capacity of the channel
+- `fee_rate`: PPM fee to be charged to route
+- `height`: Absolute height of the channel
+- `opposite_fee_rate`: PPM fee that is charged in the non-routing direction
+
 ### `amount`
 
 Formula amounts are supported in the following commands:

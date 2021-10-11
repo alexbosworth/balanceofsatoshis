@@ -1,5 +1,9 @@
 # Versions
 
+## Version 11.5.1
+
+- `--avoid`: Correct naming`OUT_FEE_RATE`/`IN_FEE_RATE` to `OPPOSITE_FEE_RATE`
+
 ## Version 11.5.0
 
 - `--avoid` Add `IN_FEE_RATE` and `OUT_FEE_RATE` to formulas
