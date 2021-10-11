@@ -1,5 +1,11 @@
 # Versions
 
+## Version 11.5.0
+
+- `--avoid` Add `IN_FEE_RATE` and `OUT_FEE_RATE` to formulas
+- `find`: Correct socket output for peer node lookups
+- `telegram`: Correct week summary chain fee costs in `/costs`
+
 ## Version 11.4.0
 
 - `call`: Add `--param` flag to pass arguments directly instead of interactively

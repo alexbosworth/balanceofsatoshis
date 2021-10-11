@@ -323,7 +323,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           });
         });
 
-        bot.command('liquidity', async ({message, reply}) => {
+        bot.command('liquidity', async ctx => {
           try {
             await asyncRetry({
               errorFilter: err => {
@@ -335,13 +335,14 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               },
             }, async () => {
               await handleLiquidityCommand({
-                reply,
                 request,
-                from: message.from.id,
+                from: ctx.message.from.id,
                 id: connectedId,
                 key: apiKey.key,
                 nodes: allNodes,
-                text: message.text,
+                reply: ctx.reply,
+                text: ctx.message.text,
+                working: () => ctx.replyWithChatAction('typing'),
               });
             });
           } catch (err) {
@@ -392,6 +393,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               id: connectedId,
               nodes: allNodes,
               reply: n => ctx.reply(n),
+              working: () => ctx.replyWithChatAction('typing'),
             });
           } catch (err) {
             logger.error({err});

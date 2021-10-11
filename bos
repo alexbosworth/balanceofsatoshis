@@ -1193,7 +1193,7 @@ prog
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay')
   .option('--minutes <minutes>', 'Time-out route search after N minutes', INT)
   .option('--no-color', 'Mute all colors')
-  .option('--node <node_name>', 'Node to use for rebalance')
+  .option('--node <node_name>', 'Saved node to use for rebalance')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
   .option('--out-filter <out_filter>', 'Filter outbound tag nodes', REPEATABLE)
   .option('--out-target-inbound <amount>', 'Balance up to inbound amount')

@@ -114,7 +114,7 @@ module.exports = ({lnd, query}, cbk) => {
                 color: res.color,
                 features: res.features,
                 public_key: getKey.value.public_key,
-                sockets: res.sockets,
+                sockets: res.sockets.map(n => n.socket),
                 updated_at: res.last_updated,
               }],
             });

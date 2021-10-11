@@ -223,6 +223,7 @@ module.exports = (args, cbk) => {
                   age: getHeight.current_block_height - height,
                   base_fee: Number(outPolicy.base_fee_mtokens) || Number(),
                   fee_rate: outPolicy.fee_rate || Number(),
+                  in_fee_rate: peerPolicy.fee_rate || Number(),
                 });
 
                 keys(variables).forEach(key => {
@@ -283,8 +284,9 @@ module.exports = (args, cbk) => {
               .map(({capacity, id, policies}) => {
                 const height = heightFromId(id);
                 const inPolicy = policies.find(n => n.public_key !== key);
+                const outPolicy = policies.find(n => n.public_key === key);
 
-                if (!inPolicy) {
+                if (!inPolicy || !outPolicy) {
                   return;
                 }
 
@@ -299,6 +301,7 @@ module.exports = (args, cbk) => {
                   age: getHeight.current_block_height - height,
                   base_fee: Number(inPolicy.base_fee_mtokens) || Number(),
                   fee_rate: inPolicy.fee_rate || Number(),
+                  out_fee_rate: outPolicy.fee_rate || Number(),
                 });
 
                 keys(variables).forEach(key => {
