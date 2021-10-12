@@ -1,6 +1,6 @@
 # Versions
 
-## Version 11.6.0
+## Version 11.6.1
 
 - `clean-failed-payments`: Add method to clean out failed past payments
 

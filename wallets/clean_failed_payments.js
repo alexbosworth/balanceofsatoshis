@@ -6,7 +6,7 @@ const {getFailedPayments} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const defaultPagingLimit = 500;
+const defaultPagingLimit = 1000;
 const {isArray} = Array;
 const unsupported = 501;
 
