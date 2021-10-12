@@ -1,5 +1,9 @@
 # Versions
 
+## Version 11.6.0
+
+- `clean-failed-payments`: Add method to clean out failed past payments
+
 ## Version 11.5.1
 
 - `--avoid`: Correct naming`OUT_FEE_RATE`/`IN_FEE_RATE` to `OPPOSITE_FEE_RATE`

@@ -288,6 +288,22 @@
       "method": "getConnectedWatchtowers"
     },
     {
+      "arguments": [
+        {
+          "description": "Results limit",
+          "named": "limit",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Paging token",
+          "named": "token",
+          "optional": true
+        }
+      ],
+      "method": "getFailedPayments"
+    },
+    {
       "method": "getFeeRates"
     },
     {

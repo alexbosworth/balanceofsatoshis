@@ -395,6 +395,26 @@ prog
     });
   })
 
+  // Clean out failed payments
+  .command('clean-failed-payments', 'Clean out past failed payment data')
+  .help('Remove old failed payment data for probes and other failed payments')
+  .option('--dryrun', 'Avoid actually deleting the failed payment record')
+  .option('--node <node_name>', 'Clean failed payments on a saved node')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return wallets.cleanFailedPayments({
+          logger,
+          is_dry_run: !!options.dryrun,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(err);
+      }
+    });
+  })
+
   // Determine the outcomes of channel closings
   .command('closed', 'Get the status of a channel closings')
   .help('Channel closes with chain-transaction derived resolution details')
