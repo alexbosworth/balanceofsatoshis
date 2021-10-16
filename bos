@@ -636,6 +636,7 @@ prog
   .command('fund', 'Make a signed transaction spending on-chain funds')
   .help('Use LND UTXOs to craft a signed raw transaction sending to addresses')
   .help('Specify <address> <amount> <address> <amount> for addresses, amounts')
+  .help('Amounts support formulas, use MAX to reference selected utxos total')
   .argument('<address_amount...>', 'Address and amount to send')
   .option('--dryrun', 'Avoid locking up UTXOs')
   .option('--fee-rate <fee>', 'Per vbyte fee rate for on-chain tx fee', INT)

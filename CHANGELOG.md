@@ -1,5 +1,9 @@
 # Versions
 
+## Version 11.7.0
+
+- `fund`: Add `MAX` variable to allow spending down specified UTXOs
+
 ## Version 11.6.2
 
 - `clean-failed-payments`: Add method to clean out failed past payments
