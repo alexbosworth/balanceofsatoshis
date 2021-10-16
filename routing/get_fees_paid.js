@@ -23,6 +23,7 @@ const {keys} = Object;
 const minChartDays = 4;
 const maxChartDays = 90;
 const mtokensAsBigUnit = n => (Number(n / BigInt(1e3)) / 1e8).toFixed(8);
+const mtokensAsTokens = mtokens => Number(mtokens / BigInt(1e3));
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 
 /** Get routing fees paid
@@ -280,9 +281,12 @@ module.exports = (args, cbk) => {
 
       // Total paid
       total: ['forwards', ({forwards}, cbk) => {
-        const paid = forwards.reduce((sum, {fee}) => sum + fee, Number());
+        const paid = forwards.reduce((sum, payment) => {
+          return sum + BigInt(payment.fee_mtokens);
+        },
+        BigInt(Number()));
 
-        return cbk(null, paid);
+        return cbk(null, mtokensAsTokens(paid));
       }],
 
       // Payments activity aggregated

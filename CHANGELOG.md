@@ -1,5 +1,9 @@
 # Versions
 
+## Version 11.7.1
+
+- `chart-fees-paid`: Increase precision of total fees paid
+
 ## Version 11.7.0
 
 - `fund`: Add `MAX` variable to allow spending down specified UTXOs
