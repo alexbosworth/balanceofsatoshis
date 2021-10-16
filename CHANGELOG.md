@@ -1,5 +1,9 @@
 # Versions
 
+## Version 11.7.2
+
+- `telegram`: Add title to `/liquidity` output when a peer is referenced
+
 ## Version 11.7.1
 
 - `chart-fees-paid`: Increase precision of total fees paid
