@@ -1,6 +1,6 @@
 # Versions
 
-## Version 11.7.2
+## Version 11.7.3
 
 - `telegram`: Add title to `/liquidity` output when a peer is referenced
 

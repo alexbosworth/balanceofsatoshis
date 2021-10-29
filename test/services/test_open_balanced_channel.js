@@ -51,6 +51,7 @@ const makeArgs = overrides => {
           payment_request: request,
           r_hash: Buffer.alloc(32),
         }),
+        deletePayment: ({}, cbk) => cbk(),
         fundingStateStep: ({}, cbk) => cbk(),
         getInfo: ({}, cbk) => cbk(null, getInfoRes()),
         getNodeInfo: ({}, cbk) => cbk(null, getNodeInfoResponse),
