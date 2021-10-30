@@ -27,6 +27,7 @@ const {postChainTransaction} = require('ln-telegram');
 const {postClosedMessage} = require('ln-telegram');
 const {postOpenMessage} = require('ln-telegram');
 const {postSettledInvoice} = require('ln-telegram');
+const {postSettledPayment} = require('ln-telegram');
 const {postUpdatedBackup} = require('ln-telegram');
 const {returnResult} = require('asyncjs-util');
 const {sendMessage} = require('ln-telegram');
@@ -34,6 +35,7 @@ const {subscribeToBackups} = require('ln-service');
 const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
+const {subscribeToPastPayments} = require('ln-service');
 const {subscribeToTransactions} = require('ln-service');
 const {Telegraf} = require('telegraf');
 
@@ -517,7 +519,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               key: apiKey.key,
               partner_public_key: update.partner_public_key,
             },
-            err => !!err ? logger.error({closed_err: err}) : null);
+            err => !!err ? logger.error({node: from, closed_err: err}) : null);
           });
 
           sub.on('channel_opened', update => {
@@ -666,6 +668,43 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               return cbk([503, 'InvoicesSubscriptionFailed', {err, from}]);
             });
           });
+        },
+        cbk);
+      }],
+
+      // Subscribe to past payments
+      payments: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
+        return asyncEach(getNodes, (node, cbk) => {
+          const sub = subscribeToPastPayments({lnd: node.lnd});
+
+          subscriptions.push(sub);
+
+          sub.on('payment', payment => {
+            // Ignore rebalances
+            if (payment.destination === node.public_key) {
+              return;
+            }
+
+            return postSettledPayment({
+              request,
+              from: node.from,
+              id: connectedId,
+              key: apiKey.key,
+              lnd: node.lnd,
+              nodes: getNodes.map(n => n.public_key),
+              payment: {
+                destination: payment.destination,
+                id: payment.id,
+                safe_fee: payment.safe_fee,
+                safe_tokens: payment.safe_tokens,
+              },
+            },
+            err => !!err ? logger.error({post_payment_error: err}) : null);
+
+            return;
+          });
+
+          sub.on('error', err => cbk([503, 'ErrorInPaymentsSub', {err}]));
         },
         cbk);
       }],

@@ -1,5 +1,11 @@
 # Versions
 
+## Version 11.8.0
+
+- `call`: Add support for `sendMessageToPeer`, `subscribeToPeerMessages`
+- `telegram`: Report outgoing payments
+- `trade-secret`: Add a command to create or decode secret trades
+
 ## Version 11.7.3
 
 - `telegram`: Add title to `/liquidity` output when a peer is referenced

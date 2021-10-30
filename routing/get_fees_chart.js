@@ -1,7 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {formatTokens} = require('ln-sync');
-const {getNode} = require('ln-service');
+const {getNodeAlias} = require('ln-sync');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
@@ -61,12 +61,7 @@ module.exports = (args, cbk) => {
 
         const [lnd] = args.lnds;
 
-        return getNode({
-          lnd,
-          is_omitting_channels: true,
-          public_key: args.via,
-        },
-        cbk);
+        return getNodeAlias({lnd, id: args.via}, cbk);
       }],
 
       // Segment measure

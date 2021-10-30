@@ -15,6 +15,7 @@ const fetch = importLazy('@alexbosworth/node-fetch');
 const inquirer = importLazy('inquirer');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
+const paidServices = importLazy('paid-services');
 const prog = require('caporal');
 
 const commandConstants = require('./commands/constants');
@@ -1574,6 +1575,27 @@ prog
           payments: {limit: options.budget},
           request: commands.fetchRequest({fetch}),
         });
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
+    });
+  })
+
+  // Trade a secret payload
+  .command('trade-secret', 'Trade a secret with someone')
+  .help('Create or view a trade')
+  .help('Example: purchase/sell an invite link to a private group')
+  .help('Example: purchase/sell a link to a file')
+  .option('--node <name>', 'Saved node to use for trade')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return paidServices.manageTrades({
+          logger,
+          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(null, res)),
+          lnd: (await lndForNode(logger, options.node)).lnd,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
         return reject(logger.error({err}));
       }

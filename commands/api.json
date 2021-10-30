@@ -579,6 +579,26 @@
     {
       "arguments": [
         {
+          "description": "Hex encoded message",
+          "named": "message"
+        },
+        {
+          "description": "Node public key to send to",
+          "named": "public_key",
+          "type": "public_key"
+        },
+        {
+          "description": "Message type",
+          "named": "type",
+          "optional": true,
+          "type": "number"
+        }
+      ],
+      "method": "sendMessageToPeer"
+    },
+    {
+      "arguments": [
+        {
           "description": "Hex encoded secret preimage",
           "named": "secret"
         }
@@ -634,6 +654,10 @@
     {
       "events": ["invoice_updated"],
       "method": "subscribeToInvoices"
+    },
+    {
+      "events": ["message"],
+      "method": "subscribeToPeerMessages"
     },
     {
       "events": ["connected", "disconnected"],
