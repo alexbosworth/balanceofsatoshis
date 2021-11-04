@@ -1,6 +1,6 @@
 # Versions
 
-## Version 11.8.1
+## Version 11.8.2
 
 - `call`: Add support for `sendMessageToPeer`, `subscribeToPeerMessages`
 - `telegram`: Report outgoing payments

@@ -611,11 +611,10 @@ prog
   .option('--node <node_name>', 'Node to get forwards for')
   .option('--out <to>', 'Forwards that sent out to a specified peer')
   .action((args, options, logger) => {
-    const table = !!options.complete ? undefined : 'rows';
-
     return new Promise(async (resolve, reject) => {
       try {
         const {lnd} = await lndForNode(logger, options.node);
+        const table = !!options.complete ? undefined : 'rows';
 
         return network.getForwards({
           lnd,

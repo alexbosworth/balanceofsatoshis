@@ -168,6 +168,7 @@ bos utxos
 - The `rebalance` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/327ed9f6-3a73-41c2-a9c7-8c4e274bdd54)
 - Another `rebalance` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/30a7c519-0ec0-4644-b3aa-341c41bac296)
 - Running `rebalance` [video (In German)](https://www.youtube.com/watch?v=EimVHnv-SUk)
+- Secrets of `rebalance` [command revealed](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/3c0709b7-5f6a-4a3c-944e-48b80e0556df)
 - Running `telegram` [via nohup/tmux howto](https://plebnet.wiki/wiki/Umbrel_-_Installing_BoS)
 - Running `telegram` [via systemd](https://github.com/ziggie1984/miscellanous/blob/97c4905747fe23a824b6e53dc674c4a571ac0f5c/automation_telegram_bot.md)
 

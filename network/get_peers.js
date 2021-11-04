@@ -282,8 +282,13 @@ module.exports = (args, cbk) => {
           return getChannel({id, lnd: args.lnd}, (err, res) => {
             const [errorCode] = err || [];
 
+            // Exit early when the policy is unknown
             if (errorCode === 404) {
               return cbk();
+            }
+
+            if (!!err) {
+              return cbk(err);
             }
 
             return cbk(null, {policies: res.policies});

@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncDoUntil = require('async/doUntil');
+const asyncRetry = require('async/retry');
 const {getForwards} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
@@ -52,17 +53,20 @@ module.exports = ({days, lnd}, cbk) => {
 
         return asyncDoUntil(
           cbk => {
-            return getForwards({after, before, lnd, token}, (err, res) => {
-              if (!!err) {
-                return cbk(err);
-              }
+            return asyncRetry({}, cbk => {
+              return getForwards({after, before, lnd, token}, (err, res) => {
+                if (!!err) {
+                  return cbk(err);
+                }
 
-              forwards.push(res.forwards);
+                forwards.push(res.forwards);
 
-              token = res.next;
+                token = res.next;
 
-              return cbk();
-            });
+                return cbk();
+              });
+            },
+            cbk);
           },
           cbk => cbk(null, !token),
           err => !!err ? cbk(err) : cbk(null, forwards)
