@@ -1,6 +1,7 @@
 const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncRetry = require('async/retry');
+const {connectPeer} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getFundedTransaction} = require('goldengate');
 const {getPeers} = require('ln-service');
@@ -135,6 +136,11 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Connect to the peer
+      connect: ['validate', ({}, cbk) => {
+        return connectPeer({id: args.partner_public_key, lnd: args.lnd}, cbk);
+      }],
+
       // Derive the multisig 2:2 key
       getMultiSigKey: ['validate', ({}, cbk) => {
         return getPublicKey({
@@ -143,11 +149,6 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
         },
         cbk);
-      }],
-
-      // Get connected peers
-      getPeers: ['validate', ({}, cbk) => {
-        return getPeers({lnd: args.lnd}, cbk);
       }],
 
       // BitcoinJS Network
@@ -163,6 +164,9 @@ module.exports = (args, cbk) => {
           return cbk([400, 'UnsupportedNetworkForAcceptingBalancedChannel']);
         }
       }],
+
+      // Get connected peers
+      getPeers: ['connect', ({}, cbk) => getPeers({lnd: args.lnd}, cbk)],
 
       // Make sure that the requesting peer is connected
       confirmPeer: ['getPeers', ({getPeers}, cbk) => {

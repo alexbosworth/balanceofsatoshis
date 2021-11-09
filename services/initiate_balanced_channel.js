@@ -6,6 +6,7 @@ const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
 const {cancelPendingChannel} = require('ln-service');
+const {connectPeer} = require('ln-sync');
 const {createInvoice} = require('ln-service');
 const {createPsbt} = require('psbt');
 const {getChainFeeRate} = require('ln-service');
@@ -171,9 +172,9 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Get connected peers
-      getPeers: ['validate', ({}, cbk) => {
-        return getPeers({lnd: args.lnd}, cbk);
+      // Connect to the peer
+      connect: ['validate', ({}, cbk) => {
+        return connectPeer({id: args.partner_public_key, lnd: args.lnd}, cbk);
       }],
 
       // Get the transit key
@@ -248,51 +249,6 @@ module.exports = (args, cbk) => {
         }
 
         return cbk();
-      }],
-
-      // Get the node sockets
-      getNode: ['getPeers', ({getPeers}, cbk) => {
-        const connected = getPeers.peers.map(n => n.public_key);
-
-        // Exit early when there is no need to connect to the node
-        if (connected.includes(args.partner_public_key)) {
-          return cbk();
-        }
-
-        return getNode({
-          is_omitting_channels: true,
-          lnd: args.lnd,
-          public_key: args.partner_public_key,
-        },
-        cbk);
-      }],
-
-      // Connect to the node if not connected
-      connect: ['getNode', ({getNode}, cbk) => {
-        // Exit early when there is no node to connect to
-        if (!getNode) {
-          return cbk();
-        }
-
-        return asyncDetectSeries(getNode.sockets, ({socket}, cbk) => {
-          return addPeer({
-            socket,
-            lnd: args.lnd,
-            public_key: args.partner_public_key
-          },
-          err => cbk(null, !err));
-        },
-        (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          if (!res) {
-            return cbk([503, 'FailedToConnectToPeer']);
-          }
-
-          return cbk(null, res);
-        });
       }],
 
       // Ask for what capacity to propose

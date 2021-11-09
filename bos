@@ -50,7 +50,6 @@ const flatten = arr => [].concat(...arr);
 const {FLOAT} = prog;
 const hexMatch = /^[0-9a-f]+$/i;
 const {INT} = prog;
-const {isArray} = Array;
 const {keys} = Object;
 const lndForNode = (logger, node) => lnd.authenticatedLnd({logger, node});
 const months = [...Array(12).keys()].map(n => ++n);
@@ -317,7 +316,7 @@ prog
 
   // Show a chart of fees earned
   .command('chart-fees-earned', 'Get a chart of earned routing fees')
-  .argument('[via_peer]', 'Routing fees earned via a specified peer')
+  .argument('[via]', 'Routing fees earned via a specified node or tag')
   .help('Show the routing fees earned')
   .option('--count', 'Show count of forwards instead of fees earned')
   .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
@@ -328,10 +327,11 @@ prog
       try {
         return routing.getFeesChart({
           days: options.days,
+          fs: {getFile: readFile},
           is_count: options.count,
           is_forwarded: options.forwarded,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
-          via: args.viaPeer,
+          via: args.via || undefined,
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
@@ -773,23 +773,24 @@ prog
   .option('--min-score <min_score>', 'Minimum fee rate to consider', INT)
   .option('--node <node_name>', 'Node to get inbound liquidity')
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
-  .option('--with <node_public_key>', 'Liquidity with a specific node')
+  .option('--with <node_key_or_tag>', 'Liquidity with a specific node/tag')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return balances.getLiquidity({
           above: options.above || undefined,
           below: options.below || undefined,
+          fs: {getFile: readFile},
           is_top: options.top || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           max_fee_rate: options.maxFeeRate || undefined,
           min_node_score: options.minScore || undefined,
           request: commands.fetchRequest({fetch}),
-          with: options.with || undefined,
+          with: options.with,
         },
         responses.returnNumber({logger, reject, resolve, number: 'balance'}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
@@ -1017,21 +1018,22 @@ prog
   .option('--below <tokens>', 'Return amount above watermark', INT)
   .option('--node <node_name>', 'Node to get outbound liquidity amount')
   .option('--top', 'Top percentile inbound liquidity in an individual channel')
-  .option('--with <peer_public_key>', 'Liquidity with a specific node')
+  .option('--with <public_key_or_tag>', 'Liquidity with a specific node/tag')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return balances.getLiquidity({
           above: options.above || undefined,
           below: options.below || undefined,
+          fs: {getFile: readFile},
           is_outbound: true,
           is_top: options.top || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          with: options.with || undefined,
+          with: options.with,
         },
         responses.returnNumber({logger, reject, resolve, number: 'balance'}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })

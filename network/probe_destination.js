@@ -27,7 +27,6 @@ const defaultMaxFee = 1337;
 const defaultTokens = 1;
 const {floor} = Math;
 const fromKeyType = '34349339';
-const {isArray} = Array;
 const keySendPreimageType = '5482373484';
 const makeNonce = () => randomBytes(32).toString('hex');
 const {max} = Math;

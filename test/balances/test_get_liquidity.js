@@ -4,6 +4,8 @@ const {getInfoResponse} = require('./../fixtures');
 const {getLiquidity} = require('./../../balances');
 const {listChannelsResponse} = require('./../fixtures');
 
+const fs = {getFile: ({}, cbk) => cbk('err')};
+
 const makeLnd = ({}) => {
   return {
     default: {
@@ -21,22 +23,22 @@ const makeLnd = ({}) => {
 
 const tests = [
   {
-    args: {},
+    args: {fs},
     description: 'LND is required',
     error: [400, 'ExpectedLndToGetLiquidity'],
   },
   {
-    args: {is_outbound: true, lnd: makeLnd({}), max_fee_rate: 0},
+    args: {fs, is_outbound: true, lnd: makeLnd({}), max_fee_rate: 0},
     description: 'Max liquidity fee rate is not supported for outbound lookup',
     error: [400, 'MaxLiquidityFeeRateNotSupportedForOutbound'],
   },
   {
-    args: {lnd: makeLnd({}), min_node_score: 1, request: undefined},
+    args: {fs, lnd: makeLnd({}), min_node_score: 1, request: undefined},
     description: 'A request method is required for liquidity score lookups',
     error: [400, 'ExpectedRequestFunctionToFilterByNodeScore'],
   },
   {
-    args: {lnd: makeLnd({})},
+    args: {fs, lnd: makeLnd({})},
     description: 'Get liquidity',
     expected: {balance: 1},
   },

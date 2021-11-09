@@ -1,5 +1,12 @@
 # Versions
 
+## Version 11.9.0
+
+- `chart-fees-earned`: Add tag support to view fees earned via tagged nodes
+- `inbound-liquidity`: Add tag support to `--with` to view inbound for a tag
+- `open-balanced-channel`: Fix issue connecting to peer when accepting balanced channel
+- `outbound-liquidity`: Add tag support to `--with` to view outnbound for a tag
+
 ## Version 11.8.2
 
 - `call`: Add support for `sendMessageToPeer`, `subscribeToPeerMessages`

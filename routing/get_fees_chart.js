@@ -6,6 +6,7 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
+const {getTags} = require('./../tags');
 const getForwards = require('./get_forwards');
 
 const asDate = n => n.toISOString();
@@ -20,9 +21,12 @@ const maxChartDays = 90;
 
   {
     days: <Fees Earned Over Days Count Number>
+    fs: {
+      getFile: <Get File Function>
+    }
     is_count: <Return Only Count of Forwards Bool>
     lnds: [<Authenticated LND API Object>]
-    via: <Via Public Key Hex String>
+    [via]: <Via Public Key Hex or Tag Id or Alias String>
   }
 
   @returns via cbk or Promise
@@ -41,6 +45,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedNumberOfDaysToGetFeesOverForChart']);
         }
 
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFileSystemMethodsToGetFeesChart']);
+        }
+
         if (!isArray(args.lnds)) {
           return cbk([400, 'ExpectedLndToGetFeesChart']);
         }
@@ -52,16 +60,13 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get node details
-      getNode: ['validate', ({}, cbk) => {
-        // Exit early when there is no via node specified
+      // Get the list of tags to look for a via match
+      getTags: ['validate', ({}, cbk) => {
         if (!args.via) {
           return cbk();
         }
 
-        const [lnd] = args.lnds;
-
-        return getNodeAlias({lnd, id: args.via}, cbk);
+        return getTags({fs: args.fs}, cbk);
       }],
 
       // Segment measure
@@ -80,10 +85,62 @@ module.exports = (args, cbk) => {
         return cbk(null, moment().subtract(args.days, 'days'));
       }],
 
+      // Determine via tag
+      viaTag: ['getTags', ({getTags}, cbk) => {
+        // Exit early when there is no via filter
+        if (!args.via) {
+          return cbk();
+        }
+
+        const tagById = getTags.tags.find(({id}) => id === args.via);
+
+        if (!!tagById) {
+          return cbk(null, tagById);
+        }
+
+        const tagByAlias = getTags.tags.find(({alias}) => alias === args.via);
+
+        if (!!tagByAlias) {
+          return cbk(null, tagByAlias);
+        }
+
+        return cbk();
+      }],
+
+      // Get node details
+      getNode: ['viaTag', ({viaTag}, cbk) => {
+        // Exit early when there is no via node specified
+        if (!args.via) {
+          return cbk();
+        }
+
+        // Exit early when via is a tag match
+        if (!!viaTag) {
+          return cbk();
+        }
+
+        const [lnd] = args.lnds;
+
+        return getNodeAlias({lnd, id: args.via}, cbk);
+      }],
+
+      // Fees via nodes
+      via: ['viaTag', ({viaTag}, cbk) => {
+        if (!!viaTag) {
+          return cbk(null, viaTag.nodes);
+        }
+
+        if (!!args.via) {
+          return cbk(null, [args.via]);
+        }
+
+        return cbk();
+      }],
+
       // Get forwards
-      getForwards: ['start', ({start}, cbk) => {
+      getForwards: ['start', 'via', ({start, via}, cbk) => {
         return asyncMap(args.lnds, (lnd, cbk) => {
-          return getForwards({lnd, after: asDate(start), via: args.via}, cbk);
+          return getForwards({lnd, via, after: asDate(start)}, cbk);
         },
         cbk);
       }],
@@ -176,14 +233,15 @@ module.exports = (args, cbk) => {
       }],
 
       // Summary title of the fees earned
-      title: ['getNode', 'head', ({getNode, head}, cbk) => {
+      title: ['getNode', 'head', 'viaTag', ({getNode, head, viaTag}, cbk) => {
+        // Exit early when no via is specified
         if (!args.via) {
           return cbk(null, head);
         }
 
-        const {alias} = getNode;
+        const via = viaTag || getNode;
 
-        return cbk(null, `${head} via ${alias || args.via}`);
+        return cbk(null, `${head} via ${via.alias || via.id}`);
       }],
 
       // Forwarding activity

@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncMap = require('async/map');
 const asyncUntil = require('async/until');
 const {getChannels} = require('ln-service');
 const {getClosedChannels} = require('ln-service');
@@ -8,6 +9,8 @@ const {returnResult} = require('asyncjs-util');
 
 const forwardsViaPeer = require('./forwards_via_peer');
 
+const flatten = arr => [].concat(...arr);
+const {isArray} = Array;
 const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
 const pageLimit = 1e3;
 
@@ -16,7 +19,7 @@ const pageLimit = 1e3;
   {
     after: <After Date ISO 8601 String>
     lnd: <Authenticated LND API Object>
-    [via]: <Via Public Key Hex String>
+    [via]: [<Via Public Key Hex String>]
   }
 
   @returns via cbk or Promise
@@ -45,7 +48,11 @@ module.exports = ({after, lnd, via}, cbk) => {
           return cbk([400, 'ExpectedAuthenticatedLndToGetForwardsForNode']);
         }
 
-        if (!!via && !isPublicKey(via)) {
+        if (!!via && !isArray(via)) {
+          return cbk([400, 'ExpectedArrayOfPublicKeysForForwardsViaNodes']);
+        }
+
+        if (!!via && !!via.filter(n => !isPublicKey(n)).length) {
           return cbk([400, 'ExpectedPublicKeyForViaFilterOfForwardsForNode']);
         }
 
@@ -108,12 +115,17 @@ module.exports = ({after, lnd, via}, cbk) => {
           return cbk();
         }
 
-        return getChannels({
-          lnd,
-          is_private: true,
-          partner_public_key: via,
-        },
-        cbk);
+        return getChannels({lnd, is_private: true}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const channels = res.channels.map(channel => {
+            return via.includes(channel.partner_public_key);
+          });
+
+          return cbk(null, {channels});
+        });
       }],
 
       // Get node details
@@ -123,7 +135,20 @@ module.exports = ({after, lnd, via}, cbk) => {
           return cbk();
         }
 
-        return getNode({lnd, public_key: via}, cbk);
+        return asyncMap(via, (key, cbk) => {
+          return getNode({lnd, public_key: key}, cbk);
+        },
+        (err, res) => {
+          if (!!err && err.slice().shift() === 404) {
+            return cbk(null, {channels: []});
+          }
+
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, {channels: flatten(res.map(n => n.channels))});
+        });
       }],
 
       // Full set of forwards

@@ -5,6 +5,8 @@ const {getFeesChart} = require('./../../routing');
 const {getNodeInfoResponse} = require('./../fixtures');
 const {versionInfoResponse} = require('./../fixtures');
 
+const fs = {getFile: ({}, cbk) => cbk('err')};
+
 const lnds = [{
   default: {
     closedChannels: ({}, cbk) => cbk(null, {channels: []}),
@@ -23,17 +25,17 @@ const lnds = [{
 
 const tests = [
   {
-    args: {},
+    args: {fs},
     description: 'Days duration is required to get fees chart',
     error: [400, 'ExpectedNumberOfDaysToGetFeesOverForChart'],
   },
   {
-    args: {days: 1},
+    args: {fs, days: 1},
     description: 'LND is required to get fees chart',
     error: [400, 'ExpectedLndToGetFeesChart'],
   },
   {
-    args: {lnds, days: 1},
+    args: {fs, lnds, days: 1},
     description: 'Fee earnings chart data is returned',
     expected: {
       data: '0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0',
@@ -42,6 +44,7 @@ const tests = [
   },
   {
     args: {
+      fs,
       days: 100,
       lnds: [{
         default: {
@@ -80,12 +83,12 @@ const tests = [
     },
   },
   {
-    args: {lnds, days: 7},
+    args: {fs, lnds, days: 7},
     description: 'Fee earnings chart data over a week is returned',
     expected: {data: '0,0,0,0,0,0,0', title: 'Routing fees earned'},
   },
   {
-    args: {lnds, days: 100, via: Buffer.alloc(33).toString('hex')},
+    args: {fs, lnds, days: 100, via: Buffer.alloc(33).toString('hex')},
     description: 'Fee earnings chart data via a peer is returned',
     expected: {
       data: '0,0,0,0,0,0,0,0,0,0,0,0,0,0',
