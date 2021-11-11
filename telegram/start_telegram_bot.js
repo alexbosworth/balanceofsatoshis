@@ -488,7 +488,12 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             return;
           });
 
-          sub.on('error', err => cbk([503, 'ErrorInBackupsSub', {err}]));
+          sub.once('error', err => {
+            // Terminate subscription and restart after a delay
+            sub.removeAllListeners();
+
+            return cbk([503, 'ErrorInBackupsSub', {err}]);
+          });
         },
         cbk);
       }],
@@ -704,7 +709,12 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             return;
           });
 
-          sub.on('error', err => cbk([503, 'ErrorInPaymentsSub', {err}]));
+          sub.on('error', err => {
+            // Terminate subscription and restart after a delay
+            sub.removeAllListeners();
+
+            return cbk([503, 'ErrorInPaymentsSub', {err}])
+          });
         },
         cbk);
       }],

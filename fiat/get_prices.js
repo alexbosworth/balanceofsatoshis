@@ -1,3 +1,4 @@
+const getCoinbaseRates = require('./get_coinbase_rates');
 const getCoindeskRates = require('./get_coindesk_rates');
 const getCoingeckoRates = require('./get_coingecko_rates');
 
@@ -20,6 +21,9 @@ const getCoingeckoRates = require('./get_coingecko_rates');
 */
 module.exports = ({from, request, symbols}, cbk) => {
   switch (from) {
+  case 'coinbase':
+    return getCoinbaseRates({request, symbols}, cbk);
+
   case 'coindesk':
     return getCoindeskRates({request, symbols}, cbk);
 

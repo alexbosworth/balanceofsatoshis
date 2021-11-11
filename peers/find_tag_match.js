@@ -80,6 +80,8 @@ module.exports = ({channels, filters, tags, query}) => {
 
       const withPeer = channels.filter(n => n.partner_public_key === key);
 
+      const pendingPayments = withPeer.map(n => n.pending_payments.length);
+
       const matching = isMatchingFilters({
         filters: filters || [],
         variables: {
@@ -89,6 +91,7 @@ module.exports = ({channels, filters, tags, query}) => {
           }),
           inbound_liquidity: sumOf(withPeer.map(n => n.remote_balance)),
           outbound_liquidity: sumOf(withPeer.map(n => n.local_balance)),
+          pending_payments: sumOf(pendingPayments),
         },
       });
 

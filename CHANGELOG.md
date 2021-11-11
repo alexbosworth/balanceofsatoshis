@@ -1,5 +1,14 @@
 # Versions
 
+## 11.10.0
+
+- `find`: Add estimated disk usage to channels with a peer
+- `price`: Add coinbase as a fiat rate provider
+- `rebalance`: Allow rebalancing `--in` and `--out` of the same tag
+- `rebalance`: Fix error message when `--in-filter` and `--out-filter` return no matches
+- `rebalance`: Add `pending_payments` variable to `--in-filter` and `--out-filter`
+- `telegram`: Improve uptime reliability across connectivity errors
+
 ## Version 11.9.0
 
 - `chart-fees-earned`: Add tag support to view fees earned via tagged nodes

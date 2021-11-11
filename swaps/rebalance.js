@@ -106,10 +106,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MultipleInPeersIsNotSupported']);
         }
 
-        if (!!args.in_through && args.in_through === args.out_through) {
-          return cbk([400, 'ExpectedInPeerNotEqualToOutPeer']);
-        }
-
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToExecuteRebalance']);
         }
@@ -124,10 +120,6 @@ module.exports = (args, cbk) => {
 
         if (isArray(args.out_through)) {
           return cbk([400, 'MultipleOutPeersIsNotSupported']);
-        }
-
-        if (!!args.out_through && args.in_through === args.out_through) {
-          return cbk([400, 'ExpectedOutPeerNotEqualToInPeer']);
         }
 
         return cbk();
@@ -243,6 +235,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MultipleTagMatchesFoundForInPeer', {matches}]);
         }
 
+        if (!match && !!args.in_filters && !!args.in_filters.length) {
+          return cbk([400, 'NoPeerMatchesFoundToSatisfyInboundFilter']);
+        }
+
         return cbk(null, match);
       }],
 
@@ -297,6 +293,10 @@ module.exports = (args, cbk) => {
 
         if (match) {
           return cbk(null, match);
+        }
+
+        if (!match && !!args.out_filters && !!args.out_filters.length) {
+          return cbk([400, 'NoPeerMatchesFoundToSatisfyOutboundFilter']);
         }
 
         return findKey({

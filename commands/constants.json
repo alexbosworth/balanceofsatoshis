@@ -7,29 +7,6 @@
     "invoices": "invoices",
     "payments": "payments"
   },
-  "exchanges": [
-    "binance",  "bitfinex",
-    "bitmex",   "bitstamp",
-    "coinbase", "gemini",
-    "kraken",   "Binance",
-    "Bitfinex", "Bitmex",
-    "Bitstamp", "Coinbase",
-    "Gemini",   "Kraken"
-  ],
-  "marketPairs": [
-    "BCHBTC",  "BCHETH",  "BCHEUR",  "BCHUSD",  "BCHUSDT",
-    "BTCEUR",  "BTCUSD",  "BTCUSDT", "EOSBTC",  "EOSETH",
-    "EOSEUR",  "EOSUSD",  "EOSUSDT", "ETHBTC",  "ETHEUR",
-    "ETHUSD",  "ETHUSDT", "EURUSD",  "LTCBCH",  "LTCBTC",
-    "LTCETH",  "LTCEUR",  "LTCUSD",  "LTCUSDT", "XRPBTC",
-    "XRPETH",  "XRPEUR",  "XRPUSD",  "XRPUSDT", "bchbtc",
-    "bcheth",  "bcheur",  "bchusd",  "bchusdt", "btceur",
-    "btcusd",  "btcusdt", "eosbtc",  "eoseth",  "eoseur",
-    "eosusd",  "eosusdt", "ethbtc",  "etheur",  "ethusd",
-    "ethusdt", "eurusd",  "ltcbch",  "ltcbtc",  "ltceth",
-    "ltceur",  "ltcusd",  "ltcusdt", "xrpbtc",  "xrpeth",
-    "xrpeur",  "xrpusd",  "xrpusdt"
-  ],
   "peerSortOptions": [
     "alias",
     "fee_earnings",
@@ -39,7 +16,7 @@
     "outbound_liquidity",
     "public_key"
   ],
-  "priceProviders": ["coindesk", "coingecko"],
+  "priceProviders": ["coinbase", "coindesk", "coingecko"],
   "rateProviders": ["coindesk", "coingecko"],
   "swapTypes": ["inbound", "outbound"]
 }

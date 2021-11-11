@@ -592,6 +592,7 @@ And for `--in-filter` and `--out-filter`:
 - `heights`: The set of heights of the channels with the peer
 - `inbound_liquidity`: The inbound liquidity with the peer
 - `outbound_liquidity`: The outbound liquidity with the peer
+- `pending_payments`: The number of pending payments
 
 Example:
 

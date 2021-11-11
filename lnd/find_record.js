@@ -19,6 +19,7 @@ const {findKey} = require('ln-sync');
 const asBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const balance = ({display}) => display.trim() || gray('0.00000000');
 const blocksTime = (n, p) => moment.duration(n * 10, 'minutes').humanize(p);
+const estimateDiskFootprint = n => `${(n.past_states*500/1e6).toFixed(2)}mb`;
 const {isArray} = Array;
 const isHash = n => !!n && /^[0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
@@ -242,6 +243,7 @@ module.exports = ({lnd, query}, cbk) => {
 
                   return {
                     age: blocksTime(getHeight.current_block_height - height),
+                    est_disk_usage: estimateDiskFootprint(chan),
                     liquidity: `${outbound} | ${inbound}`,
                     capacity: formatTokens({tokens: chan.capacity}).display,
                     funding: `${chan.transaction_id} ${chan.transaction_vout}`,
