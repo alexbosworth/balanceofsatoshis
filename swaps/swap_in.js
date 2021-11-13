@@ -70,6 +70,10 @@ module.exports = (args, cbk) => {
         return cbk([400, 'ExpectedFetchFunctionToReceiveOnChain']);
       }
 
+      if (!args.fs) {
+        return cbk([400, 'ExpectedFileSystemMethodsToReceiveOnChain']);
+      }
+
       if (!args.logger) {
         return cbk([400, 'ExpectedLoggerToReceiveOnChain']);
       }
@@ -97,6 +101,7 @@ module.exports = (args, cbk) => {
 
       return getLiquidity({
         above: args.tokens,
+        fs: args.fs,
         is_top: true,
         lnd: args.lnd,
       },

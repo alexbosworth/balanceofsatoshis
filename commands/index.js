@@ -4,6 +4,7 @@ const fetchRequest = require('./fetch_request');
 const {marketPairs} = require('./constants');
 const {peerSortOptions} = require('./constants');
 const {rateProviders} = require('./constants');
+const simpleRequest = require('./simple_request');
 const {swapTypes} = require('./constants');
 
 module.exports = {
@@ -13,5 +14,6 @@ module.exports = {
   marketPairs,
   peerSortOptions,
   rateProviders,
+  simpleRequest,
   swapTypes,
 };

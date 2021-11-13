@@ -1,6 +1,6 @@
 const EventEmitter = require('events');
 
-const {ECPair} = require('bitcoinjs-lib');
+const {ECPair} = require('ecpair');
 const {payments} = require('bitcoinjs-lib');
 const {test} = require('@alexbosworth/tap');
 const {Transaction} = require('bitcoinjs-lib');

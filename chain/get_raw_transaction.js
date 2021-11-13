@@ -63,6 +63,10 @@ module.exports = ({id, interval, network, request, retries}, cbk) => {
               return cbk([503, 'FailedToGetRawTransaction', {err}]);
             }
 
+            if (!!r && r.statusCode === 404) {
+              return cbk([404, 'TransactionNotFound']);
+            }
+
             if (!isHex(transaction)) {
               return cbk([503, 'ExpectedTransactionInResponse']);
             }

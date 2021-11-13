@@ -1,5 +1,11 @@
 # Versions
 
+## 11.11.0
+
+- `advertise`: Add `--dryrun` to skip actually sending ads
+- `advertise`: Add `--filter` to target nodes with specified capacities, channel counts
+- `swap-in`: Fix command to execute when there is a liquidity lookup needed
+
 ## 11.10.0
 
 - `find`: Add estimated disk usage to channels with a peer

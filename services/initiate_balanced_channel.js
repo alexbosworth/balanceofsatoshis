@@ -39,7 +39,6 @@ const bufferAsHex = buffer => buffer.toString('hex');
 const componentsSeparator = ' ';
 const decBase = 10;
 const defaultMaxFeeMtokens = '9000';
-const derivePubKey = n => ECPair.fromPrivateKey(n).publicKey.toString('hex');
 const encodeSig = (sig, hash) => Buffer.concat(Buffer.from(sig, 'hex'), hash);
 const {fromBech32} = address;
 const {fromHex} = Transaction;

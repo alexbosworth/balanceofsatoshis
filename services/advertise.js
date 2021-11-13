@@ -13,11 +13,13 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToProbeForRoute} = require('ln-service');
 
+const {isMatchingFilters} = require('./../display');
 const {shuffle} = require('./../arrays');
 
 const {ceil} = Math;
 const cltvDelay = 144;
 const createSecret = () => randomBytes(32).toString('hex');
+const defaultFilter = ['channels_count > 9'];
 const defaultMsg = (alias, key) => `Check out my node! ${alias} ${key}`;
 const filterLimit = 10;
 const hashOf = n => createHash('sha256').update(n).digest().toString('hex');
@@ -25,6 +27,7 @@ const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const invoiceDescription = n => `👀 ${n}`;
 const invoiceExpiration = () => new Date(Date.now() + 1000 * 60 * 60 * 24 * 5);
 const invoiceTokens = 1;
+const {isArray} = Array;
 const keySendValueType = '5482373484';
 const maxFeeTokens = 10;
 const messageWithReply = (msg, req) => `${msg} (Mark seen: ${req})`;
@@ -34,12 +37,15 @@ const pathTimeoutMs = 1000 * 45;
 const payTimeoutMs = 1000 * 60;
 const probeTimeoutMs = 1000 * 60 * 2;
 const sendTokens = 10;
+const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const textMessageType = '34349334';
 const utf8AsHex = utf8 => Buffer.from(utf8, 'utf8').toString('hex');
 
 /** Advertise to nodes that accept KeySend
 
   {
+    filters: [<Node Condition Filter String>]
+    [is_dry_run]: <Avoid Sending Advertisements Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [message]: <Message To Send String>
@@ -50,6 +56,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!isArray(args.filters)) {
+          return cbk([400, 'ExpectedArrayOfFiltersToAdvertise']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToAdvertise']);
         }
@@ -95,18 +105,40 @@ module.exports = (args, cbk) => {
         const {shuffled} = shuffle({array: getGraph.nodes});
 
         // Only consider 3rd party nodes that have known features
-        const nodes = shuffled
+        const filteredNodes = shuffled
           .filter(n => n.public_key !== getIdentity.public_key)
           .filter(n => !!n.features.length)
-          .filter(node => {
+          .map(node => {
             const channels = getGraph.channels.filter(channel => {
               const {policies} = channel;
 
               return policies.find(n => n.public_key === node.public_key);
             });
 
-            return channels.length >= minChannelCount;
+            const filters = args.filters.length ? args.filters : defaultFilter;
+
+            const variables = {
+              capacity: sumOf(channels.map(n => n.capacity)),
+              channels_count: channels.length,
+            };
+
+            const isMatching = isMatchingFilters({filters, variables});
+
+            // Exit early when there is a failure with a filter
+            if (isMatching.failure) {
+              return {failure: isMatching.failure};
+            }
+
+            return !!isMatching.is_matching ? {node} : {};
           });
+
+        const failure = filteredNodes.find(n => !!n.failure);
+
+        if (!!filteredNodes.find(n => !!n.failure)) {
+          return cbk([400, 'ExpectedValidFiltersForNodes', {failure}]);
+        }
+
+        const nodes = filteredNodes.map(n => n.node).filter(n => !!n);
 
         args.logger.info({potential_nodes: nodes.length});
 
@@ -195,6 +227,11 @@ module.exports = (args, cbk) => {
                 {type: keySendValueType, value: secret},
                 {type: textMessageType, value: utf8AsHex(finalMessage)},
               ];
+
+              // Exit early when this is a dry run
+              if (!!args.is_dry_run) {
+                return args.logger.info({skipping_due_to_dry_run: node.alias});
+              }
 
               // Send the payment
               const paid = await payViaRoutes({

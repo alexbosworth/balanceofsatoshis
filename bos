@@ -83,7 +83,7 @@ prog
           month: options.month,
           node: options.node,
           rate_provider: options.rateProvider,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
           year: options.year,
         },
         responses.returnObject({logger, reject, resolve, table}));
@@ -95,6 +95,11 @@ prog
 
   // Advertise to other nodes on the network
   .command('advertise', 'Broadcast advertisement')
+  .help('use --filter conditions to limit broadcast scope: capacity > 1*m')
+  .help('--filter variables: CAPACITY/CHANNELS_COUNT/K/M')
+  .help('Default filter scope: channels_count > 9')
+  .option('--dryrun', 'Avoid actually sending advertisements')
+  .option('--filter <expression>', 'Require node match condition', REPEATABLE)
   .option('--message <message>', 'Custom advertisement message')
   .option('--node <node_name>', 'Advertise via saved node')
   .action((args, options, logger) => {
@@ -102,6 +107,8 @@ prog
       try {
         return await services.advertise({
           logger,
+          filters: flatten([options.filter].filter(n => !!n)),
+          is_dry_run: !!options.dryrun,
           lnd: (await lndForNode(logger, options.node)).lnd,
           message: options.message,
         });
@@ -131,7 +138,7 @@ prog
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           mirrors: flatten([options.mirror].filter(n => !!n)),
           node: options.node,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
           urls: flatten([options.url].filter(n => !!n)),
         },
         responses.returnObject({logger, reject, resolve}));
@@ -303,7 +310,7 @@ prog
           days: options.days,
           is_monochrome: !!options.noColor,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
@@ -427,7 +434,7 @@ prog
         return chain.getChannelCloses({
           limit: options.limit,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
@@ -783,7 +790,7 @@ prog
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           max_fee_rate: options.maxFeeRate || undefined,
           min_node_score: options.minScore || undefined,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
           with: options.with,
         },
         responses.returnNumber({logger, reject, resolve, number: 'balance'}));
@@ -871,7 +878,7 @@ prog
           is_private: options.private,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           peer: options.with || undefined,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
           tokens: options.amount,
         },
         responses.returnObject({logger, reject, resolve}));
@@ -976,7 +983,7 @@ prog
           is_external: options.externalFunding,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           public_keys: args.peerPublicKeys,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
           set_fee_rates: flatten([options.setFeeRate]).filter(n => !!n),
           types: flatten([options.type].filter(n => !!n)),
         },
@@ -1139,7 +1146,7 @@ prog
     return new Promise((resolve, reject) => {
       return fiat.getPrices({
         from: options.from,
-        request: commands.fetchRequest({fetch}),
+        request: commands.simpleRequest,
         symbols: args.symbols.map(n => n.toUpperCase()),
       },
       responses.returnObject({
@@ -1277,7 +1284,7 @@ prog
         return chain.recoverP2pk({
           id: args.id,
           lnd: (await lndForNode(logger, options.node)).lnd,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
           vout: args.vout,
         },
         responses.returnObject({logger, reject, resolve}));
@@ -1328,7 +1335,7 @@ prog
           outbound_liquidity_below: options.outboundBelow,
           outpoints: flatten([options.outpoint].filter(n => !!n)),
           public_key: args.publicKey,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
@@ -1346,7 +1353,7 @@ prog
       return wallets.getReport({
         fs: {getFile: readFile},
         node: options.node,
-        request: commands.fetchRequest({fetch}),
+        request: commands.simpleRequest,
         style: !!options.styled ? 'styled' : undefined,
       },
       responses.returnOutput({logger, reject, resolve}));
@@ -1391,7 +1398,7 @@ prog
           message: options.message,
           quiz_answers: flatten([options.quiz].filter(n => !!n)),
           out_through: options.out,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
@@ -1501,6 +1508,7 @@ prog
           fetch,
           logger,
           api_key: options.apiKey || undefined,
+          fs: {getFile: readFile},
           in_through: options.in || undefined,
           is_refund_test: options.testRefund,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
@@ -1508,7 +1516,7 @@ prog
           node: options.node,
           recovery: options.recovery,
           refund_address: options.refundAddress,
-          request: commands.fetchRequest({fetch}),
+          request: commands.simpleRequest,
           socket: options.serviceSocket || undefined,
           tokens: args.amount,
         },
