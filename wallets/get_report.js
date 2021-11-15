@@ -13,6 +13,7 @@ const {getInvoices} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNetworkGraph} = require('ln-service');
 const {getPayments} = require('ln-sync');
+const {getPrices} = require('@alexbosworth/fiat');
 const {getWalletInfo} = require('ln-service');
 const {italicize} = require('@alexbosworth/html2unicode');
 const moment = require('moment');
@@ -23,17 +24,18 @@ const {authenticatedLnd} = require('./../lnd');
 const channelsAsReportActivity = require('./channels_as_report_activity');
 const {currencyForNetwork} = require('./../network');
 const {getBalance} = require('./../balances');
-const {getCoindeskCurrentPrice} = require('./../fiat');
 const {getForwards} = require('./../network');
 const reportOverview = require('./report_overview');
 
 const afterMs = 1000 * 60 * 60 * 24;
 const centsPerDollar = 100;
 const defaultConfTarget = 6;
+const fiat = 'USD';
 const formatAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const limit = 1000;
 const msPerBlock = 1000 * 60 * 10;
 const {now} = Date;
+const rateProvider = 'coindesk';
 const sumOf = arr => arr.reduce((sum, n) => n + sum, 0);
 const styled = 'styled';
 
@@ -58,12 +60,7 @@ module.exports = ({fs, node, request, style}, cbk) => {
 
     // Get exchange rate
     getRate: cbk => {
-      return getCoindeskCurrentPrice({
-        request,
-        currency: 'BTC',
-        fiat: 'USD',
-      },
-      cbk);
+      return getPrices({request, from: rateProvider, symbols: [fiat]}, cbk);
     },
 
     // Get balance
@@ -262,7 +259,7 @@ module.exports = ({fs, node, request, style}, cbk) => {
         channel_balance: getBalance.channel_balance,
         latest_block_at: getInfo.latest_block_at,
         public_key: getInfo.public_key,
-        rate: getRate.cents,
+        rate: getRate.tickers.find(n => n.ticker === fiat).rate,
       });
 
       const channelsActivity = channelsAsReportActivity({

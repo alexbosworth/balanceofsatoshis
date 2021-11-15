@@ -1,5 +1,10 @@
 # Versions
 
+## 11.12.0
+
+- `call`: Add `deletePayment`, `pay`, `subscribeToPayViaRequest`, `getMethods`,
+    `disconnectWatchtower`, `updateConnectedWatchtower` methods
+
 ## 11.11.0
 
 - `advertise`: Add `--dryrun` to skip actually sending ads

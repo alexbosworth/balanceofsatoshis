@@ -154,6 +154,14 @@
       "method": "deleteForwardingReputations"
     },
     {
+      "arguments" : [{
+        "description": "Hex-encoded payment preimage hash",
+        "named": "id",
+        "type": "hash"
+      }],
+      "method": "deletePayment"
+    },
+    {
       "method": "deletePayments"
     },
     {
@@ -192,6 +200,14 @@
         }
       ],
       "method": "disableChannel"
+    },
+    {
+      "arguments": [{
+        "description": "Watchtower identity public key",
+        "named": "public_key",
+        "type": "public_key"
+      }],
+      "method": "disconnectWatchtower"
     },
     {
       "arguments": [
@@ -380,6 +396,9 @@
       "method": "getLockedUtxos"
     },
     {
+      "method": "getMethods"
+    },
+    {
       "method": "getNetworkCentrality"
     },
     {
@@ -548,6 +567,46 @@
     {
       "arguments": [
         {
+          "description": "BOLT 11 encoded payment request",
+          "named": "request"
+        },
+        {
+          "description": "Final forwarding node public key",
+          "named": "incoming_peer",
+          "optional": true,
+          "type": "public_key"
+        },
+        {
+          "description": "Maximum fee millitokens to pay",
+          "named": "max_fee_mtokens",
+          "optional": true
+        },
+        {
+          "description": "Maximum millitokens to pay in a single path",
+          "named": "max_path_mtokens",
+          "optional": true
+        },
+        {
+          "description": "Millitokens to pay on a zero invoice",
+          "named": "mtokens",
+          "optional": true
+        },
+        {
+          "description": "Pay out specific channel",
+          "named": "outgoing_channel_id",
+          "optional": true
+        },
+        {
+          "description": "Max milliseconds to spend finding a route",
+          "named": "pathfinding_timeout",
+          "optional": true
+        }
+      ],
+      "method": "pay"
+    },
+    {
+      "arguments": [
+        {
           "description": "Peer hex encoded public key id",
           "named": "public_key",
           "type": "public_key"
@@ -656,6 +715,47 @@
       "method": "subscribeToInvoices"
     },
     {
+      "arguments": [
+        {
+          "description": "BOLT 11 encoded payment request",
+          "named": "request"
+        },
+        {
+          "description": "Final forwarding node public key",
+          "named": "incoming_peer",
+          "optional": true,
+          "type": "public_key"
+        },
+        {
+          "description": "Maximum fee millitokens to pay",
+          "named": "max_fee_mtokens",
+          "optional": true
+        },
+        {
+          "description": "Maximum millitokens to pay in a single path",
+          "named": "max_path_mtokens",
+          "optional": true
+        },
+        {
+          "description": "Millitokens to pay on a zero invoice",
+          "named": "mtokens",
+          "optional": true
+        },
+        {
+          "description": "Pay out specific channel",
+          "named": "outgoing_channel_id",
+          "optional": true
+        },
+        {
+          "description": "Max milliseconds to spend finding a route",
+          "named": "pathfinding_timeout",
+          "optional": true
+        }
+      ],
+      "events": ["confirmed", "failed", "paying", "routing_failure"],
+      "method": "subscribeToPayViaRequest"
+    },
+    {
       "events": ["message"],
       "method": "subscribeToPeerMessages"
     },
@@ -700,6 +800,26 @@
         }
       ],
       "method": "updateChainTransaction"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Watchtower identity hex-encoded public key",
+          "named": "public_key",
+          "type": "public_key"
+        },
+        {
+          "description": "Add network socket: host:port",
+          "named": "add_socket",
+          "optional": true
+        },
+        {
+          "description": "Add network socket: host:port",
+          "named": "remove_socket",
+          "optional": true
+        }
+      ],
+      "method": "updateConnectedWatchtower"
     },
     {
       "arguments": [

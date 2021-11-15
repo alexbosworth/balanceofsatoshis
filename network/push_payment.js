@@ -5,15 +5,16 @@ const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getPeerLiquidity} = require('ln-sync');
+const {getPrices} = require('@alexbosworth/fiat');
 const {returnResult} = require('asyncjs-util');
 
-const {getCoingeckoRates} = require('./../fiat');
 const {getIgnores} = require('./../routing');
 const {getTags} = require('./../tags');
 const {parseAmount} = require('./../display');
 const probeDestination = require('./probe_destination');
 
 const coins = ['BTC', 'LTC'];
+const defaultFiatRateProvider = 'coingecko';
 const fiats = ['EUR', 'USD'];
 const hasFiat = n => /(eur|usd)/gim.test(n);
 const {isArray} = Array;
@@ -143,7 +144,8 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return getCoingeckoRates({
+        return getPrices({
+          from: defaultFiatRateProvider,
           request: args.request,
           symbols: [].concat(coins).concat(fiats),
         },

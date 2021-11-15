@@ -4,6 +4,12 @@ Commands for working with LND balances.
 
 [![npm version](https://badge.fury.io/js/balanceofsatoshis.svg)](https://badge.fury.io/js/balanceofsatoshis)
 
+Supported LND versions:
+
+- v0.13.0-beta to v0.13.4-beta
+- v0.12.0-beta to v0.12.1-beta
+- v0.11.0-beta to v0.11.1-beta
+
 ## Install
 
 - Requires an [installation of Node v12.0+](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)

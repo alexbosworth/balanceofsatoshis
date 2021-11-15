@@ -12,6 +12,7 @@ const {writeFile} = require('fs');
 const importLazy = require('import-lazy')(require);
 
 const fetch = importLazy('@alexbosworth/node-fetch');
+const fiat = importLazy('@alexbosworth/fiat');
 const inquirer = importLazy('inquirer');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
@@ -25,7 +26,6 @@ const balances = importLazy('./balances');
 const chain = importLazy('./chain');
 const commands = importLazy('./commands');
 const encryption = importLazy('./encryption');
-const fiat = importLazy('./fiat');
 const lnd = importLazy('./lnd');
 const network = importLazy('./network');
 const nodes = importLazy('./nodes');
@@ -291,7 +291,7 @@ prog
           write: writeFile,
         }));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
@@ -314,7 +314,7 @@ prog
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
@@ -1697,7 +1697,7 @@ prog
   .option('--count-below <below>', 'Return only count below number', INT)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get utxos for')
-  .option('--size', 'Utxos of size greater than or equal to specified amount')
+  .option('--size', 'UTXOs of size greater than or equal to specified amount')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
