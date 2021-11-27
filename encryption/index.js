@@ -1,3 +1,4 @@
+const certExpiration = require('./cert_expiration');
 const decryptCiphertext = require('./decrypt_ciphertext');
 const decryptPayload = require('./decrypt_payload');
 const decryptWithNode = require('./decrypt_with_node');
@@ -7,6 +8,7 @@ const encryptToPublicKeys = require('./encrypt_to_public_keys');
 const pemAsDer = require('./pem_as_der');
 
 module.exports = {
+  certExpiration,
   decryptCiphertext,
   decryptPayload,
   decryptWithNode,

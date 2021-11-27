@@ -1,5 +1,7 @@
 const asyncAuto = require('async/auto');
+const asyncFilter = require('async/filter');
 const {getInvoices} = require('ln-service');
+const {getPayment} = require('ln-service');
 const {parsePaymentRequest} = require('invoices');
 const {returnResult} = require('asyncjs-util');
 
@@ -165,8 +167,6 @@ module.exports = ({lnd}, cbk) => {
 
       // Filter out incoming opens that were already accepted
       unacceptedOpens: ['incomingOpens', ({incomingOpens}, cbk) => {
-        const asyncFilter = require('async/filter');
-        const {getPayment} = require('ln-service');
         return asyncFilter(incomingOpens, (incoming, cbk) => {
           const {id} = parsePaymentRequest({request: incoming.accept_request});
 

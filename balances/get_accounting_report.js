@@ -1,7 +1,6 @@
 const asyncAuto = require('async/auto');
 const {getAccountingReport} = require('ln-accounting');
 const {getNetwork} = require('ln-sync');
-const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const categories = require('./accounting_categories');

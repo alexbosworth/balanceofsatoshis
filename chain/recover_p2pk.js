@@ -8,7 +8,6 @@ const {decode} = require('bip66');
 const {getChainFeeRate} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
-const {OP_CHECKSIG} = require('bitcoin-ops');
 const {returnResult} = require('asyncjs-util');
 const {signBytes} = require('ln-service');
 
@@ -31,6 +30,7 @@ const networkNames = {btc: 'bitcoin', btctestnet: 'testnet'};
 const {networks} = bitcoinjsLib;
 const nodeIdentityKeyFamily = 6;
 const nodeIdentityKeyIndex = 0;
+const OP_CHECKSIG = 172;
 const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
 const slicePoint = r => r.length === 33 ? r.slice(1) : r;
 const {toOutputScript} = bitcoinjsLib.address;

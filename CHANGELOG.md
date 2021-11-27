@@ -1,6 +1,6 @@
 # Versions
 
-## 11.12.0
+## 11.12.1
 
 - `call`: Add `deletePayment`, `pay`, `subscribeToPayViaRequest`, `getMethods`,
     `disconnectWatchtower`, `updateConnectedWatchtower` methods

@@ -1,5 +1,4 @@
 const asyncAuto = require('async/auto');
-const parse = require('csv-parse');
 const {returnResult} = require('asyncjs-util');
 
 const columnDivider = ',';
@@ -20,8 +19,11 @@ const quoteMark = '"';
 module.exports = ({csv}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
+      // Get the parse function
+      parse: async () => (await import('csv-parse')).parse,
+
       // Parse CSV
-      entries: cbk => {
+      entries: ['parse', ({parse}, cbk) => {
         if (!csv) {
           return cbk(null, []);
         }
@@ -33,7 +35,7 @@ module.exports = ({csv}, cbk) => {
 
           return cbk(null, entries);
         });
-      },
+      }],
 
       // Arrange rows
       rows: ['entries', ({entries}, cbk) => {

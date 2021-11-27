@@ -113,6 +113,8 @@ const makeArgs = overrides => {
         trackPaymentV2: ({}) => {
           const emitter = new EventEmitter();
 
+          emitter.cancel = () => {};
+
           process.nextTick(() => emitter.emit('data', {status: 'FAILED'}));
 
           return emitter;

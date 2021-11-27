@@ -8,7 +8,6 @@ const {returnResult} = require('asyncjs-util');
 
 const balanceFromTokens = require('./balance_from_tokens');
 const {getTags} = require('./../tags');
-const liquidityTokens = require('./liquidity_tokens');
 
 const {round} = Math;
 const topPercentile = 0.9;

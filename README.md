@@ -6,6 +6,7 @@ Commands for working with LND balances.
 
 Supported LND versions:
 
+- v0.14.0-beta to v0.14.1-beta
 - v0.13.0-beta to v0.13.4-beta
 - v0.12.0-beta to v0.12.1-beta
 - v0.11.0-beta to v0.11.1-beta
@@ -49,6 +50,7 @@ If you want autocomplete on commands and options you can do:
 
 ```
 ## Autocomplete on ZSH shells (on startup: you can add this to ~/.zshrc)
+autoload -Uz compinit && compinit
 source <(bos completion zsh)
 
 ## Autocomplete on bash (on startup: add to ~/.profile or ~/.bash_profile)

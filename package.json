@@ -18,17 +18,15 @@
     "async": "3.2.2",
     "asyncjs-util": "1.2.7",
     "bip66": "1.1.5",
-    "bitcoin-ops": "1.4.1",
-    "bitcoinjs-lib": "6.0.0",
+    "bitcoinjs-lib": "6.0.1",
     "bolt01": "1.2.3",
     "bolt03": "1.2.12",
     "bolt07": "1.7.4",
     "caporal": "1.4.0",
     "cbor": "8.1.0",
-    "cert-info": "1.5.1",
     "colorette": "2.0.16",
     "crypto-js": "4.1.1",
-    "csv-parse": "4.16.3",
+    "csv-parse": "5.0.3",
     "goldengate": "10.4.2",
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
@@ -36,7 +34,7 @@
     "inquirer": "8.2.0",
     "invoices": "2.0.2",
     "ln-accounting": "5.0.5",
-    "ln-service": "52.16.0",
+    "ln-service": "53.1.1",
     "ln-sync": "3.0.1",
     "ln-telegram": "3.4.2",
     "moment": "2.29.1",
@@ -45,7 +43,6 @@
     "psbt": "1.1.10",
     "qrcode-terminal": "0.12.0",
     "sanitize-filename": "1.6.3",
-    "stats-lite": "2.2.0",
     "table": "6.7.3",
     "telegraf": "4.4.2",
     "update-notifier": "5.1.0",
@@ -82,5 +79,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/wallets/*.js"
   },
-  "version": "11.12.0"
+  "version": "11.12.1"
 }
