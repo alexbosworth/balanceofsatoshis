@@ -223,10 +223,10 @@ Use any shorthand you'd like when choosing this profile node name
     >
     >```bash
     ># For `cert` 
-    >base64 ~/.lnd/tls.cert | tr -d '\n'
+    >base64 -w0 ~/.lnd/tls.cert
     >
     ># For `macaroon`
-    >base64 ~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon | tr -d '\n'
+    >base64 -w0 ~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
     >```
     >
     > **Note_2:** `socket` should contain `host:port` pointing to `lnd`'s gRPC interface, `localhost:10009` by convention.  
