@@ -19,12 +19,13 @@ const defaultChannelCapacity = 5e6;
     }]
   }
 */
-module.exports = ({capacities, gives, nodes, types}) => {
+module.exports = ({capacities, addresses, gives, nodes, types}) => {
   const channels = nodes.map((key, i) => {
     const type = types[i] || undefined;
 
     return {
       capacity: capacities[i] || defaultChannelCapacity,
+      cooperative_close_address: !!addresses[i] ? String(addresses[i]) : undefined,
       give_tokens: !!gives[i] ? Number(gives[i]) : undefined,
       is_private: !!type && type === 'private',
       partner_public_key: key,
