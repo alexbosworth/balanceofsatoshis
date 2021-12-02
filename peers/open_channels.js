@@ -108,6 +108,7 @@ module.exports = (args, cbk) => {
         const hasCapacities = !!args.capacities.length;
         const hasGives = !!args.gives.length;
         const hasFeeRates = !!args.set_fee_rates.length;
+        const hasCloseAddresses = !!args.closing_addresses.length;
         const publicKeysLength = args.public_keys.length;
 
         if (!!hasCapacities && publicKeysLength !== args.capacities.length) {
@@ -120,6 +121,10 @@ module.exports = (args, cbk) => {
 
         if (!!hasFeeRates && publicKeysLength !== args.set_fee_rates.length) {
           return cbk([400, 'MustSetFeeRateForEveryPublicKey']);
+        }
+
+        if (!!hasCloseAddresses && publicKeysLength !== args.closing_addresses.length) {
+          return cbk([400, 'MustSetClosingAddressForEveryPublicKey']);
         }
 
         if (!args.request) {
@@ -140,7 +145,7 @@ module.exports = (args, cbk) => {
 
         return cbk();
       },
-
+      
       // Parse capacities
       capacities: ['validate', ({}, cbk) => {
         const capacities = args.capacities.map(amount => {
@@ -207,6 +212,7 @@ module.exports = (args, cbk) => {
       {
         const {channels} = channelsFromArguments({
           capacities,
+          addresses: args.closing_addresses,
           gives: args.gives,
           nodes: args.public_keys,
           types: args.types,
@@ -279,6 +285,7 @@ module.exports = (args, cbk) => {
       {
         const {channels} = channelsFromArguments({
           capacities,
+          addresses: args.closing_addresses,
           gives: args.gives,
           nodes: args.public_keys,
           types: args.types,
@@ -362,6 +369,7 @@ module.exports = (args, cbk) => {
       {
         const {channels} = channelsFromArguments({
           capacities,
+          addresses: args.closing_addresses,
           gives: args.gives,
           nodes: args.public_keys,
           types: args.types,
