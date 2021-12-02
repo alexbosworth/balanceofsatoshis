@@ -1,5 +1,9 @@
 # Versions
 
+## 11.13.0
+
+- `open`: Add `--coop-close-address` to specify cooperative close addresses
+
 ## 11.12.1
 
 - `call`: Add `deletePayment`, `pay`, `subscribeToPayViaRequest`, `getMethods`,

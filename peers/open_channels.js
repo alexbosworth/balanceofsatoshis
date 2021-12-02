@@ -54,6 +54,7 @@ const utxoPollingTimes = 20;
   {
     ask: <Ask For Input Function>
     capacities: [<New Channel Capacity Tokens String>]
+    cooperative_close_addresses: [<Cooperative Close Address>]
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
@@ -85,6 +86,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedChannelCapacitiesToOpenChannels']);
         }
 
+        if (!isArray(args.cooperative_close_addresses)) {
+          return cbk([400, 'ExpectedCooperativeCloseAddressesArray']);
+        }
+
         if (!isArray(args.gives)) {
           return cbk([400, 'ExpectedArrayOfGivesToOpenChannels']);
         }
@@ -105,14 +110,18 @@ module.exports = (args, cbk) => {
           return cbk([400, 'NodesToOpenWithMustBeSpecifiedWithPublicKeyOnly']);
         }
 
+        const closeAddrCount = args.cooperative_close_addresses.length;
         const hasCapacities = !!args.capacities.length;
         const hasGives = !!args.gives.length;
         const hasFeeRates = !!args.set_fee_rates.length;
-        const hasCloseAddresses = !!args.closing_addresses.length;
         const publicKeysLength = args.public_keys.length;
 
         if (!!hasCapacities && publicKeysLength !== args.capacities.length) {
           return cbk([400, 'CapacitiesMustBeSpecifiedForEveryPublicKey']);
+        }
+
+        if (!!closeAddrCount && publicKeysLength !== closeAddrCount) {
+          return cbk([400, 'MustSetCoopClosingAddressForEveryPublicKey']);
         }
 
         if (!!hasGives && publicKeysLength !== args.gives.length) {
@@ -121,10 +130,6 @@ module.exports = (args, cbk) => {
 
         if (!!hasFeeRates && publicKeysLength !== args.set_fee_rates.length) {
           return cbk([400, 'MustSetFeeRateForEveryPublicKey']);
-        }
-
-        if (!!hasCloseAddresses && publicKeysLength !== args.closing_addresses.length) {
-          return cbk([400, 'MustSetClosingAddressForEveryPublicKey']);
         }
 
         if (!args.request) {
@@ -145,7 +150,7 @@ module.exports = (args, cbk) => {
 
         return cbk();
       },
-      
+
       // Parse capacities
       capacities: ['validate', ({}, cbk) => {
         const capacities = args.capacities.map(amount => {
@@ -212,7 +217,7 @@ module.exports = (args, cbk) => {
       {
         const {channels} = channelsFromArguments({
           capacities,
-          addresses: args.closing_addresses,
+          addresses: args.cooperative_close_addresses,
           gives: args.gives,
           nodes: args.public_keys,
           types: args.types,
@@ -285,7 +290,7 @@ module.exports = (args, cbk) => {
       {
         const {channels} = channelsFromArguments({
           capacities,
-          addresses: args.closing_addresses,
+          addresses: args.cooperative_close_addresses,
           gives: args.gives,
           nodes: args.public_keys,
           types: args.types,
@@ -369,7 +374,7 @@ module.exports = (args, cbk) => {
       {
         const {channels} = channelsFromArguments({
           capacities,
-          addresses: args.closing_addresses,
+          addresses: args.cooperative_close_addresses,
           gives: args.gives,
           nodes: args.public_keys,
           types: args.types,

@@ -4,6 +4,7 @@ const method = require('./../../peers/channels_from_arguments');
 
 const makeArgs = overrides => {
   const args = {
+    addresses: ['address'],
     capacities: [2],
     gives: ['1'],
     nodes: [Buffer.alloc(33, 3).toString('hex')],
@@ -22,6 +23,7 @@ const tests = [
     expected: {
       channels: [{
         capacity: 2,
+        cooperative_close_address: 'address',
         give_tokens: 1,
         is_private: true,
         partner_public_key: Buffer.alloc(33, 3).toString('hex'),
@@ -30,6 +32,7 @@ const tests = [
   },
   {
     args: makeArgs({
+      addresses: [],
       capacities: [],
       gives: [],
       types: [],
@@ -38,6 +41,7 @@ const tests = [
     expected: {
       channels: [{
         capacity: 5000000,
+        cooperative_close_address: undefined,
         give_tokens: undefined,
         is_private: false,
         partner_public_key: Buffer.alloc(33, 3).toString('hex'),
