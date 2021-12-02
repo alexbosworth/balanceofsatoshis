@@ -13,7 +13,7 @@ Supported LND versions:
 
 ## Install
 
-- Requires an [installation of Node v12.0+](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
+- Requires an [installation of Node v12.20+](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 - Have a RaspiBlitz? Check out [this install guide](https://gist.github.com/openoms/823f99d1ab6e1d53285e489f7ba38602)
 
 If you want to try out any command without npm install, you can also do `npx

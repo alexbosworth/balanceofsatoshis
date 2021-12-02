@@ -34,7 +34,7 @@
     "inquirer": "8.2.0",
     "invoices": "2.0.2",
     "ln-accounting": "5.0.5",
-    "ln-service": "53.1.1",
+    "ln-service": "53.1.2",
     "ln-sync": "3.0.1",
     "ln-telegram": "3.4.2",
     "moment": "2.29.1",
@@ -43,7 +43,7 @@
     "psbt": "1.1.10",
     "qrcode-terminal": "0.12.0",
     "sanitize-filename": "1.6.3",
-    "table": "6.7.3",
+    "table": "6.7.5",
     "telegraf": "4.4.2",
     "update-notifier": "5.1.0",
     "window-size": "1.1.1"
@@ -56,7 +56,7 @@
     "secp256k1": "4.0.2"
   },
   "engines": {
-    "node": ">=12"
+    "node": ">=12.20"
   },
   "keywords": [
     "cli",
