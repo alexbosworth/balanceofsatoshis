@@ -126,7 +126,7 @@ module.exports = (args, cbk) => {
         }
 
         if (args.transit_key_index === undefined) {
-          return cbk([400, 'ExpectedTransitKeyIndexToAcceptBalancedChannel']);s
+          return cbk([400, 'ExpectedTransitKeyIndexToAcceptBalancedChannel']);
         }
 
         if (!args.transit_public_key) {
