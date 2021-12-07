@@ -8,7 +8,9 @@ const {getPeers} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const {getPublicKey} = require('ln-service');
 const {maintainUtxoLocks} = require('goldengate');
+const {makePeerRequest} = require('paid-services');
 const {networks} = require('bitcoinjs-lib');
+const {parsePaymentRequest} = require('ln-service');
 const {pay} = require('ln-service');
 const {payments} = require('bitcoinjs-lib');
 const {prepareForChannelProposal} = require('ln-service');
@@ -19,6 +21,7 @@ const {Transaction} = require('bitcoinjs-lib');
 const {balancedChannelKeyTypes} = require('./service_key_types');
 const getBalancedRefund = require('./get_balanced_refund');
 
+const acceptRequestIdType = '0';
 const bufferAsHex = buffer => buffer.toString('hex');
 const defaultMaxFeeMtokens = '9000';
 const {fromBech32} = address;
@@ -29,14 +32,18 @@ const giveTokens = capacity => Math.ceil(capacity / 2);
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const idAsHash = id => Buffer.from(id, 'hex').reverse();
 const interval = 1000 * 15;
+const {isArray} = Array;
 const multiSigKeyFamily = 0;
 const networkBitcoin = 'btc';
+const networkRegtest = 'btcregtest';
 const networkTestnet = 'btctestnet';
 const notFoundIndex = -1;
 const numAsHex = num => num.toString(16);
 const paddedHexNumber = n => n.length % 2 ? `0${n}` : n;
 const {p2ms} = payments;
 const {p2pkh} = payments;
+const p2pTimeoutMs = 5000;
+const p2pTimeoutCode = 408;
 const {p2wsh} = payments;
 const relockIntervalMs = 1000 * 20;
 const times = 60 * 6;
@@ -156,6 +163,9 @@ module.exports = (args, cbk) => {
         switch (args.network) {
         case networkBitcoin:
           return cbk(null, networks.bitcoin);
+
+        case networkRegtest:
+          return cbk(null, networks.regtest);
 
         case networkTestnet:
           return cbk(null, networks.testnet);
@@ -373,41 +383,81 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Pay the accept balanced channel request
-      payAcceptRequest: [
+      // Derive the accept records to communicate accept details
+      acceptRecords: [
         'askForTransit',
         'getMultiSigKey',
-        'prepareForProposal',
         'signFunding',
         ({askForTransit, getMultiSigKey, signFunding}, cbk) =>
       {
         const [fundingSignature] = signFunding.signatures;
 
+        return cbk(null, [
+          {
+            type: balancedChannelKeyTypes.multisig_public_key,
+            value: getMultiSigKey.public_key,
+          },
+          {
+            type: balancedChannelKeyTypes.transit_tx_id,
+            value: askForTransit.transaction_id,
+          },
+          {
+            type: balancedChannelKeyTypes.transit_tx_vout,
+            value: paddedHexNumber(numAsHex(askForTransit.transaction_vout)),
+          },
+          {
+            type: balancedChannelKeyTypes.funding_signature,
+            value: fundingSignature,
+          },
+          {
+            type: balancedChannelKeyTypes.transit_public_key,
+            value: args.transit_public_key,
+          },
+        ]);
+      }],
+
+      // Try using p2p communication to accept the request
+      p2pAcceptRequest: [
+        'acceptRecords',
+        'prepareForProposal',
+        ({acceptRecords}, cbk) =>
+      {
+        return makePeerRequest({
+          lnd: args.lnd,
+          records: [].concat(acceptRecords).concat({
+            type: acceptRequestIdType,
+            value: parsePaymentRequest({request: args.accept_request}).id,
+          }),
+          timeout: p2pTimeoutMs,
+          to: args.partner_public_key,
+          type: balancedChannelKeyTypes.accept_request,
+        },
+        err => {
+          // Exit early when the request had an issue, fail back to TLV payment
+          if (!!err) {
+            return cbk(null, {is_accepted: false});
+          }
+
+          return cbk(null, {is_accepted: true});
+        });
+      }],
+
+      // Pay the accept balanced channel request to send accept messages
+      payAcceptRequest: [
+        'acceptRecords',
+        'p2pAcceptRequest',
+        'prepareForProposal',
+        ({acceptRecords, p2pAcceptRequest}, cbk) =>
+      {
+        // Exit early when the peer accepted over p2p comms
+        if (!!p2pAcceptRequest.is_accepted) {
+          return cbk();
+        }
+
         return pay({
           lnd: args.lnd,
           max_fee_mtokens: defaultMaxFeeMtokens,
-          messages: [
-            {
-              type: balancedChannelKeyTypes.multisig_public_key,
-              value: getMultiSigKey.public_key,
-            },
-            {
-              type: balancedChannelKeyTypes.transit_tx_id,
-              value: askForTransit.transaction_id,
-            },
-            {
-              type: balancedChannelKeyTypes.transit_tx_vout,
-              value: paddedHexNumber(numAsHex(askForTransit.transaction_vout)),
-            },
-            {
-              type: balancedChannelKeyTypes.funding_signature,
-              value: fundingSignature,
-            },
-            {
-              type: balancedChannelKeyTypes.transit_public_key,
-              value: args.transit_public_key,
-            },
-          ],
+          messages: acceptRecords,
           request: args.accept_request,
         },
         cbk);

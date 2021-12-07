@@ -5,6 +5,7 @@ const {addPeer} = require('ln-service');
 const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
+const {cancelHodlInvoice} = require('ln-service');
 const {cancelPendingChannel} = require('ln-service');
 const {connectPeer} = require('ln-sync');
 const {createInvoice} = require('ln-service');
@@ -22,19 +23,20 @@ const {payViaRoutes} = require('ln-service');
 const {payments} = require('bitcoinjs-lib');
 const {proposeChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
+const {sendMessageToPeer} = require('ln-service');
+const {servicePeerRequests} = require('paid-services');
 const {signTransaction} = require('ln-service');
 const {subscribeToInvoice} = require('ln-service');
 const {subscribeToProbeForRoute} = require('ln-service');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {balancedChannelKeyTypes} = require('./service_key_types');
+const balancedOpenAcceptDetails = require('./balanced_open_accept_details');
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
 const getBalancedRefund = require('./get_balanced_refund');
 
-const acceptBalancedType = '547418';
 const acceptTokens = 1;
-const balancedChannelOpenType = '547417';
 const bufferAsHex = buffer => buffer.toString('hex');
 const componentsSeparator = ' ';
 const decBase = 10;
@@ -59,12 +61,15 @@ const makeDualControlP2wsh = pubkeys => p2wsh({redeem: p2ms({pubkeys, m: 2})});
 const makeHtlcPreimage = () => randomBytes(32).toString('hex');
 const maxSignatureLen = 150;
 const multiSigKeyFamily = 0;
+const multiSigType = balancedChannelKeyTypes.multisig_public_key;
 const networkBitcoin = 'btc';
+const networkRegtest = 'btcregtest';
 const networkTestnet = 'btctestnet';
 const notFoundIndex = -1;
 const numAsHex = num => num.toString(16);
 const paddedHexNumber = n => n.length % 2 ? `0${n}` : n;
 const parseHexNumber = hex => parseInt(hex, 16);
+const peerFailure = (fail, cbk, err) => { fail(err); return cbk(err); };
 const {p2ms} = payments;
 const {p2pkh} = payments;
 const {p2wsh} = payments;
@@ -74,6 +79,7 @@ const {round} = Math;
 const sendChannelRequestMtokens = '10000';
 const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
 const sigHashAll = Buffer.from([Transaction.SIGHASH_ALL]);
+const testMessage = '00';
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const {toOutputScript} = address;
 const transitKeyFamily = 805;
@@ -232,6 +238,9 @@ module.exports = (args, cbk) => {
         switch (args.network) {
         case networkBitcoin:
           return cbk(null, networks.bitcoin);
+
+        case networkRegtest:
+          return cbk(null, networks.regtest);
 
         case networkTestnet:
           return cbk(null, networks.testnet);
@@ -539,28 +548,95 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Make peer custom message request
+      p2pService: ['askForFunding', 'createAcceptRequest', ({}, cbk) => {
+        // Test that custom message sending is supported
+        return sendMessageToPeer({
+          message: testMessage,
+          lnd: args.lnd,
+          public_key: args.partner_public_key,
+        },
+        err => {
+          // Provide a dummy p2p service when messages cannot be sent to peer
+          if (!!err) {
+            return cbk(null, {request: () => {}, stop: () => {}});
+          }
+
+          return cbk(null, servicePeerRequests({lnd: args.lnd}));
+        });
+      }],
+
       // Wait for response to the payment req
       waitForAccept: [
         'askForFunding',
         'createAcceptRequest',
+        'p2pService',
         'pushRequest',
-        ({askForFunding, createAcceptRequest}, cbk) =>
+        ({askForFunding, createAcceptRequest, p2pService}, cbk) =>
       {
         args.logger.info({waiting_for_peer_balanced_channel_acceptance: true});
-
-        const multiSigType = balancedChannelKeyTypes.multisig_public_key;
 
         const sub = subscribeToInvoice({
           id: createAcceptRequest.id,
           lnd: args.lnd,
         });
 
-        sub.on('error', err => {
+        // Wait for a p2p accept message
+        p2pService.request({
+          type: balancedChannelKeyTypes.accept_request,
+        },
+        (req, res) => {
+          // Exit early when the request is not from the peer
+          if (req.from !== args.partner_public_key) {
+            return;
+          }
+
+          const idRecord = req.records.find(n => !BigInt(n.type));
+
+          // Exit early when the request is not for this open
+          if (!idRecord || idRecord.value !== createAcceptRequest.id) {
+            return;
+          }
+
+          // Remove the invoice listener
           sub.removeAllListeners();
+
+          // Remove the p2p requests listener
+          p2pService.stop({});
+
+          // Stop listening on the invoice
+          cancelHodlInvoice({id: idRecord.value, lnd: args.lnd}, err => {
+            return !!err ? args.logger.error({err}) : null;
+          });
+
+          args.logger.info({received_balanced_channel_acceptance: true});
+
+          const {records} = req;
+
+          try {
+            const acceptance = balancedOpenAcceptDetails({records});
+
+            // Respond to the peer accept request
+            res.success({});
+
+            return cbk(null, acceptance);
+          } catch (err) {
+            // Tell the peer there was a failure
+            return peerFailure(res.failure, cbk, [503, err.message]);
+          }
+        });
+
+        sub.on('error', err => {
+          // Remove the invoice listener
+          sub.removeAllListeners();
+
+          // Remove the p2p requests listener
+          p2pService.stop({});
 
           return cbk([503, 'UnexpectedErrorWaitingForChannelAccept', {err}]);
         });
 
+        // Wait for acceptance by invoice
         sub.on('invoice_updated', invoice => {
           if (!invoice.is_confirmed) {
             return;
@@ -568,8 +644,13 @@ module.exports = (args, cbk) => {
 
           args.logger.info({received_peer_balanced_channel_acceptance: true});
 
+          // No more listening is required
           sub.removeAllListeners();
 
+          // Turn off the p2p listener
+          p2pService.stop({});
+
+          // Find accept records
           const acceptDetailsPayment = invoice.payments.find(payment => {
             return !!payment.messages.find(n => n.type === multiSigType);
           });
@@ -580,65 +661,11 @@ module.exports = (args, cbk) => {
 
           const {messages} = acceptDetailsPayment;
 
-          const remoteMultiSigPublicKey = messages.find(({type}) => {
-            return type === multiSigType;
-          });
-
-          if (!remoteMultiSigPublicKey) {
-            return cbk([503, 'AcceptResponseMissingTransitPublicKey']);
+          try {
+            return cbk(null, balancedOpenAcceptDetails({records: messages}));
+          } catch (err) {
+            return cbk([503, err.message]);
           }
-
-          if (!isPublicKey(remoteMultiSigPublicKey.value)) {
-            return cbk([503, 'GotInvalidFundingTransitPublicKey']);
-          }
-
-          const transitTxId = messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.transit_tx_id;
-          });
-
-          if (!transitTxId || transitTxId.value.length !== hashHexLength) {
-            return cbk([503, 'AcceptResponseMissingTransitTransactionId']);
-          }
-
-          const transitTxVout = messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.transit_tx_vout;
-          });
-
-          if (!transitTxVout || !isHexNumberSized(transitTxVout.value)) {
-            return cbk([503, 'AcceptResponseMissingTransitTransactionVout']);
-          }
-
-          const fundSignature = messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.funding_signature;
-          });
-
-          if (!fundSignature || fundSignature.value.length > maxSignatureLen) {
-            return cbk([503, 'AcceptResponseMissingFundingSignature']);
-          }
-
-          const fundTransitKey = messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.transit_public_key;
-          });
-
-          if (!fundTransitKey) {
-            return cbk([503, 'AcceptResponseMissingFundTransitKey']);
-          }
-
-          if (!isPublicKey(fundTransitKey.value)) {
-            return cbk([503, 'GotInvalidFundingTransitPublicKey']);
-          }
-
-          const fundingSignature = hexAsBuffer(fundSignature.value);
-
-          const signature = Buffer.concat([fundingSignature, sigHashAll]);
-
-          return cbk(null, {
-            funding_signature: bufferAsHex(signature),
-            multisig_public_key: remoteMultiSigPublicKey.value,
-            transaction_id: transitTxId.value,
-            transaction_vout: parseHexNumber(transitTxVout.value),
-            transit_public_key: fundTransitKey.value,
-          });
         });
       }],
 

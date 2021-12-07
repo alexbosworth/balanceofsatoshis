@@ -11,7 +11,6 @@ const {concat} = Buffer;
 const {fromBech32} = address;
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const idAsHash = id => Buffer.from(id, 'hex').reverse();
-const nets = {btc: networks.bitcoin, btctestnet: networks.testnet};
 const {p2pkh} = payments;
 const refundTxSize = 110;
 const sigHashAll = Buffer.from([Transaction.SIGHASH_ALL]);
@@ -41,8 +40,19 @@ const transitKeyFamily = 805;
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
+      // Accepted networks
+      nets: cbk => {
+        const nets = {
+          btc: networks.bitcoin,
+          btcregtest: networks.regtest,
+          btctestnet: networks.testnet,
+        };
+
+        return cbk(null, nets);
+      },
+
       // Check arguments
-      validate: cbk => {
+      validate: ['nets', ({nets}, cbk) => {
         if (!args.funded_tokens) {
           return cbk([400, 'ExpectedFundedTokensToGetBalancedChannelRefund']);
         }
@@ -84,10 +94,10 @@ module.exports = (args, cbk) => {
         }
 
         return cbk();
-      },
+      }],
 
       // Create the transaction to sign
-      transactionToSign: ['validate', ({}, cbk) => {
+      transactionToSign: ['nets', 'validate', ({nets}, cbk) => {
         const network = nets[args.network];
         const outpointHash = idAsHash(args.transaction_id);
         const tx = new Transaction();
@@ -101,7 +111,11 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the signature for the unsigned transaction
-      getSignature: ['transactionToSign', ({transactionToSign}, cbk) => {
+      getSignature: [
+        'nets',
+        'transactionToSign',
+        ({nets, transactionToSign}, cbk) =>
+      {
         const hash = fromBech32(args.transit_address).data;
         const network = nets[args.network];
 

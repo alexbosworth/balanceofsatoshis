@@ -1,5 +1,10 @@
 # Versions
 
+## 11.14.0
+
+- `open-balanced-channel`: Add support for accepting using p2p messaging
+- `open-balanced-channel`: Add support for regtest network
+
 ## 11.13.0
 
 - `open`: Add `--coop-close-address` to specify cooperative close addresses

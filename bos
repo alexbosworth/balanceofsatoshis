@@ -1001,6 +1001,7 @@ prog
   // Open a balanced channel with a peer
   .command('open-balanced-channel', 'Open a dual-funded channel with a node')
   .help('Remote node must be prepared to receive this type of channel')
+  .help('The remote node should also run this same command after you propose')
   .help('Channel details are negotiated with keysend so that is also required')
   .option('--node <node_name>', 'Use saved node details instead of local node')
   .option('--recover <addr>', 'Recover if funds sent to an address by mistake')

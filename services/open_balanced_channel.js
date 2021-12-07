@@ -29,6 +29,7 @@ const interval = 1000 * 15;
 const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
 const minErrorCount = 4;
 const networkMainnet = 'btc';
+const networkRegtest = 'btcregtest';
 const networkTestnet = 'btctestnet';
 const {p2wpkh} = payments;
 const times = 60;
@@ -77,6 +78,9 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
         switch (getNetwork.network) {
         case networkMainnet:
           return cbk(null, networks.bitcoin);
+
+        case networkRegtest:
+          return cbk(null, networks.regtest);
 
         case networkTestnet:
           return cbk(null, networks.testnet);

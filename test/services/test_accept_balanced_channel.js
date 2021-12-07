@@ -53,6 +53,16 @@ const makeArgs = overrides => {
           total_limbo_balance: '1',
           waiting_close_channels: [],
         }),
+        sendCustomMessage: (args, cbk) => cbk({details: 'unknown'}),
+        SubscribeCustomMessages: ({}) => {
+          const emitter = new EventEmitter();
+
+          emitter.cancel = () => {};
+
+          process.nextTick(() => emitter.emit('error', 'unsupported'));
+
+          return emitter;
+        },
       },
       router: {
         sendPaymentV2: ({}) => {
