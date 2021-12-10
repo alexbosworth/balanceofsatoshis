@@ -1,12 +1,11 @@
 const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
-const asyncRetry = require('async/retry');
 const {connectPeer} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getFundedTransaction} = require('goldengate');
 const {getPeers} = require('ln-service');
-const {getPendingChannels} = require('ln-service');
 const {getPublicKey} = require('ln-service');
+const {getTransitRefund} = require('ln-sync');
 const {maintainUtxoLocks} = require('goldengate');
 const {makePeerRequest} = require('paid-services');
 const {networks} = require('bitcoinjs-lib');
@@ -17,9 +16,9 @@ const {prepareForChannelProposal} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {signTransaction} = require('ln-service');
 const {Transaction} = require('bitcoinjs-lib');
+const {waitForPendingOpen} = require('ln-sync');
 
 const {balancedChannelKeyTypes} = require('./service_key_types');
-const getBalancedRefund = require('./get_balanced_refund');
 
 const acceptRequestIdType = '0';
 const bufferAsHex = buffer => buffer.toString('hex');
@@ -256,12 +255,11 @@ module.exports = (args, cbk) => {
 
       // Derive a refund transaction that pays back the funding to refund addr
       getRefundTransaction: ['askForTransit', ({askForTransit}, cbk) => {
-        return getBalancedRefund({
+        return getTransitRefund({
           funded_tokens: askForTransit.tokens,
           lnd: args.lnd,
           network: args.network,
           refund_address: args.refund_address,
-          refund_tokens: giveTokens(args.capacity),
           transit_address: args.transit_address,
           transit_key_index: args.transit_key_index,
           transit_public_key: args.transit_public_key,
@@ -470,47 +468,29 @@ module.exports = (args, cbk) => {
         'payAcceptRequest',
         ({askForTransit, fundingTx}, cbk) =>
       {
-        return asyncRetry({interval, times}, cbk => {
-          args.logger.info({waiting_for_incoming_channel: true});
+        args.logger.info({waiting_for_incoming_channel: true});
 
-          return getPendingChannels({lnd: args.lnd}, (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            // Look for the incoming channel proposal
-            const pending = res.pending_channels.find(chan => {
-              if (chan.transaction_vout !== fundingTx.transaction_vout) {
-                return false;
-              }
-
-              if (!chan.is_opening) {
-                return false;
-              }
-
-              if (chan.local_balance !== giveTokens(args.capacity)) {
-                return false;
-              }
-
-              if (chan.partner_public_key !== args.partner_public_key) {
-                return false;
-              }
-
-              return chan.transaction_id === fundingTx.transaction_id;
-            });
-
-            if (!pending) {
-              return cbk([503, 'ExpectedIncomingPendingBalancedChannel']);
-            }
-
-            return cbk(null, {
-              transaction_id: fundingTx.transaction_id,
-              transaction_vout: fundingTx.transaction_vout,
-              transactions: [askForTransit.transaction],
-            });
-          });
+        return waitForPendingOpen({
+          interval,
+          times,
+          capacity: args.capacity,
+          lnd: args.lnd,
+          local_balance: giveTokens(args.capacity),
+          partner_public_key: args.partner_public_key,
+          transaction_id: fundingTx.transaction_id,
+          transaction_vout: fundingTx.transaction_vout,
         },
-        cbk);
+        err => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, {
+            transaction_id: fundingTx.transaction_id,
+            transaction_vout: fundingTx.transaction_vout,
+            transactions: [askForTransit.transaction],
+          });
+        });
       }],
 
       // The peer should broadcast their funding

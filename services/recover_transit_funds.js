@@ -4,12 +4,11 @@ const asyncDetectSeries = require('async/detectSeries');
 const {broadcastChainTransaction} = require('ln-service');
 const {createChainAddress} = require('ln-service');
 const {getPublicKey} = require('ln-service');
+const {getTransitRefund} = require('ln-sync');
 const {networks} = require('bitcoinjs-lib');
 const {payments} = require('bitcoinjs-lib');
 const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
-
-const getBalancedRefund = require('./get_balanced_refund');
 
 const defaultMaxIndex = 20000;
 const description = 'BalancedChannelOpenFundsRecovery';
@@ -137,12 +136,11 @@ module.exports = ({ask, lnd, logger, network, recover}, cbk) => {
           return cbk([400, 'AddressNotFoundInSuppliedTransaction']);
         }
 
-        return getBalancedRefund({
+        return getTransitRefund({
           lnd,
           network,
           funded_tokens: fromHex(getTransaction).outs[outputIndex].value,
           refund_address: createRefundAddress.address,
-          refund_tokens: fromHex(getTransaction).outs[outputIndex].value,
           transit_address: recover,
           transit_key_index: getTransitKey.index,
           transit_public_key: getTransitKey.public_key,

@@ -1,12 +1,12 @@
 const {createHash} = require('crypto');
 const {randomBytes} = require('crypto');
 
+const {acceptsChannelOpen} = require('ln-sync');
 const {addPeer} = require('ln-service');
 const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
 const {cancelHodlInvoice} = require('ln-service');
-const {cancelPendingChannel} = require('ln-service');
 const {connectPeer} = require('ln-sync');
 const {createInvoice} = require('ln-service');
 const {createPsbt} = require('psbt');
@@ -16,9 +16,9 @@ const {getFundedTransaction} = require('goldengate');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPublicKey} = require('ln-service');
+const {getTransitRefund} = require('ln-sync');
 const {maintainUtxoLocks} = require('goldengate');
 const {networks} = require('bitcoinjs-lib');
-const {openChannels} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {payments} = require('bitcoinjs-lib');
 const {proposeChannel} = require('ln-service');
@@ -34,7 +34,6 @@ const {balancedChannelKeyTypes} = require('./service_key_types');
 const balancedOpenAcceptDetails = require('./balanced_open_accept_details');
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
-const getBalancedRefund = require('./get_balanced_refund');
 
 const acceptTokens = 1;
 const bufferAsHex = buffer => buffer.toString('hex');
@@ -286,22 +285,13 @@ module.exports = (args, cbk) => {
         'connect',
         ({askForCapacity}, cbk) =>
       {
-        return openChannels({
-          channels: [{
-            capacity: askForCapacity,
-            give_tokens: giveTokens(askForCapacity),
-            partner_public_key: args.partner_public_key,
-          }],
+        return acceptsChannelOpen({
+          capacity: askForCapacity,
+          give_tokens: giveTokens(askForCapacity),
           lnd: args.lnd,
+          partner_public_key: args.partner_public_key,
         },
         cbk);
-      }],
-
-      // Cancel the test open channel request
-      cancelTestOpen: ['testOpenChannel', ({testOpenChannel}, cbk) => {
-        const [{id}] = testOpenChannel.pending;
-
-        return cancelPendingChannel({id, lnd: args.lnd}, cbk);
       }],
 
       // Ask for what fee rate to use
@@ -395,12 +385,11 @@ module.exports = (args, cbk) => {
         'getTransitKey',
         ({askForCapacity, askForFunding, getTransitKey}, cbk) =>
       {
-        return getBalancedRefund({
+        return getTransitRefund({
           funded_tokens: askForFunding.tokens,
           lnd: args.lnd,
           network: args.network,
           refund_address: args.refund_address,
-          refund_tokens: giveTokens(askForCapacity),
           transit_address: args.transit_address,
           transit_key_index: args.transit_key_index,
           transit_public_key: getTransitKey.public_key,
