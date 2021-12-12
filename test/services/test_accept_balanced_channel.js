@@ -37,7 +37,7 @@ const makeArgs = overrides => {
           pending_force_closing_channels: [],
           pending_open_channels: [{
             channel: {
-              capacity: '1',
+              capacity: '20000',
               channel_point: '6b52df2ba42dfe9d5ba74bb6d248300551c868581db6837e19fc21b8e6466953:0',
               local_balance: 10000,
               local_chan_reserve_sat: '1',

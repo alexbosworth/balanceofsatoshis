@@ -15,12 +15,11 @@ const {green} = require('colorette');
 const moment = require('moment');
 const {Parser} = require('hot-formula-parser');
 const {returnResult} = require('asyncjs-util');
-const {updateRoutingFees} = require('ln-service');
+const {updateChannelFee} = require('ln-sync');
 
 const {chartAliasForPeer} = require('./../display');
 const {formatFeeRate} = require('./../display');
 const {getIcons} = require('./../display');
-const updateChannelFee = require('./update_channel_fee');
 
 const asTxOut = n => `${n.transaction_id}:${n.transaction_vout}`;
 const {ceil} = Math;
