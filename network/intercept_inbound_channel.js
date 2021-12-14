@@ -1,13 +1,7 @@
 const asyncAuto = require("async/auto");
 const { returnResult } = require("asyncjs-util");
-const generateAddressFromPubkey = require("../chain/generate_address_from_pubkey.js");
+const { validateAddress } = require("../chain");
 const { subscribeToOpenRequests } = require("ln-service");
-const { join } = require("path");
-const fs = require("fs");
-const { parse } = JSON;
-const { homedir } = require("os");
-const home = ".bos";
-const pubkeyFileName = "master_pubkey.json";
 
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
@@ -22,63 +16,48 @@ module.exports = (args, cbk) => {
           if (!args.logger) {
             return cbk([400, "ExpectedLoggerObjectToInterceptInboundChannel"]);
           }
+
+          if (!args.cooperative_close_address) {
+            return cbk([400, "ExpectedCoopCloseAddress"]);
+          }
+
+          if (args.network != "mainnet" && args.network != "testnet" && args.network != "regtest") {
+            return cbk([400, "ExpectedValidNetworkValue"]);
+          }
+
           return cbk();
         },
 
-        //read the master pubkey and network from file
-        getFile: [
+        // validate input coop-close-address
+        validateAddress: [
           "validate",
           ({}, cbk) => {
-            const path = join(...[homedir(), home, pubkeyFileName]);
+            const isValidAddress = validateAddress({ coop_close_address: args.cooperative_close_address, network: args.network });
 
-            return fs.readFile(path, (err, res) => {
-              if (err) {
-                return cbk([400, "MissingMasterPubkeyJSONFile"]);
-              }
-              try {
-                parse(res.toString());
-              } catch (err) {
-                return cbk([400, "MasterPubkeyFileHasInvalidData"]);
-              }
-
-              const masterPubkeyData = parse(res.toString());
-
-              return cbk(null, masterPubkeyData);
-            });
-          },
-        ],
-
-        //generate address first time to check it works
-        getAddress: [
-          "validate",
-          "getFile",
-          ({ getFile }, cbk) => {
-            const address = generateAddressFromPubkey({ network: getFile.network, masterPubKey: getFile.master_pubkey });
-
-            if (!address) {
-              return cbk([400, "FailedToGenerateAddressFromPubkey"]);
+            if (!isValidAddress) {
+              return cbk([400, "FailedAddressValidationCheck"]);
             }
-            // logger.info("Address Successfully Generated");
 
-            return cbk(null, address);
+            if (isValidAddress) {
+              args.logger.info("Address Validated");
+              return cbk(null, args.cooperative_close_address);
+            }
           },
         ],
 
-        //intercept open channel requests and generate addresses on the fly.
+        //intercept open channel requests and adds an address.
         interceptOpenRequests: [
           "validate",
-          "getFile",
-          "getAddress",
-          ({ getAddress, getFile }, cbk) => {
+          "validateAddress",
+          ({ validateAddress }, cbk) => {
             const sub = subscribeToOpenRequests({ lnd: args.lnd });
 
-            if (!getAddress.address) {
-              return cbk([400, "FailedToGenerateAddressFromPubkey"]);
-            }
-            sub.on("channel_request", (channel) => {
-              const address = generateAddressFromPubkey({ network: getFile.network, masterPubKey: getFile.master_pubkey }).address;
+            sub.on("error", (err) => {
+              return cbk(err);
+            });
 
-              channel.accept({ cooperative_close_address: address });
+            sub.on("channel_request", (channel) => {
+              channel.accept({ cooperative_close_address: validateAddress });
             });
           },
         ],

@@ -888,6 +888,30 @@ prog
     });
   })
 
+    // Intercept inbound channel
+  .command("intercept-inbound-channel", "Move on-chain funds off-chain")
+  .help("Intercept an inbound channel open request to add coop-close-address")
+  .option("--coop-close-address <addr>", "Add a coop-close-address to inbound channel", STRING, null, true)
+  .option("--network <network>", "Enter bitcoin network (mainnet, testnet, regtest)", STRING, "mainnet")
+  .option("--node <node_name>", "Intercept inbound channel on saved node")
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return network.interceptInboundChannel(
+          {
+            logger,
+            lnd: (await lnd.authenticatedLnd({ logger, node: options.node })).lnd,
+            cooperative_close_address: options.coopCloseAddress,
+            network: options.network,
+          },
+          responses.returnObject({ logger, reject, resolve }));
+        } catch (err) {
+          return reject(err);
+        }
+    });
+  })
+  
+
   // Get the price for liquidity
   .command('liquidity-cost', 'Get the price of liquidity')
   .visible(false)
