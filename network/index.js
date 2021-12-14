@@ -17,6 +17,7 @@ const removePeer = require('./remove_peer');
 const sendGift = require('./send_gift');
 const setAutopilot = require('./set_autopilot');
 const transferFunds = require('./transfer_funds');
+const interceptInboundChannel = require("./intercept_inbound_channel");
 
 module.exports = {
   currencyForNetwork,
@@ -38,4 +39,5 @@ module.exports = {
   sendGift,
   setAutopilot,
   transferFunds,
+  interceptInboundChannel,
 };
