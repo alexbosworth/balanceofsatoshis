@@ -5,3 +5,4 @@
 node_modules
 .prettierrc
 .vscode/settings.json
+.prettierignore
