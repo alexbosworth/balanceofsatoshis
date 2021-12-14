@@ -254,9 +254,9 @@ test(`Open balanced channel`, async ({end, equal, strictSame}) => {
     });
   } catch (err) {
     equal(err, null, 'Expected no error opening a balanced channel');
+  } finally {
+    await kill({});
   }
-
-  await kill({});
 
   return end();
 });

@@ -17,7 +17,7 @@ getNodeInfoResponse.channels = [];
 const request = 'lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w';
 
 const keyPair = ECPair.makeRandom();
-const transitAddress = payments.p2wpkh({pubkey: keyPair.publicKey});
+const transitAddress = 'bc1q6x8d58yysr8xpv0m4qm4vk8h72rzmx4vsznplm';
 
 const makeArgs = overrides => {
   const args = {
@@ -28,7 +28,10 @@ const makeArgs = overrides => {
 
         tx.addInput(Buffer.alloc(32), 0, 0, Buffer.alloc(32));
 
-        tx.addOutput(transitAddress.output, 382);
+        tx.addOutput(
+          Buffer.from('001451814f108670aced2d77c1805ddd6634bc9d4731', 'hex'),
+          382
+        );
 
         return tx.toHex();
       })(),
@@ -103,6 +106,11 @@ const makeArgs = overrides => {
           settled: false,
           value: 1,
         }),
+        newAddress: (args, cbk) => {
+          return cbk(null, {
+            address: transitAddress,
+          });
+        },
         openChannel: params => {
           const eventEmitter = new EventEmitter();
 

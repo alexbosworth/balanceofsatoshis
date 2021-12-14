@@ -12,11 +12,9 @@ const {createInvoice} = require('ln-service');
 const {createPsbt} = require('psbt');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
-const {getFundedTransaction} = require('goldengate');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPublicKey} = require('ln-service');
-const {getTransitRefund} = require('ln-sync');
 const {maintainUtxoLocks} = require('goldengate');
 const {networks} = require('bitcoinjs-lib');
 const {payViaRoutes} = require('ln-service');
@@ -34,29 +32,24 @@ const {balancedChannelKeyTypes} = require('./service_key_types');
 const balancedOpenAcceptDetails = require('./balanced_open_accept_details');
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
+const reserveTransitFunds = require('./reserve_transit_funds');
 
 const acceptTokens = 1;
 const bufferAsHex = buffer => buffer.toString('hex');
-const componentsSeparator = ' ';
-const decBase = 10;
 const defaultMaxFeeMtokens = '9000';
-const encodeSig = (sig, hash) => Buffer.concat(Buffer.from(sig, 'hex'), hash);
 const {fromBech32} = address;
 const {fromHex} = Transaction;
 const fundingAmount = (capacity, rate) => (capacity + (190 * rate)) / 2;
 const fundingFee = rate => Math.ceil(190 / 2 * rate);
 const giveTokens = capacity => Math.ceil(capacity / 2);
 const hasInbound = channels => !!channels.find(n => !!n.remote_balance);
-const hashHexLength = 64;
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const idAsHash = id => Buffer.from(id, 'hex').reverse();
-const isHexNumberSized = hex => hex.length < 14;
 const isNumber = n => !isNaN(n);
 const isOdd = n => n % 2;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const keySendPreimageType = '5482373484';
 const largeNumberByteCount = 8;
-const makeDualControlP2wsh = pubkeys => p2wsh({redeem: p2ms({pubkeys, m: 2})});
 const makeHtlcPreimage = () => randomBytes(32).toString('hex');
 const maxSignatureLen = 150;
 const multiSigKeyFamily = 0;
@@ -64,15 +57,12 @@ const multiSigType = balancedChannelKeyTypes.multisig_public_key;
 const networkBitcoin = 'btc';
 const networkRegtest = 'btcregtest';
 const networkTestnet = 'btctestnet';
-const notFoundIndex = -1;
 const numAsHex = num => num.toString(16);
 const paddedHexNumber = n => n.length % 2 ? `0${n}` : n;
-const parseHexNumber = hex => parseInt(hex, 16);
 const peerFailure = (fail, cbk, err) => { fail(err); return cbk(err); };
 const {p2ms} = payments;
 const {p2pkh} = payments;
 const {p2wsh} = payments;
-const refundTxSize = 125;
 const relockIntervalMs = 1000 * 20;
 const {round} = Math;
 const sendChannelRequestMtokens = '10000';
@@ -82,8 +72,6 @@ const testMessage = '00';
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const {toOutputScript} = address;
 const transitKeyFamily = 805;
-const uint16ByteCount = 2;
-const uint64ByteCount = 8;
 const utf8AsHex = utf8 => Buffer.from(utf8).toString('hex');
 
 /** Initiate a balanced channel
@@ -95,9 +83,6 @@ const utf8AsHex = utf8 => Buffer.from(utf8).toString('hex');
     multisig_key_index: <Channel Funding MultiSig Index Number>
     network: <Network Name String>
     partner_public_key: <Peer Public Key Hex String>
-    refund_address: <Pay Transit Key Funds to Refund Address String>
-    transit_address: <Transit Pay to Witness Public Key Address String>
-    transit_key_index: <Transit Key Index Number>
   }
 
   @returns via cbk or Promise
@@ -136,20 +121,13 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedPartnerPublicKeyToInitBalancedChannel']);
         }
 
-        if (!args.refund_address) {
-          return cbk([400, 'ExpectedRefundAddressToInitBalancedChannel']);
-        }
-
-        if (!args.transit_address) {
-          return cbk([400, 'ExpectedTransitAddressToInitiateBalancedChannel']);
-        }
-
-        if (args.transit_key_index === undefined) {
-          return cbk([400, 'ExpectedTransitKeyToInitiateBalancedChannel']);
-        }
-
         return cbk();
       },
+
+      // Connect to the peer
+      connect: ['validate', ({}, cbk) => {
+        return connectPeer({id: args.partner_public_key, lnd: args.lnd}, cbk);
+      }],
 
       // Determine a baseline fee to suggest for the channel open
       getChainFee: ['validate', ({}, cbk) => {
@@ -176,19 +154,21 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Connect to the peer
-      connect: ['validate', ({}, cbk) => {
-        return connectPeer({id: args.partner_public_key, lnd: args.lnd}, cbk);
-      }],
+      // BitcoinJS Network
+      network: ['validate', ({}, cbk) => {
+        switch (args.network) {
+        case networkBitcoin:
+          return cbk(null, networks.bitcoin);
 
-      // Get the transit key
-      getTransitKey: ['validate', ({}, cbk) => {
-        return getPublicKey({
-          family: transitKeyFamily,
-          index: args.transit_key_index,
-          lnd: args.lnd,
-        },
-        cbk);
+        case networkRegtest:
+          return cbk(null, networks.regtest);
+
+        case networkTestnet:
+          return cbk(null, networks.testnet);
+
+        default:
+          return cbk([400, 'UnsupportedNetworkForInitiatingBalancedChannel']);
+        }
       }],
 
       // Check to make sure there is a route to push the keysend to the node
@@ -230,23 +210,6 @@ module.exports = (args, cbk) => {
 
           return args.logger.info({failure: description});
         });
-      }],
-
-      // BitcoinJS Network
-      network: ['validate', ({}, cbk) => {
-        switch (args.network) {
-        case networkBitcoin:
-          return cbk(null, networks.bitcoin);
-
-        case networkRegtest:
-          return cbk(null, networks.regtest);
-
-        case networkTestnet:
-          return cbk(null, networks.testnet);
-
-        default:
-          return cbk([400, 'UnsupportedNetworkForInitiatingBalancedChannel']);
-        }
       }],
 
       // Make sure that there is a public channel that can receive the keysend
@@ -320,81 +283,14 @@ module.exports = (args, cbk) => {
       askForFunding: [
         'askForCapacity',
         'askForFeeRate',
-        'network',
-        ({askForCapacity, askForFeeRate, network}, cbk) =>
+        ({askForCapacity, askForFeeRate}, cbk) =>
       {
-        const tokens = fundingAmount(askForCapacity, askForFeeRate);
-        const transitOutput = toOutputScript(args.transit_address, network);
-
-        return getFundedTransaction({
+        return reserveTransitFunds({
           ask: args.ask,
-          chain_fee_tokens_per_vbyte: askForFeeRate,
           lnd: args.lnd,
           logger: args.logger,
-          outputs: [{tokens, address: args.transit_address}],
-        },
-        (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          const fund = res.transaction;
-
-          if (!fund) {
-            return cbk([400, 'ExpectedTransactionToInitiateBalancedOpen']);
-          }
-
-          const txVout = fromHex(fund).outs.findIndex(({script}) => {
-            return script.equals(transitOutput);
-          });
-
-          if (txVout === notFoundIndex) {
-            return cbk([400, 'ExpectedInitTxOutputPayingToTransitAddress']);
-          }
-
-          // The transaction must have an output sending to the address
-          if (fromHex(fund).outs[txVout].value !== tokens) {
-            return cbk([400, 'UnexpectedFundingAmountPayingToTransitAddress']);
-          }
-
-          if (!!res.inputs) {
-            // Maintain a lock on the UTXOs until the tx confirms
-            maintainUtxoLocks({
-              id: res.id,
-              inputs: res.inputs,
-              interval: relockIntervalMs,
-              lnd: args.lnd,
-            },
-            () => {});
-          }
-
-          return cbk(null, {
-            tokens,
-            inputs: res.inputs,
-            transaction: fund,
-            transaction_id: res.id,
-            transaction_vout: txVout,
-          });
-        });
-      }],
-
-      // Derive a refund transaction that pays back the funding to refund addr
-      getRefundTransaction: [
-        'askForCapacity',
-        'askForFunding',
-        'getTransitKey',
-        ({askForCapacity, askForFunding, getTransitKey}, cbk) =>
-      {
-        return getTransitRefund({
-          funded_tokens: askForFunding.tokens,
-          lnd: args.lnd,
-          network: args.network,
-          refund_address: args.refund_address,
-          transit_address: args.transit_address,
-          transit_key_index: args.transit_key_index,
-          transit_public_key: getTransitKey.public_key,
-          transaction_id: askForFunding.transaction_id,
-          transaction_vout: askForFunding.transaction_vout,
+          rate: askForFeeRate,
+          tokens: fundingAmount(askForCapacity, askForFeeRate),
         },
         cbk);
       }],
@@ -413,6 +309,17 @@ module.exports = (args, cbk) => {
         },
         cbk) =>
       {
+        if (!!askForFunding.inputs) {
+          // Maintain a lock on the UTXOs until the tx confirms
+          maintainUtxoLocks({
+            id: askForFunding.id,
+            inputs: askForFunding.inputs,
+            interval: relockIntervalMs,
+            lnd: args.lnd,
+          },
+          () => {});
+        }
+
         const secret = makeHtlcPreimage();
 
         const messages = [
@@ -434,11 +341,11 @@ module.exports = (args, cbk) => {
           },
           {
             type: balancedChannelKeyTypes.transit_tx_id,
-            value: askForFunding.transaction_id,
+            value: askForFunding.id,
           },
           {
             type: balancedChannelKeyTypes.transit_tx_vout,
-            value: paddedHexNumber(numAsHex(askForFunding.transaction_vout)),
+            value: paddedHexNumber(numAsHex(askForFunding.vout)),
           },
         ];
 
@@ -469,19 +376,32 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Make peer custom message request
+      p2pService: ['askForFunding', 'createAcceptRequest', ({}, cbk) => {
+        // Test that custom message sending is supported
+        return sendMessageToPeer({
+          message: testMessage,
+          lnd: args.lnd,
+          public_key: args.partner_public_key,
+        },
+        err => {
+          // Provide a dummy p2p service when messages cannot be sent to peer
+          if (!!err) {
+            return cbk(null, {request: () => {}, stop: () => {}});
+          }
+
+          return cbk(null, servicePeerRequests({lnd: args.lnd}));
+        });
+      }],
+
       // Send the key send to the accepting peer
       pushRequest: [
+        'askForFunding',
         'createAcceptRequest',
-        'getRefundTransaction',
         'messagesToPush',
-        ({
-          createAcceptRequest,
-          getRefundTransaction,
-          messagesToPush,
-        },
-        cbk) =>
+        ({askForFunding, createAcceptRequest, messagesToPush}, cbk) =>
       {
-        args.logger.info({refund_transaction: getRefundTransaction.refund});
+        args.logger.info({refund_transaction: askForFunding.refund});
 
         const messages = []
           .concat(messagesToPush.messages)
@@ -534,24 +454,6 @@ module.exports = (args, cbk) => {
           });
 
           return args.logger.info({failure: description});
-        });
-      }],
-
-      // Make peer custom message request
-      p2pService: ['askForFunding', 'createAcceptRequest', ({}, cbk) => {
-        // Test that custom message sending is supported
-        return sendMessageToPeer({
-          message: testMessage,
-          lnd: args.lnd,
-          public_key: args.partner_public_key,
-        },
-        err => {
-          // Provide a dummy p2p service when messages cannot be sent to peer
-          if (!!err) {
-            return cbk(null, {request: () => {}, stop: () => {}});
-          }
-
-          return cbk(null, servicePeerRequests({lnd: args.lnd}));
         });
       }],
 
@@ -697,7 +599,14 @@ module.exports = (args, cbk) => {
         cbk) =>
       {
         const tx = new Transaction();
-        const utxos = [askForFunding, waitForAccept];
+
+        const utxos = [
+          {
+            transaction_id: askForFunding.id,
+            transaction_vout: askForFunding.vout,
+          },
+          waitForAccept,
+        ];
 
         const inputs = utxos.map(utxo => ({
           hash: idAsHash(utxo.transaction_id),
@@ -753,25 +662,25 @@ module.exports = (args, cbk) => {
         cbk) =>
       {
         const feeRate = askForFeeRate;
-        const hash = fromBech32(args.transit_address).data;
+        const hash = fromBech32(askForFunding.address).data;
         const tx = halfSign;
 
         const fundingVin = tx.ins.findIndex(input => {
-          if (input.index !== askForFunding.transaction_vout) {
+          if (input.index !== askForFunding.vout) {
             return false;
           }
 
-          return input.hash.equals(idAsHash(askForFunding.transaction_id));
+          return input.hash.equals(idAsHash(askForFunding.id));
         });
 
-        const outputScript = toOutputScript(args.transit_address, network);
+        const outputScript = toOutputScript(askForFunding.address, network);
 
         // Sign the channel funding transaction
         return signTransaction({
           lnd: args.lnd,
           inputs: [{
             key_family: transitKeyFamily,
-            key_index: args.transit_key_index,
+            key_index: askForFunding.index,
             output_script: bufferAsHex(outputScript),
             output_tokens: giveTokens(askForCapacity) + fundingFee(feeRate),
             sighash: Transaction.SIGHASH_ALL,
@@ -789,7 +698,6 @@ module.exports = (args, cbk) => {
         'askForFunding',
         'deriveFundingAddress',
         'getMultiSigKey',
-        'getTransitKey',
         'halfSign',
         'signChannelFunding',
         ({
@@ -797,13 +705,12 @@ module.exports = (args, cbk) => {
           askForFunding,
           deriveFundingAddress,
           getMultiSigKey,
-          getTransitKey,
           halfSign,
           signChannelFunding,
         },
         cbk) =>
       {
-        const publicKey = hexAsBuffer(getTransitKey.public_key);
+        const publicKey = hexAsBuffer(askForFunding.key);
         const [signature] = signChannelFunding.signatures;
         const tx = halfSign;
 
@@ -815,11 +722,11 @@ module.exports = (args, cbk) => {
 
         // Find the transits input associated with the peer
         const fundingVin = tx.ins.findIndex(input => {
-          if (input.index !== askForFunding.transaction_vout) {
+          if (input.index !== askForFunding.vout) {
             return false;
           }
 
-          return input.hash.equals(idAsHash(askForFunding.transaction_id));
+          return input.hash.equals(idAsHash(askForFunding.id));
         });
 
         tx.setWitness(fundingVin, [fundingSignature, publicKey]);

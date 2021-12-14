@@ -6,11 +6,13 @@ const {test} = require('@alexbosworth/tap');
 const {Transaction} = require('bitcoinjs-lib');
 
 const accept = require('./../../services/accept_balanced_channel');
+const {getInfoResponse} = require('./../fixtures');
 const {listPeersResponse} = require('./../fixtures');
 
+const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 const request = 'lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w';
 const {toOutputScript} = address;
-const transitAddress = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx';
+const transitAddress = 'bc1q6x8d58yysr8xpv0m4qm4vk8h72rzmx4vsznplm';
 
 const makeArgs = overrides => {
   const args = {
@@ -18,11 +20,14 @@ const makeArgs = overrides => {
     ask: ({}, cbk) => {
       const tx = new Transaction();
 
-      const script = toOutputScript(transitAddress, networks.testnet);
+      const script = toOutputScript(transitAddress, networks.mainnet);
 
       tx.addInput(Buffer.alloc(32), 0);
 
-      tx.addOutput(script, 10095);
+      tx.addOutput(
+        Buffer.from('001451814f108670aced2d77c1805ddd6634bc9d4731', 'hex'),
+        10095
+      );
 
       return cbk({fund: tx.toHex()});
     },
@@ -32,13 +37,19 @@ const makeArgs = overrides => {
       default: {
         fundingStateStep: ({}, cbk) => cbk(),
         listPeers: ({}, cbk) => cbk(null, listPeersResponse),
+        getInfo: ({}, cbk) => cbk(null, getInfoResponse),
+        newAddress: (args, cbk) => {
+          return cbk(null, {
+            address: transitAddress,
+          });
+        },
         pendingChannels: ({}, cbk) => cbk(null, {
           pending_closing_channels: [],
           pending_force_closing_channels: [],
           pending_open_channels: [{
             channel: {
               capacity: '20000',
-              channel_point: '6b52df2ba42dfe9d5ba74bb6d248300551c868581db6837e19fc21b8e6466953:0',
+              channel_point: 'ff095fe27463f36ac1985df287f87da93073f9b903b77aec81b7ff314f8f193d:0',
               local_balance: 10000,
               local_chan_reserve_sat: '1',
               remote_balance: '1',
@@ -127,7 +138,7 @@ const makeArgs = overrides => {
     },
     logger: {info: () => {}},
     multisig_key_index: 0,
-    network: 'btctestnet',
+    network: 'btc',
     partner_public_key: '010000000000000000000000000000000000000000000000000000000000000000',
     refund_address: transitAddress,
     remote_multisig_key: Buffer.alloc(33, 2).toString('hex'),

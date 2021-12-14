@@ -3,35 +3,23 @@ const asyncDetectSeries = require('async/detectSeries');
 const asyncEachSeries = require('async/eachSeries');
 const asyncRetry = require('async/retry');
 const {broadcastChainTransaction} = require('ln-service');
-const {createChainAddress} = require('ln-service');
 const {formatTokens} = require('ln-sync');
+const {getNetwork} = require('ln-sync');
 const {getNodeAlias} = require('ln-sync');
-const {getInvoices} = require('ln-service');
-const {getPayments} = require('ln-service');
 const {getPublicKey} = require('ln-service');
 const moment = require('moment');
-const {networks} = require('bitcoinjs-lib');
-const {payments} = require('bitcoinjs-lib');
 const {returnResult} = require('asyncjs-util');
 
 const acceptBalancedChannel = require('./accept_balanced_channel');
 const getBalancedOpens = require('./get_balanced_opens');
-const getNetwork = require('./../network/get_network');
 const initiateBalancedChannel = require('./initiate_balanced_channel');
 const recoverTransitFunds = require('./recover_transit_funds');
 
 const bufferAsHex = buffer => buffer.toString('hex');
 const familyMultiSig = 0;
-const familyTemporary = 805;
-const format = 'p2wpkh';
-const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const interval = 1000 * 15;
 const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
 const minErrorCount = 4;
-const networkMainnet = 'btc';
-const networkRegtest = 'btcregtest';
-const networkTestnet = 'btctestnet';
-const {p2wpkh} = payments;
 const times = 60;
 
 /** Open a balanced channel
@@ -73,23 +61,6 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
       // Get the network name
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd}, cbk)],
 
-      // Determine the bitcoinjs network
-      network: ['getNetwork', ({getNetwork}, cbk) => {
-        switch (getNetwork.network) {
-        case networkMainnet:
-          return cbk(null, networks.bitcoin);
-
-        case networkRegtest:
-          return cbk(null, networks.regtest);
-
-        case networkTestnet:
-          return cbk(null, networks.testnet);
-
-        default:
-          return cbk([400, 'UnsupportedNetworkForBalanceChannelOpen']);
-        }
-      }],
-
       // Recover funds sent to an address
       recover: ['getNetwork', ({getNetwork}, cbk) => {
         // Exit early when not in a recovery scenario
@@ -111,11 +82,6 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
 
           return cbk([400, 'BalancedChannelRecoveryComplete']);
         });
-      }],
-
-      // Make a refund address for if things go wrong
-      createRefundAddress: ['recover', ({}, cbk) => {
-        return createChainAddress({format, lnd}, cbk);
       }],
 
       // Get the set of open requests
@@ -174,47 +140,22 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
         return ask(initiateChannel, ({key}) => cbk(null, key));
       }],
 
-      // Generate a transitive key to fund one side of the channel
-      generateTransitKey: ['askForKey', ({}, cbk) => {
-        return getPublicKey({lnd, family: familyTemporary}, cbk);
-      }],
-
       // Generate the funding output multi-sig key that will receive all funds
       generateMultiSigKey: ['askForKey', ({}, cbk) => {
         return getPublicKey({lnd, family: familyMultiSig}, cbk);
-      }],
-
-      // Derive an address from the generated key for the transitive funds
-      transitAddress: [
-        'confirmContinue',
-        'generateTransitKey',
-        'network',
-        ({confirmContinue, generateTransitKey, network}, cbk) =>
-      {
-        const pubkey = hexAsBuffer(generateTransitKey.public_key);
-
-        const {address, hash} = p2wpkh({network, pubkey});
-
-        return cbk(null, {address, hash: bufferAsHex(hash)});
       }],
 
       // Initiate a new balanced channel request
       initiate: [
         'askForKey',
         'confirmContinue',
-        'createRefundAddress',
         'generateMultiSigKey',
-        'generateTransitKey',
         'getNetwork',
-        'transitAddress',
         ({
           askForKey,
           confirmContinue,
-          createRefundAddress,
           generateMultiSigKey,
-          generateTransitKey,
           getNetwork,
-          transitAddress,
         },
         cbk) =>
       {
@@ -230,9 +171,6 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
           multisig_key_index: generateMultiSigKey.index,
           network: getNetwork.network,
           partner_public_key: askForKey,
-          refund_address: createRefundAddress.address,
-          transit_address: transitAddress.address,
-          transit_key_index: generateTransitKey.index,
         },
         cbk);
       }],
@@ -240,20 +178,9 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
       // Continue a pre-existing balanced channel request
       accept: [
         'confirmContinue',
-        'createRefundAddress',
         'generateMultiSigKey',
-        'generateTransitKey',
         'getNetwork',
-        'transitAddress',
-        ({
-          confirmContinue,
-          createRefundAddress,
-          generateMultiSigKey,
-          generateTransitKey,
-          getNetwork,
-          transitAddress,
-        },
-        cbk) =>
+        ({confirmContinue, generateMultiSigKey, getNetwork}, cbk) =>
       {
         // Exit early when this is not a continuation of an existing open
         if (!confirmContinue) {
@@ -271,13 +198,9 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
           multisig_public_key: generateMultiSigKey.public_key,
           network: getNetwork.network,
           partner_public_key: confirmContinue.partner_public_key,
-          refund_address: createRefundAddress.address,
           remote_multisig_key: confirmContinue.remote_multisig_key,
           remote_tx_id: confirmContinue.remote_tx_id,
           remote_tx_vout: confirmContinue.remote_tx_vout,
-          transit_address: transitAddress.address,
-          transit_key_index: generateTransitKey.index,
-          transit_public_key: generateTransitKey.public_key,
         },
         cbk);
       }],
