@@ -1,7 +1,6 @@
 const asyncAuto = require('async/auto');
 const {getChannels} = require('ln-service');
 const {getLiquidity} = require('ln-sync');
-const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getScoredNodes} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
