@@ -169,7 +169,6 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
           lnd,
           logger,
           multisig_key_index: generateMultiSigKey.index,
-          network: getNetwork.network,
           partner_public_key: askForKey,
         },
         cbk);

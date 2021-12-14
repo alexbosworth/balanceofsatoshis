@@ -3,7 +3,6 @@ const {randomBytes} = require('crypto');
 
 const {acceptsChannelOpen} = require('ln-sync');
 const {addPeer} = require('ln-service');
-const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
 const {cancelHodlInvoice} = require('ln-service');
@@ -16,7 +15,6 @@ const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPublicKey} = require('ln-service');
 const {maintainUtxoLocks} = require('goldengate');
-const {networks} = require('bitcoinjs-lib');
 const {payViaRoutes} = require('ln-service');
 const {payments} = require('bitcoinjs-lib');
 const {proposeChannel} = require('ln-service');
@@ -37,7 +35,6 @@ const reserveTransitFunds = require('./reserve_transit_funds');
 const acceptTokens = 1;
 const bufferAsHex = buffer => buffer.toString('hex');
 const defaultMaxFeeMtokens = '9000';
-const {fromBech32} = address;
 const {fromHex} = Transaction;
 const fundingAmount = (capacity, rate) => (capacity + (190 * rate)) / 2;
 const fundingFee = rate => Math.ceil(190 / 2 * rate);
@@ -54,14 +51,10 @@ const makeHtlcPreimage = () => randomBytes(32).toString('hex');
 const maxSignatureLen = 150;
 const multiSigKeyFamily = 0;
 const multiSigType = balancedChannelKeyTypes.multisig_public_key;
-const networkBitcoin = 'btc';
-const networkRegtest = 'btcregtest';
-const networkTestnet = 'btctestnet';
 const numAsHex = num => num.toString(16);
 const paddedHexNumber = n => n.length % 2 ? `0${n}` : n;
 const peerFailure = (fail, cbk, err) => { fail(err); return cbk(err); };
 const {p2ms} = payments;
-const {p2pkh} = payments;
 const {p2wsh} = payments;
 const relockIntervalMs = 1000 * 20;
 const {round} = Math;
@@ -70,7 +63,6 @@ const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
 const sigHashAll = Buffer.from([Transaction.SIGHASH_ALL]);
 const testMessage = '00';
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
-const {toOutputScript} = address;
 const transitKeyFamily = 805;
 const utf8AsHex = utf8 => Buffer.from(utf8).toString('hex');
 
@@ -81,7 +73,6 @@ const utf8AsHex = utf8 => Buffer.from(utf8).toString('hex');
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     multisig_key_index: <Channel Funding MultiSig Index Number>
-    network: <Network Name String>
     partner_public_key: <Peer Public Key Hex String>
   }
 
@@ -107,10 +98,6 @@ module.exports = (args, cbk) => {
 
         if (!args.logger) {
           return cbk([400, 'ExpectedWinstonLoggerToInitBalancedChannel']);
-        }
-
-        if (!args.network) {
-          return cbk([400, 'ExpectedNetworkNameToInitBalancedChannel']);
         }
 
         if (args.multisig_key_index === undefined) {
@@ -152,23 +139,6 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
         },
         cbk);
-      }],
-
-      // BitcoinJS Network
-      network: ['validate', ({}, cbk) => {
-        switch (args.network) {
-        case networkBitcoin:
-          return cbk(null, networks.bitcoin);
-
-        case networkRegtest:
-          return cbk(null, networks.regtest);
-
-        case networkTestnet:
-          return cbk(null, networks.testnet);
-
-        default:
-          return cbk([400, 'UnsupportedNetworkForInitiatingBalancedChannel']);
-        }
       }],
 
       // Check to make sure there is a route to push the keysend to the node
@@ -650,22 +620,19 @@ module.exports = (args, cbk) => {
         'askForFeeRate',
         'askForFunding',
         'halfSign',
-        'network',
         'waitForAccept',
         ({
           askForCapacity,
           askForFeeRate,
           askForFunding,
           halfSign,
-          network,
         },
         cbk) =>
       {
         const feeRate = askForFeeRate;
-        const hash = fromBech32(askForFunding.address).data;
-        const tx = halfSign;
 
-        const fundingVin = tx.ins.findIndex(input => {
+        // Find the input index where the funding outpoint is being spent
+        const fundingVin = halfSign.ins.findIndex(input => {
           if (input.index !== askForFunding.vout) {
             return false;
           }
@@ -673,21 +640,19 @@ module.exports = (args, cbk) => {
           return input.hash.equals(idAsHash(askForFunding.id));
         });
 
-        const outputScript = toOutputScript(askForFunding.address, network);
-
         // Sign the channel funding transaction
         return signTransaction({
           lnd: args.lnd,
           inputs: [{
             key_family: transitKeyFamily,
             key_index: askForFunding.index,
-            output_script: bufferAsHex(outputScript),
+            output_script: askForFunding.output,
             output_tokens: giveTokens(askForCapacity) + fundingFee(feeRate),
             sighash: Transaction.SIGHASH_ALL,
             vin: fundingVin,
-            witness_script: bufferAsHex(p2pkh({hash}).output),
+            witness_script: askForFunding.script,
           }],
-          transaction: tx.toHex(),
+          transaction: halfSign.toHex(),
         },
         cbk);
       }],

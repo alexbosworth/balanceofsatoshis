@@ -1,3 +1,4 @@
+const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const {createChainAddress} = require('lightning');
 const {getFundedTransaction} = require('goldengate');
@@ -9,12 +10,16 @@ const {payments} = require('bitcoinjs-lib');
 const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
 
+const bufferAsHex = buffer => buffer.toString('hex');
 const familyTemporary = 805;
+const {fromBech32} = address;
 const {fromHex} = Transaction;
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const minimum = 294;
 const notFoundIndex = -1;
+const {p2pkh} = payments;
 const {p2wpkh} = payments;
+const {toOutputScript} = address;
 
 /** Get on-chain funding and a refund
 
@@ -38,8 +43,10 @@ const {p2wpkh} = payments;
       transaction_vout: <Transaction Output Index Number>
     }]
     key: <Transit Key Public Key Hex String>
+    output: <Transit Output Script Hex String>
     [psbt]: <Transaction As Finalized PSBT Hex String>
     refund: <Refund Transaction Hex String>
+    script: <Transit Signing Witness Script Hex String>
     transaction: <Raw Transaction Hex String>
     vout: <Funds Reserved At Output Index Number>
   }
@@ -180,12 +187,14 @@ module.exports = ({ask, lnd, logger, rate, tokens}, cbk) => {
       // Final funding details, including a refund paying out of transit
       funding: [
         'getFunding',
+        'getNetwork',
         'getRefund',
         'getTransitKey',
         'transactionVout',
         'transit',
         ({
           getFunding,
+          getNetwork,
           getRefund,
           getTransitKey,
           transactionVout,
@@ -193,14 +202,20 @@ module.exports = ({ask, lnd, logger, rate, tokens}, cbk) => {
         },
         cbk) =>
       {
+        const network = networks[getNetwork.bitcoinjs];
+
+        const {data} = fromBech32(transit.address, network);
+
         return cbk(null, {
           address: transit.address,
           id: getFunding.id,
           index: getTransitKey.index,
           inputs: getFunding.inputs,
           key: getTransitKey.public_key,
+          output: bufferAsHex(toOutputScript(transit.address, network)),
           psbt: getFunding.psbt,
           refund: getRefund.refund,
+          script: bufferAsHex(p2pkh({hash: data}).output),
           transaction: getFunding.transaction,
           vout: transactionVout,
         });

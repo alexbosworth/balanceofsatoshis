@@ -256,10 +256,10 @@ module.exports = (args, cbk) => {
         ({askForTransit, fundingTx, network}, cbk) =>
       {
         const feeRate = args.fee_rate;
-        const hash = fromBech32(askForTransit.address, network).data;
         const tokens = giveTokens(args.capacity) + fundingFee(args.fee_rate);
         const tx = fromHex(fundingTx.transaction);
 
+        // Find the input index where the funding outpoint is being spent
         const fundingVin = tx.ins.findIndex(input => {
           if (input.index !== askForTransit.vout) {
             return false;
@@ -268,22 +268,17 @@ module.exports = (args, cbk) => {
           return input.hash.equals(idAsHash(askForTransit.id));
         });
 
-        // The output script for a p2wpkh is the p2pkh hash script
-        const {output} = p2pkh({hash});
-
-        const outputScript = toOutputScript(askForTransit.address, network);
-
         // Sign the channel funding transaction
         return signTransaction({
           lnd: args.lnd,
           inputs: [{
             key_family: transitKeyFamily,
             key_index: askForTransit.index,
-            output_script: bufferAsHex(outputScript),
+            output_script: askForTransit.output,
             output_tokens: tokens,
             sighash: Transaction.SIGHASH_ALL,
             vin: fundingVin,
-            witness_script: bufferAsHex(output),
+            witness_script: askForTransit.script,
           }],
           transaction: fundingTx.transaction,
         },
