@@ -3,3 +3,6 @@
 .env
 .nyc_output
 node_modules
+.prettierrc
+.vscode/settings.json
+.prettierignore

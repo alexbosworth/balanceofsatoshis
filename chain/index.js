@@ -9,6 +9,7 @@ const getRawTransaction = require('./get_raw_transaction');
 const getUtxos = require('./get_utxos');
 const recoverP2pk = require('./recover_p2pk');
 const splitUtxos = require('./split_utxos');
+const validateAddress = require("./validate_address");
 
 module.exports = {
   broadcastTransaction,
@@ -22,4 +23,5 @@ module.exports = {
   getUtxos,
   recoverP2pk,
   splitUtxos,
+  validateAddress,
 };
