@@ -742,24 +742,26 @@ prog
     });
   })
 
-  // Reject inbound channel requests
+  // Intercept inbound channel requests and set requirements for inbound opens
   .command('inbound-channel-rules', 'Enforce rules for inbound channels')
-  .help('At least one rule is required.')
-  .help('A rule should be written evaluating to TRUE to accept a channel')
+  .help('Rules should be written evaluating to TRUE to accept a channel')
+  .help('Example rule: --rule "CAPACITY > 100000"')
   .help('For formulas: CAPACITIES are the sizes of the peer public channels')
   .help('For formulas: CAPACITY is the size of the requested channel open')
   .help('For formulas: CHANNEL_AGES are the block ages of public channels')
   .help('For formulas: FEE_RATES are the outbound fee rates for the peer')
   .help('For formulas: LOCAL_BALANCE is the gifted amount from the peer')
   .help('For formulas: PUBLIC_KEY is the public key of the requesting peer')
+  .option('--coop-close-address', 'Request using a cooperative close address')
   .option('--node <node_name>', 'Saved node to reject inbound channels on')
   .option('--reason <message>', 'Message to return when rejecting a request')
   .option('--rule <formula>', 'Freeform rule for inbound channel', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        return await peers.rejectInboundChannels({
+        return await peers.interceptInboundChannels({
           logger,
+          address: options.coopCloseAddress || undefined,
           lnd: (await lndForNode(logger, options.node)).lnd,
           reason: options.reason,
           rules: flatten([options.rule].filter(n => !!n)),

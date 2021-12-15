@@ -1,5 +1,9 @@
 # Versions
 
+## 11.15.0
+
+- `inbound-channel-rules`: Add `--coop-close-address` to request close address
+
 ## 11.14.0
 
 - `open-balanced-channel`: Add support for accepting using p2p messaging

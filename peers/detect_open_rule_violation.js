@@ -68,6 +68,11 @@ module.exports = (args, cbk) => {
         'getNodeFees',
         ({getHeight, getNodeFees}, cbk) =>
       {
+        // Exit early when there are no rules to evaluate
+        if (!args.rules.length) {
+          return cbk(null, {});
+        }
+
         const key = args.partner_public_key;
 
         const channelAges = getNodeFees.channels.map(({id}) => {
