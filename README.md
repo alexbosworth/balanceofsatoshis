@@ -15,6 +15,7 @@ Supported LND versions:
 
 - Requires an [installation of Node v12.20+](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
 - Have a RaspiBlitz? Check out [this install guide](https://gist.github.com/openoms/823f99d1ab6e1d53285e489f7ba38602)
+- Have a RaspiBolt (or any Debian-based OS)? Check out [this manual installation guide](https://raspibolt.org/bonus/lightning/balance-of-satoshis.html)
 
 If you want to try out any command without npm install, you can also do `npx
 balanceofsatoshis` to run a command directly.
@@ -179,6 +180,7 @@ bos utxos
 - Secrets of `rebalance` [command revealed](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/3c0709b7-5f6a-4a3c-944e-48b80e0556df)
 - Running `telegram` [via nohup/tmux howto](https://plebnet.wiki/wiki/Umbrel_-_Installing_BoS)
 - Running `telegram` [via systemd](https://github.com/ziggie1984/miscellanous/blob/97c4905747fe23a824b6e53dc674c4a571ac0f5c/automation_telegram_bot.md)
+- Another `rebalance` + `tags` & `telegram` [commands howto](https://raspibolt.org/bonus/lightning/balance-of-satoshis.html#balance-of-satoshis-in-action)
 
 Want to stack some sats? Write your own LN paywalled guide!
 
