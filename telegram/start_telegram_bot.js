@@ -6,7 +6,7 @@ const asyncEach = require('async/each');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
 const asyncRetry = require('async/retry');
-const {Composer} = require('telegraf');
+const {Bot} = require('grammy');
 const {getForwards} = require('ln-service');
 const {getTransactionRecord} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
@@ -21,6 +21,7 @@ const {handleMempoolCommand} = require('ln-telegram');
 const {handlePayCommand} = require('ln-telegram');
 const {handlePendingCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
+const {InputFile} = require('grammy');
 const inquirer = require('inquirer');
 const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
@@ -37,9 +38,9 @@ const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const {subscribeToPastPayments} = require('ln-service');
 const {subscribeToTransactions} = require('ln-service');
-const {Telegraf} = require('telegraf');
 
 const interaction = require('./interaction');
+const markdown = {parse_mode: 'Markdown'};
 const named = require('./../package').name;
 const {version} = require('./../package');
 
@@ -47,6 +48,7 @@ let allNodes;
 let bot;
 const botKeyFile = 'telegram_bot_api_key';
 const delay = 1000 * 60;
+const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const home = '.bos';
 const {isArray} = Array;
@@ -191,9 +193,9 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           return cbk();
         }
 
-        bot = new Telegraf(apiKey.key);
+        bot = new Bot(apiKey.key);
 
-        bot.telegram.setMyCommands([
+        bot.api.setMyCommands([
           {command: 'backup', description: 'Get node backup file'},
           {command: 'blocknotify', description: 'Get notified on next block'},
           {command: 'connect', description: 'Get connect code for the bot'},
@@ -220,18 +222,10 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             const {text} = ctx.update.edited_message;
             const warning = interaction.edit_message_warning;
 
-            return ctx.replyWithMarkdown(`${warning}\n${text}`);
+            return ctx.reply(`${warning}\n${text}`, markdown);
           }
 
           return next();
-        });
-
-        bot.start(ctx => {
-          if (!!connectedId) {
-            return ctx.replyWithMarkdown(interaction.bot_is_connected);
-          }
-
-          return ctx.replyWithMarkdown(interaction.start_message);
         });
 
         bot.command('backup', ctx => {
@@ -243,7 +237,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             key: apiKey.key,
             nodes: allNodes,
             reply: ctx.reply,
-            send: file => ctx.replyWithDocument(file),
+            send: file => ctx.replyWithDocument(fileAsDoc(file)),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
 
@@ -253,7 +247,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         bot.command('blocknotify', ctx => {
           handleBlocknotifyCommand({
             request,
-            reply: n => ctx.replyWithMarkdown(n),
+            reply: n => ctx.reply(n, markdown),
           },
           err => {
             if (!!err) {
@@ -270,7 +264,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           handleConnectCommand({
             from: ctx.from.id,
             id: connectedId,
-            reply: n => ctx.replyWithMarkdown(n),
+            reply: n => ctx.reply(n, markdown),
           });
 
           return;
@@ -282,7 +276,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             from: ctx.message.from.id,
             id: connectedId,
             nodes: allNodes,
-            reply: n => ctx.replyWithMarkdown(n),
+            reply: n => ctx.reply(n, markdown),
             working: () => ctx.replyWithChatAction('typing'),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
@@ -295,7 +289,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             from: ctx.message.from.id,
             id: connectedId,
             nodes: allNodes,
-            reply: n => ctx.replyWithMarkdown(n),
+            reply: n => ctx.reply(n, markdown),
             working: () => ctx.replyWithChatAction('typing'),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
@@ -321,7 +315,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         bot.command('mempool', async ctx => {
           return await handleMempoolCommand({
             request,
-            reply: n => ctx.replyWithMarkdown(n),
+            reply: n => ctx.reply(n, markdown),
           });
         });
 
@@ -402,38 +396,51 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           }
         });
 
+        bot.command('start', ctx => {
+          // Exit early when the bot is already connected
+          if (!!connectedId) {
+            return ctx.reply(interaction.bot_is_connected, markdown);
+          }
+
+          return ctx.reply(interaction.start_message, markdown);
+        });
+
         bot.command('version', async ctx => {
           try {
             await handleVersionCommand({
               named,
               request,
               version,
-              reply: n => ctx.replyWithMarkdown(n),
+              reply: n => ctx.reply(n, markdown),
             });
           } catch (err) {
             logger.error({err});
           }
         });
 
-        bot.help(ctx => {
-          const commands = [
-            '/backup - Get node backup file',
-            '/blocknotify - Notification on next block',
-            '/connect - Connect bot',
-            '/costs - View costs over the past week',
-            '/earnings - View earnings over the past week',
-            '/invoice - Make an invoice',
-            '/liquidity [with] - View node liquidity',
-            '/mempool - BTC mempool report',
-            '/pay - Pay an invoice',
-            '/pending - View pending channels, probes, and forwards',
-            '/version - View the current bot version',
-          ];
+        const commands = [
+          '/backup - Get node backup file',
+          '/blocknotify - Notification on next block',
+          '/connect - Connect bot',
+          '/costs - View costs over the past week',
+          '/earnings - View earnings over the past week',
+          '/invoice - Make an invoice',
+          '/liquidity [with] - View node liquidity',
+          '/mempool - BTC mempool report',
+          '/pay - Pay an invoice',
+          '/pending - View pending channels, probes, and forwards',
+          '/version - View the current bot version',
+        ];
 
-          return ctx.replyWithMarkdown(`🤖\n${commands.join('\n')}`);
+        bot.command('help', async ctx => {
+          try {
+            await ctx.reply(`🤖\n${commands.join('\n')}`, markdown);
+          } catch (err) {
+            logger.error({err});
+          }
         });
 
-        bot.launch();
+        bot.start();
 
         return cbk();
       }],
@@ -479,7 +486,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
                 id: connectedId,
                 key: apiKey.key,
                 node: {alias: node.alias, public_key: node.public_key},
-                send: (id, file) => bot.telegram.sendDocument(id, file),
+                send: (id, file) => bot.api.sendDocument(id, fileAsDoc(file)),
               },
               err => !!err ? logger.error({post_backup_err: err}) : null);
             },
@@ -647,7 +654,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               },
               key: apiKey.key,
               quiz: ({answers, correct, question}) => {
-                return bot.telegram.sendQuiz(
+                return bot.api.sendQuiz(
                   connectedId,
                   question,
                   answers,
