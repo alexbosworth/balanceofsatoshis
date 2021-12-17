@@ -99,10 +99,6 @@ module.exports = ({address, after, ask, lnd, logger, recover}, cbk) => {
             return cbk();
           }
 
-          if(!!cooperative_close_address) {
-            return cbk([400, 'OnlyProperserCanAddCoopCloseAddress']);
-          }
-
           const [got] = [request.proposed_at, new Date().toISOString()].sort();
 
           const at = moment(got).fromNow();
