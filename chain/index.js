@@ -1,4 +1,3 @@
-const broadcastTransaction = require('./broadcast_transaction');
 const fundTransaction = require('./fund_transaction');
 const getAddressUtxo = require('./get_address_utxo');
 const getChainFees = require('./get_chain_fees');
@@ -11,7 +10,6 @@ const recoverP2pk = require('./recover_p2pk');
 const splitUtxos = require('./split_utxos');
 
 module.exports = {
-  broadcastTransaction,
   fundTransaction,
   getAddressUtxo,
   getChainFees,

@@ -2,7 +2,7 @@ const {createHash} = require('crypto');
 
 const {addressForScript} = require('goldengate');
 const asyncAuto = require('async/auto');
-const {broadcastTransaction} = require('goldengate');
+const {broadcastTransaction} = require('ln-sync');
 const {cancelHodlInvoice} = require('ln-service');
 const {createChainAddress} = require('ln-service');
 const {createHodlInvoice} = require('ln-service');
@@ -498,7 +498,12 @@ module.exports = (args, cbk) => {
         return cbk();
       }
 
-      return broadcastTransaction({lnd: args.lnd, transaction: refund}, cbk);
+      return broadcastTransaction({
+        lnd: args.lnd,
+        logger: args.logger,
+        transaction: refund,
+      },
+      cbk);
     }],
 
     // Refund broadcast

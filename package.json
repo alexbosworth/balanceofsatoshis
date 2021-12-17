@@ -27,7 +27,7 @@
     "colorette": "2.0.16",
     "crypto-js": "4.1.1",
     "csv-parse": "5.0.3",
-    "goldengate": "10.4.2",
+    "goldengate": "11.0.0",
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
     "ini": "2.0.0",
@@ -35,7 +35,7 @@
     "invoices": "2.0.2",
     "ln-accounting": "5.0.5",
     "ln-service": "53.2.0",
-    "ln-sync": "3.3.0",
+    "ln-sync": "3.6.0",
     "ln-telegram": "3.4.2",
     "moment": "2.29.1",
     "paid-services": "3.2.0",
@@ -51,7 +51,6 @@
   "description": "Lightning balance CLI",
   "devDependencies": {
     "@alexbosworth/tap": "15.0.10",
-    "ecpair": "1.0.1",
     "ln-docker-daemons": "2.1.0",
     "mock-lnd": "1.4.1",
     "secp256k1": "4.0.2"

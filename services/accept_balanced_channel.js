@@ -4,20 +4,20 @@ const {connectPeer} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getPeers} = require('ln-service');
 const {getPublicKey} = require('ln-service');
-const {maintainUtxoLocks} = require('goldengate');
+const {maintainUtxoLocks} = require('ln-sync');
 const {makePeerRequest} = require('paid-services');
 const {networks} = require('bitcoinjs-lib');
 const {parsePaymentRequest} = require('ln-service');
 const {pay} = require('ln-service');
 const {payments} = require('bitcoinjs-lib');
 const {prepareForChannelProposal} = require('ln-service');
+const {reserveTransitFunds} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 const {signTransaction} = require('ln-service');
 const {Transaction} = require('bitcoinjs-lib');
 const {waitForPendingOpen} = require('ln-sync');
 
 const {balancedChannelKeyTypes} = require('./service_key_types');
-const reserveTransitFunds = require('./reserve_transit_funds');
 
 const acceptRequestIdType = '0';
 const bufferAsHex = buffer => buffer.toString('hex');

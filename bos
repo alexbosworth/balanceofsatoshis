@@ -199,7 +199,7 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        return chain.broadcastTransaction({
+        return lnSync.broadcastTransaction({
           logger,
           description: options.description,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
