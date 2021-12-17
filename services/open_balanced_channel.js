@@ -9,6 +9,8 @@ const {getNodeAlias} = require('ln-sync');
 const {getPublicKey} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
+const {address} = require('bitcoinjs-lib');
+const {networks} = require('bitcoinjs-lib');
 
 const acceptBalancedChannel = require('./accept_balanced_channel');
 const getBalancedOpens = require('./get_balanced_opens');
@@ -21,6 +23,7 @@ const interval = 1000 * 15;
 const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
 const minErrorCount = 4;
 const times = 60;
+const {toOutputScript} = address;
 
 /** Open a balanced channel
 
@@ -34,7 +37,7 @@ const times = 60;
 
   @returns via cbk or Promise
 */
-module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
+module.exports = ({after, ask, cooperative_close_address, lnd, logger, recover}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -95,6 +98,10 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
             return cbk();
           }
 
+          if(!!cooperative_close_address) {
+            return cbk([400, 'OnlyProperserCanAddCoopCloseAddress']);
+          }
+
           const [got] = [request.proposed_at, new Date().toISOString()].sort();
 
           const at = moment(got).fromNow();
@@ -125,8 +132,41 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
         cbk);
       }],
 
+      // Check the cooperative close address
+      checkAddress: [
+        'validate',
+        'confirmContinue',
+        ({}, cbk) => {
+        // Exit early when there is no address to check
+        if (!cooperative_close_address) {
+          return cbk();
+        }
+
+        // Find the network of this node to compare it to the provided address
+        return getNetwork({lnd}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+          // Exit early when network is not recognized
+          if (!res.bitcoinjs) {
+            return cbk();
+          }
+
+          try {
+            toOutputScript(cooperative_close_address, networks[res.bitcoinjs]);
+          } catch (err) {
+            return cbk([400, 'FailedToParseCooperativeCloseAddress', {err}]);
+          }
+
+          return cbk();
+        });
+      }],
+
       // Specify a peer to open a new channel with
-      askForKey: ['confirmContinue', ({confirmContinue}, cbk) => {
+      askForKey: [
+      'checkAddress',
+      'confirmContinue',
+      ({confirmContinue}, cbk) => {
         // Exit early when this is a continuation of a balanced channel open
         if (!!confirmContinue) {
           return cbk();
@@ -166,6 +206,7 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
 
         return initiateBalancedChannel({
           ask,
+          coop_close_address: cooperative_close_address,
           lnd,
           logger,
           multisig_key_index: generateMultiSigKey.index,
