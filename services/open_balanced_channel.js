@@ -37,7 +37,7 @@ const {toOutputScript} = address;
 
   @returns via cbk or Promise
 */
-module.exports = ({after, ask, cooperative_close_addresses, lnd, logger, recover}, cbk) => {
+module.exports = ({after, ask, cooperative_close_address, lnd, logger, recover}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -98,7 +98,7 @@ module.exports = ({after, ask, cooperative_close_addresses, lnd, logger, recover
             return cbk();
           }
 
-          if(!!cooperative_close_addresses) {
+          if(!!cooperative_close_address) {
             return cbk([400, 'OnlyProperserCanAddCoopCloseAddress']);
           }
 
@@ -138,7 +138,7 @@ module.exports = ({after, ask, cooperative_close_addresses, lnd, logger, recover
         'confirmContinue',
         ({}, cbk) => {
         // Exit early when there is no address to check
-        if (!cooperative_close_addresses) {
+        if (!cooperative_close_address) {
           return cbk();
         }
 
@@ -153,7 +153,7 @@ module.exports = ({after, ask, cooperative_close_addresses, lnd, logger, recover
           }
 
           try {
-            toOutputScript(cooperative_close_addresses, networks[res.bitcoinjs]);
+            toOutputScript(cooperative_close_address, networks[res.bitcoinjs]);
           } catch (err) {
             return cbk([400, 'FailedToParseCooperativeCloseAddress', {err}]);
           }
@@ -206,7 +206,7 @@ module.exports = ({after, ask, cooperative_close_addresses, lnd, logger, recover
 
         return initiateBalancedChannel({
           ask,
-          coop_close_address: cooperative_close_addresses,
+          coop_close_address: cooperative_close_address,
           lnd,
           logger,
           multisig_key_index: generateMultiSigKey.index,
