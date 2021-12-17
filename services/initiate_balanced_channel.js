@@ -69,6 +69,7 @@ const utf8AsHex = utf8 => Buffer.from(utf8).toString('hex');
 /** Initiate a balanced channel
 
   {
+    [address]: <Use Cooperative Close Address String>
     ask: <Ask Function>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
@@ -736,6 +737,7 @@ module.exports = (args, cbk) => {
         });
 
         return proposeChannel({
+          cooperative_close_address: args.address,
           capacity: askForCapacity,
           give_tokens: giveTokens(askForCapacity),
           id: deriveFundingAddress.hash,

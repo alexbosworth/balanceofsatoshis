@@ -1005,6 +1005,7 @@ prog
   .help('Remote node must be prepared to receive this type of channel')
   .help('The remote node should also run this same command after you propose')
   .help('Channel details are negotiated with keysend so that is also required')
+  .option('--coop-close-address <addr>', 'Close address (for proposing open)')
   .option('--node <node_name>', 'Use saved node details instead of local node')
   .option('--recover <addr>', 'Recover if funds sent to an address by mistake')
   .action((args, options, logger) => {
@@ -1012,6 +1013,7 @@ prog
       try {
         return services.openBalancedChannel({
           logger,
+          address: options.coopCloseAddress || undefined,
           after: new Date(Date.now() - (1000 * 60 * 60 * 6)).toISOString(),
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,

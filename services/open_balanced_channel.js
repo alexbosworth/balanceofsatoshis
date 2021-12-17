@@ -1,3 +1,4 @@
+const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
 const asyncEachSeries = require('async/eachSeries');
@@ -8,6 +9,7 @@ const {getNetwork} = require('ln-sync');
 const {getNodeAlias} = require('ln-sync');
 const {getPublicKey} = require('ln-service');
 const moment = require('moment');
+const {networks} = require('bitcoinjs-lib');
 const {returnResult} = require('asyncjs-util');
 
 const acceptBalancedChannel = require('./accept_balanced_channel');
@@ -21,10 +23,12 @@ const interval = 1000 * 15;
 const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
 const minErrorCount = 4;
 const times = 60;
+const {toOutputScript} = address;
 
 /** Open a balanced channel
 
   {
+    [address]: <Use Cooperative Close Address String>
     [after]: <Ignore Requests Before ISO 8601 Date String>
     ask: <Ask Function>
     lnd: <Authenticated LND API Object>
@@ -34,7 +38,7 @@ const times = 60;
 
   @returns via cbk or Promise
 */
-module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
+module.exports = ({address, after, ask, lnd, logger, recover}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -164,7 +168,21 @@ module.exports = ({after, ask, lnd, logger, recover}, cbk) => {
           return cbk();
         }
 
+        if (!getNetwork.bitcoinjs) {
+          return cbk([400, 'UnsupportedNetworkForBalancedChannelOpen']);
+        }
+
+        // Make sure that a cooperative close address is valid
+        if (!!address) {
+          try {
+            toOutputScript(address, networks[getNetwork.bitcoinjs]);
+          } catch (err) {
+            return cbk([400, 'FailedToParseCooperativeCloseAddress']);
+          }
+        }
+
         return initiateBalancedChannel({
+          address,
           ask,
           lnd,
           logger,

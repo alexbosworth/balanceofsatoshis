@@ -2,6 +2,7 @@ const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncRetry = require('async/retry');
 const {addPeer} = require('ln-service');
+const {createChainAddress} = require('ln-service');
 const {fundPsbt} = require('ln-service');
 const {getChainBalance} = require('ln-service');
 const {getChainTransactions} = require('ln-service');
@@ -40,89 +41,92 @@ test(`Open balanced channel`, async ({end, equal, strictSame}) => {
 
   const [{generate, lnd}, target] = nodes;
 
-  // Generate some coins for each side
-  await asyncEach([generate, target.generate], async generate => {
-    return await generate({count: maturityBlocks});
-  });
+  // Do the open balanced channel dance
+  try {
+    // Generate some coins for each side
+    await asyncEach([generate, target.generate], async generate => {
+      return await generate({count: maturityBlocks});
+    });
 
-  // Create a channel between the two nodes so they can communicate over LN
-  await openChannel({
-    lnd,
-    give_tokens: giveTokens,
-    local_tokens: capacity,
-    partner_public_key: target.id,
-    partner_socket: target.socket,
-  });
+    const {address} = await createChainAddress({lnd});
 
-  // Make sure the channel is open and the wallet is sync'ed to chain
-  await asyncEach([lnd, target.lnd], async lnd => {
+    // Create a channel between the two nodes so they can communicate over LN
+    await openChannel({
+      lnd,
+      give_tokens: giveTokens,
+      local_tokens: capacity,
+      partner_public_key: target.id,
+      partner_socket: target.socket,
+    });
+
+    // Make sure the channel is open and the wallet is sync'ed to chain
+    await asyncEach([lnd, target.lnd], async lnd => {
+      await asyncRetry(({times}), async () => {
+        await generate({});
+        await target.generate({});
+
+        const {channels} = await getChannels({lnd});
+
+        if (!channels.length) {
+          throw new Error('ExpectedChannel');
+        }
+
+        const [channel] = channels;
+
+        if (!channel.is_active) {
+          throw new Error('ExpectedActiveChannel');
+        }
+
+        const wallet = await getWalletInfo({lnd});
+
+        if (!wallet.is_synced_to_chain) {
+          throw new Error('ExpectedWalletSyncToChain');
+        }
+      });
+    });
+
+    // Make sure that the nodes see each other in the graph to see TLV support
     await asyncRetry(({times}), async () => {
-      await generate({});
-      await target.generate({});
+      const graph = await getNetworkGraph({lnd});
 
-      const {channels} = await getChannels({lnd});
+      // Force graph resync in case it gets stuck
+      try {
+        await removePeer({lnd, public_key: target.id});
+      } catch (err) {}
 
-      if (!channels.length) {
-        throw new Error('ExpectedChannel');
+      await addPeer({lnd, public_key: target.id, socket: target.socket});
+
+      if (graph.nodes.length < [lnd, target].length) {
+        throw new Error('ExpectedGraphNodes');
+      }
+    });
+
+    // Make sure nodes are on the same chain hash and the channels are active
+    await asyncRetry(({interval, times}), async () => {
+      const controlChain = await getHeight({lnd});
+      const targetChain = await getHeight({lnd: target.lnd});
+
+      if (controlChain.current_block_hash !== targetChain.current_block_hash) {
+        throw new Error('ExpectedSyncChain');
       }
 
-      const [channel] = channels;
+      const [channel] = (await getChannels({lnd: target.lnd})).channels;
 
       if (!channel.is_active) {
         throw new Error('ExpectedActiveChannel');
       }
-
-      const wallet = await getWalletInfo({lnd});
-
-      if (!wallet.is_synced_to_chain) {
-        throw new Error('ExpectedWalletSyncToChain');
-      }
     });
-  });
 
-  // Make sure that the nodes see each other in the graph to see TLV support
-  await asyncRetry(({times}), async () => {
-    const graph = await getNetworkGraph({lnd});
+    // Get UTXOs to be spent into the balanced channel
+    const controlUtxos = (await getUtxos({lnd})).utxos;
+    const {utxos} = await getUtxos({lnd: target.lnd});
 
-    // Force graph resync in case it gets stuck
-    try {
-      await removePeer({lnd, public_key: target.id});
-    } catch (err) {}
-
-    await addPeer({lnd, public_key: target.id, socket: target.socket});
-
-    if (graph.nodes.length < [lnd, target].length) {
-      throw new Error('ExpectedGraphNodes');
-    }
-  });
-
-  // Make sure nodes are on the same chain hash and the channels are active
-  await asyncRetry(({interval, times}), async () => {
-    const controlChain = await getHeight({lnd});
-    const targetChain = await getHeight({lnd: target.lnd});
-
-    if (controlChain.current_block_hash !== targetChain.current_block_hash) {
-      throw new Error('ExpectedSyncChain');
-    }
-
-    const [channel] = (await getChannels({lnd: target.lnd})).channels;
-
-    if (!channel.is_active) {
-      throw new Error('ExpectedActiveChannel');
-    }
-  });
-
-  // Get UTXOs to be spent into the balanced channel
-  const controlUtxos = (await getUtxos({lnd})).utxos;
-  const {utxos} = await getUtxos({lnd: target.lnd});
-
-  // Do the open balanced channel dance
-  try {
     await asyncAuto({
       // Start proposing the channel
       initiate: async () => {
         return await openBalancedChannel({
           lnd,
+          address,
           ask: (args, cbk) => {
             // Propose the capacity
             if (args.name === 'capacity') {
@@ -247,6 +251,15 @@ test(`Open balanced channel`, async ({end, equal, strictSame}) => {
           if (channels.filter(n => n.is_active).length < [lnd, lnd].length) {
             throw new Error('WaitingForMoreChannels');
           }
+
+          const addresses = channels.map(n => n.cooperative_close_address);
+          const given = channels.map(n => n.local_given);
+
+          addresses.sort();
+          given.sort();
+
+          strictSame(addresses, [address, undefined], 'Got coop close addrs');
+          strictSame(given, [500000, 500000], 'Got coins given');
 
           return;
         });

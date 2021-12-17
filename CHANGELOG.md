@@ -1,5 +1,9 @@
 # Versions
 
+## 11.16.0
+
+- `open-balanced-channel`: Add `--coop-close-address` to add a close-to-address
+
 ## 11.15.0
 
 - `inbound-channel-rules`: Add `--coop-close-address` to request close address
