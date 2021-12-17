@@ -435,7 +435,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
 
         bot.command('help', async ctx => {
           try {
-            await ctx.reply(`🤖\n${commands.join('\n')}`, markdown);
+            await ctx.reply(`🤖\n${commands.join('\n')}`);
           } catch (err) {
             logger.error({err});
           }
