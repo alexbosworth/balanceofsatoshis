@@ -6,33 +6,34 @@ Commands for working with LND balances.
 
 Supported LND versions:
 
-- v0.14.0-beta to v0.14.1-beta
-- v0.13.0-beta to v0.13.4-beta
-- v0.12.0-beta to v0.12.1-beta
-- v0.11.0-beta to v0.11.1-beta
+- v0.11.0-beta to v0.14.1-beta
 
 ## Install
 
-- Requires an [installation of Node v12.20+](https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126)
-- Have a RaspiBlitz? Check out [this install guide](https://gist.github.com/openoms/823f99d1ab6e1d53285e489f7ba38602)
-- Have a RaspiBolt (or any Debian-based OS)? Check out [this manual installation guide](https://raspibolt.org/bonus/lightning/balance-of-satoshis.html)
-
-If you want to try out any command without npm install, you can also do `npx
-balanceofsatoshis` to run a command directly.
-
-If you have [Docker](https://docs.docker.com/get-docker/) installed or are using a Docker based
-platform like Umbrel or BTCPayServer, you can [run through Docker](#docker) instead.
+- Requires an [installation of Node v12.20+][nodejs-install-guide]
 
 ```shell
 npm install -g balanceofsatoshis
 ```
 
-Verify it's installed:
+Or use a platform-specific guide:
+
+- [Docker/BTCPayServer install notes](#docker)
+- [RaspiBlitz install guide][raspiblitz-install-guide]
+- [RaspiBolt/Debian guide][raspibolt-install-guide]
+- [Umbrel install guide][umbrel-install-guide]
+
+If you want to try out any command without npm install, you can also do `npx
+balanceofsatoshis` to run a command directly.
+
+Get the version to verify that it's installed:
 
 ```shell
 bos --version
 # current installed version
 ``` 
+
+Re-install if you want to update to a new version.
 
 ## Usage
 
@@ -50,7 +51,7 @@ Or ask about commands on [Telegram](https://t.me/balanceofsatoshis)
 If you want autocomplete on commands and options you can do:
 
 ```
-## Autocomplete on ZSH shells (on startup: you can add this to ~/.zshrc)
+## Autocomplete on MacOS/ZSH shells (on startup: you can add this to ~/.zshrc)
 autoload -Uz compinit && compinit
 source <(bos completion zsh)
 
@@ -133,6 +134,9 @@ bos nodes
 # Open channels to public keys in a batch transaction
 bos open "public_keys..."
 
+# Open a balanced channel with a peer
+bos open-balanced-channel
+
 # Outputs the sum total of local channel liquidity
 bos outbound-liquidity
 
@@ -178,7 +182,7 @@ bos utxos
 - Another `rebalance` [command howto](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/30a7c519-0ec0-4644-b3aa-341c41bac296)
 - Running `rebalance` [video (In German)](https://www.youtube.com/watch?v=EimVHnv-SUk)
 - Secrets of `rebalance` [command revealed](https://yalls.org/articles/97d67df1-d721-417d-a6c0-11d793739be9:0965AC5E-56CD-4870-9041-E69616660E6F/3c0709b7-5f6a-4a3c-944e-48b80e0556df)
-- Running `telegram` [via nohup/tmux howto](https://plebnet.wiki/wiki/Umbrel_-_Installing_BoS)
+- Running `telegram` [via nohup/tmux howto](https://plebnet.wiki/wiki/Umbrel_-_Installing_BoS#Installing_Telegram_Bot)
 - Running `telegram` [via systemd](https://github.com/ziggie1984/miscellanous/blob/97c4905747fe23a824b6e53dc674c4a571ac0f5c/automation_telegram_bot.md)
 - Another `rebalance` + `tags` & `telegram` [commands howto](https://raspibolt.org/bonus/lightning/balance-of-satoshis.html#balance-of-satoshis-in-action)
 
@@ -186,8 +190,8 @@ Want to stack some sats? Write your own LN paywalled guide!
 
 ## Nodes
 
-By default `bos` expects `tls.cert` in the root of the default `lnd` directory and
-`admin.macaroon` in `<default_lnd_dir>/data/chain/bitcoin/<network>`.
+By default `bos` expects `tls.cert` in the root of the default `lnd` directory
+and `admin.macaroon` in `<default_lnd_dir>/data/chain/bitcoin/<network>`.
 
 Default LND directories:
 * macOS: `~/Library/Application Support/Lnd/`
@@ -213,13 +217,13 @@ Use any shorthand you'd like when choosing this profile node name
 
 2. Each file should have the following format:
 
-    ```json
+```json
     {
       "cert": "base64 tls.cert value",
       "macaroon": "base64 .macaroon value",
       "socket": "host:port"
     }
-    ```
+```
 
     > **Note:** `cert` and (admin) `macaroon` should have base64-encoded, and newline-stripped content of the files. To get the strings in appropriate format you can run, ex:
     >
@@ -233,23 +237,23 @@ Use any shorthand you'd like when choosing this profile node name
     >
     > **Note_2:** `socket` should contain `host:port` pointing to `lnd`'s gRPC interface, `localhost:10009` by convention.  
  
- You can also set `cert_path` and `macaroon_path` to the path of the relevant
- files instead.
+You can also set `cert_path` and `macaroon_path` to the path of the relevant
+files instead.
 
 #### Umbrel Saved Node
 
 *Note: Umbrel is not FOSS software, use at your own risk.*
 
 If you are using Umbrel and you have already installed but you get an error like
-`Name resolution failed for target dns:umbrel.local:10009` then try adding umbrel.local
-to your `/etc/hosts` file, like `sudo nano /etc/hosts` and add a line
-`127.0.0.1 umbrel.local`
+`Name resolution failed for target dns:umbrel.local:10009` then try adding
+umbrel.local to your `/etc/hosts` file, like `sudo nano /etc/hosts` and add a line `127.0.0.1 umbrel.local`
 
 1. Identify your Umbrel home dir, like /home/umbrel/umbrel
-2. Look in the .env file in that dir for the `LND_IP` to use as the socket to connect to
+2. Look in the .env file in that dir for the `LND_IP` to use as the socket to 
+    connect to
 
-You can also use umbrel.local if that is in your Umbrel TLS cert but you will have to make sure the
-hostname is known to the client.
+You can also use umbrel.local if that is in your Umbrel TLS cert but you will 
+have to make sure the hostname is known to the client.
 
 ```
 {
@@ -335,7 +339,8 @@ Keep a channel balanced between two of your own nodes
 */30 * * * * /home/ubuntu/.npm-global/bin/bos send PUBKEY --max-fee 0 --message="rebalance" --amount="IF(OUTBOUND+1*m>(LIQUIDITY/2), OUTBOUND-(LIQUIDITY/2), 0)"
 ```
 
-If you want to 50:50 rebalance with a peer node, you can use --out-target-inbound=capacity/2
+If you want to 50:50 rebalance with a peer node, you can use 
+`--out-target-inbound=capacity/2` with `bos rebalance`
 
 ## Alerts and Reports with `sendnotification`
 
@@ -400,9 +405,9 @@ Examples of shell scripts that could be executed by crontab:
 
 ### Persist Long-Running Commands
 
-If you are running a long-running command and want it to persist, you will need something like
-Docker or nohup or tmux to assist you in that and then kill the process and restart it when
-updating.
+If you are running a long-running command and want it to persist, you will need 
+something like Docker or nohup or tmux to assist you in that and then kill the 
+process and restart it when updating.
 
 Nohup example:
 
@@ -420,15 +425,15 @@ docker run -d --restart always -v $HOME/.bos:/home/node/.bos alexbosworth/balanc
 
 This presumes you have Docker installed.
 
-- [Instructions for installing Docker on Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-18-04)
-
-### Docker Load
+- [Instructions for installing Docker on Ubuntu][docker-install-guide]
 
 Install the Docker image:
 
-```
+```shell
 docker pull alexbosworth/balanceofsatoshis
 ```
+
+### Docker Load
 
 You can also build the image yourself: `npm run build-docker`, this will make
 `balanceofsatoshis.tar.gz` that you can rsync or scp somewhere else and then
@@ -436,7 +441,7 @@ do `docker load < balanceofsatoshis.tar.gz`.
 
 Once the image is installed, you can "docker run" commands for all the commands:
 
-```
+```shell
 # Make sure you have a home directory created to give Docker access to
 mkdir $HOME/.bos
 
@@ -452,17 +457,17 @@ dir as an additional -v argument to docker run:
 
 If you are on MacOS:
 
-```
+```shell
 --network="host" -v $HOME/Library/Application\ Support/Lnd/:/home/node/.lnd:ro
 ```
 
 Or on Linux:
 
-```
+```shell
 --network="host" -v $HOME/.lnd:/home/node/.lnd:ro
 ```
 
-On BTCpayServer:
+On BTCPayServer:
 
 Create the credential.json file as explained in the saved nodes section, and for socket put:
 `"socket": "lnd_bitcoin:10009"`
@@ -483,22 +488,20 @@ On Umbrel this would be:
 docker run -it --rm --network="host" --add-host=umbrel.local:192.168.1.23 -v $HOME/.bos:/home/node/.bos -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
 ```
 
-Note: For [umbrel-os](https://github.com/getumbrel/umbrel-os) users, when running the above
-docker run command, ensure the "192.168.1.23" portion of the command is updated to reflect the
-IP of the lnd container. You can find the IP by looking for the `LND_IP` value inside the
-`$HOME/umbrel/.env` file.
-
-(Note: Umbrel is not FOSS software, use at your own risk.)
+Note: For [umbrel-os](https://github.com/getumbrel/umbrel-os) users, when
+running the above docker run command, ensure the "192.168.1.23" portion of the 
+command is updated to reflect the IP of the lnd container. You can find the IP 
+by looking for the `LND_IP` value inside the `$HOME/umbrel/.env` file.
 
 Otherwise you can just pass the local node credentials as shown above using the
 saved nodes.
 
-If you are running a long-running command like `telegram`, use  `-d --restart always` instead
-of `-it --rm` to run in daemon mode and auto-restart.
+If you are running a long-running command like `telegram`, use  `-d --restart 
+always` instead of `-it --rm` to run in daemon mode and auto-restart.
 
-Note: if you are used to using ctrl+c to terminate the process, that doesn't work on Docker.
-Instead, you can use ctrl+p and then ctrl+q to background the interactive mode, then do
-`docker ps` and `docker rm` to kill the instance.
+Note: if you are used to using ctrl+c to terminate the process, that doesn't
+work on Docker. Instead, you can use ctrl+p and then ctrl+q to background the 
+interactive mode, then do `docker ps` and `docker rm` to kill the instance.
 
 ### Build Your Own
 
@@ -527,8 +530,9 @@ You can also define an alias for placing in `~/.profile` or `~/.bash_profile`:
 alias bos="docker run -it --rm -v $HOME/.bos:/home/node/.bos alexbosworth/balanceofsatoshis"
 ```
 
-Adjust this alias to however you run the full Docker command. Remember to execute the ~/.profile
-to install the alias into your current session: `. ~/.profile`
+Adjust this alias to however you run the full Docker command. Remember to
+execute the ~/.profile to install the alias into your current session: `. 
+~/.profile`
 
 You can also create an alias to run a command in the background
 
@@ -538,18 +542,19 @@ alias bosd="docker run -d --rm -v $HOME/.bos:/home/node/.bos alexbosworth/balanc
 
 ## Formulas
 
-Some commands take formula arguments. Formulas are expressions that allow you to perform
-functions and reference variables.
+Some commands take formula arguments. Formulas are expressions that allow you 
+to perform functions and reference variables.
 
 There is a dynamic playground here where you can play with expressions:
 https://formulajs.info/functions/
 
 ### `--avoid`
 
-In `--avoid` flag commands like rebalance, a formula can be applied directionally:
+In `--avoid` flag commands like rebalance, a formula can be applied
+directionally:
 
-`--avoid "fee_rate < 100/<PUBKEY>"` to avoid channels forwarding to the public key that
-charge a fee rate under 100 PPM.
+`--avoid "fee_rate < 100/<PUBKEY>"` to avoid channels forwarding to the public
+key that charge a fee rate under 100 PPM.
 
 Available variables:
 
@@ -579,14 +584,14 @@ defined:
 
 Examples:
 
-```
-bos fund <address> 7*m
+```shell
+bos fund <address> "7*m"
 // Fund address with value 7,000,000
 
-bos probe <key> 100*k
+bos probe <key> "100*k"
 // Probe to key amount 100,000
 
-bos send <key> m/2
+bos send <key> "m/2"
 // Push 500,000 to key
 ```
 
@@ -606,9 +611,9 @@ And for `--in-filter` and `--out-filter`:
 
 Example:
 
-```
+```shell
 // Rebalance with a target of 1,000,000
-bos rebalance --amount 1*m
+bos rebalance --amount "1*m"
 ```
 
 #### `send`
@@ -623,9 +628,9 @@ Send defines additional variables:
 
 Example:
 
-```
+```shell
 // Send node $1
-bos send <key> --amount 1*usd
+bos send <key> --amount "1*usd"
 ```
 
 #### `transfer`
@@ -638,7 +643,7 @@ Transfer variables:
 
 Example:
 
-```
+```shell
 // Equalize inbound with a mutual peer
 bos transfer node "in_inbound - (in_inbound + out_inbound)/2" --through peer
 ```
@@ -659,7 +664,7 @@ You can also use functions:
 
 Example:
 
-```
+```shell
 // Set the fee rate to a tag to 1% of the value forwarded
 bos fees --to tag --set-fee-rate "percent(1)"
 ```
@@ -679,7 +684,13 @@ Formula variables:
 
 Example:
 
-```
+```shell
 // Reject channels that are smaller than 2,000,000 capacity
 bos inbound-channel-rules "capacity < 2*m"
 ```
+
+[docker-install-guide]: https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-18-04
+[nodejs-install-guide]: https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126
+[raspiblitz-install-guide]: https://gist.github.com/openoms/823f99d1ab6e1d53285e489f7ba38602
+[raspibolt-install-guide]: https://raspibolt.org/bonus/lightning/balance-of-satoshis.html
+[umbrel-install-guide]: https://plebnet.wiki/wiki/Umbrel_-_Installing_BoS
