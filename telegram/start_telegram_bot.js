@@ -201,6 +201,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           {command: 'connect', description: 'Get connect code for the bot'},
           {command: 'costs', description: 'Show costs over the week'},
           {command: 'earnings', description: 'Show earnings over the week'},
+          {command: 'help', description: 'Show the list of commands'},
           {command: 'invoice', description: 'Create an invoice'},
           {command: 'liquidity', description: 'Get liquidity [with-peer]'},
           {command: 'mempool', description: 'Get info about the mempool'},
