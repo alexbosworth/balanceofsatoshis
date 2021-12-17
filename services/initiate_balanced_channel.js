@@ -739,6 +739,7 @@ module.exports = (args, cbk) => {
         return proposeChannel({
           cooperative_close_address: args.address,
           capacity: askForCapacity,
+          cooperative_close_address: args.coop_close_address,
           give_tokens: giveTokens(askForCapacity),
           id: deriveFundingAddress.hash,
           key_index: args.multisig_key_index,
