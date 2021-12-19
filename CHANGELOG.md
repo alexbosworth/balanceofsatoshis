@@ -1,5 +1,9 @@
 # Versions
 
+## 11.16.1
+
+- `send`: Add support for global ignores from `tags` when `--avoid` unspecified
+
 ## 11.16.0
 
 - `open-balanced-channel`: Add `--coop-close-address` to add a close-to-address

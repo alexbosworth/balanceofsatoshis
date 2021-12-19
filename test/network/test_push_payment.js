@@ -20,7 +20,7 @@ const makeArgs = overrides => {
     amount: 'IF(LIQUIDITY<1,2*USD,INBOUND*EUR)',
     avoid: [],
     destination: '000000000000000000000000000000000000000000000000000000000000000000',
-    fs: {},
+    fs: {getFile: (path, cbk) => cbk('err')},
     is_dry_run: true,
     lnd: makeLnd({}),
     logger: {info: () => {}},
