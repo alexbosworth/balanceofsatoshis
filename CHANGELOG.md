@@ -1,5 +1,10 @@
 # Versions
 
+## 11.16.2
+
+- Address Docker image installation issues
+- `open-balanced-channel`: Move up indicator of waiting for incoming channel
+
 ## 11.16.1
 
 - `send`: Add support for global ignores from `tags` when `--avoid` unspecified

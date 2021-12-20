@@ -238,7 +238,10 @@ module.exports = (args, cbk) => {
         // The output to the channel funding is capacity paid to the 2:2 addr
         tx.addOutput(script, args.capacity);
 
-        args.logger.info({funding_tx_id: tx.getId()});
+        args.logger.info({
+          funding_tx_id: tx.getId(),
+          waiting_for_full_channel_proposal: true,
+        });
 
         return cbk(null, {
           pending_channel_id: bufferAsHex(multiSig.hash),
@@ -385,8 +388,6 @@ module.exports = (args, cbk) => {
         'payAcceptRequest',
         ({askForTransit, fundingTx}, cbk) =>
       {
-        args.logger.info({waiting_for_incoming_channel: true});
-
         return waitForPendingOpen({
           interval,
           times,

@@ -1,4 +1,4 @@
-FROM node:lts-alpine
+FROM node:16
 
 # UID / GID 1000 is default for user `node` in the `node:latest` image, this
 # way the process will run as a non-root user
@@ -15,6 +15,6 @@ USER $USER_ID:$GROUP_ID
 
 COPY . /app/
 
-RUN npm ci --only=production
+RUN npm ci
 
 ENTRYPOINT [ "/app/bos" ]
