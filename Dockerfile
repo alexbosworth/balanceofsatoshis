@@ -1,4 +1,4 @@
-FROM node:16
+FROM node:lts-alpine
 
 # UID / GID 1000 is default for user `node` in the `node:latest` image, this
 # way the process will run as a non-root user
