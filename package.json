@@ -13,6 +13,8 @@
     "@alexbosworth/fiat": "1.0.0",
     "@alexbosworth/html2unicode": "1.1.5",
     "@alexbosworth/node-fetch": "2.6.2",
+    "@grammyjs/menu": "^1.0.4",
+    "@grammyjs/router": "^1.1.1",
     "abort-controller": "3.0.0",
     "asciichart": "1.5.25",
     "async": "3.2.2",

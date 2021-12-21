@@ -23,6 +23,7 @@ const {handlePendingCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
 const {InputFile} = require('grammy');
 const inquirer = require('inquirer');
+const {Menu} = require("@grammyjs/menu");
 const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
 const {postClosedMessage} = require('ln-telegram');
@@ -31,7 +32,9 @@ const {postSettledInvoice} = require('ln-telegram');
 const {postSettledPayment} = require('ln-telegram');
 const {postUpdatedBackup} = require('ln-telegram');
 const {returnResult} = require('asyncjs-util');
+const {Router} = require("@grammyjs/router");
 const {sendMessage} = require('ln-telegram');
+const {session} = require('grammy');
 const {subscribeToBackups} = require('ln-service');
 const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
@@ -41,7 +44,9 @@ const {subscribeToTransactions} = require('ln-service');
 
 const interaction = require('./interaction');
 const markdown = {parse_mode: 'Markdown'};
+const handleTradeRoute = require('./handle_trade_route');
 const named = require('./../package').name;
+const paidServices = require('../../paid-services');
 const {version} = require('./../package');
 
 let allNodes;
@@ -59,6 +64,7 @@ const msSince = epoch => Date.now() - (epoch * 1e3);
 const network = 'btc';
 const restartSubscriptionTimeMs = 1000 * 30;
 const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
+const asNumber = n => parseFloat(n, 10);
 
 /** Start a Telegram bot
 
@@ -195,6 +201,12 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
 
         bot = new Bot(apiKey.key);
 
+        //initialise sssion, router and menu
+        bot.use(session({ initial: () => ({ step: "idle" }) }));
+        const router = new Router((ctx) => ctx.session.step);
+        const menu = new Menu('trade-menu');
+
+
         bot.api.setMyCommands([
           {command: 'backup', description: 'Get node backup file'},
           {command: 'blocknotify', description: 'Get notified on next block'},
@@ -207,6 +219,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           {command: 'mempool', description: 'Get info about the mempool'},
           {command: 'pay', description: 'Pay a payment request'},
           {command: 'pending', description: 'Get pending forwards, channels'},
+          {command: 'trade', description: 'Create or decode a trade'},
           {command: 'version', description: 'View current bot version'},
         ]);
 
@@ -396,15 +409,74 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             logger.error({err});
           }
         });
-
+        
         bot.command('start', ctx => {
           // Exit early when the bot is already connected
           if (!!connectedId) {
             return ctx.reply(interaction.bot_is_connected, markdown);
           }
-
+          
           return ctx.reply(interaction.start_message, markdown);
         });
+
+        //start the menu
+        bot.use(menu);
+
+        //create menu options and call handle trade route file             
+        menu.text('Create Trade', async (ctx) => {
+          try{
+            await handleTradeRoute({
+              lnd: allNodes[0],
+              trade: 'create',
+              ctx,
+              router,
+              markdown,
+              logger,
+            });
+          } catch (err) {
+            logger.error({err});
+          }
+        }).row();
+        
+        menu.text('Purchase Trade', async (ctx) => {
+          try{
+            await handleTradeRoute({
+              lnd: allNodes[0],
+              trade: 'purchase',
+              ctx,
+              router,
+              markdown,
+              logger,
+            });
+          } catch (err) {
+            logger.error({err});
+          }
+        }).row();
+        
+        menu.text('Decode Purchased Trade', async (ctx) => {
+          try{
+            await handleTradeRoute({
+              lnd: allNodes[0],
+              trade: 'decrypt',
+              ctx,
+              router,
+              markdown,
+              logger,
+            });
+          } catch (err) {
+            logger.error({err});
+          }
+        }).row();
+        
+        bot.command('trade', async (ctx) => {
+          try {
+            await ctx.reply('What would you like to do?', {reply_markup: menu})
+            await ctx.deleteMessage();
+              } catch(err){
+                logger.error({err})
+              }
+        });
+  
 
         bot.command('version', async ctx => {
           try {
@@ -419,6 +491,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           }
         });
 
+
         const commands = [
           '/backup - Get node backup file',
           '/blocknotify - Notification on next block',
@@ -430,6 +503,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           '/mempool - BTC mempool report',
           '/pay - Pay an invoice',
           '/pending - View pending channels, probes, and forwards',
+          '/trade - Create or decode a trade',
           '/version - View the current bot version',
         ];
 
@@ -441,6 +515,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           }
         });
 
+        bot.use(router);
         bot.start();
 
         return cbk();
