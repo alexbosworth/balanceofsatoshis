@@ -1,5 +1,9 @@
 # Versions
 
+## 11.17.0
+
+- `change-channel-capacity`: Add command to adjust channel capacity up or down
+
 ## 11.16.2
 
 - Address Docker image installation issues
