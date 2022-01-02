@@ -296,6 +296,26 @@ prog
     });
   })
 
+  // Change the capacity of an existing channel
+  .command('change-channel-capacity', 'Change the capacity of a channel')
+  .help('Remote node must be prepared to receive this type of request')
+  .help('The remote node should also run this same command after you propose')
+  .option('--node <node_name>', 'Use saved node details instead of local node')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return paidServices.changeChannelCapacity({
+          logger,
+          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
+    });
+  })
+
   // Show a chart of chain fees paid
   .command('chart-chain-fees', 'Get a chart of chain fee expenses')
   .help('Show chart of mining fee expenditure over time')

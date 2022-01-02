@@ -1,5 +1,26 @@
 # Versions
 
+## 11.18.0
+
+This release fixes an important issue with the experimental
+`change-channel-capacity` command. Do not use this command on past versions.
+
+- `change-channel-capacity`: Fix failure to preserve announce flags
+- `trade-secret`: The public key of the peer to trade with is now optional
+
+## 11.17.0
+
+- `change-channel-capacity`: Add command to adjust channel capacity up or down
+
+## 11.16.2
+
+- Address Docker image installation issues
+- `open-balanced-channel`: Move up indicator of waiting for incoming channel
+
+## 11.16.1
+
+- `send`: Add support for global ignores from `tags` when `--avoid` unspecified
+
 ## 11.16.0
 
 - `open-balanced-channel`: Add `--coop-close-address` to add a close-to-address

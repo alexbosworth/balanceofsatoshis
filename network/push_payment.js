@@ -126,11 +126,6 @@ module.exports = (args, cbk) => {
 
       // Get the node identity public key
       getIdentity: ['validate', ({}, cbk) => {
-        // Exit early when there are no avoids
-        if (!args.avoid.length) {
-          return cbk();
-        }
-
         return getIdentity({lnd: args.lnd}, cbk);
       }],
 
@@ -153,14 +148,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Get tags for figuring out avoid flags
-      getTags: ['validate', ({}, cbk) => {
-        // Exit early when there are no avoids
-        if (!args.avoid.length) {
-          return cbk();
-        }
-
-        return getTags({fs: args.fs}, cbk);
-      }],
+      getTags: ['validate', ({}, cbk) => getTags({fs: args.fs}, cbk)],
 
       // Get ignores
       getIgnores: [
@@ -169,11 +157,6 @@ module.exports = (args, cbk) => {
         'getTags',
         ({getChannels, getIdentity, getTags}, cbk) =>
       {
-        // Exit early when there are no avoids
-        if (!args.avoid.length) {
-          return cbk(null, {ignore: []});
-        }
-
         return getIgnores({
           avoid: args.avoid,
           channels: getChannels.channels,

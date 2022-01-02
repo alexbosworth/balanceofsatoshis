@@ -15,6 +15,6 @@ USER $USER_ID:$GROUP_ID
 
 COPY . /app/
 
-RUN npm ci --only=production
+RUN npm ci
 
 ENTRYPOINT [ "/app/bos" ]

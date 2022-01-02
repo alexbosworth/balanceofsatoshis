@@ -40,7 +40,6 @@ const paddedHexNumber = n => n.length % 2 ? `0${n}` : n;
 const {p2ms} = payments;
 const {p2pkh} = payments;
 const p2pTimeoutMs = 5000;
-const p2pTimeoutCode = 408;
 const {p2wsh} = payments;
 const relockIntervalMs = 1000 * 20;
 const times = 60 * 6;
@@ -238,7 +237,10 @@ module.exports = (args, cbk) => {
         // The output to the channel funding is capacity paid to the 2:2 addr
         tx.addOutput(script, args.capacity);
 
-        args.logger.info({funding_tx_id: tx.getId()});
+        args.logger.info({
+          funding_tx_id: tx.getId(),
+          waiting_for_full_channel_proposal: true,
+        });
 
         return cbk(null, {
           pending_channel_id: bufferAsHex(multiSig.hash),
@@ -385,8 +387,6 @@ module.exports = (args, cbk) => {
         'payAcceptRequest',
         ({askForTransit, fundingTx}, cbk) =>
       {
-        args.logger.info({waiting_for_incoming_channel: true});
-
         return waitForPendingOpen({
           interval,
           times,
