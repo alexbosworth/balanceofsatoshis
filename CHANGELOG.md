@@ -1,6 +1,6 @@
 # Versions
 
-## 11.18.0
+## 11.18.1
 
 This release fixes an important issue with the experimental
 `change-channel-capacity` command. Do not use this command on past versions.
