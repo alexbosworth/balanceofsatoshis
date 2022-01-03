@@ -52,7 +52,6 @@ const {version} = require('./../package');
 
 let allNodes;
 let bot;
-let payload = [];
 let savedNode;
 const botKeyFile = 'telegram_bot_api_key';
 const delay = 1000 * 60;
@@ -435,6 +434,9 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             selectSavedNode.text(allNodes[i].alias, allNodes[i].alias);
           }
         }
+        else {
+          savedNode = allNodes[0];
+        }
 
         //Trade command will ask for saved node first if multiple are available
         bot.command('trade', async ctx => {
@@ -455,7 +457,6 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         bot.callbackQuery('create-trade', async ctx => {
           try{
             await ctx.deleteMessage();
-            console.log(savedNode.alias);
             await handleTradeRoute({
               lnd: savedNode,
               trade: 'create',
@@ -473,7 +474,6 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         bot.callbackQuery('purchase-trade', async ctx => {
           try{
             await ctx.deleteMessage();
-            console.log(savedNode.alias);
             await handleTradeRoute({
               lnd: savedNode,
               trade: 'purchase',
@@ -512,7 +512,6 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             for(let i=0; i < allNodes.length; i++) {
               if(allNodes[i].alias === clickedNode) {
                 savedNode = allNodes[i];
-                console.log(savedNode.alias);
               }
             }
             await ctx.reply('What would you like to do?', {reply_markup: inlineKeyboard});
