@@ -1,5 +1,9 @@
 # Versions
 
+## 11.19.0
+
+- `change-channel-capacity`: Allow changing private/public status of channel
+
 ## 11.18.1
 
 This release fixes an important issue with the experimental
