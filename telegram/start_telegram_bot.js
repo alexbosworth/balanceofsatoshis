@@ -22,6 +22,7 @@ const {handlePayCommand} = require('ln-telegram');
 const {handlePendingCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
 const {InputFile} = require('grammy');
+const {InlineKeyboard} = require('grammy');
 const inquirer = require('inquirer');
 const {Menu} = require("@grammyjs/menu");
 const {notifyOfForwards} = require('ln-telegram');
@@ -51,6 +52,8 @@ const {version} = require('./../package');
 
 let allNodes;
 let bot;
+let payload = [];
+let savedNode;
 const botKeyFile = 'telegram_bot_api_key';
 const delay = 1000 * 60;
 const fileAsDoc = file => new InputFile(file.source, file.filename);
@@ -202,9 +205,10 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         bot = new Bot(apiKey.key);
 
         //initialise sssion, router and menu
-        bot.use(session({ initial: () => ({ step: "idle" }) }));
+        bot.use(session({ initial: () => ({ step: 'idle' }) }));
         const router = new Router((ctx) => ctx.session.step);
-        const menu = new Menu('trade-menu');
+        const inlineKeyboard = new InlineKeyboard();
+        const selectSavedNode = new InlineKeyboard();
 
 
         bot.api.setMyCommands([
@@ -419,14 +423,41 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           return ctx.reply(interaction.start_message, markdown);
         });
 
-        //start the menu
-        bot.use(menu);
 
-        //create menu options and call handle trade route file             
-        menu.text('Create Trade', async (ctx) => {
+        //Build the keyboard
+        inlineKeyboard.text('Create Trade', 'create-trade');
+        inlineKeyboard.text('Purchase Trade', 'purchase-trade');
+        inlineKeyboard.text('Decode Trade', 'decode-trade');
+        
+        //inline keyboard for selecting saved node
+        if(allNodes.length > 1) {
+          for (let i=0; i< allNodes.length; i++) {
+            selectSavedNode.text(allNodes[i].alias, allNodes[i].alias);
+          }
+        }
+
+        //Trade command will ask for saved node first if multiple are available
+        bot.command('trade', async ctx => {
+          try {
+            if(allNodes.length > 1) {
+            await ctx.reply('Select your saved node', {reply_markup: selectSavedNode});
+            }
+            else {
+            await ctx.reply('What would you like to do?', {reply_markup: inlineKeyboard});
+            }
+              await ctx.deleteMessage();
+            } catch(err){
+              logger.error({err})
+            }
+          });                  
+
+        //Create a new trade
+        bot.callbackQuery('create-trade', async ctx => {
           try{
+            await ctx.deleteMessage();
+            console.log(savedNode.alias);
             await handleTradeRoute({
-              lnd: allNodes[0],
+              lnd: savedNode,
               trade: 'create',
               ctx,
               router,
@@ -436,12 +467,15 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           } catch (err) {
             logger.error({err});
           }
-        }).row();
-        
-        menu.text('Purchase Trade', async (ctx) => {
+        });
+
+        //Decode trade for invoice
+        bot.callbackQuery('purchase-trade', async ctx => {
           try{
+            await ctx.deleteMessage();
+            console.log(savedNode.alias);
             await handleTradeRoute({
-              lnd: allNodes[0],
+              lnd: savedNode,
               trade: 'purchase',
               ctx,
               router,
@@ -451,12 +485,14 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           } catch (err) {
             logger.error({err});
           }
-        }).row();
-        
-        menu.text('Decode Purchased Trade', async (ctx) => {
+        });
+
+        //Enter preimage to reveal final trade
+        bot.callbackQuery('decode-trade', async ctx => {
           try{
+            await ctx.deleteMessage();
             await handleTradeRoute({
-              lnd: allNodes[0],
+              lnd: savedNode,
               trade: 'decrypt',
               ctx,
               router,
@@ -466,17 +502,22 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           } catch (err) {
             logger.error({err});
           }
-        }).row();
-        
-        bot.command('trade', async (ctx) => {
-          try {
-            await ctx.reply('What would you like to do?', {reply_markup: menu})
-            await ctx.deleteMessage();
-              } catch(err){
-                logger.error({err})
-              }
         });
-  
+
+        //listen for saved node clicks and pass saved node to handle trades
+        bot.on('callback_query:data', async(ctx) => {
+          await ctx.deleteMessage();
+          const clickedNode = ctx.callbackQuery.data;
+          if(allNodes.length > 1) {
+            for(let i=0; i < allNodes.length; i++) {
+              if(allNodes[i].alias === clickedNode) {
+                savedNode = allNodes[i];
+                console.log(savedNode.alias);
+              }
+            }
+            await ctx.reply('What would you like to do?', {reply_markup: inlineKeyboard});
+          }
+        });
 
         bot.command('version', async ctx => {
           try {
