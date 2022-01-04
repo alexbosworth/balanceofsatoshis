@@ -82,6 +82,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'PaymentRequestExpired']);
         }
 
+        if (!BigInt(parsePaymentRequest({request: args.request}).mtokens)) {
+          return cbk([400, 'UseSendToPayZeroAmountPaymentRequests']);
+        }
+
         return cbk();
       },
 

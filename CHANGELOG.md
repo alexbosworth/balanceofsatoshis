@@ -1,5 +1,9 @@
 # Versions
 
+## 11.20.0
+
+- `send`: Add support for paying to zero-amount BOLT 11 payment requests
+
 ## 11.19.0
 
 - `change-channel-capacity`: Allow changing private/public status of channel

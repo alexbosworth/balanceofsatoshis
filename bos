@@ -1394,7 +1394,7 @@ prog
   .help('Formulas supported in amount, and N*USD or N*EUR')
   .help('Also supported in formulas: LIQUIDITY, INBOUND, OUTBOUND (with peer)')
   .help('OUT_INBOUND, OUT_OUTBOUND (when specifying outbound peer)')
-  .argument('<to>', 'Send to node with public key')
+  .argument('<to>', 'Send to node with public key, or zero amount pay request')
   .option('--amount <amount>', 'Amount to send to destination', STRING, '1')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
   .option('--dryrun', 'Avoid actually sending funds')
@@ -1409,20 +1409,16 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const {lnd} = await lndForNode(logger, options.node);
-
-        const destination = await lnSync.findKey({lnd, query: args.to});
-
         return network.pushPayment({
-          lnd,
           logger,
           amount: options.amount,
           avoid: flatten([options.avoid].filter(n => !!n)),
-          destination: destination.public_key,
+          destination: args.to,
           fs: {getFile: readFile},
           in_through: options.in,
           is_dry_run: options.dryrun,
           is_omitting_message_from: options.messageOmitFromKey,
+          lnd: (await lndForNode(logger, options.node)).lnd,
           max_fee: options.maxFee,
           message: options.message,
           quiz_answers: flatten([options.quiz].filter(n => !!n)),
@@ -1587,6 +1583,7 @@ prog
   .help('Connect to a Telegram bot. Create bot: tg://resolve?domain=botfather')
   .help('After creating the bot start chatting with the bot for connect code')
   .help('Supported updates: forwards, received payments, etc')
+  .help('Multiple nodes are supported by repeating the `--node` flag')
   .help('See README for info on persisting the bot through Docker/nohup')
   .option('--budget <amount>', 'Spending amount to allow', INT, Number())
   .option('--connect <connect_code>', 'Connection code', INT)

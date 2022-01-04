@@ -157,6 +157,20 @@ module.exports = (args, cbk) => {
             return cbk([400, 'InvoiceIsExpired']);
           }
 
+          // Exit early when tokens are specified for a request
+          if (!!args.tokens) {
+            return cbk(null, {
+              cltv_delta: details.cltv_delta,
+              destination: details.destination,
+              features: details.features,
+              id: details.id,
+              mtokens: tokAsMtok(args.tokens),
+              payment: details.payment,
+              routes: details.routes,
+              tokens: args.tokens,
+            });
+          }
+
           args.logger.info({
             description: details.description || undefined,
             destination: details.destination,
@@ -175,8 +189,6 @@ module.exports = (args, cbk) => {
             routes: details.routes,
             tokens: details.tokens,
           });
-
-          return cbk(null, parsePaymentRequest({request: args.request}));
         } catch (err) {
           return cbk([400, 'FailedToDecodePaymentRequest', {err}]);
         }

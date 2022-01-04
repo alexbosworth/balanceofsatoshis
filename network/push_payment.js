@@ -6,6 +6,7 @@ const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getPeerLiquidity} = require('ln-sync');
 const {getPrices} = require('@alexbosworth/fiat');
+const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {getIgnores} = require('./../routing');
@@ -62,10 +63,6 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.avoid)) {
           return cbk([400, 'ExpectedArrayOfAvoidDirectivesToSendPushPayment']);
-        }
-
-        if (!isPublicKey(args.destination)) {
-          return cbk([400, 'ExpectedDestinationToPushPaymentTo']);
         }
 
         if (!args.fs) {
@@ -149,6 +146,33 @@ module.exports = (args, cbk) => {
 
       // Get tags for figuring out avoid flags
       getTags: ['validate', ({}, cbk) => getTags({fs: args.fs}, cbk)],
+
+      // Payment details
+      payment: ['validate', ({}, cbk) => {
+        try {
+          const {destination, mtokens} = parsePaymentRequest({
+            request: args.destination,
+          });
+
+          if (!!BigInt(mtokens)) {
+            return cbk([400, 'ExpectedZeroAmountPayRequestToSendFunds']);
+          }
+
+          return cbk(null, {destination, request: args.destination});
+        } catch (_) {
+          return findKey({
+            lnd: args.lnd,
+            query: args.destination,
+          },
+          (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            return cbk(null, {destination: res.public_key, is_push: true});
+          });
+        }
+      }],
 
       // Get ignores
       getIgnores: [
@@ -241,11 +265,12 @@ module.exports = (args, cbk) => {
         'getChannels',
         'getNetwork',
         'getOutKey',
-        ({fiatRates, getChannels, getNetwork, getOutKey}, cbk) =>
+        'payment',
+        ({fiatRates, getChannels, getNetwork, getOutKey, payment}, cbk) =>
       {
         // Total remote balance including pending if pending fails
         const inbound = getChannels.channels
-          .filter(n => n.partner_public_key === args.destination)
+          .filter(n => n.partner_public_key === payment.destination)
           .reduce((sum, chan) => {
             // Treat incoming payment as if they were still remote balance
             const inbound = chan.pending_payments.filter(n => !n.is_outgoing);
@@ -285,7 +310,7 @@ module.exports = (args, cbk) => {
 
         // Total local balance including pending if pending fails
         const outbound = getChannels.channels
-          .filter(n => n.partner_public_key === args.destination)
+          .filter(n => n.partner_public_key === payment.destination)
           .reduce((sum, chan) => {
             // Treat outgoing payment as if they were still local balance
             const outbound = chan.pending_payments
@@ -307,7 +332,7 @@ module.exports = (args, cbk) => {
           eur: !!eur ? eur.unit : undefined,
           liquidity: sumOf(
             getChannels.channels
-              .filter(n => n.partner_public_key === args.destination)
+              .filter(n => n.partner_public_key === payment.destination)
               .map(n => n.capacity)
           ),
           out_inbound: outInbound,
@@ -333,7 +358,8 @@ module.exports = (args, cbk) => {
         'getInKey',
         'getOutKey',
         'parseAmount',
-        ({getIgnores, getInKey, getOutKey, parseAmount}, cbk) =>
+        'payment',
+        ({getIgnores, getInKey, getOutKey, parseAmount, payment}, cbk) =>
       {
         if (parseAmount.tokens < minTokens) {
           return cbk([400, 'ExpectedNonZeroAmountToPushPayment']);
@@ -341,7 +367,7 @@ module.exports = (args, cbk) => {
 
         args.logger.info({
           paying: formatTokens({tokens: parseAmount.tokens}).display,
-          to: args.destination,
+          to: payment.destination,
         });
 
         if (!!args.is_dry_run) {
@@ -349,14 +375,14 @@ module.exports = (args, cbk) => {
         }
 
         return probeDestination({
-          destination: args.destination,
+          destination: payment.destination,
           fs: args.fs,
           ignore: getIgnores.ignore,
           lnd: args.lnd,
           logger: args.logger,
           in_through: getInKey,
           is_omitting_message_from: args.is_omitting_message_from,
-          is_push: true,
+          is_push: payment.is_push,
           is_real_payment: true,
           max_fee: args.max_fee,
           message: args.message,
@@ -365,6 +391,7 @@ module.exports = (args, cbk) => {
             value: utf8AsHex(answer),
           })),
           out_through: getOutKey,
+          request: payment.request,
           timeout_minutes: args.timeout_minutes,
           tokens: parseAmount.tokens,
         },
