@@ -48,7 +48,9 @@ const markdown = {parse_mode: 'Markdown'};
 const handleTradeRoute = require('./handle_trade_route');
 const named = require('./../package').name;
 const paidServices = require('../../paid-services');
+const requestTradeById = require('paid-services/trades/request_trade_by_id');
 const {version} = require('./../package');
+const {getIdentity} = require('ln-service');
 
 let allNodes;
 let bot;
@@ -208,6 +210,8 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         const router = new Router((ctx) => ctx.session.step);
         const inlineKeyboard = new InlineKeyboard();
         const selectSavedNode = new InlineKeyboard();
+        const selectPubkey = new InlineKeyboard();
+        const tradeList = new InlineKeyboard();
 
 
         bot.api.setMyCommands([
@@ -423,10 +427,14 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         });
 
 
-        //Build the keyboard
+        //Build the trade keyboard
         inlineKeyboard.text('Create Trade', 'create-trade');
         inlineKeyboard.text('Purchase Trade', 'purchase-trade');
         inlineKeyboard.text('Decode Trade', 'decode-trade');
+
+        //Build the open/close trade handler keyboard
+        selectPubkey.text('Yes', 'create-closed-trade');
+        selectPubkey.text('No', 'create-open-trade');
         
         //inline keyboard for selecting saved node
         if(allNodes.length > 1) {
@@ -453,13 +461,38 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             }
           });                  
 
+          bot.callbackQuery('create-trade', async ctx => {
+            try {
+              await ctx.reply('Do you want to enter a pubkey?', {reply_markup: selectPubkey});
+            } catch (err) {
+              logger.error({err});
+            }
+          });
+
         //Create a new trade
-        bot.callbackQuery('create-trade', async ctx => {
+        bot.callbackQuery('create-closed-trade', async ctx => {
           try{
             await ctx.deleteMessage();
             await handleTradeRoute({
               lnd: savedNode,
-              trade: 'create',
+              trade: 'create-closed-trade',
+              ctx,
+              router,
+              markdown,
+              logger,
+            });
+          } catch (err) {
+            logger.error({err});
+          }
+        });
+
+        //Create a new trade
+        bot.callbackQuery('create-open-trade', async ctx => {
+          try{
+            await ctx.deleteMessage();
+            await handleTradeRoute({
+              lnd: savedNode,
+              trade: 'create-open-trade',
               ctx,
               router,
               markdown,
@@ -481,6 +514,8 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               router,
               markdown,
               logger,
+              keyboard: tradeList,
+              bot,
             });
           } catch (err) {
             logger.error({err});
@@ -507,14 +542,28 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         //listen for saved node clicks and pass saved node to handle trades
         bot.on('callback_query:data', async(ctx) => {
           await ctx.deleteMessage();
-          const clickedNode = ctx.callbackQuery.data;
+          const clickedButton = ctx.callbackQuery.data;
+          console.log(clickedButton);
           if(allNodes.length > 1) {
             for(let i=0; i < allNodes.length; i++) {
-              if(allNodes[i].alias === clickedNode) {
+              if(allNodes[i].alias === clickedButton) {
                 savedNode = allNodes[i];
+                await ctx.reply('What would you like to do?', {reply_markup: inlineKeyboard});
               }
             }
-            await ctx.reply('What would you like to do?', {reply_markup: inlineKeyboard});
+          }
+          console.log(clickedButton.length);
+          if(clickedButton.length === 64 ) {
+            try {
+              const x = await requestTradeById({
+                lnd: savedNode.lnd,
+                id: clickedButton,
+                to: '02ba1f14be6333e0f014c8809134bf16a7cad9cec6341f736767660e61b61733bd',
+              });
+              console.log(x);
+            } catch(err) {
+              logger.error({err});
+            }
           }
         });
 
