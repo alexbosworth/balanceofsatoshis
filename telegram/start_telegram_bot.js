@@ -543,7 +543,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         bot.on('callback_query:data', async(ctx) => {
           await ctx.deleteMessage();
           const clickedButton = ctx.callbackQuery.data;
-          console.log(clickedButton);
+
           if(allNodes.length > 1) {
             for(let i=0; i < allNodes.length; i++) {
               if(allNodes[i].alias === clickedButton) {
@@ -552,7 +552,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               }
             }
           }
-          console.log(clickedButton.length);
+
           if(clickedButton.length === 64 ) {
             try {
               const x = await requestTradeById({
