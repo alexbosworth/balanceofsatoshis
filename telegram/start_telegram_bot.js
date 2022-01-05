@@ -36,6 +36,7 @@ const {returnResult} = require('asyncjs-util');
 const {Router} = require("@grammyjs/router");
 const {sendMessage} = require('ln-telegram');
 const {session} = require('grammy');
+const {parsePaymentRequest} = require('ln-service');
 const {subscribeToBackups} = require('ln-service');
 const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
@@ -410,7 +411,6 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               id: connectedId,
               nodes: allNodes,
               reply: n => ctx.reply(n),
-              working: () => ctx.replyWithChatAction('typing'),
             });
           } catch (err) {
             logger.error({err});
@@ -461,6 +461,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             }
           });                  
 
+          //when creating new trade ask for open or closed trade by asking if user wants to enter a pubkey
           bot.callbackQuery('create-trade', async ctx => {
             try {
               await ctx.reply('Do you want to enter a pubkey?', {reply_markup: selectPubkey});
@@ -469,7 +470,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             }
           });
 
-        //Create a new trade
+        //Create closed trade keyboard click
         bot.callbackQuery('create-closed-trade', async ctx => {
           try{
             await ctx.deleteMessage();
@@ -486,7 +487,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           }
         });
 
-        //Create a new trade
+        //Create open trade keyboard click
         bot.callbackQuery('create-open-trade', async ctx => {
           try{
             await ctx.deleteMessage();
@@ -503,7 +504,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           }
         });
 
-        //Decode trade for invoice
+        //purchase trade keyboard click
         bot.callbackQuery('purchase-trade', async ctx => {
           try{
             await ctx.deleteMessage();
@@ -522,7 +523,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           }
         });
 
-        //Enter preimage to reveal final trade
+        //decode a trade keyboard click
         bot.callbackQuery('decode-trade', async ctx => {
           try{
             await ctx.deleteMessage();
@@ -543,7 +544,6 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         bot.on('callback_query:data', async(ctx) => {
           await ctx.deleteMessage();
           const clickedButton = ctx.callbackQuery.data;
-
           if(allNodes.length > 1) {
             for(let i=0; i < allNodes.length; i++) {
               if(allNodes[i].alias === clickedButton) {
@@ -552,16 +552,28 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               }
             }
           }
-
-          if(clickedButton.length === 64 ) {
-            try {
-              const x = await requestTradeById({
-                lnd: savedNode.lnd,
+          //get the session variable from handle_trade_route to and get trade/payment details and listen to keyboard clicks
+          if(!!ctx.session.openTrades) {
+            try{
+              const requestedTrade = await requestTradeById({
                 id: clickedButton,
-                to: '02ba1f14be6333e0f014c8809134bf16a7cad9cec6341f736767660e61b61733bd',
+                lnd: savedNode.lnd,
+                to: ctx.session.openTrades.to,
               });
-              console.log(x);
-            } catch(err) {
+              const parseInvoice = await parsePaymentRequest({request: requestedTrade.request});
+              const decryptDetails = {
+                auth: requestedTrade.auth,
+                payload: requestedTrade.payload,
+                from: parseInvoice.destination,
+              }
+              //store details needed for opentrade decryption in a session variable
+              ctx.session.decryptDetails = decryptDetails;
+
+              await ctx.reply(`Description:\n${parseInvoice.description}\n\n${requestedTrade.request}\n\nPrice: ${parseInvoice.tokens} sats`);
+
+              ctx.session.openTrades = undefined;
+            } catch (err) {
+              await ctx.reply('Unable to get trade from peer', markdown);
               logger.error({err});
             }
           }

@@ -24,7 +24,7 @@ const utf8AsHex = utf8 => Buffer.from(utf8).toString('hex');
 const hexAsUtf8 = hex => Buffer.from(hex, 'hex').toString();
 
 
-module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cbk) => {
+module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -85,63 +85,69 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
       'getNetwork',
       'getChannels',
       async ({getIdentity}) => {
+
+        //exit early if not purchasing a trade
         if(trade !== 'purchase') {
           return;
         }
 
-      await ctx.reply('Enter the trade to decode for invoice', markdown);
-      ctx.session.step = 'decode-invoice';
+        await ctx.reply('Enter the trade to decode for invoice', markdown);
+        ctx.session.step = 'decode-invoice';
+
+        //enter the trade to purchase
+        router.route('decode-invoice', async (ctx) => {
+          try{
+            const askForTrade = ctx.msg.text;
+            const details = decodeTrade({trade: askForTrade});
   
-      router.route('decode-invoice', async (ctx) => {
-        try{
-          const askForTrade = ctx.msg.text;
-          const details = decodeTrade({trade: askForTrade});
-
-          //call purchase open trade function if its an open trade
-          if(!details.secret) {
-            const openTrades =await purchaseOpenTrade(details);
-            ctx.session.step = 'idle';
-            return openTrades;
-          }
-          const decodedPaymentRequest = parsePaymentRequest({request: details.secret.request});
-
-          if(!!decodedPaymentRequest.is_expired) {
-            await ctx.reply('Trade invoice has expired, request a new trade');
-            return;
-          }
-
-          ctx.session.trade = askForTrade;
-          await ctx.reply(`Trade Description: ${decodedPaymentRequest.description}\nTrade Price: ${decodedPaymentRequest.tokens} sat(s)`);
-          await ctx.reply(`Invoice to pay is: \n ${details.secret.request}`, markdown);
-          ctx.session.step = 'idle';
-
-          //find the opentrade details
-          async function purchaseOpenTrade(details) {
-            const openTrades = await findTrade({
-              lnd: lnd.lnd,
-              logger,
-              id: details.connect.id,
-              identity: getIdentity.public_key,
-              nodes: details.connect.nodes,
-            });
-
-            for(let i=0; i< openTrades.trades.length; i++) {
-              keyboard.text(openTrades.trades[i].description, openTrades.trades[i].id).row();
+            //contact peer to find open trade if it is a closed trade and store trade information in session variable to listen for keyboard clicks in start_telegram_bot
+            if(!details.secret) {
+              const openTrades = await purchaseOpenTrade(details);
+              ctx.session.openTrades = openTrades;
+              ctx.session.step = 'idle';
+              return;
             }
-            await ctx.reply('Available trades for purchase', {reply_markup: keyboard});
-            return openTrades;
-          }
+            const decodedPaymentRequest = parsePaymentRequest({request: details.secret.request});
+  
+            //notify if the invoice has expired
+            if(!!decodedPaymentRequest.is_expired) {
+              await ctx.reply('Trade invoice has expired, request a new trade');
+              return;
+            }
+  
+            await ctx.reply(`Trade Description: ${decodedPaymentRequest.description}\nTrade Price: ${decodedPaymentRequest.tokens} sat(s)`);
+            await ctx.reply(`Invoice to pay is: \n ${details.secret.request}`, markdown);
+            ctx.session.step = 'idle';
+  
+            //find the opentrade details
+            async function purchaseOpenTrade(details) {
+              await ctx.reply('Contating peer to get trade...', markdown);
+              const openTrades = await findTrade({
+                lnd: lnd.lnd,
+                logger,
+                id: details.connect.id,
+                identity: getIdentity.public_key,
+                nodes: details.connect.nodes,
+              });
 
+              //build the keyboard to pick trades
+              for(let i=0; i< openTrades.requestTrades.trades.length; i++) {
+                keyboard.text(openTrades.requestTrades.trades[i].description, openTrades.requestTrades.trades[i].id).row();
+              }
+              await ctx.reply(`Trades available for sale are:`, {reply_markup: keyboard});
+              return openTrades;
+            }
           } catch(err) {
-            await ctx.reply('Error deocoding trade', markdown);
-            logger.error({err});
-          }
-      });
-
-      router.route('idle', async (ctx) => {
-        await ctx.reply('Decoding invoice complete, start over with /trade command');
+              await ctx.reply('Error deocoding trade or contacting peer timed out', markdown);
+              logger.error({err});
+            }
         });
-
+        
+        //chat replies trade complete if user enters an input after the trade completes
+        router.route('idle', async (ctx) => {
+          await ctx.reply('Decoding invoice complete, start over with /trade command');
+        });
+        
       }],
 
 
@@ -149,12 +155,22 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
       handleDecryptRoute: [
       'validate',
       async ({}) => {
+        //exit early if it's not a decryption
         if(trade !== 'decrypt') {
           return;
         }
-        await ctx.reply('Enter the trade again?', markdown);
-        ctx.session.step = 'decode';
+        //check for the session variable from start telegram file
+        if(!!ctx.session.decryptDetails.auth && !!ctx.session.decryptDetails.payload && !!ctx.session.decryptDetails.from) {
+          await ctx.reply('Enter the preimage?', markdown);
+          ctx.session.step = 'decrypt-opentrade';
+        }
+        //if no session variables then treat it as closed trade
+        else {
+          await ctx.reply('Enter the trade again?', markdown);
+          ctx.session.step = 'decode';
+        }
   
+        //decode the closed trade again for decrypting
         router.route('decode', async (ctx) => {
           try{
             const askForTrade = ctx.msg.text;
@@ -172,13 +188,14 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
             }
         });
 
+        //decrypt a closed trade
         router.route('decrypt', async (ctx) => {
           try{
             const askForImage = ctx.msg.text;
 
             const decryptedTrade = await decryptTradeSecret({
               lnd: lnd.lnd,
-              auth: ctx.session.decodeDetails.secret.auth,
+              auth: ctx.session.decryptDetails.auth,
               from: ctx.session.decodedPaymentRequest.destination,
               payload: ctx.session.decodeDetails.secret.payload,
               secret: askForImage,
@@ -191,6 +208,30 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
             }
         });
 
+        //decrypt an open trade
+        router.route('decrypt-opentrade', async (ctx) => {
+          try{
+            const askForImage = ctx.msg.text;
+
+            const decryptedTrade = await decryptTradeSecret({
+              lnd: lnd.lnd,
+              auth: ctx.session.decryptDetails.auth,
+              from: ctx.session.decryptDetails.from,
+              payload: ctx.session.decryptDetails.payload,
+              secret: askForImage,
+            });
+            await ctx.reply(`Secret is: \n\n${hexAsUtf8(decryptedTrade.plain)}`, markdown);
+
+            //end the session variables after trade is displayed
+            ctx.session.decryptDetails = undefined;
+            ctx.session.step = 'idle';
+            } catch(err) {
+              await ctx.reply('Error getting decoded trade', markdown);
+              logger.error({err});
+            }
+        });
+
+        //chat replies trade complete if user enters an input after the trade completes
         router.route('idle', async (ctx) => {
           await ctx.reply('Trade decode complete, start over with /trade command', markdown);
         });
@@ -201,12 +242,14 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
       handleCreateClosedTradeRoute: [
       'validate',
        async ({}) => {
+         //exit early if not creating a closed trade
         if(trade !== 'create-closed-trade') {
             return;
         }
         await ctx.reply('Enter the public key you are trading with?', );
         ctx.session.step = 'pubkey';   
       
+        //get the pubkey you want to encode a trade with
         router.route('pubkey', async (ctx) => {
           try{
             const pubkey = ctx.msg.text;
@@ -223,7 +266,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
         }
         });
       
-      
+      // get the description of the trade
         router.route('description', async (ctx) => {
           try {
 
@@ -240,7 +283,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
         }
         });
     
-      
+      //get the secret you are trading
         router.route('secret', async (ctx) => {
         try {
           const secret = ctx.msg.text;
@@ -256,7 +299,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
         }
         });
     
-    
+        //get the price of the trade
         router.route('price', async (ctx) => {
           try {
             const price = ctx.message.text;    
@@ -267,7 +310,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
             return;
             }
 
-          await ctx.replyWithChatAction('typing');
+          //generate the closed trade
           await ctx.reply('Generating trade secret...');
           const tradeSecret = await finalizeTradeSecret({
             lnd: lnd.lnd,
@@ -284,6 +327,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
         }
         });
 
+        //chat replies trade complete if user enters an input after the trade completes
         router.route('idle', async (ctx) => {
           await ctx.reply('Create trade complete, start over with /trade command');
         });
@@ -296,6 +340,8 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
       'getIdentity',
       'getNetwork',
       async ({getChannels, getIdentity, getNetwork}) => {
+
+        //exit early if not creating an open trade
         if(trade !== 'create-open-trade') {
           return;
         }
@@ -303,6 +349,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
         await ctx.reply('Describe the secret you are offering.');
         ctx.session.step = 'description';
 
+        //get description of the open trade
         router.route('description', async (ctx) => {
           try {
             const description = ctx.msg.text;
@@ -318,6 +365,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
           }
           });
 
+          //get the secret of the open trade
         router.route('secret', async (ctx) => {
           try {
             const secret = ctx.msg.text;
@@ -333,7 +381,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
           }
         });
 
-
+        //get the price of open trade
         router.route('price', async (ctx) => {
           try {
             const price = ctx.message.text;    
@@ -359,6 +407,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
           
           const settled = [];
           
+          //start listener on creating open trade
           const sub = serviceTradeRequests({
             lnd: lnd.lnd,
             description: ctx.session.description,
@@ -385,6 +434,7 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
           sub.on('failure', failure => logger.error({failure}));
           
           sub.on('settled', ({to}) => settled.push(to));
+
           
           await ctx.reply(`Trade created: ${openTrade.trade}`);
           ctx.session.step = 'idle';
@@ -395,11 +445,13 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard, bot}, cb
           }
         });
 
+
+        //chat replies trade complete if user enters an input after the trade completes
         router.route('idle', async (ctx) => {
           await ctx.reply('Create trade complete, start over with /trade command');
         });
       }],
     },
-  returnResult({reject, resolve}, cbk));
+  returnResult({reject, resolve, of: 'handlePurchaseTradeRoute'}, cbk));
   });
 };

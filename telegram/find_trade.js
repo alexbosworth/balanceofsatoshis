@@ -270,14 +270,13 @@ module.exports = ({id, identity, lnd, logger, nodes}, cbk) => {
           return cbk([404, 'NoTradesFound']);
         }
 
-        const [trade, other] = requestTrades.trades;
+        // const [trade, other] = requestTrades.trades;
 
-        // Exit early when there is only a single trade
-        if (!other) {
-          return cbk(null, trade);
-        }
-
-        return cbk(null, requestTrades);
+        // // Exit early when there is only a single trade
+        // if (!other) {
+        //   return cbk(null, trade);
+        // }
+        return cbk(null, {requestTrades, to});
       }],
 
     },
