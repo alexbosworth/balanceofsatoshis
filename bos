@@ -1390,7 +1390,7 @@ prog
   })
 
   // Send funds to a destination
-  .command('send', 'Send funds to a node')
+  .command('send', 'Send funds to a node off-chain')
   .help('Formulas supported in amount, and N*USD or N*EUR')
   .help('Also supported in formulas: LIQUIDITY, INBOUND, OUTBOUND (with peer)')
   .help('OUT_INBOUND, OUT_OUTBOUND (when specifying outbound peer)')
@@ -1636,7 +1636,7 @@ prog
   })
 
   // Transfer funds between own nodes
-  .command('transfer', 'Send funds to a saved node')
+  .command('transfer', 'Send funds off-chain to a saved node')
   .argument('<to>', 'Saved node name')
   .argument('[amount]', 'Amount to transfer', STRING, '1')
   .help('Formulas are supported in amount')

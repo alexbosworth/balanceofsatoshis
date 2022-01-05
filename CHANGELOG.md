@@ -1,5 +1,9 @@
 # Versions
 
+## 11.20.1
+
+- `fees`: Correct issue where fee rate could not be set to zero
+
 ## 11.20.0
 
 - `send`: Add support for paying to zero-amount BOLT 11 payment requests
