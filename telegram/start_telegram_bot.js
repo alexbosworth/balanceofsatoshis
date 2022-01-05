@@ -515,8 +515,6 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               router,
               markdown,
               logger,
-              keyboard: tradeList,
-              bot,
             });
           } catch (err) {
             logger.error({err});
@@ -568,10 +566,10 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
               }
               //store details needed for opentrade decryption in a session variable
               ctx.session.decryptDetails = decryptDetails;
+              ctx.session.openTrades = undefined;
 
               await ctx.reply(`Description:\n${parseInvoice.description}\n\n${requestedTrade.request}\n\nPrice: ${parseInvoice.tokens} sats`);
 
-              ctx.session.openTrades = undefined;
             } catch (err) {
               await ctx.reply('Unable to get trade from peer', markdown);
               logger.error({err});

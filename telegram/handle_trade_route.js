@@ -19,12 +19,13 @@ const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const maxDescriptionLength = 100;
 const maxSecretLength = 100;
 const nodeName = (alias, id) => `${alias} ${id}`;
+const isHexPreimage = n => !!n && /^[0-9A-F]{64}$/i.test(n);
 const uriAsSocket = n => n.substring(67);
 const utf8AsHex = utf8 => Buffer.from(utf8).toString('hex');
 const hexAsUtf8 = hex => Buffer.from(hex, 'hex').toString();
+const {InlineKeyboard} = require('grammy');
 
-
-module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard}, cbk) => {
+module.exports = ({lnd, trade, ctx, router, markdown, logger}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -130,11 +131,15 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard}, cbk) =>
                 nodes: details.connect.nodes,
               });
 
+              //render a new keyboard when the command is called.
+              const keyboard = new InlineKeyboard();
+
               //build the keyboard to pick trades
               for(let i=0; i< openTrades.requestTrades.trades.length; i++) {
                 keyboard.text(openTrades.requestTrades.trades[i].description, openTrades.requestTrades.trades[i].id).row();
               }
               await ctx.reply(`Trades available for sale are:`, {reply_markup: keyboard});
+              
               return openTrades;
             }
           } catch(err) {
@@ -159,8 +164,9 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard}, cbk) =>
         if(trade !== 'decrypt') {
           return;
         }
+        
         //check for the session variable from start telegram file
-        if(!!ctx.session.decryptDetails.auth && !!ctx.session.decryptDetails.payload && !!ctx.session.decryptDetails.from) {
+          if(!!ctx.session.decryptDetails) {
           await ctx.reply('Enter the preimage?', markdown);
           ctx.session.step = 'decrypt-opentrade';
         }
@@ -192,10 +198,14 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard}, cbk) =>
         router.route('decrypt', async (ctx) => {
           try{
             const askForImage = ctx.msg.text;
+            if(!isHexPreimage(askForImage)) {
+              await ctx.reply('Enter a valid preimage');
+              return;
+            }
 
             const decryptedTrade = await decryptTradeSecret({
               lnd: lnd.lnd,
-              auth: ctx.session.decryptDetails.auth,
+              auth: ctx.session.decodeDetails.secret.auth,
               from: ctx.session.decodedPaymentRequest.destination,
               payload: ctx.session.decodeDetails.secret.payload,
               secret: askForImage,
@@ -213,6 +223,11 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard}, cbk) =>
           try{
             const askForImage = ctx.msg.text;
 
+            if(!isHexPreimage(askForImage)) {
+              await ctx.reply('Enter a valid preimage');
+              return;
+            }
+
             const decryptedTrade = await decryptTradeSecret({
               lnd: lnd.lnd,
               auth: ctx.session.decryptDetails.auth,
@@ -221,8 +236,6 @@ module.exports = ({lnd, trade, ctx, router, markdown, logger, keyboard}, cbk) =>
               secret: askForImage,
             });
             await ctx.reply(`Secret is: \n\n${hexAsUtf8(decryptedTrade.plain)}`, markdown);
-
-            //end the session variables after trade is displayed
             ctx.session.decryptDetails = undefined;
             ctx.session.step = 'idle';
             } catch(err) {
