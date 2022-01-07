@@ -50,6 +50,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedRequestFunctionToGetAccountingReport']);
         }
 
+        if(!args.logger) {
+          return cbk([400, 'ExpectedLoggerToGetAccountingReport']);
+        }
+
         return cbk();
       },
 
@@ -93,6 +97,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
+        //Add the fees based on category selected
         if (args.category === 'chain_fees') {
           totalAmount = getAccounting.chain_fees.reduce(function (sum, total) {
           return sum + total.amount;
