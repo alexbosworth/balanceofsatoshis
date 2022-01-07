@@ -11,7 +11,7 @@ const {monthOffset} = require('./constants');
 const {notFoundIndex} = require('./constants');
 const rangeForDate = require('./range_for_date');
 const tableRowsFromCsv = require('./table_rows_from_csv');
-
+let totalAmount = 0;
 /** Get an accounting report
 
   {
@@ -84,6 +84,54 @@ module.exports = (args, cbk) => {
         },
         cbk);
       }],
+      
+      // Calculate total amount
+      getTotal: ['getAccounting', ({getAccounting}, cbk) => {
+
+        // Exit early when a CSV dump is requested
+        if(!!args.is_csv) {
+          return cbk();
+        }
+
+        if (args.category === 'chain_fees') {
+          totalAmount = getAccounting.chain_fees.reduce(function (sum, total) {
+          return sum + total.amount;
+          }, 0);
+        }
+        
+        if (args.category === 'chain-receives') {
+          totalAmount = getAccounting.chain_receives.reduce(function (sum, total) {
+          return sum + total.amount;
+          }, 0);
+        }
+
+        if (args.category === 'chain-sends') {
+          totalAmount = getAccounting.chain_sends.reduce(function (sum, total) {
+          return sum + total.amount;
+          }, 0);
+        }
+
+        if (args.category === 'forwards') {
+            totalAmount = getAccounting.forwards.reduce(function (sum, total) {
+            return sum + total.amount;
+          }, 0);
+        }
+
+        if (args.category === 'invoices') {
+          totalAmount = getAccounting.invoices.reduce(function (sum, total) {
+          return sum + total.amount;
+          }, 0);
+        }
+
+        if (args.category === 'payments') {
+          totalAmount = getAccounting.payments.reduce(function (sum, total) {
+          return sum + total.amount;
+          }, 0);
+        }
+
+      return cbk(null, totalAmount);
+
+      }],
 
       // Convert the accounting CSV into rows for table display output
       accounting: ['getAccounting', ({getAccounting}, cbk) => {
@@ -97,13 +145,18 @@ module.exports = (args, cbk) => {
         return tableRowsFromCsv({csv: getAccounting[csvType]}, cbk);
       }],
 
+
       // Clean rows for display if necessary
-      report: ['accounting', ({accounting}, cbk) => {
+      report: ['accounting', 'getTotal',({accounting, getTotal}, cbk) => {
         // Exit early when there is no cleaning necessary
         if (!!args.is_csv) {
           return cbk(null, accounting);
         }
 
+        if(!args.is_csv) {
+          args.logger.info({Total_Amount: getTotal})
+        }
+        
         const [header] = accounting.rows;
 
         const fiatIndex = header.findIndex(row => row === 'Fiat Amount');
@@ -121,6 +174,7 @@ module.exports = (args, cbk) => {
             return col.substring(0, 32);
           });
         });
+
 
         return cbk(null, {rows});
       }],

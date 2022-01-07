@@ -80,6 +80,7 @@ prog
           is_csv: !!options.csv,
           is_fiat_disabled: options.disableFiat,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          logger,
           month: options.month,
           node: options.node,
           rate_provider: options.rateProvider,
