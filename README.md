@@ -89,6 +89,9 @@ bos chart-fees-paid
 # Show a chart of payments received
 bos chart-payments-received
 
+# Remove old failed payment data for probes and other failed payments
+bos clean-failed-payments
+
 # See details on how closed channels resolved on-chain
 bos closed
 
