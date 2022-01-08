@@ -12,6 +12,7 @@ const {getTransactionRecord} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
 const {handleBackupCommand} = require('ln-telegram');
 const {handleBlocknotifyCommand} = require('ln-telegram');
+const {handleButtonPush} = require('ln-telegram');
 const {handleConnectCommand} = require('ln-telegram');
 const {handleCostsCommand} = require('ln-telegram');
 const {handleEarningsCommand} = require('ln-telegram');
@@ -23,6 +24,7 @@ const {handlePendingCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
 const {InputFile} = require('grammy');
 const inquirer = require('inquirer');
+const {isMessageReplyToInvoice} = require('ln-telegram');
 const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
 const {postClosedMessage} = require('ln-telegram');
@@ -38,6 +40,7 @@ const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const {subscribeToPastPayments} = require('ln-service');
 const {subscribeToTransactions} = require('ln-service');
+const {updateInvoiceFromReply} = require('ln-telegram');
 
 const interaction = require('./interaction');
 const markdown = {parse_mode: 'Markdown'};
@@ -298,19 +301,17 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           return;
         });
 
-        bot.command('invoice', ({message, reply}) => {
-          handleInvoiceCommand({
-            reply,
-            request,
-            from: message.from.id,
-            id: connectedId,
-            key: apiKey.key,
-            nodes: allNodes,
-            text: message.text,
-          },
-          err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
-
-          return;
+        // Handle creation of an invoice
+        bot.command('invoice', async ctx => {
+          try {
+            await handleInvoiceCommand({
+              ctx,
+              id: connectedId,
+              nodes: getNodes,
+            });
+          } catch (err) {
+            logger.error({err});
+          }
         });
 
         bot.command('mempool', async ctx => {
@@ -425,7 +426,7 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
           '/connect - Connect bot',
           '/costs - View costs over the past week',
           '/earnings - View earnings over the past week',
-          '/invoice - Make an invoice',
+          '/invoice [amount] [memo] - Make an invoice',
           '/liquidity [with] - View node liquidity',
           '/mempool - BTC mempool report',
           '/pay - Pay an invoice',
@@ -440,6 +441,32 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
             logger.error({err});
           }
         });
+
+        // Handle button push type commands
+        bot.on('callback_query:data', async ctx => {
+          try {
+            await handleButtonPush({ctx, id: connectedId, nodes: getNodes});
+          } catch (err) {
+            logger.error({err});
+          }
+        });
+
+        // Listen for replies to created invoice messages
+        bot.on('message').filter(
+          ctx => isMessageReplyToInvoice({ctx, nodes: getNodes}),
+          async ctx => {
+            try {
+              return await updateInvoiceFromReply({
+                ctx,
+                api: bot.api,
+                id: connectedId,
+                nodes: getNodes,
+              });
+            } catch (err) {
+              logger.error({err});
+            }
+          },
+        );
 
         bot.start();
 

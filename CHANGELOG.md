@@ -1,5 +1,10 @@
 # Versions
 
+## 11.20.2
+
+- `change-channel-capacity`: Increase RBF fee buffer when increasing capacity
+- `telegram`: Redesign /invoice user interface to be button based
+
 ## 11.20.1
 
 - `fees`: Correct issue where fee rate could not be set to zero
