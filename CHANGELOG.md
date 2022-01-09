@@ -1,6 +1,6 @@
 # Versions
 
-## 11.21.0
+## 11.22.0
 
 - `accounting`: Add summation total as secondary table
 
