@@ -11,6 +11,12 @@ const {monthOffset} = require('./constants');
 const {notFoundIndex} = require('./constants');
 const rangeForDate = require('./range_for_date');
 const tableRowsFromCsv = require('./table_rows_from_csv');
+const renderTable = require('table').table;
+
+let totalAmount = 0;
+let totalColumns = [];
+let totalFiatAmount = 0;
+let totalValues = [];
 
 /** Get an accounting report
 
@@ -50,6 +56,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedRequestFunctionToGetAccountingReport']);
         }
 
+        if(!args.logger) {
+          return cbk([400, 'ExpectedLoggerToGetAccountingReport']);
+        }
+
         return cbk();
       },
 
@@ -84,6 +94,29 @@ module.exports = (args, cbk) => {
         },
         cbk);
       }],
+      
+      // Calculate total amount
+      getTotal: ['getAccounting', ({getAccounting}, cbk) => {
+        // Exit early when a CSV dump is requested
+        if(!!args.is_csv) {
+          return cbk();
+        }
+
+        //Calculate total sats
+        totalAmount = getAccounting[categories[args.category]].reduce(function (sum, total) {
+          return sum + total.amount;
+        }, 0);
+
+        //Calculate total fiat amount
+        if(!args.is_fiat_disabled) {
+          totalFiatAmount = getAccounting[categories[args.category]].reduce(function (sum, total) {
+            return sum + total.fiat_amount;
+          }, 0);
+          totalFiatAmount = Math.round(totalFiatAmount * 100) / 100
+        }
+
+      return cbk(null, {totalAmount, totalFiatAmount});
+      }],
 
       // Convert the accounting CSV into rows for table display output
       accounting: ['getAccounting', ({getAccounting}, cbk) => {
@@ -98,17 +131,17 @@ module.exports = (args, cbk) => {
       }],
 
       // Clean rows for display if necessary
-      report: ['accounting', ({accounting}, cbk) => {
+      report: ['accounting', 'getTotal',({accounting, getTotal}, cbk) => {
         // Exit early when there is no cleaning necessary
         if (!!args.is_csv) {
           return cbk(null, accounting);
         }
-
+        
         const [header] = accounting.rows;
 
         const fiatIndex = header.findIndex(row => row === 'Fiat Amount');
 
-        const rows = accounting.rows.map((row, i) => {
+        let rows = accounting.rows.map((row, i) => {
           return row.map((col, j) => {
             if (!i) {
               return col;
@@ -122,9 +155,21 @@ module.exports = (args, cbk) => {
           });
         });
 
-        return cbk(null, {rows});
+        if(!!args.is_fiat_disabled) {
+          totalColumns = ['Total', 'Asset'];
+          totalValues = [getTotal.totalAmount, 'BTC'];
+        } else {
+          totalColumns = ['Total', 'Asset', '                       ', 'Total Fiat'];
+          totalValues = [getTotal.totalAmount, 'BTC', '', getTotal.totalFiatAmount];
+        }
+
+        const totalTable  = [totalColumns, totalValues];
+        args.logger.info(renderTable(rows));
+        args.logger.info(renderTable(totalTable));
+
+        return cbk();
       }],
     },
-    returnResult({reject, resolve, of: 'report'}, cbk));
+    returnResult({reject, resolve}, cbk));
   });
 };
