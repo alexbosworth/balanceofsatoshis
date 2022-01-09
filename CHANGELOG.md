@@ -1,5 +1,9 @@
 # Versions
 
+## 11.22.1
+
+- `telegram`: Fix issue when moving a created invoice to a saved node
+
 ## 11.22.0
 
 - `accounting`: Add summation total as secondary table
