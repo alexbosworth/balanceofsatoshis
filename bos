@@ -71,6 +71,7 @@ prog
   .option('--rate-provider <rate_provider>', 'Rate provider', rateProviders)
   .option('--year <year>', 'Show only records for specified year', yearMatch)
   .action((args, options, logger) => {
+    const table = !!options.csv ? null : 'rows';
 
     return new Promise(async (resolve, reject) => {
       try {
@@ -79,14 +80,13 @@ prog
           is_csv: !!options.csv,
           is_fiat_disabled: options.disableFiat,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          logger,
           month: options.month,
           node: options.node,
           rate_provider: options.rateProvider,
           request: commands.simpleRequest,
           year: options.year,
         },
-        responses.returnObject({logger, reject, resolve}));
+        responses.returnObject({logger, reject, resolve, table}));
       } catch (err) {
         return reject(err);
       }

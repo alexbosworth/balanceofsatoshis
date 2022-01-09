@@ -11,12 +11,13 @@ const {monthOffset} = require('./constants');
 const {notFoundIndex} = require('./constants');
 const rangeForDate = require('./range_for_date');
 const tableRowsFromCsv = require('./table_rows_from_csv');
-const renderTable = require('table').table;
 
-let totalAmount = 0;
-let totalColumns = [];
-let totalFiatAmount = 0;
-let totalValues = [];
+const assetType = 'BTC';
+const currentDate = new Date().toISOString();
+const empty = '';
+const round = n => parseFloat(n).toFixed(2);
+const sumOf = arr => arr.reduce((sum, n) => sum + n, 0);
+const summaryHeadings = ['Total', 'Asset', 'Report Date', 'Total Fiat'];
 
 /** Get an accounting report
 
@@ -26,7 +27,7 @@ let totalValues = [];
     [fiat]: <Fiat Type String>
     [is_csv]: <Return CSV Output Bool>
     [is_fiat_disabled]: <Omit Fiat Conversion Bool>
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
     [month]: <Month for Report String>
     [node]: <Node Name String>
     [rate_provider]: <Rate Provider String>
@@ -37,6 +38,7 @@ let totalValues = [];
   @returns via cbk or Promise
   {
     [rows]: [[<Column String>]]
+    [rows_summary]: [[<Column String>]]
   }
 */
 module.exports = (args, cbk) => {
@@ -54,10 +56,6 @@ module.exports = (args, cbk) => {
 
         if (!args.request) {
           return cbk([400, 'ExpectedRequestFunctionToGetAccountingReport']);
-        }
-
-        if(!args.logger) {
-          return cbk([400, 'ExpectedLoggerToGetAccountingReport']);
         }
 
         return cbk();
@@ -94,29 +92,6 @@ module.exports = (args, cbk) => {
         },
         cbk);
       }],
-      
-      // Calculate total amount
-      getTotal: ['getAccounting', ({getAccounting}, cbk) => {
-        // Exit early when a CSV dump is requested
-        if(!!args.is_csv) {
-          return cbk();
-        }
-
-        //Calculate total sats
-        totalAmount = getAccounting[categories[args.category]].reduce(function (sum, total) {
-          return sum + total.amount;
-        }, 0);
-
-        //Calculate total fiat amount
-        if(!args.is_fiat_disabled) {
-          totalFiatAmount = getAccounting[categories[args.category]].reduce(function (sum, total) {
-            return sum + total.fiat_amount;
-          }, 0);
-          totalFiatAmount = Math.round(totalFiatAmount * 100) / 100
-        }
-
-      return cbk(null, {totalAmount, totalFiatAmount});
-      }],
 
       // Convert the accounting CSV into rows for table display output
       accounting: ['getAccounting', ({getAccounting}, cbk) => {
@@ -130,46 +105,62 @@ module.exports = (args, cbk) => {
         return tableRowsFromCsv({csv: getAccounting[csvType]}, cbk);
       }],
 
+      // Calculate total amounts
+      total: ['getAccounting', ({getAccounting}, cbk) => {
+        // Exit early when a CSV dump is requested
+        if (!!args.is_csv) {
+          return cbk();
+        }
+
+        const rows = getAccounting[categories[args.category]];
+
+        // Token values are represented as amounts
+        const tokens = sumOf(rows.map(n => n.amount));
+
+        // Exit early when there is no fiat data
+        if (!!args.is_fiat_disabled) {
+          return cbk(null, {tokens, fiat: empty});
+        }
+
+        // Fiat values are represented as fiat amounts
+        const fiat = round(sumOf(rows.map(n => n.fiat_amount)));
+
+        return cbk(null, {fiat, tokens});
+      }],
+
       // Clean rows for display if necessary
-      report: ['accounting', 'getTotal',({accounting, getTotal}, cbk) => {
+      report: ['accounting', 'total',({accounting, total}, cbk) => {
         // Exit early when there is no cleaning necessary
         if (!!args.is_csv) {
           return cbk(null, accounting);
         }
-        
+
         const [header] = accounting.rows;
 
         const fiatIndex = header.findIndex(row => row === 'Fiat Amount');
 
-        let rows = accounting.rows.map((row, i) => {
+        const rows = accounting.rows.map((row, i) => {
           return row.map((col, j) => {
             if (!i) {
               return col;
             }
 
             if (j === fiatIndex && !!col) {
-              return parseFloat(col).toFixed(2);
+              return round(col);
             }
 
             return col.substring(0, 32);
           });
         });
 
-        if(!!args.is_fiat_disabled) {
-          totalColumns = ['Total', 'Asset'];
-          totalValues = [getTotal.totalAmount, 'BTC'];
-        } else {
-          totalColumns = ['Total', 'Asset', '                       ', 'Total Fiat'];
-          totalValues = [getTotal.totalAmount, 'BTC', '', getTotal.totalFiatAmount];
-        }
+        const summary = [
+          summaryHeadings,
+          [total.tokens, assetType, currentDate, total.fiat],
+        ];
 
-        const totalTable  = [totalColumns, totalValues];
-        args.logger.info(renderTable(rows));
-        args.logger.info(renderTable(totalTable));
-
-        return cbk();
+        return cbk(null, {rows, rows_summary: summary});
       }],
     },
-    returnResult({reject, resolve}, cbk));
+    returnResult({reject, resolve, of: 'report'}, cbk));
   });
 };

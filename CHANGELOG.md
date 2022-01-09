@@ -1,5 +1,9 @@
 # Versions
 
+## 11.21.0
+
+- `accounting`: Add summation total as secondary table
+
 ## 11.20.2
 
 - `change-channel-capacity`: Increase RBF fee buffer when increasing capacity

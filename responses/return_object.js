@@ -7,7 +7,9 @@ const writeJsonFile = require('./write_json_file');
 
 const border = getBorderCharacters('norc');
 const emptyCell = ' ';
+const {isArray} = Array;
 const notifier = updateNotifier({pkg});
+const summary = n => `${n}_summary`;
 
 /** Return an object result to a logger in a promise
 
@@ -58,6 +60,10 @@ module.exports = ({exit, file, logger, reject, resolve, table, write}) => {
     // Exit early when a table output is requested
     if (!!table) {
       logger.info(renderTable(res[table], {border}));
+
+      if (isArray(res[summary(table)])) {
+        logger.info(renderTable(res[summary(table)], {border}));
+      }
 
       return resolve();
     }

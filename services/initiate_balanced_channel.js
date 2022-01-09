@@ -8,7 +8,6 @@ const asyncDetectSeries = require('async/detectSeries');
 const {cancelHodlInvoice} = require('ln-service');
 const {connectPeer} = require('ln-sync');
 const {createInvoice} = require('ln-service');
-const {createPsbt} = require('psbt');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
