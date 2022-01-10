@@ -17,7 +17,7 @@ const inquirer = importLazy('inquirer');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
 const paidServices = importLazy('paid-services');
-const prog = require('caporal');
+const prog = require('@alexbosworth/caporal');
 
 const commandConstants = require('./commands/constants');
 

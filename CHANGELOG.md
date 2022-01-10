@@ -1,6 +1,6 @@
 # Versions
 
-## 11.22.3
+## 11.22.4
 
 - `telegram`: Fix issue when moving a created invoice to a saved node
 

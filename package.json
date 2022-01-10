@@ -10,6 +10,7 @@
     "url": "https://github.com/alexbosworth/balanceofsatoshis/issues"
   },
   "dependencies": {
+    "@alexbosworth/caporal": "1.4.0",
     "@alexbosworth/fiat": "1.0.0",
     "@alexbosworth/html2unicode": "1.1.5",
     "@alexbosworth/node-fetch": "2.6.2",
@@ -22,7 +23,6 @@
     "bolt01": "1.2.3",
     "bolt03": "1.2.12",
     "bolt07": "1.8.0",
-    "caporal": "1.4.0",
     "cbor": "8.1.0",
     "colorette": "2.0.16",
     "crypto-js": "4.1.1",
@@ -69,8 +69,15 @@
   "license": "MIT",
   "main": "index.js",
   "name": "balanceofsatoshis",
-  "resolutions": {
-    "colors": "1.1.2"
+  "overrides": {
+    "caporal@1.4.0": {
+      "cli-table3@0.5.1": {
+        "colors@1.4.2": "1.4.0"
+      },
+      "prettyjson@1.2.1": {
+        "colors@1.4.2": "1.4.0"
+      }
+    }
   },
   "repository": {
     "type": "git",
@@ -83,5 +90,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/wallets/*.js"
   },
-  "version": "11.22.3"
+  "version": "11.22.4"
 }
