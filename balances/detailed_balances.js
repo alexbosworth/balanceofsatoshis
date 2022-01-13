@@ -1,3 +1,5 @@
+const conflictingBalances = require('./conflicting_balances');
+
 const {ceil} = Math;
 const flatten = arr => [].concat(...arr);
 const inputsCounterVBytesLength = 3;
@@ -61,6 +63,8 @@ const witnessSizeCounterVByteLength = 0.25;
   @returns
   {
     closing_balance: <Balance of Tokens Moving Out Of Channels Tokens Number>
+    conflicted_pending: <Conflicting Pending Balance Tokens Number>
+    invalid_pending: <Invalid Pending Balance Tokens Number>
     offchain_balance: <Balance of Owned Tokens In Channels Tokens Number>
     offchain_pending: <Total Pending Local Balance Tokens Number>
     onchain_balance: <Balance of Transaction Outputs Number>
@@ -170,8 +174,12 @@ module.exports = ({channels, locked, pending, transactions, utxos}) => {
     .concat(transactionLockTimeVBytesLength)
     .concat(inputElements));
 
+  const conflicts = conflictingBalances({transactions, utxos});
+
   return {
     closing_balance: sumOf(closing),
+    conflicted_pending: conflicts.conflicting_pending_balance,
+    invalid_pending: conflicts.invalid_pending_balance,
     offchain_balance: channelBalance,
     offchain_pending: pendingBalance,
     onchain_balance: chainBalance,

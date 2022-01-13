@@ -93,6 +93,8 @@ const tests = [
     description: 'Balance totals are calculated',
     expected: {
       closing_balance: 1,
+      conflicted_pending: 0,
+      invalid_pending: 0,
       offchain_balance: 14,
       offchain_pending: 35,
       onchain_balance: 4,
@@ -104,6 +106,8 @@ const tests = [
     description: 'Balance totals are calculated when there are no funds',
     expected: {
       closing_balance: 0,
+      conflicted_pending: 0,
+      invalid_pending: 0,
       offchain_balance: 0,
       offchain_pending: 0,
       onchain_balance: 0,

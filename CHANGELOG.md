@@ -1,5 +1,9 @@
 # Versions
 
+## 11.23.0
+
+- `balance`:  `--detailed`: Support unconfirmed/invalid/conflicting balances
+
 ## 11.22.4
 
 - `telegram`: Fix issue when moving a created invoice to a saved node

@@ -15,6 +15,7 @@ const {fromHex} = Transaction;
 /** Get a detailed balance that categorizes balance of tokens on the node
 
   {
+    [is_confirmed]: <Only Consider Confirmed Transactions Bool>
     lnd: <Authenticated LND API Object>
   }
 
@@ -113,12 +114,26 @@ module.exports = (args, cbk) => {
           locked,
           channels: getChannels.channels,
           pending: getPending.pending_channels,
-          transactions: getTx.transactions,
-          utxos: getUtxos.utxos,
+          transactions: getTx.transactions.filter(tx => {
+            if (!!args.is_confirmed && !tx.is_confirmed) {
+              return false;
+            }
+
+            return true;
+          }),
+          utxos: getUtxos.utxos.filter(utxo => utxo => {
+            if (!!args.is_confirmed && !utxo.confirmation_count) {
+              return false;
+            }
+
+            return true;
+          }),
         });
 
         return cbk(null, {
           closing_balance: format(balances.closing_balance) || undefined,
+          conflicted_pending: format(balances.conflicted_pending) || undefined,
+          invalid_pending: format(balances.invalid_pending) || undefined,
           offchain_balance: format(balances.offchain_balance) || undefined,
           offchain_pending: format(balances.offchain_pending) || undefined,
           onchain_balance: format(balances.onchain_balance) || undefined,

@@ -167,11 +167,7 @@ prog
         if (!!options.detailed) {
           return balances.getDetailedBalance({
             lnd,
-            above: options.above,
-            below: options.below,
             is_confirmed: options.confirmed,
-            is_offchain_only: options.offchain,
-            is_onchain_only: options.onchain,
           },
           responses.returnObject({logger, reject, resolve}));
         }
@@ -1627,6 +1623,7 @@ prog
           logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(null, res)),
           lnd: (await lndForNode(logger, options.node)).lnd,
+          separator: () => new inquirer.Separator(),
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {

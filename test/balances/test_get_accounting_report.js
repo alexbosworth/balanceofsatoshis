@@ -98,6 +98,10 @@ const tests = [
           'income',
         ],
       ],
+      rows_summary: [
+        ['Total', 'Asset', 'Report Date', 'Total Fiat'],
+        [1, 'BTC', '', '0.00'],
+      ],
     },
   },
   {
@@ -113,6 +117,10 @@ tests.forEach(({args, description, error, expected}) => {
       await rejects(getAccountingReport(args), error, 'Got expected error');
     } else {
       const res = await getAccountingReport(args);
+
+      if (!args.is_csv) {
+        res.rows_summary[1][2] = '';
+      }
 
       strictSame(res, expected, 'Got expected response');
     }
