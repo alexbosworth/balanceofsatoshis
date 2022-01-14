@@ -1,5 +1,10 @@
 # Versions
 
+## 11.26.1
+
+- `call`: methods `pay`, `payViaPaymentRequest`: Fix support for
+    `outgoing_channels` constraint
+
 ## 11.26.0
 
 - `call`: Add support for `deletePendingChannel` to remove stuck pending chans
