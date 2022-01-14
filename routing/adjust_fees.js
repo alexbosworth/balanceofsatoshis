@@ -13,13 +13,13 @@ const {getPendingChannels} = require('ln-service');
 const {gray} = require('colorette');
 const {green} = require('colorette');
 const moment = require('moment');
-const {Parser} = require('hot-formula-parser');
 const {returnResult} = require('asyncjs-util');
 const {updateChannelFee} = require('ln-sync');
 
 const {chartAliasForPeer} = require('./../display');
 const {formatFeeRate} = require('./../display');
 const {getIcons} = require('./../display');
+const parseFeeRateFormula = require('./parse_fee_rate_formula');
 
 const asTxOut = n => `${n.transaction_id}:${n.transaction_vout}`;
 const {ceil} = Math;
@@ -27,16 +27,19 @@ const flatten = arr => [].concat(...arr);
 const interval = 1000 * 60 * 2;
 const {isArray} = Array;
 const {max} = Math;
+const minCltvDelta = 18;
 const nodeMatch = /\bFEE_RATE_OF_[0-9A-F]{66}\b/gim;
 const noFee = gray('Unknown Rate');
 const pubKeyForNodeMatch = n => n.substring(12).toLowerCase();
 const shortKey = key => key.substring(0, 20);
+const sumOf = arr => arr.reduce((sum, n) => sum + n, 0);
 const times = 360;
 const uniq = arr => Array.from(new Set(arr));
 
 /** View and adjust routing fees
 
   {
+    [cltv_delta]: <Set CLTV Delta Number>
     [fee_rate]: <Fee Rate String>
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
@@ -70,6 +73,14 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.to)) {
           return cbk([400, 'ExpectedArrayOfPeersToAdjustFeesTowards']);
+        }
+
+        if (args.cltv_delta !== undefined && !args.to.length) {
+          return cbk([400, 'SettingGlobalCltvDeltaNotSupported']);
+        }
+
+        if (args.cltv_delta !== undefined && args.cltv_delta < minCltvDelta) {
+          return cbk([400, 'SettingLowCltvDeltaIsNotSupported']);
         }
 
         if (args.fee_rate !== undefined && !args.to.length) {
@@ -227,7 +238,8 @@ module.exports = (args, cbk) => {
         },
         cbk) =>
       {
-        if (args.fee_rate === undefined) {
+        // Exit early when not updating policy
+        if (args.cltv_delta === undefined && args.fee_rate === undefined) {
           return cbk();
         }
 
@@ -240,16 +252,6 @@ module.exports = (args, cbk) => {
             .concat(getPending.pending_channels.filter(n => !!n.is_opening))
             .filter(channel => channel.partner_public_key === key);
 
-          const inboundLiquidity = channels.reduce((sum, n) => {
-            return sum + n.remote_balance;
-          },
-          Number());
-
-          const outboundLiquidity = channels.reduce((sum, n) => {
-            return sum + n.local_balance;
-          },
-          Number());
-
           const peerPolicies = getPolicies
             .filter(n => !!n)
             .filter(n => channels.find(chan => asTxOut(chan) === asTxOut(n)))
@@ -257,51 +259,6 @@ module.exports = (args, cbk) => {
             .filter(n => !!n);
 
           const inboundFeeRate = max(...peerPolicies.map(n => n.fee_rate));
-
-          const parser = new Parser();
-
-          parser.setVariable('INBOUND', inboundLiquidity);
-          parser.setVariable('INBOUND_FEE_RATE', inboundFeeRate);
-          parser.setVariable('OUTBOUND', outboundLiquidity);
-
-          getNodeRates.forEach(({key, rate}) => parser.setVariable(key, rate));
-
-          parser.setFunction('BIPS', params => {
-            const [param] = params;
-
-            return params * 1e2;
-          });
-
-          parser.setFunction('PERCENT', params => {
-            const [param] = params;
-
-            return params * 1e4;
-          });
-
-          const parsedRate = parser.parse(args.fee_rate.toUpperCase());
-
-          switch (parsedRate.error) {
-          case '#DIV/0!':
-            return cbk([503, 'FeeRateCalculationCannotDivideByZeroFormula']);
-
-          case '#ERROR!':
-            return cbk([503, 'FailedToParseFeeRateFormula']);
-
-          case '#N/A':
-          case '#NAME?':
-            return cbk([503, 'UnrecognizedVariableOrFunctionInFeeRateFormula']);
-
-          case '#NUM':
-            return cbk([503, 'InvalidNumberFoundInFeeRateFormula']);
-
-          case '#VALUE!':
-            return cbk([503, 'UnexpectedValueTypeInFeeRateFormula']);
-
-          default:
-            break;
-          }
-
-          const feeRate = ceil(parsedRate.result);
 
           const feeRates = getFeeRates.channels.filter(rate => {
             return channels.find(n => asTxOut(n) === asTxOut(rate));
@@ -317,20 +274,39 @@ module.exports = (args, cbk) => {
             .map(n => BigInt(n.base_fee_mtokens))
             .reduce((sum, fee) => fee > sum ? fee : sum, BigInt(Number()));
 
+          const {failure, rate} = parseFeeRateFormula({
+            fee_rate: args.fee_rate,
+            inbound_fee_rate: inboundFeeRate,
+            inbound_liquidity: sumOf(channels.map(n => n.remote_balance)),
+            outbound_liquidity: sumOf(channels.map(n => n.local_balance)),
+            node_rates: getNodeRates,
+          });
+
+          if (!!failure) {
+            return cbk([400, failure]);
+          }
+
           return cbk(null, channels.map(channel => {
             // Exit early when there is no known policy
             if (!currentPolicies.length) {
               return {
-                fee_rate: feeRate,
+                cltv_delta: cltvDelta,
+                fee_rate: rate,
                 transaction_id: channel.transaction_id,
                 transaction_vout: channel.transaction_vout,
               };
             }
 
+            // Only the highest CLTV delta across all peer channels applies
+            const cltvDelta = max(...currentPolicies.map(n => n.cltv_delta));
+
+            // Only the highest fee rate across all peer channels applies
+            const maxFeeRate = max(...currentPolicies.map(n => n.fee_rate));
+
             return {
               base_fee_mtokens: baseFeeMillitokens.toString(),
-              cltv_delta: max(...currentPolicies.map(n => n.cltv_delta)),
-              fee_rate: feeRate,
+              cltv_delta: args.cltv_delta || cltvDelta,
+              fee_rate: rate !== undefined ? rate : maxFeeRate,
               transaction_id: channel.transaction_id,
               transaction_vout: channel.transaction_vout,
             };

@@ -1,5 +1,9 @@
 # Versions
 
+## 11.24.0
+
+- `fees`: Add `--set-cltv-delta` to control the forwarding CLTV delta with peer
+
 ## 11.23.0
 
 - `balance`:  `--detailed`: Support unconfirmed/invalid/conflicting balances

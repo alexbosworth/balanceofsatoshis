@@ -583,6 +583,7 @@ prog
   .help('You can use INBOUND_FEE_RATE to mirror an inbound fee')
   .help('You can use FEE_RATE_OF_<PUBKEY> to reference other node rates')
   .option('--node <node_name>', 'Saved node (not peer to set fees on)')
+  .option('--set-cltv-delta <count>', 'Set the number of blocks for CLTV', INT)
   .option('--set-fee-rate <rate>', 'Fee in parts per million or use a formula')
   .option('--to <peer>', 'Peer public key or alias to set fees', REPEATABLE)
   .action((args, options, logger) => {
@@ -590,6 +591,7 @@ prog
       try {
         return routing.adjustFees({
           logger,
+          cltv_delta: options.setCltvDelta,
           fee_rate: options.setFeeRate,
           fs: {getFile: readFile},
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
