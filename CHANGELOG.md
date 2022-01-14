@@ -1,5 +1,12 @@
 # Versions
 
+## 11.25.0
+
+- `trade-secret`: persist open trades, with expiration dates and longer-lived
+    trade support.
+- `trade-secret`: show the raw encoded trade after requesting an open trade
+- `trade-secret`: confirm RPC signer support before allowing trade start
+
 ## 11.24.0
 
 - `fees`: Add `--set-cltv-delta` to control the forwarding CLTV delta with peer
