@@ -167,6 +167,24 @@
     {
       "arguments": [
         {
+          "description": "Conflicting confirmed transaction",
+          "named": "confirmed_transaction"
+        },
+        {
+          "description": "Stuck pending transaction",
+          "named": "pending_transaction"
+        },
+        {
+          "description": "Stuck pending channel transaction output index",
+          "named": "pending_transaction_vout",
+          "type": "number"
+        }
+      ],
+      "method": "deletePendingChannel"
+    },
+    {
+      "arguments": [
+        {
           "description": "Key family for shared key",
           "named": "key_family",
           "optional": true,

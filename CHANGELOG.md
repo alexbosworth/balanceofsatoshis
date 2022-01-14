@@ -1,5 +1,9 @@
 # Versions
 
+## 11.26.0
+
+- `call`: Add support for `deletePendingChannel` to remove stuck pending chans
+
 ## 11.25.0
 
 - `trade-secret`: persist open trades, with expiration dates and longer-lived
