@@ -1,5 +1,10 @@
 # Versions
 
+## 11.27.0
+
+- `change-channel-capacity`: Add support for spending decreased funds into a
+    new channel with a different node.
+
 ## 11.26.1
 
 - `call`: methods `pay`, `payViaPaymentRequest`: Fix support for

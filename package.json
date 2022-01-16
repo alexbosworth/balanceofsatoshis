@@ -28,7 +28,7 @@
     "crypto-js": "4.1.1",
     "csv-parse": "5.0.4",
     "goldengate": "11.0.0",
-    "grammy": "1.6.1",
+    "grammy": "1.6.2",
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
     "ini": "2.0.0",
@@ -39,7 +39,7 @@
     "ln-sync": "3.6.1",
     "ln-telegram": "3.5.1",
     "moment": "2.29.1",
-    "paid-services": "3.6.0",
+    "paid-services": "3.7.0",
     "probing": "2.0.2",
     "psbt": "1.1.10",
     "qrcode-terminal": "0.12.0",
@@ -90,5 +90,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/wallets/*.js"
   },
-  "version": "11.26.1"
+  "version": "11.27.0"
 }
