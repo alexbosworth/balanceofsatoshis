@@ -8,6 +8,7 @@ const asyncMap = require('async/map');
 const asyncRetry = require('async/retry');
 const {Bot} = require('grammy');
 const {getForwards} = require('ln-service');
+const {getNetwork} = require('ln-service');
 const {getTransactionRecord} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
 const {handleBackupCommand} = require('ln-telegram');
@@ -28,12 +29,15 @@ const {isMessageReplyToInvoice} = require('ln-telegram');
 const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
 const {postClosedMessage} = require('ln-telegram');
+const {postCreatedTrade} = require('ln-telegram');
 const {postOpenMessage} = require('ln-telegram');
 const {postSettledInvoice} = require('ln-telegram');
 const {postSettledPayment} = require('ln-telegram');
+const {postSettledTrade} = require('ln-telegram');
 const {postUpdatedBackup} = require('ln-telegram');
 const {returnResult} = require('asyncjs-util');
 const {sendMessage} = require('ln-telegram');
+const {serviceAnchoredTrades} = require('paid-services');
 const {subscribeToBackups} = require('ln-service');
 const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
@@ -750,6 +754,67 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
 
             return cbk([503, 'ErrorInPaymentsSub', {err}])
           });
+        },
+        cbk);
+      }],
+
+      // Service trade secrets
+      secrets: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
+        return asyncEach(getNodes, (node, cbk) => {
+          const sub = serviceAnchoredTrades({lnd: node.lnd});
+          const start = new Date().toISOString();
+
+          subscriptions.push(sub);
+
+          sub.on('settled', async trade => {
+            try {
+              await postSettledTrade({
+                api: bot.api,
+                description: trade.description,
+                destination: node.public_key,
+                lnd: node.lnd,
+                nodes: getNodes,
+                to: trade.to,
+                tokens: trade.tokens,
+                user: connectedId,
+              });
+            } catch (err) {
+              logger.error({err});
+            }
+          });
+
+          sub.on('start', async trade => {
+            // Exit early when this is an older trade
+            if (trade.created_at < start) {
+              return;
+            }
+
+            try {
+              await postCreatedTrade({
+                api: bot.api,
+                description: trade.description,
+                destination: node.public_key,
+                expires_at: trade.expires_at,
+                id: trade.id,
+                lnd: node.lnd,
+                nodes: getNodes,
+                tokens: trade.tokens,
+                user: connectedId,
+              });
+            } catch (err) {
+              logger.error({err});
+            }
+          });
+
+          sub.on('error', err => {
+            sub.removeAllListeners();
+
+            logger.error({err});
+
+            return cbk(err);
+          });
+
+          return;
         },
         cbk);
       }],

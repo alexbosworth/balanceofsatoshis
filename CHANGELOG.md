@@ -1,5 +1,9 @@
 # Versions
 
+## 11.28.0
+
+- `telegram`: Add support for serving open-ended trade-secrets
+
 ## 11.27.0
 
 - `change-channel-capacity`: Add support for spending decreased funds into a
