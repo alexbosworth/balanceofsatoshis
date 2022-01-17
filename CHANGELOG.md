@@ -1,5 +1,9 @@
 # Versions
 
+## 11.29.0
+
+- `telegram`: Add support for deleting open-ended trade-secrets
+
 ## 11.28.0
 
 - `telegram`: Add support for serving open-ended trade-secrets
