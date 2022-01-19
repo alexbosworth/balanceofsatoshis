@@ -1,5 +1,9 @@
 # Versions
 
+## 11.29.2
+
+- `increase-outbound-liquidity`: Change seed node backing endpoint for API EOL
+
 ## 11.29.1
 
 - `inbound-liquidity`: Remove `--min-score` due to score API EOL

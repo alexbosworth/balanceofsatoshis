@@ -10,7 +10,7 @@ const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
-const {getScoredNodes} = require('ln-sync');
+const {getSeedNodes} = require('ln-sync');
 const {openChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
@@ -133,9 +133,9 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Get scored nodes
-      getScored: ['getNetwork', ({getNetwork}, cbk) => {
-        return getScoredNodes({
+      // Get seed nodes
+      getSeed: ['getNetwork', ({getNetwork}, cbk) => {
+        return getSeedNodes({
           network: getNetwork.network,
           request: args.request,
         },
@@ -148,14 +148,14 @@ module.exports = (args, cbk) => {
         'getClosed',
         'getPending',
         'getForwards',
-        'getScored',
-        ({getChannels, getClosed, getForwards, getPending, getScored}, cbk) =>
+        'getSeed',
+        ({getChannels, getClosed, getForwards, getPending, getSeed}, cbk) =>
       {
         const allChannels = []
           .concat(getChannels.channels)
           .concat(getPending.pending_channels.filter(n => !!n.is_opening));
 
-        const scored = getScored.nodes.map(n => n.public_key);
+        const scored = getSeed.nodes.map(n => n.public_key);
 
         const {peers} = peersWithActivity({
           additions: [].concat(args.peer).filter(n => !!n),
@@ -174,7 +174,7 @@ module.exports = (args, cbk) => {
           .filter(n => n.forwarded > minForwarded); // Previous forwards
 
         const scorePeers = peersWithActivity({
-          additions: getScored.nodes.map(n => n.public_key),
+          additions: getSeed.nodes.map(n => n.public_key),
           channels: allChannels,
           forwards: getForwards.forwards,
           terminated: getClosed.channels,
