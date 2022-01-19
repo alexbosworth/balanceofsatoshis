@@ -1,5 +1,9 @@
 # Versions
 
+## 11.29.1
+
+- `inbound-liquidity`: Remove `--min-score` due to score API EOL
+
 ## 11.29.0
 
 - `telegram`: Add support for deleting open-ended trade-secrets

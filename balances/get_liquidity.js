@@ -2,7 +2,6 @@ const asyncAuto = require('async/auto');
 const {getChannels} = require('ln-service');
 const {getLiquidity} = require('ln-sync');
 const {getNode} = require('ln-service');
-const {getScoredNodes} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const balanceFromTokens = require('./balance_from_tokens');
@@ -24,7 +23,6 @@ const topPercentile = 0.9;
     [is_outbound]: <Return Outbound Liquidity Bool>
     [is_top]: <Return Top Liquidity Bool>
     lnd: <Authenticated LND API Object>
-    [min_node_score]: <Minimum Node Score Number>
     [max_fee_rate]: <Max Inbound Fee Rate Parts Per Million Number>
     [request]: <Request Function>
     [with]: <Liquidity With Public Key Hex or Tag Alias or Id String>
@@ -109,7 +107,6 @@ module.exports = (args, cbk) => {
           is_outbound: args.is_outbound,
           is_top: args.is_top,
           lnd: args.lnd,
-          min_node_score: args.min_node_score,
           request: args.request,
           with: withNodes,
         },
