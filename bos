@@ -585,7 +585,7 @@ prog
   .option('--node <node_name>', 'Saved node (not peer to set fees on)')
   .option('--set-cltv-delta <count>', 'Set the number of blocks for CLTV', INT)
   .option('--set-fee-rate <rate>', 'Fee in parts per million or use a formula')
-  .option('--to <peer>', 'Peer public key or alias to set fees', REPEATABLE)
+  .option('--to <peer>', 'Peer key/alias/tag to set fees', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
