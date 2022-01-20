@@ -1,5 +1,9 @@
 # Versions
 
+## 11.31.0
+
+- `forwards`: Add `--sort` option to sort forwarding peers
+
 ## 11.30.0
 
 - `telegram`: Add support for setting the description of a created trade-secret

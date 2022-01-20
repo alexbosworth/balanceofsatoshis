@@ -627,12 +627,14 @@ prog
   // Get forwards
   .command('forwards', 'Show recent forwarding earnings')
   .help('Peers where routing has taken place from inbound and outbound sides')
+  .help('Sorts: earned_in/earned_out/earned_total/inbound/liquidity/outbound')
   .option('--complete', 'Show complete set of records in non table view')
   .option('--days <days>', 'Number of past days to evaluate', INT)
   .option('--in <from>', 'Forwards that originated from a specific peer')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get forwards for')
   .option('--out <to>', 'Forwards that sent out to a specified peer')
+  .option('--sort <type>', 'Sort forward-active peers by earnings/liquidity')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -646,6 +648,7 @@ prog
           fs: {getFile: readFile},
           is_monochrome: !!options.noColor,
           is_table: !options.complete,
+          sort: options.sort || undefined,
           to: (await lnSync.findKey({lnd, query: options.out})).public_key,
         },
         responses.returnObject({logger, reject, resolve, table}));

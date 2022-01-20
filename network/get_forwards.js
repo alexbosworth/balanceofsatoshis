@@ -28,6 +28,8 @@ const {now} = Date;
 const numDays = 1;
 const {parse} = Date;
 const sort = (a, b) => a > b ? 1 : ((b > a) ? -1 : 0);
+const sortsForEarning = ['earned_in', 'earned_out', 'earned_total'];
+const sortsForCapital = ['inbound', 'liquidity', 'outbound'];
 const tokensAsBigTokens = tokens => !!tokens ? (tokens / 1e8).toFixed(8) : '';
 const uniq = arr => Array.from(new Set(arr));
 const wideSizeCols = 155;
@@ -41,7 +43,8 @@ const wideSizeCols = 155;
     }
     [is_monochrome]: <Mute Colors Bool>
     [is_table]: <Return Results As Table Bool>
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
+    [sort]: <Sort By Field String>
   }
 
   @returns via cbk or Promise
@@ -69,6 +72,12 @@ module.exports = (args, cbk) => {
 
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToGetForwardingInformation']);
+        }
+
+        const sorts = [].concat(sortsForCapital).concat(sortsForEarning);
+
+        if (!!args.sort && !sorts.includes(args.sort)) {
+          return cbk([400, 'ExpectedKnownSortToSortForwards', {sorts}]);
         }
 
         return cbk();
@@ -256,6 +265,36 @@ module.exports = (args, cbk) => {
 
         const sorted = peers
           .sort((a, b) => {
+            if (args.sort === 'earned_in') {
+              return a.earned_inbound_fees - b.earned_inbound_fees;
+            }
+
+            if (args.sort === 'earned_out') {
+              return a.earned_inbound_fees - b.earned_outbound_fees;
+            }
+
+            if (args.sort === 'earned_total') {
+              const aTotal = a.earned_inbound_fees + a.earned_outbound_fees;
+              const bTotal = b.earned_inbound_fees + b.earned_outbound_fees;
+
+              return aTotal - bTotal;
+            }
+
+            if (args.sort === 'inbound') {
+              return a.liquidity_inbound - b.liquidity_inbound;
+            }
+
+            if (args.sort === 'liquidity') {
+              const aTotal = a.liquidity_inbound + a.liquidity_outbound;
+              const bTotal = b.liquidity_inbound + b.liquidity_outbound;
+
+              return aTotal - bTotal;
+            }
+
+            if (args.sort === 'outbound') {
+              return a.liquidity_outbound - b.liquidity_outbound;
+            }
+
             const aEvents = [a.last_outbound_at, a.last_inbound_at];
             const bEvents = [b.last_outbound_at, b.last_inbound_at];
 
