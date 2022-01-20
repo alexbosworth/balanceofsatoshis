@@ -16,7 +16,7 @@ const fiat = importLazy('@alexbosworth/fiat');
 const inquirer = importLazy('inquirer');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
-const paidServices = importLazy('paid-services');
+const paidServices = require('../paid-services')
 const prog = require('@alexbosworth/caporal');
 
 const commandConstants = require('./commands/constants');
@@ -300,10 +300,14 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const authLnd = (await lnd.authenticatedLnd({logger, node: options.node})).lnd
+        const savedNodes = await lnd.getSavedNodes({lnd: authLnd, logger})
+
         return paidServices.changeChannelCapacity({
           logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          lnd: authLnd,
+          saved_nodes: savedNodes,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
