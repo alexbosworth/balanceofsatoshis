@@ -1,5 +1,9 @@
 # Versions
 
+## 11.30.0
+
+- `telegram`: Add support for setting the description of a created trade-secret
+
 ## 11.29.2
 
 - `increase-outbound-liquidity`: Change seed node backing endpoint for API EOL

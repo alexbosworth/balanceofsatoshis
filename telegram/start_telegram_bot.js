@@ -1,6 +1,7 @@
 const {homedir} = require('os');
 const {join} = require('path');
 
+const {actOnMessageReply} = require('ln-telegram');
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncForever = require('async/forever');
@@ -25,7 +26,7 @@ const {handlePendingCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
 const {InputFile} = require('grammy');
 const inquirer = require('inquirer');
-const {isMessageReplyToInvoice} = require('ln-telegram');
+const {isMessageReplyAction} = require('ln-telegram');
 const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
 const {postClosedMessage} = require('ln-telegram');
@@ -44,7 +45,6 @@ const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const {subscribeToPastPayments} = require('ln-service');
 const {subscribeToTransactions} = require('ln-service');
-const {updateInvoiceFromReply} = require('ln-telegram');
 
 const interaction = require('./interaction');
 const markdown = {parse_mode: 'Markdown'};
@@ -457,10 +457,10 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
 
         // Listen for replies to created invoice messages
         bot.on('message').filter(
-          ctx => isMessageReplyToInvoice({ctx, nodes: getNodes}),
+          ctx => isMessageReplyAction({ctx, nodes: getNodes}),
           async ctx => {
             try {
-              return await updateInvoiceFromReply({
+              return await actOnMessageReply({
                 ctx,
                 api: bot.api,
                 id: connectedId,
