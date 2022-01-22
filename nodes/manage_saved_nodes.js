@@ -29,11 +29,13 @@ const {isArray} = Array;
       removeFile: <Remove File Function> (path, cbk) => {}
       writeFile: <Write File Contents Function> (path, contents, cbk) => {}
     }
+    [is_including_lnd_api]: <Include Node LND API Object Bool>
     [is_registering]: <Add Node Credentials Bool>
     [is_removing]: <Remove Node Credentials Bool>
     [is_unlocking]: <Change Credentials To Decrypted Copy Bool>
     lock_credentials_to: [<Encrypt Macaroon to GPG Key With Id String>]
     logger: <Winston Logger Object>
+    [network]: <Return Nodes On Specified Network String>
     [node]: <Node Name String>
     spawn: <Spawn Function>
   }
@@ -42,8 +44,9 @@ const {isArray} = Array;
   {
     nodes: [{
       [is_online]: <Node is Online Bool>
-      [encrypted_to]: [<Encrypted To GPG Id String>]
+      [lnd]: <Authenticated LND API Object>
       node_name: <Node Name String>
+      public_key: <Node Identity Public Key Hex String>
     }]
   }
 */
@@ -149,7 +152,9 @@ module.exports = (args, cbk) => {
       }],
 
       // Get existing set of nodes
-      getNodes: ['remove', ({}, cbk) => getSavedNodes({fs: args.fs}, cbk)],
+      getNodes: ['remove', ({}, cbk) => {
+        return getSavedNodes({fs: args.fs, network: args.network}, cbk);
+      }],
 
       // Encrypt macaroons
       lock: ['getNodes', ({getNodes}, cbk) => {
@@ -189,10 +194,26 @@ module.exports = (args, cbk) => {
       }],
 
       // Get saved nodes
-      getSaved: ['lock', 'unlock', ({}, cbk) => {
-        return getSavedNodes({fs: args.fs}, cbk);
+      getSaved: ['getNodes', 'lock', 'unlock', ({getNodes}, cbk) => {
+        if (!args.is_registering && !args.is_removing && !args.is_unlocking) {
+          return cbk(null, getNodes);
+        }
+
+        return getSavedNodes({fs: args.fs, network: args.network}, cbk);
+      }],
+
+      // Final set of saved nodes
+      nodes: ['getSaved', ({getSaved}, cbk) => {
+        const nodes = getSaved.nodes.map(node => ({
+          is_online: node.is_online,
+          lnd: !!args.is_including_lnd_api ? node.lnd : undefined,
+          node_name: node.node_name,
+          public_key: node.public_key,
+        }));
+
+        return cbk(null, {nodes});
       }],
     },
-    returnResult({reject, resolve, of: 'getSaved'}, cbk));
+    returnResult({reject, resolve, of: 'nodes'}, cbk));
   });
 };

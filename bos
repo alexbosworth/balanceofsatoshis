@@ -16,7 +16,7 @@ const fiat = importLazy('@alexbosworth/fiat');
 const inquirer = importLazy('inquirer');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
-const paidServices = importLazy('paid-services')
+const paidServices = importLazy('paid-services');
 const prog = require('@alexbosworth/caporal');
 
 const commandConstants = require('./commands/constants');
@@ -300,14 +300,31 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const authLnd = (await lnd.authenticatedLnd({logger, node: options.node})).lnd
-        const savedNodes = await lnd.getSavedNodes({lnd: authLnd, logger})
+        const {lnd} = await lndForNode(logger, options.node);
+
+        const saved = await nodes.manageSavedNodes({
+          logger,
+          spawn,
+          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          fs: {
+            writeFile,
+            getDirectoryFiles: readdir,
+            getFile: readFile,
+            getFileStatus: lstat,
+            makeDirectory: mkdir,
+            removeDirectory: rmdir,
+            removeFile: unlink,
+          },
+          is_including_lnd_api: true,
+          lock_credentials_to: [],
+          network: (await lnSync.getNetwork({lnd})).network,
+        });
 
         return paidServices.changeChannelCapacity({
+          lnd,
           logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
-          lnd: authLnd,
-          saved_nodes: savedNodes,
+          nodes: saved.nodes,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
@@ -963,7 +980,7 @@ prog
   .option('--unlock', 'Remove encryption from auth macaroon')
   .action((args, options, logger) => {
     return new Promise((resolve, reject) => {
-      return nodes.adjustSavedNodes({
+      return nodes.manageSavedNodes({
         logger,
         spawn,
         ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),

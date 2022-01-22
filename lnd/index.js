@@ -4,7 +4,6 @@ const gateway = require('./gateway');
 const getCertValidityDays = require('./get_cert_validity_days');
 const getCredentials = require('./get_credentials');
 const getLnds = require('./get_lnds');
-const getSavedNodes = require('./get_saved_nodes');
 const lndCredentials = require('./lnd_credentials');
 
 module.exports = {
@@ -14,6 +13,5 @@ module.exports = {
   getCertValidityDays,
   getCredentials,
   getLnds,
-  getSavedNodes,
   lndCredentials,
 };

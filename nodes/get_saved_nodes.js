@@ -5,6 +5,7 @@ const asyncAuto = require('async/auto');
 const asyncFilter = require('async/filter');
 const asyncMap = require('async/map');
 const {authenticatedLndGrpc} = require('ln-service');
+const {getNetwork} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
@@ -19,17 +20,20 @@ const {home} = require('./constants');
       getFile: <Read File Contents Function> (path, cbk) => {}
       getFileStatus: <File Status Function> (path, cbk) => {}
     }
+    [network]: <Required Network Name String>
   }
 
   @returns via cbk or Promise
   {
     nodes: [{
       [is_online]: <Node is Online Bool>
+      lnd: <Authenticated LND API Object>
       node_name: <Node Name String>
+      public_key: <Node Identity Public Key Hex String>
     }]
   }
 */
-module.exports = ({fs}, cbk) => {
+module.exports = ({fs, network}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -121,16 +125,39 @@ module.exports = ({fs}, cbk) => {
             }
 
             return cbk(null, {
-              node_name: node,
+              lnd,
               is_online: res.is_synced_to_chain,
+              node_name: node,
+              public_key: res.public_key,
             });
           });
         },
         cbk);
       }],
 
+      // Filter out nodes not on the specified network
+      filter: ['getNodes', ({getNodes}, cbk) => {
+        // Exit early when no network is specified
+        if (!network) {
+          return cbk(null, getNodes);
+        }
+
+        const nodes = getNodes.filter(n => !!n.is_online);
+
+        return asyncFilter(nodes, ({lnd}, cbk) => {
+          return getNetwork({lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            return cbk(null, res.network === network);
+          });
+        },
+        cbk);
+      }],
+
       // Final list of nodes
-      nodes: ['getNodes', ({getNodes}, cbk) => cbk(null, {nodes: getNodes})],
+      nodes: ['filter', ({filter}, cbk) => cbk(null, {nodes: filter})],
     },
     returnResult({reject, resolve, of: 'nodes'}, cbk));
   });
