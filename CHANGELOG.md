@@ -1,5 +1,10 @@
 # Versions
 
+## 11.32.0
+
+- `change-channel-capacity`: Add support for moving a channel to a different
+    saved node.
+
 ## 11.31.0
 
 - `forwards`: Add `--sort` option to sort forwarding peers
