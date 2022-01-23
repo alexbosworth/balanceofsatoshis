@@ -270,7 +270,7 @@ module.exports = (args, cbk) => {
             }
 
             if (args.sort === 'earned_out') {
-              return a.earned_inbound_fees - b.earned_outbound_fees;
+              return a.earned_outbound_fees - b.earned_outbound_fees;
             }
 
             if (args.sort === 'earned_total') {

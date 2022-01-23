@@ -1,6 +1,6 @@
 # Versions
 
-## 11.32.0
+## 11.32.1
 
 - `change-channel-capacity`: Add support for moving a channel to a different
     saved node.
