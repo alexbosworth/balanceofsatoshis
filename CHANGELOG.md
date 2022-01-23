@@ -1,5 +1,9 @@
 # Versions
 
+## 11.33.0
+
+- `telegram`: Allow adjusting the expiration date of a trade-secret
+
 ## 11.32.1
 
 - `change-channel-capacity`: Add support for moving a channel to a different
