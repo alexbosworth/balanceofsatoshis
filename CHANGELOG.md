@@ -1,5 +1,9 @@
 # Versions
 
+## 11.35.0
+
+- `graph`: Add `HOPS` variable to `--filter` for node peer distance from self
+
 ## 11.34.0
 
 - `telegram`: Allow switching the node of a trade-secret

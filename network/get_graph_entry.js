@@ -9,6 +9,7 @@ const {getHeight} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
+const {getRouteToDestination} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
@@ -24,7 +25,10 @@ const defaultSort = 'age';
 const disableTag = isDisabled => isDisabled ? `${emojiIcons.disabled} ` : '';
 const displayFee = (n, rate) => n.length ? formatFeeRate({rate}).display : ' ';
 const displayTokens = tokens => formatTokens({tokens}).display;
+const distanceTokens = 100;
+const hasDistanceFilter = filters => /hops/gim.test(filters.join(' '));
 const header = [['Alias','Age','In Fee','Capacity','Out Fee','Public Key']];
+const hopsTitle = 'Hops';
 const {isArray} = Array;
 const isClear = sockets => !!sockets.find(n => !!isIP(n.socket.split(':')[0]));
 const isLarge = features => !!features.find(n => n.type === 'large_channels');
@@ -144,17 +148,49 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
         return cbk();
       }],
 
+      // Get distances
+      getDistances: ['peerKeys', ({peerKeys}, cbk) => {
+        // Exit early when there is no distance filter
+        if (!hasDistanceFilter(filters)) {
+          return cbk(null, peerKeys.map(destination => ({destination})));
+        }
+
+        return asyncMap(peerKeys, (destination, cbk) => {
+          return getRouteToDestination({
+            destination,
+            lnd,
+            is_ignoring_past_failure: true,
+            tokens: distanceTokens,
+          },
+          (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            if (!res.route) {
+              return cbk(null, {destination, hops: Infinity});
+            }
+
+            return cbk(null, {destination, hops: --res.route.hops.length});
+          });
+        },
+        cbk);
+      }],
+
       // Final set of peers
       peers: [
+        'getDistances',
         'getHeight',
         'getIcons',
         'getNode',
         'peerKeys',
-        ({getHeight, getIcons, getNode, peerKeys}, cbk) =>
+        ({getDistances, getHeight, getIcons, getNode, peerKeys}, cbk) =>
       {
         const sorting = sort || defaultSort;
 
         const peers = peerKeys.map(peerKey => {
+          const {hops} = getDistances.find(n => n.destination === peerKey);
+
           const capacity = getNode.channels
             .filter(n => !!n.policies.find(n => n.public_key === peerKey))
             .reduce((sum, {capacity}) => sum + capacity, Number());
@@ -192,6 +228,7 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
             filters,
             variables: {
               capacity,
+              hops,
               age: getHeight.current_block_height - connectHeight,
               height: connectHeight,
               in_fee_rate: inboundFeeRate,
@@ -216,6 +253,10 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
             disableTag(isOutDisabled) + displayFee(outPolicies, outFeeRate),
             peerKey,
           ];
+
+          if (!!hasDistanceFilter(filters)) {
+            row.unshift(hops);
+          }
 
           return {sorts, row};
         })
@@ -258,7 +299,20 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
 
       // Final set of rows
       rows: ['getRowsWithAliases', ({getRowsWithAliases}, cbk) => {
-        return cbk(null, {rows: [].concat(header).concat(getRowsWithAliases)});
+        const [titles] = header;
+
+        const headers = titles.slice();
+
+        if (!!hasDistanceFilter(filters)) {
+          const first = headers.shift();
+
+          headers.unshift(hopsTitle);
+          headers.unshift(first);
+        }
+
+        const rows = [].concat([headers]).concat(getRowsWithAliases);
+
+        return cbk(null, {rows});
       }],
     },
     returnResult({reject, resolve, of: 'rows'}, cbk));

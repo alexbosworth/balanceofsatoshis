@@ -761,6 +761,8 @@ prog
   // Get the edges of a given node
   .command('graph', 'List out the connections a node has with other nodes')
   .argument('<alias_or_public_key>', 'Node in the graph to look up')
+  .help('--filter variables: AGE/CAPACITY/HOPS/IN_FEE_RATE/OUT_FEE_RATE')
+  .help('Example: --filter "age<7*144" for connections in the last week')
   .option('--filter <formula>', 'Filter formula to apply', REPEATABLE)
   .option('--node <node_name>', 'Node to use for lookup')
   .option('--sort <sort_connections_by', 'Sort peers by field')
