@@ -45,7 +45,7 @@ const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const {subscribeToPastPayments} = require('ln-service');
 const {subscribeToTransactions} = require('ln-service');
-
+const SocksProxyAgent = require('socks-proxy-agent');
 const interaction = require('./interaction');
 const markdown = {parse_mode: 'Markdown'};
 const named = require('./../package').name;
@@ -64,6 +64,7 @@ const limit = 99999;
 const maxCommandDelayMs = 1000 * 10;
 const msSince = epoch => Date.now() - (epoch * 1e3);
 const network = 'btc';
+const proxyFile = 'proxy_agent.json';
 const restartSubscriptionTimeMs = 1000 * 30;
 const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
 
@@ -90,7 +91,7 @@ const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
 
   @returns via cbk or Promise
 */
-module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
+module.exports = ({fs, id, limits, lnds, logger, payments, proxy, request}, cbk) => {
   let connectedId = id;
   let isStopped = false;
   let paymentsLimit = !payments || !payments.limit ? Number() : payments.limit;
@@ -191,16 +192,58 @@ module.exports = ({fs, id, limits, lnds, logger, payments, request}, cbk) => {
         });
       }],
 
+      //Get proxy agent
+      getProxyAgent: ['apiKey', 'saveKey', ({}, cbk) => {
+        //Exit early if not using a proxy
+        if(!proxy) {
+          return cbk();
+        }
+
+        const path = join(...[homedir(), home, proxyFile]);
+
+        return fs.getFile(path, (err, res) => {
+        
+          if(!!err) {
+            logger.error({error: err});
+          }
+
+          const proxyData = JSON.parse(res);
+          return cbk(null, {agent: proxyData});
+        });
+      }],
+
       // Setup the bot start action
-      initBot: ['apiKey', 'getNodes', ({apiKey, getNodes}, cbk) => {
+      initBot: [
+        'apiKey', 
+        'getNodes',
+        'getProxyAgent', 
+        ({apiKey, getNodes, getProxyAgent}, cbk) => {
         allNodes = getNodes;
 
         // Exit early when bot is already instantiated
         if (!!bot) {
           return cbk();
         }
+        //initiate bot using proxy
+        if (!!getProxyAgent) {
+          try{
+            const socksAgent = new SocksProxyAgent(getProxyAgent.agent)
 
-        bot = new Bot(apiKey.key);
+            bot = new Bot(apiKey.key, {
+              client: {
+                baseFetchConfig: {
+                  agent: socksAgent,
+                  compress: true,
+                }
+              }
+            });
+            } catch (err) {
+              logger.error({error: err});
+            }
+        }
+        else {
+          bot = new Bot(apiKey.key);
+        }
 
         bot.api.setMyCommands([
           {command: 'backup', description: 'Get node backup file'},
