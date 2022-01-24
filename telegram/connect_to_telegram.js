@@ -114,6 +114,7 @@ module.exports = (args, cbk) => {
               },
               logger: args.logger,
               payments: {limit},
+              proxy: args.use_proxy,
               request: args.request,
             },
             err => {
