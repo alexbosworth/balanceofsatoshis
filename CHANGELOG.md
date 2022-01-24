@@ -1,5 +1,9 @@
 # Versions
 
+## 11.34.0
+
+- `telegram`: Allow switching the node of a trade-secret
+
 ## 11.33.0
 
 - `telegram`: Allow adjusting the expiration date of a trade-secret
