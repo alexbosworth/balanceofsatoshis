@@ -181,7 +181,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return args.fs.getFile(proxy, (err, res) => {
+        return args.fs.getFile(args.proxy, (err, res) => {
           if (!!err) {
             return cbk([503, 'FailedToFindFileAtProxySpecifiedPath', {err}]);
           }

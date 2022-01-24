@@ -1,6 +1,6 @@
 # Versions
 
-## 11.36.0
+## 11.36.1
 
 - `telegram`: Add support for `--use-proxy` to specify a SOCKS proxy server
 
