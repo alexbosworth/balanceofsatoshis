@@ -64,7 +64,6 @@ const limit = 99999;
 const maxCommandDelayMs = 1000 * 10;
 const msSince = epoch => Date.now() - (epoch * 1e3);
 const network = 'btc';
-const proxyFile = 'proxy_agent.json';
 const restartSubscriptionTimeMs = 1000 * 30;
 const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
 
@@ -91,7 +90,7 @@ const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
 
   @returns via cbk or Promise
 */
-module.exports = ({fs, id, limits, lnds, logger, payments, proxy, request}, cbk) => {
+module.exports = ({fs, id, limits, lnds, logger, payments, proxy_path, request}, cbk) => {
   let connectedId = id;
   let isStopped = false;
   let paymentsLimit = !payments || !payments.limit ? Number() : payments.limit;
@@ -195,20 +194,25 @@ module.exports = ({fs, id, limits, lnds, logger, payments, proxy, request}, cbk)
       //Get proxy agent
       getProxyAgent: ['apiKey', 'saveKey', ({}, cbk) => {
         //Exit early if not using a proxy
-        if(!proxy) {
+        if(!proxy_path) {
           return cbk();
         }
 
-        const path = join(...[homedir(), home, proxyFile]);
-
-        return fs.getFile(path, (err, res) => {
+        return fs.getFile(proxy_path, (err, res) => {
         
           if(!!err) {
             logger.error({error: err});
           }
+          try {
+            const proxyData = JSON.parse(res);
 
-          const proxyData = JSON.parse(res);
-          return cbk(null, {agent: proxyData});
+            return cbk(null, {agent: proxyData});
+
+          } catch(err) {
+
+            logger.error({error: err});
+            
+          }
         });
       }],
 
@@ -219,7 +223,6 @@ module.exports = ({fs, id, limits, lnds, logger, payments, proxy, request}, cbk)
         'getProxyAgent', 
         ({apiKey, getNodes, getProxyAgent}, cbk) => {
         allNodes = getNodes;
-
         // Exit early when bot is already instantiated
         if (!!bot) {
           return cbk();
