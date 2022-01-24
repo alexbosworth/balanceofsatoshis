@@ -29,6 +29,7 @@ const restartDelayMs = 1000 * 60 * 3;
     payments: {
       [limit]: <Total Spendable Budget Tokens Limit Number>
     }
+    [proxy]: <Path to Proxy JSON File String>
     request: <Request Function>
   }
 
@@ -114,7 +115,7 @@ module.exports = (args, cbk) => {
               },
               logger: args.logger,
               payments: {limit},
-              proxy_path: args.use_proxy,
+              proxy: args.proxy,
               request: args.request,
             },
             err => {

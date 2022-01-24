@@ -1,5 +1,9 @@
 # Versions
 
+## 11.36.0
+
+- `telegram`: Add support for `--use-proxy` to specify a SOCKS proxy server
+
 ## 11.35.0
 
 - `graph`: Add `HOPS` variable to `--filter` for node peer distance from self

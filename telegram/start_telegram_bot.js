@@ -39,15 +39,15 @@ const {postUpdatedBackup} = require('ln-telegram');
 const {returnResult} = require('asyncjs-util');
 const {sendMessage} = require('ln-telegram');
 const {serviceAnchoredTrades} = require('paid-services');
+const SocksProxyAgent = require('socks-proxy-agent');
 const {subscribeToBackups} = require('ln-service');
 const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const {subscribeToPastPayments} = require('ln-service');
 const {subscribeToTransactions} = require('ln-service');
-const SocksProxyAgent = require('socks-proxy-agent');
+
 const interaction = require('./interaction');
-const markdown = {parse_mode: 'Markdown'};
 const named = require('./../package').name;
 const {version} = require('./../package');
 
@@ -61,9 +61,11 @@ const home = '.bos';
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
 const limit = 99999;
+const markdown = {parse_mode: 'Markdown'};
 const maxCommandDelayMs = 1000 * 10;
 const msSince = epoch => Date.now() - (epoch * 1e3);
 const network = 'btc';
+const {parse} = JSON;
 const restartSubscriptionTimeMs = 1000 * 30;
 const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
 
@@ -85,12 +87,15 @@ const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
     payments: {
       [limit]: <Total Spendable Budget Tokens Limit Number>
     }
+    [proxy]: <Path to Proxy JSON File String>
     request: <Request Function>
   }
 
   @returns via cbk or Promise
 */
-module.exports = ({fs, id, limits, lnds, logger, payments, proxy_path, request}, cbk) => {
+module.exports = (args, cbk) => {
+  const {fs, id, limits, lnds, logger, payments, request} = args;
+
   let connectedId = id;
   let isStopped = false;
   let paymentsLimit = !payments || !payments.limit ? Number() : payments.limit;
@@ -169,6 +174,45 @@ module.exports = ({fs, id, limits, lnds, logger, payments, proxy_path, request},
         cbk);
       }],
 
+      // Get proxy agent
+      getProxyAgent: ['validate', ({}, cbk) => {
+        // Exit early if not using a proxy
+        if (!args.proxy) {
+          return cbk();
+        }
+
+        return args.fs.getFile(proxy, (err, res) => {
+          if (!!err) {
+            return cbk([503, 'FailedToFindFileAtProxySpecifiedPath', {err}]);
+          }
+
+          if (!res) {
+            return cbk([503, 'ExpectedFileDataAtProxySpecifiedPath']);
+          }
+
+          try {
+            parse(res.toString());
+          } catch (err) {
+            return cbk([503, 'ExpectedValidJsonConfigFileForProxy']);
+          }
+
+          const {host, password, port, userId} = parse(res);
+
+          try {
+            const socksAgent = new SocksProxyAgent({
+              host,
+              password,
+              port,
+              userId,
+            });
+
+            return cbk(null, socksAgent);
+          } catch (err) {
+            return cbk([503, 'FailedToCreateSocksProxyAgent', {err}]);
+          }
+        });
+      }],
+
       // Save API key
       saveKey: ['apiKey', ({apiKey}, cbk) => {
         // Exit early when API key is already saved
@@ -191,60 +235,26 @@ module.exports = ({fs, id, limits, lnds, logger, payments, proxy_path, request},
         });
       }],
 
-      //Get proxy agent
-      getProxyAgent: ['apiKey', 'saveKey', ({}, cbk) => {
-        //Exit early if not using a proxy
-        if(!proxy_path) {
-          return cbk();
-        }
-
-        return fs.getFile(proxy_path, (err, res) => {
-        
-          if(!!err) {
-            logger.error({error: err});
-          }
-          try {
-            const proxyData = JSON.parse(res);
-
-            return cbk(null, {agent: proxyData});
-
-          } catch(err) {
-
-            logger.error({error: err});
-            
-          }
-        });
-      }],
-
       // Setup the bot start action
       initBot: [
-        'apiKey', 
+        'apiKey',
         'getNodes',
-        'getProxyAgent', 
-        ({apiKey, getNodes, getProxyAgent}, cbk) => {
+        'getProxyAgent',
+        ({apiKey, getNodes, getProxyAgent}, cbk) =>
+      {
         allNodes = getNodes;
+
         // Exit early when bot is already instantiated
         if (!!bot) {
           return cbk();
         }
-        //initiate bot using proxy
-        if (!!getProxyAgent) {
-          try{
-            const socksAgent = new SocksProxyAgent(getProxyAgent.agent)
 
-            bot = new Bot(apiKey.key, {
-              client: {
-                baseFetchConfig: {
-                  agent: socksAgent,
-                  compress: true,
-                }
-              }
-            });
-            } catch (err) {
-              logger.error({error: err});
-            }
-        }
-        else {
+        // Initiate bot using proxy agent when configured
+        if (!!getProxyAgent) {
+          bot = new Bot(apiKey.key, {
+            client: {baseFetchConfig: {agent: getProxyAgent, compress: true}},
+          });
+        } else {
           bot = new Bot(apiKey.key);
         }
 

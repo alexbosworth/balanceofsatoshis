@@ -1607,14 +1607,13 @@ prog
   .help('Supported updates: forwards, received payments, etc')
   .help('Multiple nodes are supported by repeating the `--node` flag')
   .help('See README for info on persisting the bot through Docker/nohup')
-  .help('To use proxy connection, create JSON file and pass its path to `--use-proxy`')
-  .help('JSON file can contain keys such as {host, port, userId, password}')
+  .help('--use-proxy requires path to JSON file for host/password/port/userId')
   .option('--budget <amount>', 'Spending amount to allow', INT, Number())
   .option('--connect <connect_code>', 'Connection code', INT)
   .option('--ignore-forwards-below <amount>', 'Ignore forwards of value', INT)
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
-  .option('--use-proxy <path>', 'Proxy agent to connect to Telegram')
   .option('--reset-api-key', 'Reset the Telegram API key')
+  .option('--use-proxy <path>', 'Proxy agent to connect to Telegram')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1631,8 +1630,8 @@ prog
           min_forward_tokens: options.ignoreForwardsBelow || undefined,
           nodes: flatten([options.node].filter(n => !!n)),
           payments: {limit: options.budget},
+          proxy: options.useProxy || undefined,
           request: commands.fetchRequest({fetch}),
-          use_proxy: options.useProxy || undefined,
         });
       } catch (err) {
         return reject(logger.error({err}));
