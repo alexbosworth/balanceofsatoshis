@@ -55,13 +55,14 @@ let allNodes;
 let bot;
 const botKeyFile = 'telegram_bot_api_key';
 const delay = 1000 * 60;
+const escape = text => text.replace(/[_[\]()~>#+\-=|{}.!\\]/g, '\\\$&');
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const home = '.bos';
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
 const limit = 99999;
-const markdown = {parse_mode: 'Markdown'};
+const markdown = {parse_mode: 'MarkdownV2'};
 const maxCommandDelayMs = 1000 * 10;
 const msSince = epoch => Date.now() - (epoch * 1e3);
 const network = 'btc';
@@ -286,7 +287,7 @@ module.exports = (args, cbk) => {
             const {text} = ctx.update.edited_message;
             const warning = interaction.edit_message_warning;
 
-            return ctx.reply(`${warning}\n${text}`, markdown);
+            return ctx.reply(escape(`${warning}\n${text}`), markdown);
           }
 
           return next();
@@ -311,7 +312,7 @@ module.exports = (args, cbk) => {
         bot.command('blocknotify', ctx => {
           handleBlocknotifyCommand({
             request,
-            reply: n => ctx.reply(n, markdown),
+            reply: n => ctx.reply(escape(n), markdown),
           },
           err => {
             if (!!err) {
@@ -328,7 +329,7 @@ module.exports = (args, cbk) => {
           handleConnectCommand({
             from: ctx.from.id,
             id: connectedId,
-            reply: n => ctx.reply(n, markdown),
+            reply: n => ctx.reply(escape(n), markdown),
           });
 
           return;
@@ -340,7 +341,7 @@ module.exports = (args, cbk) => {
             from: ctx.message.from.id,
             id: connectedId,
             nodes: allNodes,
-            reply: n => ctx.reply(n, markdown),
+            reply: n => ctx.reply(escape(n), markdown),
             working: () => ctx.replyWithChatAction('typing'),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
@@ -353,7 +354,7 @@ module.exports = (args, cbk) => {
             from: ctx.message.from.id,
             id: connectedId,
             nodes: allNodes,
-            reply: n => ctx.reply(n, markdown),
+            reply: n => ctx.reply(escape(n), markdown),
             working: () => ctx.replyWithChatAction('typing'),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
@@ -377,7 +378,7 @@ module.exports = (args, cbk) => {
         bot.command('mempool', async ctx => {
           return await handleMempoolCommand({
             request,
-            reply: n => ctx.reply(n, markdown),
+            reply: n => ctx.reply(escape(n), markdown),
           });
         });
 
@@ -393,10 +394,9 @@ module.exports = (args, cbk) => {
               },
             }, async () => {
               await handleLiquidityCommand({
-                request,
+                api: bot.api,
                 from: ctx.message.from.id,
                 id: connectedId,
-                key: apiKey.key,
                 nodes: allNodes,
                 reply: ctx.reply,
                 text: ctx.message.text,
@@ -461,10 +461,10 @@ module.exports = (args, cbk) => {
         bot.command('start', ctx => {
           // Exit early when the bot is already connected
           if (!!connectedId) {
-            return ctx.reply(interaction.bot_is_connected, markdown);
+            return ctx.reply(escape(interaction.bot_is_connected), markdown);
           }
 
-          return ctx.reply(interaction.start_message, markdown);
+          return ctx.reply(escape(interaction.start_message), markdown);
         });
 
         bot.command('version', async ctx => {
@@ -473,7 +473,7 @@ module.exports = (args, cbk) => {
               named,
               request,
               version,
-              reply: n => ctx.reply(n, markdown),
+              reply: n => ctx.reply(escape(n), markdown),
             });
           } catch (err) {
             logger.error({err});
@@ -607,6 +607,7 @@ module.exports = (args, cbk) => {
 
           sub.on('channel_closed', update => {
             return postClosedMessage({
+              api: bot.api,
               from,
               lnd,
               request,
@@ -616,7 +617,6 @@ module.exports = (args, cbk) => {
               is_cooperative_close: update.is_cooperative_close,
               is_local_force_close: update.is_local_force_close,
               is_remote_force_close: update.is_remote_force_close,
-              key: apiKey.key,
               partner_public_key: update.partner_public_key,
             },
             err => !!err ? logger.error({node: from, closed_err: err}) : null);
@@ -624,14 +624,13 @@ module.exports = (args, cbk) => {
 
           sub.on('channel_opened', update => {
             return postOpenMessage({
+              api: bot.api,
               from,
               lnd,
-              request,
               capacity: update.capacity,
               id: connectedId,
               is_partner_initiated: update.is_partner_initiated,
               is_private: update.is_private,
-              key: apiKey.key,
               partner_public_key: update.partner_public_key,
             },
             err => !!err ? logger.error({open_err: err}) : null);
@@ -692,9 +691,9 @@ module.exports = (args, cbk) => {
 
               // Notify Telegram bot that forwards happened
               return notifyOfForwards({
+                api: bot.api,
                 from,
                 lnd,
-                request,
                 forwards: res.forwards.filter(forward => {
                   if (!limits || !limits.min_forward_tokens) {
                     return true;
@@ -703,7 +702,6 @@ module.exports = (args, cbk) => {
                   return forward.tokens >= limits.min_forward_tokens;
                 }),
                 id: connectedId,
-                key: apiKey.key,
                 node: node.public_key,
               },
               err => {
@@ -729,9 +727,9 @@ module.exports = (args, cbk) => {
 
           sub.on('invoice_updated', invoice => {
             return postSettledInvoice({
+              api: bot.api,
               from,
               lnd,
-              request,
               id: connectedId,
               invoice: {
                 description: invoice.description,
@@ -740,7 +738,6 @@ module.exports = (args, cbk) => {
                 payments: invoice.payments,
                 received: invoice.received,
               },
-              key: apiKey.key,
               quiz: ({answers, correct, question}) => {
                 return bot.api.sendQuiz(
                   connectedId,
@@ -786,10 +783,9 @@ module.exports = (args, cbk) => {
             }
 
             return postSettledPayment({
-              request,
+              api: bot.api,
               from: node.from,
               id: connectedId,
-              key: apiKey.key,
               lnd: node.lnd,
               nodes: getNodes.map(n => n.public_key),
               payment: {
@@ -908,11 +904,10 @@ module.exports = (args, cbk) => {
               }
 
               return await postChainTransaction({
+                api: bot.api,
                 from,
-                request,
                 confirmed: transaction.is_confirmed,
                 id: connectedId,
-                key: apiKey.key,
                 transaction: record,
               });
             } catch (err) {
