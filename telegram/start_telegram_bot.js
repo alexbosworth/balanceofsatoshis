@@ -18,6 +18,7 @@ const {handleButtonPush} = require('ln-telegram');
 const {handleConnectCommand} = require('ln-telegram');
 const {handleCostsCommand} = require('ln-telegram');
 const {handleEarningsCommand} = require('ln-telegram');
+const {handleEditedMessage} = require('ln-telegram');
 const {handleInvoiceCommand} = require('ln-telegram');
 const {handleLiquidityCommand} = require('ln-telegram');
 const {handleMempoolCommand} = require('ln-telegram');
@@ -275,18 +276,11 @@ module.exports = (args, cbk) => {
 
         bot.catch(err => logger.error({telegram_error: err}));
 
-        bot.use((ctx, next) => {
-          // Ignore messages that are old
-          if (!!ctx.message && msSince(ctx.message.date) > maxCommandDelayMs) {
-            return;
-          }
-
-          // Warn on edit of old message
-          if (!!ctx.update && !!ctx.update.edited_message) {
-            const {text} = ctx.update.edited_message;
-            const warning = interaction.edit_message_warning;
-
-            return ctx.reply(`${warning}\n${text}`, markdown);
+        bot.use(async (ctx, next) => {
+          try {
+            await handleEditedMessage({ctx});
+          } catch (err) {
+            logger.error({err});
           }
 
           return next();
@@ -295,7 +289,6 @@ module.exports = (args, cbk) => {
         bot.command('backup', ctx => {
           handleBackupCommand({
             logger,
-            request,
             from: ctx.message.from.id,
             id: connectedId,
             key: apiKey.key,
@@ -393,12 +386,10 @@ module.exports = (args, cbk) => {
               },
             }, async () => {
               await handleLiquidityCommand({
-                request,
                 from: ctx.message.from.id,
                 id: connectedId,
-                key: apiKey.key,
                 nodes: allNodes,
-                reply: ctx.reply,
+                reply: n => ctx.reply(n, markdown),
                 text: ctx.message.text,
                 working: () => ctx.replyWithChatAction('typing'),
               });
