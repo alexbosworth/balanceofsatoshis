@@ -4,10 +4,8 @@
     "name": "key",
     "type": "password"
   },
-  "bot_is_connected": "🤖 *Bot is online.* /help for commands",
   "edit_message_warning": "⚠️ *Editing past messages not supported.*\n\n_Did you mean to send a new message?_",
   "pay_budget_depleted": "⚠️ No budget for payments",
-  "start_message": "🤖 *Bot started, run /connect to authorize.*",
   "user_id_prompt": {
     "message": "Connection code? (Bot command: /connect)",
     "name": "code",

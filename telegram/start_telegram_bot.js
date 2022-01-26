@@ -24,6 +24,7 @@ const {handleLiquidityCommand} = require('ln-telegram');
 const {handleMempoolCommand} = require('ln-telegram');
 const {handlePayCommand} = require('ln-telegram');
 const {handlePendingCommand} = require('ln-telegram');
+const {handleStartCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
 const {InputFile} = require('grammy');
 const inquirer = require('inquirer');
@@ -56,7 +57,6 @@ let allNodes;
 let bot;
 const botKeyFile = 'telegram_bot_api_key';
 const delay = 1000 * 60;
-const escape = text => text.replace(/[_[\]()~`>#+\-=|{}.!\\]/g, '\\\$&');
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const home = '.bos';
@@ -305,7 +305,7 @@ module.exports = (args, cbk) => {
         bot.command('blocknotify', ctx => {
           handleBlocknotifyCommand({
             request,
-            reply: n => ctx.reply(escape(n), markdown),
+            reply: n => ctx.reply(n, markdown),
           },
           err => {
             if (!!err) {
@@ -322,7 +322,7 @@ module.exports = (args, cbk) => {
           handleConnectCommand({
             from: ctx.from.id,
             id: connectedId,
-            reply: n => ctx.reply(escape(n), markdown),
+            reply: n => ctx.reply(n, markdown),
           });
 
           return;
@@ -334,7 +334,7 @@ module.exports = (args, cbk) => {
             from: ctx.message.from.id,
             id: connectedId,
             nodes: allNodes,
-            reply: n => ctx.reply(escape(n), markdown),
+            reply: n => ctx.reply(n, markdown),
             working: () => ctx.replyWithChatAction('typing'),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
@@ -347,7 +347,7 @@ module.exports = (args, cbk) => {
             from: ctx.message.from.id,
             id: connectedId,
             nodes: allNodes,
-            reply: n => ctx.reply(escape(n), markdown),
+            reply: n => ctx.reply(n, markdown),
             working: () => ctx.replyWithChatAction('typing'),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
@@ -371,7 +371,7 @@ module.exports = (args, cbk) => {
         bot.command('mempool', async ctx => {
           return await handleMempoolCommand({
             request,
-            reply: n => ctx.reply(escape(n), markdown),
+            reply: n => ctx.reply(n, markdown),
           });
         });
 
@@ -390,7 +390,7 @@ module.exports = (args, cbk) => {
                 from: ctx.message.from.id,
                 id: connectedId,
                 nodes: allNodes,
-                reply: n => ctx.reply(escape(n), markdown),
+                reply: n => ctx.reply(n, markdown),
                 text: ctx.message.text,
                 working: () => ctx.replyWithChatAction('typing'),
               });
@@ -442,7 +442,7 @@ module.exports = (args, cbk) => {
               from: ctx.message.from.id,
               id: connectedId,
               nodes: allNodes,
-              reply: n => ctx.reply(escape(n)),
+              reply: n => ctx.reply(n),
               working: () => ctx.replyWithChatAction('typing'),
             });
           } catch (err) {
@@ -451,12 +451,14 @@ module.exports = (args, cbk) => {
         });
 
         bot.command('start', ctx => {
-          // Exit early when the bot is already connected
-          if (!!connectedId) {
-            return ctx.reply(escape(interaction.bot_is_connected), markdown);
+          try{
+            handleStartCommand({
+              id: connectedId,
+              reply: n => ctx.reply(n, markdown),
+            });
+          } catch (err) {
+            logger.error({error: err});
           }
-
-          return ctx.reply(escape(interaction.start_message), markdown);
         });
 
         bot.command('version', async ctx => {
@@ -465,7 +467,7 @@ module.exports = (args, cbk) => {
               named,
               request,
               version,
-              reply: n => ctx.reply(escape(n), markdown),
+              reply: n => ctx.reply(n, markdown),
             });
           } catch (err) {
             logger.error({err});
