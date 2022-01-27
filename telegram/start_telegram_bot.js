@@ -63,7 +63,7 @@ const home = '.bos';
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
 const limit = 99999;
-const markdown = {parse_mode: 'MarkdownV2'};
+const markdown = {parse_mode: 'Markdown'};
 const maxCommandDelayMs = 1000 * 10;
 const msSince = epoch => Date.now() - (epoch * 1e3);
 const network = 'btc';
@@ -451,14 +451,10 @@ module.exports = (args, cbk) => {
         });
 
         bot.command('start', ctx => {
-          try{
-            handleStartCommand({
-              id: connectedId,
-              reply: n => ctx.reply(n, markdown),
-            });
-          } catch (err) {
-            logger.error({error: err});
-          }
+          handleStartCommand({
+            id: connectedId,
+            reply: n => ctx.reply(n, markdown),
+          });
         });
 
         bot.command('version', async ctx => {

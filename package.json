@@ -35,9 +35,9 @@
     "inquirer": "8.2.0",
     "invoices": "2.0.3",
     "ln-accounting": "5.0.5",
-    "ln-service": "53.5.2",
+    "ln-service": "53.6.0",
     "ln-sync": "3.7.0",
-    "ln-telegram": "3.11.0",
+    "ln-telegram": "3.12.0",
     "moment": "2.29.1",
     "paid-services": "3.11.0",
     "probing": "2.0.2",
@@ -52,7 +52,7 @@
   "description": "Lightning balance CLI",
   "devDependencies": {
     "@alexbosworth/tap": "15.0.10",
-    "ln-docker-daemons": "2.2.0",
+    "ln-docker-daemons": "2.2.1",
     "mock-lnd": "1.4.1",
     "secp256k1": "4.0.3"
   },
