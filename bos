@@ -98,12 +98,14 @@ prog
   .help('use --filter conditions to limit broadcast scope: capacity > 1*m')
   .help('--filter variables: CAPACITY/CHANNELS_COUNT/K/M')
   .help('Default filter scope: channels_count > 9')
+  .help('To only advertise to direct peers use --max-hops 0')
+  .help('To avoid advertising to direct peers use --min-hops 1')
   .option('--budget <budget>', 'Spending amount to allow for advertising', INT)
   .option('--dryrun', 'Avoid actually sending advertisements')
   .option('--filter <expression>', 'Require node match condition', REPEATABLE)
+  .option('--max-hops <max_hops>', 'Maximum number of relaying nodes', INT)
   .option('--message <message>', 'Custom advertisement message')
-  .option('--min-hops <min_hops>', 'Minimum number of hops to advertise', INT)
-  .option('--max-hops <max_hops>', 'Maximum number of hops to advertise', INT)
+  .option('--min-hops <min_hops>', 'Minimum number of relaying nodes', INT)
   .option('--node <node_name>', 'Advertise via saved node')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {

@@ -36,6 +36,7 @@ const mtokPerToken = 1e3;
 const pathTimeoutMs = 1000 * 45;
 const payTimeoutMs = 1000 * 60;
 const probeTimeoutMs = 1000 * 60 * 2;
+const routeDistance = route => route.hops.length - 1;
 const sendTokens = 10;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const textMessageType = '34349334';
@@ -49,6 +50,8 @@ const utf8AsHex = utf8 => Buffer.from(utf8, 'utf8').toString('hex');
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [message]: <Message To Send String>
+    [max_hops]: <Maxmimum Relaying Nodes Number>
+    [min_hops]: <Minimum Relaying Nodes Number>
   }
 */
 module.exports = (args, cbk) => {
@@ -68,15 +71,20 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedWinstonLoggerToAdvertise']);
         }
 
-        if (args.min_hops !== undefined && args.max_hops !== undefined && args.min_hops > args.max_hops) {
-          return cbk([400, 'ExpectedMinHopsToBeLessThanMaxHopsToAdvertise']);
-        }
-
         return cbk();
       },
+
       // Get the network graph
       getGraph: ['validate', ({}, cbk) => {
         args.logger.info({sending_to_all_graph_nodes: true});
+
+        if (args.max_hops !== undefined) {
+          args.logger.info({maximum_relay_distance_allowed: args.max_hops});
+        }
+
+        if (args.min_hops !== undefined) {
+          args.logger.info({minimum_relay_distance_required: args.min_hops});
+        }
 
         return getNetworkGraph({lnd: args.lnd}, cbk);
       }],
@@ -157,18 +165,25 @@ module.exports = (args, cbk) => {
             tokens: sendTokens,
           },
           (err, res) => {
-            const hops = !!res && !!res.route ? (res.route.hops.length - 1) : undefined;
-            //Exit early when hop count is not within range
-            if(hops !== undefined && args.min_hops !== undefined && hops < args.min_hops) {
-              return cbk();
+            // Exit early when there is a problem getting a route
+            if (!!err || !res.route) {
+              return cbk(null, false);
             }
-            if(hops !== undefined && args.max_hops !== undefined && hops > args.max_hops) {
-              return cbk();
+
+            const relaysCount = routeDistance(res.route);
+
+            // Exit early when there are too many relaying nodes
+            if (args.max_hops !== undefined && relaysCount > args.max_hops) {
+              return cbk(null, false);
             }
-            
-            const isRoutingPossible = !!res && !!res.route;
-            
-            return cbk(null, isRoutingPossible);
+
+            // Exit early when there are too few relaying nodes
+            if (args.min_hops !== undefined && relaysCount < args.min_hops) {
+              return cbk(null, false);
+            }
+
+            // There exists a route to the destination within range constraints
+            return cbk(null, true);
           });
         },
         cbk);
