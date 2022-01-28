@@ -1,5 +1,9 @@
 # Versions
 
+## 11.37.0
+
+- `advertise`: Add support for specifying a maximum ad spend with `--budget`
+
 ## 11.36.3
 
 - `telegram`: Add support for `--use-proxy` to specify a SOCKS proxy server
