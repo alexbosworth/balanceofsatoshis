@@ -115,8 +115,8 @@ prog
           is_dry_run: !!options.dryrun,
           lnd: (await lndForNode(logger, options.node)).lnd,
           message: options.message,
-          max_hops: options.maxHops || undefined,
-          min_hops: options.minHops || undefined,
+          max_hops: options.maxHops,
+          min_hops: options.minHops,
         });
       } catch (err) {
         return reject(logger.error({err}));
