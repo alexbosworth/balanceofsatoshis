@@ -19,7 +19,7 @@ const {shuffle} = require('./../arrays');
 const {ceil} = Math;
 const cltvDelay = 144;
 const createSecret = () => randomBytes(32).toString('hex');
-const defaultFilter = ['channels_count > 9'];
+const defaultFilter = ['channels_count < 9'];
 const defaultMsg = (alias, key) => `Check out my node! ${alias} ${key}`;
 const filterLimit = 10;
 const hashOf = n => createHash('sha256').update(n).digest().toString('hex');
@@ -68,9 +68,12 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedWinstonLoggerToAdvertise']);
         }
 
+        if (!!args.min_hops && !!args.max_hops && args.min_hops > args.max_hops) {
+          return cbk([400, 'ExpectedMinHopsToBeLessThanMaxHopsToAdvertise']);
+        }
+
         return cbk();
       },
-
       // Get the network graph
       getGraph: ['validate', ({}, cbk) => {
         args.logger.info({sending_to_all_graph_nodes: true});
@@ -154,8 +157,18 @@ module.exports = (args, cbk) => {
             tokens: sendTokens,
           },
           (err, res) => {
-            const isRoutingPossible = !!res && !!res.route;
+            const hops = !!res && !!res.route ? res.route.hops.length : undefined;
 
+            //Exit early when hop count is not within range
+            if(!!hops && !!args.min_hops && hops < args.min_hops) {
+              return cbk();
+            }
+            if(!!hops && !!args.max_hops && hops > args.max_hops) {
+              return cbk();
+            }
+            
+            const isRoutingPossible = !!res && !!res.route;
+            
             return cbk(null, isRoutingPossible);
           });
         },

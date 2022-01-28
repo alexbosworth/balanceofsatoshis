@@ -102,6 +102,8 @@ prog
   .option('--dryrun', 'Avoid actually sending advertisements')
   .option('--filter <expression>', 'Require node match condition', REPEATABLE)
   .option('--message <message>', 'Custom advertisement message')
+  .option('--min-hops <min_hops>', 'Minimum number of hops to advertise', INT)
+  .option('--max-hops <max_hops>', 'Maximum number of hops to advertise', INT)
   .option('--node <node_name>', 'Advertise via saved node')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -113,6 +115,8 @@ prog
           is_dry_run: !!options.dryrun,
           lnd: (await lndForNode(logger, options.node)).lnd,
           message: options.message,
+          max_hops: options.maxHops || undefined,
+          min_hops: options.minHops || undefined,
         });
       } catch (err) {
         return reject(logger.error({err}));
