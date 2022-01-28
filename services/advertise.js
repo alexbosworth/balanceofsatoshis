@@ -39,7 +39,6 @@ const probeTimeoutMs = 1000 * 60 * 2;
 const sendTokens = 10;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const textMessageType = '34349334';
-let totalPaid = 0;
 const utf8AsHex = utf8 => Buffer.from(utf8, 'utf8').toString('hex');
 /** Advertise to nodes that accept KeySend
 
@@ -206,11 +205,17 @@ module.exports = (args, cbk) => {
           probe.on('error', () => {});
 
           probe.on('probe_success', async ({route}) => {
-            //Exit when budget exceeded or within advertisement min amount
-            if(!!args.budget && (totalPaid >= args.budget || (args.budget - totalPaid) <= 10)) {
+
+            const total = route.safe_tokens + ceil(Number(sent.reduce((sum, n) => {
+              return sum + BigInt(n.mtokens) + BigInt(n.fee_mtokens);
+            },
+              BigInt(Number()))) / mtokPerToken);
+
+            // Exit when budget is reached
+            if(!!args.budget && (total  >= args.budget)) {
               return cbk([400, 'BudgetExceeded']);
             }
-
+            
             // Create a "mark seen" invoice
             try {
               const invoice = await createInvoice({
@@ -246,17 +251,15 @@ module.exports = (args, cbk) => {
 
               sent.push(paid);
 
-              totalPaid = ceil(Number(sent.reduce((sum, n) => {
-                return sum + BigInt(n.mtokens) + BigInt(n.fee_mtokens);
-              },
-              BigInt(Number()))) / mtokPerToken);
-              
               args.logger.info({
                 sent_to: `${node.alias || String()} ${node.public_key}`,
                 paid: paid.fee + paid.tokens,
                 total: {
                   ads: sent.length,
-                  paid: totalPaid,
+                  paid: ceil(Number(sent.reduce((sum, n) => {
+                          return sum + BigInt(n.mtokens) + BigInt(n.fee_mtokens);
+                        },
+                  BigInt(Number()))) / mtokPerToken),
                 },
               });
             } catch (err) { 
