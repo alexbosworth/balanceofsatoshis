@@ -40,6 +40,7 @@ const sendTokens = 10;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const textMessageType = '34349334';
 const utf8AsHex = utf8 => Buffer.from(utf8, 'utf8').toString('hex');
+
 /** Advertise to nodes that accept KeySend
 
   {
@@ -163,11 +164,22 @@ module.exports = (args, cbk) => {
 
       // Send message to nodes
       send: ['message', 'nodes', ({message, nodes}, cbk) => {
+        const maxSpendPerNode = sendTokens + maxFeeTokens;
         const sent = [];
 
         args.logger.info({routable_nodes: nodes.length});
 
         return asyncMapSeries(nodes, (node, cbk) => {
+          const paidTokens = ceil(Number(sent.reduce((sum, n) => {
+            return sum + BigInt(n.mtokens) + BigInt(n.fee_mtokens);
+          },
+          BigInt(Number()))) / mtokPerToken);
+
+          // Check that the potential next ad would not go over budget
+          if (!!args.budget && paidTokens + maxSpendPerNode > args.budget) {
+            return cbk([400, 'AdvertisingBudgetExhausted']);
+          }
+
           const probe = subscribeToProbeForRoute({
             cltv_delay: cltvDelay,
             destination: node.public_key,
@@ -186,6 +198,7 @@ module.exports = (args, cbk) => {
 
           const timeout = setTimeout(() => {
             isFinished = true;
+
             probe.removeAllListeners();
 
             return cbk();
@@ -205,19 +218,8 @@ module.exports = (args, cbk) => {
           probe.on('error', () => {});
 
           probe.on('probe_success', async ({route}) => {
-
-            const total = route.safe_tokens + ceil(Number(sent.reduce((sum, n) => {
-              return sum + BigInt(n.mtokens) + BigInt(n.fee_mtokens);
-            },
-              BigInt(Number()))) / mtokPerToken);
-
-            // Exit when budget is reached
-            if(!!args.budget && (total  >= args.budget)) {
-              return cbk([400, 'BudgetExceeded']);
-            }
-            
-            // Create a "mark seen" invoice
             try {
+              // Create a "mark seen" invoice
               const invoice = await createInvoice({
                 description: invoiceDescription(node.public_key),
                 expires_at: invoiceExpiration(),
@@ -257,15 +259,15 @@ module.exports = (args, cbk) => {
                 total: {
                   ads: sent.length,
                   paid: ceil(Number(sent.reduce((sum, n) => {
-                          return sum + BigInt(n.mtokens) + BigInt(n.fee_mtokens);
-                        },
+                    return sum + BigInt(n.mtokens) + BigInt(n.fee_mtokens);
+                  },
                   BigInt(Number()))) / mtokPerToken),
                 },
               });
-            } catch (err) { 
+            } catch (err) {
             }
-            }
-          );
+          });
+
           return;
         },
         cbk);
