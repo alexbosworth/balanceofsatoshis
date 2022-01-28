@@ -1,5 +1,10 @@
 # Versions
 
+## 11.38.0
+
+- `advertise`: Add support for `--max-hops` to specify a maximum graph distance
+- `advertise`: Add support for `--min-hops` to specify a minimum graph distance
+
 ## 11.37.0
 
 - `advertise`: Add support for specifying a maximum ad spend with `--budget`
