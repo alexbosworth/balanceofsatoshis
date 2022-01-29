@@ -9,6 +9,7 @@
   },
   "peerSortOptions": [
     "alias",
+    "est_disk_usage_mb",
     "fee_earnings",
     "first_connected",
     "inbound_fee_rate",

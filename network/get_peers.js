@@ -30,8 +30,9 @@ const {sortBy} = require('./../arrays');
 const closedSorts = ['fee_earnings', 'first_connected'];
 const defaultInvoicesLimit = 200;
 const defaultSort = 'first_connected';
-const estimateDiskFootprint = n => `${(n*500/1e6).toFixed(2)}`;
+const estimateDiskFootprint = n => Math.round(n * 500 / 1e6 * 10) / 10;
 const fromNow = epoch => !epoch ? undefined : moment(epoch * 1e3).fromNow();
+const hasDiskFilter = filter => /disk_usage_mb/gim.test(filter);
 const {isArray} = Array;
 const {max} = Math;
 const minutesPerBlock = network => network === 'ltcmainnet' ? 10 / 4 : 10;
@@ -487,11 +488,10 @@ module.exports = (args, cbk) => {
             .filter(n => n !== undefined);
 
           const disabled = policies.map(n => !!n.is_disabled).filter(n => !!n);
-          
           const feeRate = !feeRates.length ? undefined : max(...feeRates);
           const maxHtlcSizes = policies.map(n => n.max_htlc_mtokens);
           const pastStates = sumOf(active.map(n => n.past_states));
-          
+
           const totalCapacity = sumOf(active.map(n => n.capacity));
 
           const totalMaxHtlc = mtokensAsTokens(sumOfBig(maxHtlcSizes));
@@ -544,6 +544,7 @@ module.exports = (args, cbk) => {
           return {
             alias: node.alias,
             downtime_percentage: round(100 * (downtime / (downtime + uptime))),
+            est_disk_usage_mb: estimateDiskFootprint(pastStates),
             fee_earnings: mtokensAsTokens(feeMtokens),
             first_connected: moment().subtract(blocks * mpb, 'minutes').unix(),
             inbound_fee_rate: feeRate,
@@ -595,6 +596,7 @@ module.exports = (args, cbk) => {
               return {
                 alias: peer.alias,
                 downtime_percentage: peer.downtime_percentage,
+                est_disk_usage_mb: peer.est_disk_usage_mb,
                 fee_earnings: peer.fee_earnings,
                 first_connected: fromNow(peer.first_connected),
                 last_activity: fromNow(peer.last_activity),
@@ -620,6 +622,7 @@ module.exports = (args, cbk) => {
           return cbk(null, {
             peers: peers.peers.map(n => ({
               alias: n.alias,
+              est_disk_usage_mb: n.est_disk_usage_mb || undefined,
               fee_earnings: n.fee_earnings || undefined,
               downtime_percentage: n.downtime_percentage || undefined,
               first_connected: n.first_connected || undefined,
@@ -639,13 +642,18 @@ module.exports = (args, cbk) => {
           });
         }
 
+        const isDiskFilter = (args.filters || []).find(n => hasDiskFilter(n));
+        const isDiskSort = args.sort_by === 'est_disk_usage_mb';
         const isWideSize = !size || size.get().width > wideSizeCols;
+
+        const isShowingDisk = isDiskFilter || isDiskSort;
 
         return cbk(null, {
           peers: peers.peers,
           rows: []
             .concat([notNull([
               'Alias',
+              !!isShowingDisk ? 'Disk Mb' : null,
               'Inbound',
               'In Fee',
               'Outbound',
@@ -687,6 +695,7 @@ module.exports = (args, cbk) => {
 
               return notNull([
                 alias.display,
+                !!isShowingDisk ? peer.est_disk_usage_mb || ' ' : null,
                 inbound.display || ' ',
                 peer.inbound_fee_rate || ' ',
                 outbound.display || ' ',

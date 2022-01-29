@@ -170,6 +170,7 @@ const tests = [
     expected: {
       peers: [{
         alias: 'alias',
+        est_disk_usage_mb: undefined,
         fee_earnings: undefined,
         downtime_percentage: undefined,
         last_activity: undefined,
@@ -270,8 +271,9 @@ const tests = [
     expected: {
       peers: [{
         alias: 'alias',
-        fee_earnings: undefined,
+        est_disk_usage_mb: undefined,
         downtime_percentage: undefined,
+        fee_earnings: undefined,
         last_activity: undefined,
         inbound_fee_rate: undefined,
         inbound_liquidity: 1,
