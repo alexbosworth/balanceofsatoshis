@@ -487,10 +487,11 @@ module.exports = (args, cbk) => {
             .filter(n => n !== undefined);
 
           const disabled = policies.map(n => !!n.is_disabled).filter(n => !!n);
-          const pastStates = sumOf(active.map(n => n.past_states));
-
+          
           const feeRate = !feeRates.length ? undefined : max(...feeRates);
           const maxHtlcSizes = policies.map(n => n.max_htlc_mtokens);
+          const pastStates = sumOf(active.map(n => n.past_states));
+          
           const totalCapacity = sumOf(active.map(n => n.capacity));
 
           const totalMaxHtlc = mtokensAsTokens(sumOfBig(maxHtlcSizes));
