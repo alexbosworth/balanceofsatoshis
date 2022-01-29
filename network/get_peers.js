@@ -30,6 +30,7 @@ const {sortBy} = require('./../arrays');
 const closedSorts = ['fee_earnings', 'first_connected'];
 const defaultInvoicesLimit = 200;
 const defaultSort = 'first_connected';
+const estimateDiskFootprint = n => `${(n*500/1e6).toFixed(2)}`;
 const fromNow = epoch => !epoch ? undefined : moment(epoch * 1e3).fromNow();
 const {isArray} = Array;
 const {max} = Math;
@@ -486,6 +487,8 @@ module.exports = (args, cbk) => {
             .filter(n => n !== undefined);
 
           const disabled = policies.map(n => !!n.is_disabled).filter(n => !!n);
+          const pastStates = sumOf(active.map(n => n.past_states));
+
           const feeRate = !feeRates.length ? undefined : max(...feeRates);
           const maxHtlcSizes = policies.map(n => n.max_htlc_mtokens);
           const totalCapacity = sumOf(active.map(n => n.capacity));
@@ -503,6 +506,7 @@ module.exports = (args, cbk) => {
             filters: args.filters || [],
             variables: {
               age: blocks,
+              disk_usage_mb: estimateDiskFootprint(pastStates),
               fee_earnings: mtokensAsTokens(feeMtokens),
               inbound_fee_rate: feeRate,
               inbound_liquidity: sumOf(channels.map(n => n.remote_balance)),
