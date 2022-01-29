@@ -1,5 +1,10 @@
 # Versions
 
+## 11.40.0
+
+- `peers`: Add `DISK_USAGE_MB` filter to `--filter` formulas for est disk usage
+- `peers`: Add `est_disk_usage_mb` to allowed `--sort` fields
+
 ## 11.39.0
 
 - `limit-forwarding`: Add new command to limit allowed routing
