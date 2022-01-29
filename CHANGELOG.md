@@ -1,5 +1,9 @@
 # Versions
 
+## 11.39.0
+
+- `limit-forwarding`: Add new command to limit allowed routing
+
 ## 11.38.0
 
 - `advertise`: Add support for `--max-hops` to specify a maximum graph distance

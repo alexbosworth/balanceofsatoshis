@@ -824,6 +824,28 @@ prog
     });
   })
 
+  // Intercept forwarding requests, enforce requirements on acceptance
+  .command('limit-forwarding', 'Enforce rules for routing payments')
+  .option('--node <node_name>', 'Saved node to enforce rules on')
+  .option('--disable-forwards', 'Disable all forwards')
+  .option('--max-hours-since-last-block <h>', 'Require fresh blocks', INT, 5)
+  .option('--max-new-pending-per-hour <h>', 'Limit held HTLCs', INT)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return await peers.limitForwarding({
+          logger,
+          is_disabling_all_forwards: options.disableForwards || undefined,
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          max_hours_since_last_block: options.maxHoursSinceLastBlock,
+          max_new_pending_per_hour: options.maxNewPendingPerHour,
+        });
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
+    });
+  })
+
   // Get inbound liquidity information: available inbound off-chain tokens
   .command('inbound-liquidity', 'Get inbound liquidity size')
   .option('--above <tokens>', 'Return amount above watermark', INT)
