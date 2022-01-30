@@ -1393,9 +1393,9 @@ prog
   .option('--offline', 'Make sure the peer is offline')
   .option('--omit <key>', 'Avoid closing peer with public key', REPEATABLE)
   .option('--outbound-below <amount>', 'Peer outbound is below amount', INT)
-  .option('--outpoint', 'Only remove specific channel with funding txid:vout')
   .option('--private', 'Peer is privately connected')
   .option('--public', 'Peer is publicly connected')
+  .option('--select-channels <select_channels>', 'Select specific channel to remove')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1405,6 +1405,7 @@ prog
           lnd,
           logger,
           address: options.address,
+          ask: (n, cbk) => inquirer.prompt([n]).then(n => cbk(null, n)),
           chain_fee_rate: options.feeRate || undefined,
           fs: {getFile: readFile},
           idle_days: options.idleDays,
@@ -1417,9 +1418,9 @@ prog
           is_public: !!options.public,
           omit: flatten([options.omit].filter(n => !!n)),
           outbound_liquidity_below: options.outboundBelow,
-          outpoints: flatten([options.outpoint].filter(n => !!n)),
           public_key: args.publicKey,
           request: commands.simpleRequest,
+          selectChannels: options.selectChannels || undefined,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
