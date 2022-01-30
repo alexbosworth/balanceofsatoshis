@@ -188,7 +188,7 @@ module.exports = (args, cbk) => {
 
       // Check channels for peer to make sure that they can be cleanly closed
       checkChannels: ['getChannels', 'selectedChannel', ({selectedChannel}, cbk) => {
-        //Exit early if no channel is selected
+        // Exit early when a peer is not specified or force closing is OK
         if (!args.public_key || !!args.is_forced) {
           return cbk();
         } 
