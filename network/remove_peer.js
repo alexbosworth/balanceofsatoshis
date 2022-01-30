@@ -141,8 +141,8 @@ module.exports = (args, cbk) => {
 
       //Select channel to close if multiple are available
       selectedChannel: ['getChannels', ({getChannels}, cbk) => {
-        // Exit early when a peer is not specified or force closing is OK
-        if (!args.public_key || !!args.is_forced) {
+        // Exit early when a peer is not specified
+        if (!args.public_key) {
           return cbk();
         } 
 
@@ -161,21 +161,53 @@ module.exports = (args, cbk) => {
           return cbk([404, 'NoChannelsToCloseWithPeer']);
         }
 
-        //Exit early if not selecting a channel or only one is available
-        if (channels.length === 1 || !args.selectChannels) {
+        //Exit early if not selecting a channel
+        if (!args.selectChannels) {
           return cbk(null, channels);
+        }
+
+        //Build choices for Ask function
+        const message = (channel) => {
+          const returnMessage = `Channel Id: ${channel.id}, Inbound/Outbound: ${tokensAsBigUnit(channel.remote_balance)} / ${tokensAsBigUnit(channel.local_balance)},  Est Disk Usage: ${estimateDiskFootprint(channel.past_states)}`;
+
+          if (!!args.is_forced) {
+            return {
+              message: returnMessage,
+              is_disabled: false,
+            };
+          }
+
+          if (!!channel.pending_payments.length) {
+            return {
+              message: `💸 ${returnMessage}`,
+              is_disabled: true,
+            };
+          }
+
+          if(!channel.is_active) {
+            return {
+              message: `💀 ${returnMessage}`,
+              is_disabled: true,
+            };
+          }
+
+          return {
+            message: returnMessage,
+            is_disabled: false,
+          };
         }
 
         const choices = channels.map(channel => {
           return {
-            name: `Channel Id: ${channel.id}, Inbound/Outbound: ${tokensAsBigUnit(channel.remote_balance)} / ${tokensAsBigUnit(channel.local_balance)},  Est Disk Usage: ${estimateDiskFootprint(channel.past_states)}`,
+            name: message(channel).message,
             value: channel.id,
+            disabled: message(channel).is_disabled,
           };
         });
 
         return args.ask({
           choices,
-          message: 'Channel to close?',
+          message: `\nChannel to close?\n`,
           name: 'id',
           type: 'list',
         },
