@@ -243,6 +243,20 @@
       "method": "enableChannel"
     },
     {
+      "arguments": [
+        {
+          "description": "Base PSBT to fund",
+          "named": "psbt"
+        },
+        {
+          "description": "Fee rate per vbyte to use for funding",
+          "named": "fee_tokens_per_vbyte",
+          "optional": true
+        }
+      ],
+      "method": "fundPsbt"
+    },
+    {
       "method": "getAccessIds"
     },
     {
@@ -583,6 +597,13 @@
       "method": "openChannel"
     },
     {
+      "arguments": [{
+        "description": "Funded PSBT Hex String",
+        "named": "psbt"
+      }],
+      "method": "partiallySignPsbt"
+    },
+    {
       "arguments": [
         {
           "description": "BOLT 11 encoded payment request",
@@ -688,6 +709,13 @@
         "named": "message"
       }],
       "method": "signMessage"
+    },
+    {
+      "arguments": [{
+        "description": "Funded PSBT to sign and finalize",
+        "named": "psbt"
+      }],
+      "method": "signPsbt"
     },
     {
       "method": "stopDaemon"

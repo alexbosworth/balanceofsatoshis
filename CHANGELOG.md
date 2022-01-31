@@ -1,5 +1,11 @@
 # Versions
 
+## 11.42.0
+
+- `call`: Add support for `fundPsbt` to create a funded PSBT ready to sign
+- `call`: Add support for `partiallySignPsbt` to add a partial sig to a PSBT
+- `call`: Add support for `signPsbt` to sign and finalize a PSBT for broadcast
+
 ## 11.41.0
 
 - `remove-peer`: Add interactive mode to select channels to close
