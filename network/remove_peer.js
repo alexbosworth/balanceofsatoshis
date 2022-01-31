@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncEachSeries = require('async/eachSeries');
 const {closeChannel} = require('ln-service');
+const {decodeChanId} = require('bolt07');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNetwork} = require('ln-sync');
@@ -11,11 +12,13 @@ const getPeers = require('./get_peers');
 
 const arrayWithEntries = arr => !!arr.length ? arr : undefined;
 const asOutpoint = n => `${n.transaction_id}:${n.transaction_vout}`;
-const estimateDiskFootprint = n => Math.round(n * 500 / 1e6 * 10) / 10;
+const estimateDisk = n => Math.round(n * 500 / 1e6 * 10) / 10;
 const fastConf = 6;
 const {floor} = Math;
 const defaultDays = 365 * 2;
 const getMempoolRetries = 10;
+const iconDisabled = channel => !channel.is_active ? '💀 ' : '';
+const iconPending = channel => channel.pending_payments.length ? '💸 ' : ''
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const maxMempoolSize = 2e6;
@@ -27,6 +30,7 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 
   {
     [address]: <Close Out Funds to On-Chain Address String>
+    ask: <Ask Function>
     [chain_fee_rate]: <Chain Fee Per VByte Number>
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
@@ -39,6 +43,7 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
     [is_offline]: <Peer Is Disconnected Bool>
     [is_private]: <Peer is Privately Connected Bool>
     [is_public]: <Peer is Publicly Connected Bool>
+    [is_selecting_channels]: <Interactively Select Channels to Remove Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [omit]: [<Avoid Peer With Public Key String>]
@@ -55,12 +60,16 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if(!args.ask) {
+        if (!args.ask) {
           return cbk([400, 'ExpectedAskFunctionToRemovePeer']);
         }
 
         if (!args.fs) {
           return cbk([400, 'ExpectedFsMethodsToRemovePeer']);
+        }
+
+        if (!!args.is_selecting_channels && !args.public_key) {
+          return cbk([400, 'ExpectedPeerToRemoveWhenSelectingChannels']);
         }
 
         if (!args.lnd) {
@@ -69,6 +78,14 @@ module.exports = (args, cbk) => {
 
         if (!args.logger) {
           return cbk([400, 'LoggerIsRequiredToRemovePeer']);
+        }
+
+        if (!isArray(args.outpoints)) {
+          return cbk([400, 'ExpectedSpecificOutpointsToRemoveFromPeer']);
+        }
+
+        if (!!args.outpoints.length && !args.public_key) {
+          return cbk([400, 'ExpectedPeerToRemoteWhenOutpointsSpecified']);
         }
 
         if (!!args.public_key && !isPublicKey(args.public_key)) {
@@ -139,98 +156,120 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      //Select channel to close if multiple are available
-      selectedChannel: ['getChannels', ({getChannels}, cbk) => {
+      // Determine outpoints to use
+      outpoints: ['getChannels', ({getChannels}, cbk) => {
         // Exit early when a peer is not specified
         if (!args.public_key) {
-          return cbk();
-        } 
+          return cbk(null, []);
+        }
 
-        const channels = getChannels.channels.filter(channel => {
+        const channelsWithPeer = getChannels.channels
+          .filter(channel => {
+            // Ignore channels that are not the specified public key
+            if (channel.partner_public_key !== args.public_key) {
+              return false;
+            }
+
+            //Return channels with the peer
+            return true;
+          })
+          .sort((a, b) => {
+            const heightA = decodeChanId({channel: a.id}).block_height;
+            const heightB = decodeChanId({channel: b.id}).block_height;
+
+            // Sort channels by oldest to newest
+            return heightA - heightB;
+          });
+
+        // Exit early when no channels are available
+        if (!channelsWithPeer.length) {
+          return cbk([404, 'NoChannelsToCloseWithSpecifiedPeer']);
+        }
+
+        // Collect any outpoints that are unable to be cooperatively closed
+        const blocked = channelsWithPeer
+          .filter(channel => {
+            // Channels that are inactive or have HTLCs cannot be coop-closed
+            return !channel.is_active || !!channel.pending_payments.length;
+          })
+          .map(channel => asOutpoint(channel));
+
+        // Find a directly referenced outpoint that is in the blocked list
+        const blockedOutpoint = args.outpoints.find(n => blocked.includes(n));
+
+        // Make sure we aren't trying to coop close a channel that can't be
+        if (!args.is_forced && !!blockedOutpoint) {
+          return cbk([400, 'CannotCoopClose', {outpoint: blockedOutpoint}]);
+        }
+
+        // Exit early if not selecting a channel
+        if (!args.is_selecting_channels) {
+          return cbk(null, args.outpoints);
+        }
+
+        // Interactively select outpoints to close
+        return args.ask({
+          choices: channelsWithPeer.map(channel => {
+            // In closing, channels are identified by their funding outpoint
+            const value = asOutpoint(channel);
+
+            // Channels that are inactive or have HTLCs cannot be coop-closed
+            const isBlocked = blocked.includes(value);
+
+            const disk = `Est disk mb: ${estimateDisk(channel.past_states)}`;
+            const icon = iconDisabled(channel) || iconPending(channel);
+            const {id} = channel;
+            const inbound = `in: ${tokensAsBigUnit(channel.remote_balance)}`;
+            const outbound = `out: ${tokensAsBigUnit(channel.local_balance)}`;
+
+            return {
+              value,
+              checked: args.outpoints.includes(value),
+              disabled: !args.is_forced ? isBlocked : false,
+              name: `${icon}${id}: ${inbound} | ${outbound}. ${disk}.`,
+            };
+          }),
+          loop: false,
+          message: `Channels to ${!!args.is_forced ? 'force ' : ''}close?`,
+          name: 'outpoints',
+          type: 'checkbox',
+          validate: input => !!input.length,
+        },
+        ({outpoints}) => cbk(null, outpoints));
+      }],
+
+      // Check channels for peer to make sure that they can be cleanly closed
+      checkChannels: [
+        'getChannels',
+        'outpoints',
+        ({getChannels, outpoints}, cbk) =>
+      {
+        // Exit early when a peer is not specified or force closing is OK
+        if (!args.public_key || !!args.is_forced) {
+          return cbk();
+        }
+
+        const selectedChannels = getChannels.channels.filter(channel => {
           // Ignore channels that are not the specified public key
           if (channel.partner_public_key !== args.public_key) {
             return false;
           }
 
-          //Return channels with the peer
-          return true;
+          // Exit early when there are no outpoints, consider all peer channels
+          if (!outpoints.length) {
+            return true;
+          }
+
+          // Only include selected channels
+          return outpoints.includes(asOutpoint(channel));
         });
 
-        // Exit early when no channels are available
-        if (!channels.length) {
-          return cbk([404, 'NoChannelsToCloseWithPeer']);
-        }
-
-        //Exit early if not selecting a channel
-        if (!args.selectChannels) {
-          return cbk(null, channels);
-        }
-
-        //Build choices for Ask function
-        const message = (channel) => {
-          const returnMessage = `Channel Id: ${channel.id}, Inbound/Outbound: ${tokensAsBigUnit(channel.remote_balance)} / ${tokensAsBigUnit(channel.local_balance)},  Est Disk Usage: ${estimateDiskFootprint(channel.past_states)}`;
-
-          if (!!args.is_forced) {
-            return {
-              message: returnMessage,
-              is_disabled: false,
-            };
-          }
-
-          if (!!channel.pending_payments.length) {
-            return {
-              message: `💸 ${returnMessage}`,
-              is_disabled: true,
-            };
-          }
-
-          if(!channel.is_active) {
-            return {
-              message: `💀 ${returnMessage}`,
-              is_disabled: true,
-            };
-          }
-
-          return {
-            message: returnMessage,
-            is_disabled: false,
-          };
-        }
-
-        const choices = channels.map(channel => {
-          return {
-            name: message(channel).message,
-            value: channel.id,
-            disabled: message(channel).is_disabled,
-          };
-        });
-
-        return args.ask({
-          choices,
-          message: `\nChannel to close?\n`,
-          name: 'id',
-          type: 'list',
-        },
-        (err, res) => {
-          const channel = channels.filter(n => n.id === res.id);
-
-          return cbk(null, channel);
-        });        
-      }],
-
-      // Check channels for peer to make sure that they can be cleanly closed
-      checkChannels: ['getChannels', 'selectedChannel', ({selectedChannel}, cbk) => {
-        // Exit early when a peer is not specified or force closing is OK
-        if (!args.public_key || !!args.is_forced) {
-          return cbk();
-        } 
-
-        const costToClose = selectedChannel
+        const costToClose = selectedChannels
           .filter(n => n.is_partner_initiated === false)
           .map(n => n.commit_transaction_fee)
           .reduce((sum, n) => sum + n, Number());
 
-        const [cannotCoopClose] = selectedChannel.filter(channel => {
+        const [cannotCoopClose] = selectedChannels.filter(channel => {
           // Inactive channels cannot be cooperatively closed
           if (!channel.is_active) {
             return true;
@@ -345,9 +384,9 @@ module.exports = (args, cbk) => {
         'checkChannels',
         'getChannels',
         'getNormalFee',
-        'selectedChannel',
+        'outpoints',
         'selectPeer',
-        ({getChannels, getNormalFee, selectedChannel, selectPeer}, cbk) =>
+        ({getChannels, getNormalFee, outpoints, selectPeer}, cbk) =>
       {
         // Exit early when there is no peer to close out with
         if (!selectPeer) {
@@ -359,11 +398,12 @@ module.exports = (args, cbk) => {
         const toClose = getChannels.channels
           .filter(chan => chan.partner_public_key === selectPeer.public_key)
           .filter(chan => {
-            if (!args.selectChannels) {
+            // When no outpoints are specified, all channels should be closed
+            if (!outpoints.length) {
               return true;
             }
-            const [channel] = selectedChannel;
-            return asOutpoint(channel) === asOutpoint(chan);
+
+            return !!outpoints.includes(asOutpoint(chan));
           });
 
         // Exit early when there are no channels to close

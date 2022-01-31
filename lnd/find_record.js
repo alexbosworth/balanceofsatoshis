@@ -236,6 +236,7 @@ module.exports = ({lnd, query}, cbk) => {
                 .map(chan => {
                   const [height] = chan.id.split('x');
                   const local = formatTokens({tokens: chan.local_balance});
+                  const pending = chan.pending_payments;
                   const remote = formatTokens({tokens: chan.remote_balance});
 
                   const inbound = `in: ${balance(remote)}`;
@@ -248,6 +249,7 @@ module.exports = ({lnd, query}, cbk) => {
                     capacity: formatTokens({tokens: chan.capacity}).display,
                     funding: `${chan.transaction_id} ${chan.transaction_vout}`,
                     peer_created: chan.is_partner_initiated || undefined,
+                    pending_payments: !!pending.length ? pending : undefined,
                   };
                 }),
             }

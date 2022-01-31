@@ -43,7 +43,6 @@ const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
 const legacyMaxRebalanceTokens = 4294967;
 const {max} = Math;
 const maxPaymentSize = 4294967;
-const maxRebalanceTokens = 16777215;
 const {min} = Math;
 const minInboundBalance = 4294967 * 2;
 const minRebalanceAmount = 5e4;
@@ -632,7 +631,7 @@ module.exports = (args, cbk) => {
           lnd,
           cltv_delta: defaultCltvDelta,
           description: 'Rebalance',
-          tokens: min(maxRebalanceTokens, findRoute.route_maximum),
+          tokens: findRoute.route_maximum,
         },
         cbk);
       }],
