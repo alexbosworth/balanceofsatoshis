@@ -1,5 +1,9 @@
 # Versions
 
+## 11.41.0
+
+- `remove-peer`: Add interactive mode to select channels to close
+
 ## 11.40.0
 
 - `peers`: Add `DISK_USAGE_MB` filter to `--filter` formulas for est disk usage
