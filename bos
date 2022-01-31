@@ -826,10 +826,14 @@ prog
 
   // Intercept forwarding requests, enforce requirements on acceptance
   .command('limit-forwarding', 'Enforce rules for routing payments')
+  .help('Setting --only-allow will disable all forwards except only allowed')
+  .help('--only-allow option can be repeated for multiple forwards')
   .option('--node <node_name>', 'Saved node to enforce rules on')
   .option('--disable-forwards', 'Disable all forwards')
   .option('--max-hours-since-last-block <h>', 'Require fresh blocks', INT, 5)
   .option('--max-new-pending-per-hour <h>', 'Limit held HTLCs', INT)
+  .option('--min-channel-confirmations <confs>', 'Minimum channel confs', INT)
+  .option('--only-allow <pair>', 'only forward fromKey/toKey', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -839,6 +843,8 @@ prog
           lnd: (await lndForNode(logger, options.node)).lnd,
           max_hours_since_last_block: options.maxHoursSinceLastBlock,
           max_new_pending_per_hour: options.maxNewPendingPerHour,
+          min_channel_confirmations: options.minChannelConfirmations,
+          only_allow: flatten([options.onlyAllow].filter(n => !!n)),
         });
       } catch (err) {
         return reject(logger.error({err}));

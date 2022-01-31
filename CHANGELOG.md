@@ -1,5 +1,11 @@
 # Versions
 
+## 11.43.0
+
+- `limit-forwards`: Add `--min-channel-confirmations` for custom channel ages
+- `limit-forwards`: Add `--only-allow` to restrict forwards to allowed edges
+- `open-balanced-channel`: Disallow fractional fee rate entry
+
 ## 11.42.0
 
 - `call`: Add support for `fundPsbt` to create a funded PSBT ready to sign

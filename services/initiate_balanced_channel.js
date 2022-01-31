@@ -41,6 +41,7 @@ const giveTokens = capacity => Math.ceil(capacity / 2);
 const hasInbound = channels => !!channels.find(n => !!n.remote_balance);
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const idAsHash = id => Buffer.from(id, 'hex').reverse();
+const {isInteger} = Number;
 const isNumber = n => !isNaN(n);
 const isOdd = n => n % 2;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
@@ -237,11 +238,11 @@ module.exports = (args, cbk) => {
           default: round(getChainFee.tokens_per_vbyte),
           message: 'Fee rate per vbyte for the joint funding transaction?',
           name: 'rate',
-          type: 'number',
+          validate: n => !!isNumber(n) && !!Number(n) && isInteger(Number(n)),
         };
 
         return args.ask(feeRate, ({rate}) => {
-          if (!isNumber(rate)) {
+          if (!isNumber(Number(rate))) {
             return cbk([400, 'ExpectedFeeRatePerVirtualByteToProposeChannel']);
           }
 

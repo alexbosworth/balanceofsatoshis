@@ -4,6 +4,8 @@ const {returnResult} = require('asyncjs-util');
 
 const disableAllForwards = 0;
 const hoursAsSeconds = hours => hours * 60 * 60;
+const {isArray} = Array;
+const isEdge = n => !!n && /^[0-9A-F]{66}\/[0-9A-F]{66}$/i.test(n);
 
 /** Limit forwarding requests
 
@@ -11,8 +13,10 @@ const hoursAsSeconds = hours => hours * 60 * 60;
     lnd: (await lndForNode(logger, options.node)).lnd,
     logger: <Winston Logger Object>
     [is_disabling_all_forwards]: <All Forwards Are Disabled Bool>
-    [max_hours_since_last_block]: options.maxHoursSinceLastBlock,
-    [max_new_pending_per_hour]: options.maxNewPendingPerHour,
+    [max_hours_since_last_block]: <Maximum Hours Since Last Block Number>
+    [max_new_pending_per_hour]: <Maximum Outstanding New HTLCs Per Hour Number>
+    [min_channel_confirmations]: <Minimum Required Channel Confs Number>
+    only_allow: [<In Public Key / Out Public Key String>]
   }
 
   @returns via cbk or Promise
@@ -22,6 +26,14 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!isArray(args.only_allow)) {
+          return cbk([400, 'ExpectedOnlyAllowArrayToLimitForwarding']);
+        }
+
+        if (!!args.only_allow.filter(n => !isEdge(n)).length) {
+          return cbk([400, 'ExpectedOnlyAllowAsPublicKeyPairs']);
+        }
+
         if (!args.logger) {
           return cbk([400, 'ExpectedWinstonLoggerToLimitForwarding']);
         }
@@ -55,11 +67,25 @@ module.exports = (args, cbk) => {
         return cbk(null, hoursAsSeconds(args.max_hours_since_last_block));
       }],
 
+      // Only allow pairs
+      onlyAllow: ['validate', ({}, cbk) => {
+        if (!args.only_allow.length) {
+          return cbk();
+        }
+
+        const allow = args.only_allow.map(([inKey, outKey]) => {
+          return {inbound_peer: inKey, outbound_peer: outKey};
+        });
+
+        return cbk(null, allow);
+      }],
+
       // Limit forward requests
       limit: [
         'maxPendingPerHour',
         'maxSecondsSinceLastBlock',
-        ({maxPendingPerHour, maxSecondsSinceLastBlock}, cbk) =>
+        'onlyAllow',
+        ({maxPendingPerHour, maxSecondsSinceLastBlock, onlyAllow}, cbk) =>
       {
         args.logger.info({limiting_forwards: true});
 
@@ -67,6 +93,8 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           max_new_pending_per_hour: maxPendingPerHour,
           max_seconds_since_last_block: maxSecondsSinceLastBlock,
+          min_activation_age: args.min_channel_confirmations || undefined,
+          only_allow: onlyAllow,
         });
 
         sub.on('error', err => {
