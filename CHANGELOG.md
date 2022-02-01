@@ -1,5 +1,9 @@
 # Versions
 
+## 11.44.0
+
+- `send`: Add support for `--max-fee-rate` to limit fees paid via PPM measure
+
 ## 11.43.0
 
 - `limit-forwards`: Add `--min-channel-confirmations` for custom channel ages
