@@ -1479,7 +1479,7 @@ prog
           is_omitting_message_from: options.messageOmitFromKey,
           lnd: (await lndForNode(logger, options.node)).lnd,
           max_fee: options.maxFee,
-          max_fee_rate: options.maxFeeRate || undefined,
+          max_fee_rate: options.maxFeeRate,
           message: options.message,
           quiz_answers: flatten([options.quiz].filter(n => !!n)),
           out_through: options.out,

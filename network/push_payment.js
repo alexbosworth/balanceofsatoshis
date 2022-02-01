@@ -15,6 +15,7 @@ const {parseAmount} = require('./../display');
 const probeDestination = require('./probe_destination');
 
 const coins = ['BTC', 'LTC'];
+const computedMaxFee = (rate, tokens) => Math.floor(rate * tokens / 1e6);
 const defaultFiatRateProvider = 'coingecko';
 const fiats = ['EUR', 'USD'];
 const hasFiat = n => /(eur|usd)/gim.test(n);
@@ -23,13 +24,13 @@ const isPublicKey = n => /^[0-9A-F]{66}$/i.test(n);
 const maxQuizLength = 10;
 const rateAsTokens = rate => 1e8 / rate;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
+const {min} = Math;
 const minQuiz = 2;
 const minTokens = 1;
 const networks = {btc: 'BTC', btctestnet: 'BTC', ltc: 'LTC'};
 const quizStart = 80509;
 const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
 const utf8AsHex = n => Buffer.from(n, 'utf8').toString('hex');
-
 /** Push a payment to a destination
 
   {
@@ -385,8 +386,7 @@ module.exports = (args, cbk) => {
           is_omitting_message_from: args.is_omitting_message_from,
           is_push: payment.is_push,
           is_real_payment: true,
-          max_fee: args.max_fee,
-          max_fee_rate: args.max_fee_rate || undefined,
+          max_fee: args.max_fee_rate !== undefined ? min(args.max_fee, computedMaxFee(args.max_fee_rate, parseAmount.tokens)) : args.max_fee,
           message: args.message,
           messages: args.quiz_answers.map((answer, i) => ({
             type: (quizStart + i).toString(),
