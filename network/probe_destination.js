@@ -18,6 +18,7 @@ const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
 const bufFromHex = hex => Buffer.from(hex, 'hex');
+const {ceil} = Math;
 const cltvBuffer = 3;
 const dateBytesLength = 8;
 const datePrecisionLength = 6;
@@ -35,6 +36,7 @@ const {min} = Math;
 const nodeKeyFamily = 6;
 const preimageByteLength = 32;
 const {now} = Date;
+const rateDivisor = 1e6;
 const reserveRatio = 0.01;
 const signatureType = '34349337';
 const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
@@ -59,6 +61,7 @@ const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
+    [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
     [message]: <Message String>
     [messages]: [{
       type: <Additional Message To Final Destination Type Number String>
@@ -361,6 +364,7 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           logger: args.logger,
           max_fee: args.max_fee,
+          max_fee_rate: args.max_fee_rate || undefined,
           mtokens: !BigInt(to.mtokens) ? tokAsMtok(defaultTokens) : to.mtokens,
           outgoing_channel: outgoingChannelId,
           payment: to.payment,
@@ -419,6 +423,12 @@ module.exports = (args, cbk) => {
 
         if (args.max_fee !== undefined && probe.route.fee > args.max_fee) {
           return cbk([400, 'MaxFeeTooLow', {required_fee: probe.route.fee}]);
+        }
+
+        const feeRate = ceil(probe.route.fee / probe.route.tokens * rateDivisor);
+
+        if(args.max_fee_rate !== undefined && feeRate > args.max_fee_rate) {
+          return cbk([400, 'MaxFeeRateTooLow', {needed_fee_rate: feeRate}]);
         }
 
         args.logger.info({
