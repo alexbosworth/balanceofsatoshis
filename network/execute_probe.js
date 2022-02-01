@@ -8,9 +8,11 @@ const {subscribeToProbeForRoute} = require('ln-service');
 const {describeConfidence} = require('./../display');
 const {describeRoute} = require('./../display');
 
+const {ceil} = Math;
 const {now} = Date;
 const minutesAsMs = minutes => 1000 * 60 * minutes;
 const pathTimeoutMs = 1000 * 60 * 5;
+const rateDivisor = 1e6;
 const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
 
 /** Execute a probe
@@ -30,6 +32,7 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
+    [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
     [max_timeout_height]: <Maximum Timeout Height Number>
     [messages]: [{
       type: <Message To Final Destination Type Number String>
@@ -181,10 +184,15 @@ module.exports = (args, cbk) => {
         // Finish with successful probe
         sub.on('probe_success', ({route}) => {
           const {fee} = route;
+          const feeRate = ceil(route.fee / route.tokens * rateDivisor);
 
           // Finish with error when there is a fee limit exceeded
           if (!!args.max_fee && fee > args.max_fee) {
             return finished([400, 'MaxFeeLimitTooLow', {needed_fee: fee}]);
+          }
+          // Finish with error when there is a fee rate limit exceeded
+          if(args.max_fee_rate !== undefined && feeRate > args.max_fee_rate) {
+            return finished([400, 'MaxFeeRateTooLow', {needed_fee_rate: feeRate}]);
           }
 
           return finished(null, {route, latency_ms: now() - start});

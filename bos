@@ -1464,6 +1464,7 @@ prog
   .option('--dryrun', 'Avoid actually sending funds')
   .option('--in <pubkey_or_alias>', 'Route in through a specific node')
   .option('--max-fee <fee>', 'Maximum fee tokens', INT, 1337)
+  .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
   .option('--message <message>', 'Message to include with payment')
   .option('--message-omit-from-key', 'Leave out the from key on messages')
   .option('--no-color', 'Mute all colors')
@@ -1484,6 +1485,7 @@ prog
           is_omitting_message_from: options.messageOmitFromKey,
           lnd: (await lndForNode(logger, options.node)).lnd,
           max_fee: options.maxFee,
+          max_fee_rate: options.maxFeeRate || undefined,
           message: options.message,
           quiz_answers: flatten([options.quiz].filter(n => !!n)),
           out_through: options.out,

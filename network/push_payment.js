@@ -45,6 +45,7 @@ const utf8AsHex = n => Buffer.from(n, 'utf8').toString('hex');
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     max_fee: <Maximum Fee Tokens Number>
+    [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
     [message]: <Message to Include With Payment String>
     [out_through]: <Pay Out Through Peer String>
     quiz_answers: [<Quiz Answer String>]
@@ -385,6 +386,7 @@ module.exports = (args, cbk) => {
           is_push: payment.is_push,
           is_real_payment: true,
           max_fee: args.max_fee,
+          max_fee_rate: args.max_fee_rate || undefined,
           message: args.message,
           messages: args.quiz_answers.map((answer, i) => ({
             type: (quizStart + i).toString(),
