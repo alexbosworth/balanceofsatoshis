@@ -15,8 +15,8 @@ const {parseAmount} = require('./../display');
 const probeDestination = require('./probe_destination');
 
 const coins = ['BTC', 'LTC'];
-const computedMaxFee = (rate, tokens) => Math.floor(rate * tokens / 1e6);
 const defaultFiatRateProvider = 'coingecko';
+const feeTokensForFeeRate = (tokens, rate) => Math.floor(rate * tokens / 1e6);
 const fiats = ['EUR', 'USD'];
 const hasFiat = n => /(eur|usd)/gim.test(n);
 const {isArray} = Array;
@@ -31,6 +31,7 @@ const networks = {btc: 'BTC', btctestnet: 'BTC', ltc: 'LTC'};
 const quizStart = 80509;
 const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
 const utf8AsHex = n => Buffer.from(n, 'utf8').toString('hex');
+
 /** Push a payment to a destination
 
   {
@@ -348,7 +349,18 @@ module.exports = (args, cbk) => {
         };
 
         try {
-          return cbk(null, parseAmount({variables, amount: args.amount}));
+          const {tokens} = parseAmount({variables, amount: args.amount});
+
+          // Exit early when there is no max fee rate to compute max fee for
+          if (!!args.max_fee_rate === undefined) {
+            return cbk(null, {tokens, max_fee: args.mage_fee});
+          }
+
+          // Compute the max potential fee given the max fee rate constraint
+          const maxFeeByRate = feeTokensForFeeRate(tokens, args.max_fee_rate);
+
+          // The maximum fee to pay is the lower of the fee limit, fee by rate
+          return cbk(null, {tokens, max_fee: min(args.max_fee, maxFeeByRate)});
         } catch (err) {
           return cbk([400, 'FailedToParsePushAmount', err]);
         }
@@ -386,7 +398,7 @@ module.exports = (args, cbk) => {
           is_omitting_message_from: args.is_omitting_message_from,
           is_push: payment.is_push,
           is_real_payment: true,
-          max_fee: args.max_fee_rate !== undefined ? min(args.max_fee, computedMaxFee(args.max_fee_rate, parseAmount.tokens)) : args.max_fee,
+          max_fee: parseAmount.max_fee,
           message: args.message,
           messages: args.quiz_answers.map((answer, i) => ({
             type: (quizStart + i).toString(),

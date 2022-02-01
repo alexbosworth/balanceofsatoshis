@@ -1464,7 +1464,7 @@ prog
   .option('--dryrun', 'Avoid actually sending funds')
   .option('--in <pubkey_or_alias>', 'Route in through a specific node')
   .option('--max-fee <fee>', 'Maximum fee tokens', INT, 1337)
-  .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay', INT)
+  .option('--max-fee-rate <max_fee_rate>', 'Max fee rate in PPM to pay', INT)
   .option('--message <message>', 'Message to include with payment')
   .option('--message-omit-from-key', 'Leave out the from key on messages')
   .option('--no-color', 'Mute all colors')
