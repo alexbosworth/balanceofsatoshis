@@ -1,5 +1,9 @@
 # Versions
 
+## 11.46.0
+
+- `telegram`: Add `/stop` command to terminate the running bot
+
 ## 11.45.1
 
 - `increase-inbound-liquidity`: Add support for formulas in `--amount`
