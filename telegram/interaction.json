@@ -6,6 +6,7 @@
   },
   "edit_message_warning": "⚠️ *Editing past messages not supported.*\n\n_Did you mean to send a new message?_",
   "pay_budget_depleted": "⚠️ No budget for payments",
+  "stop_bot": "🛑 Stopping bot...",
   "user_id_prompt": {
     "message": "Connection code? (Bot command: /connect)",
     "name": "code",
