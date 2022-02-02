@@ -272,6 +272,7 @@ module.exports = (args, cbk) => {
           {command: 'mempool', description: 'Get info about the mempool'},
           {command: 'pay', description: 'Pay a payment request'},
           {command: 'pending', description: 'Get pending forwards, channels'},
+          {command: 'stop', description: 'Stop the bot'},
           {command: 'version', description: 'View current bot version'},
         ]);
 
@@ -457,6 +458,15 @@ module.exports = (args, cbk) => {
           });
         });
 
+        bot.command('stop', async ctx => {
+          try {
+            await ctx.reply(interaction.stop_bot, markdown);
+            await bot.stop();
+          } catch (err) {
+            logger.error({err});
+          }
+        });
+
         bot.command('version', async ctx => {
           try {
             await handleVersionCommand({
@@ -481,6 +491,7 @@ module.exports = (args, cbk) => {
           '/mempool - BTC mempool report',
           '/pay - Pay an invoice',
           '/pending - View pending channels, probes, and forwards',
+          '/stop - Stop bot',
           '/version - View the current bot version',
         ];
 
