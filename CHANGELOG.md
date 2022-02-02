@@ -1,6 +1,6 @@
 # Versions
 
-## 11.45.0
+## 11.45.1
 
 - `increase-inbound-liquidity`: Add support for formulas in `--amount`
 
