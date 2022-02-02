@@ -25,11 +25,11 @@ const {accountingCategories} = commandConstants;
 const balances = importLazy('./balances');
 const chain = importLazy('./chain');
 const commands = importLazy('./commands');
+const display = importLazy('./display');
 const encryption = importLazy('./encryption');
 const lnd = importLazy('./lnd');
 const network = importLazy('./network');
 const nodes = importLazy('./nodes');
-const {parseAmount} = importLazy('./display');
 const {peerSortOptions} = commandConstants;
 const peers = importLazy('./peers');
 const {priceProviders} = commandConstants;
@@ -52,7 +52,6 @@ const {INT} = prog;
 const {keys} = Object;
 const lndForNode = (logger, node) => lnd.authenticatedLnd({logger, node});
 const months = [...Array(12).keys()].map(n => ++n);
-const parsedAmount = (tokens) => {return parseAmount({amount: tokens})};
 const {REPEATABLE} = prog;
 const {STRING} = prog;
 const yearMatch = /^\d{4}$/;
@@ -885,10 +884,11 @@ prog
   .command('increase-inbound-liquidity', 'Increase node inbound liquidity')
   .help('Spend down a channel to get inbound. Fee is an estimate, may be more')
   .help('If you want to control chain fee increases, use show-raw-recoveries')
+  .help('Formulas supported for --amount like 5*m or 0.05*BTC for 5 million')
   .option('--address <out_address>', 'Out chain address to send funds out to')
   .option('--api-key <api_key>', 'Pre-paid API key to use')
+  .option('--amount <amount>', 'Amount to increase inbound', STRING, '500*k')
   .option('--avoid <pubkey/chan/tag>', 'Avoid forwarding through', REPEATABLE)
-  .option('--amount <amount>', 'Amount to increase liquidity')
   .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
   .option('--dryrun', 'Only show cost estimate for increase')
   .option('--fast', 'Request swap server avoid batching delay')
@@ -907,12 +907,9 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const {tokens} = parseAmount({amount: options.amount});
-
         return swaps.swapOut({
           fetch,
           logger,
-          tokens,
           api_key: options.apiKey || undefined,
           avoid: flatten([options.avoid].filter(n => !!n)),
           confs: options.confs,
@@ -934,11 +931,11 @@ prog
           spend_address: options.spendAddress || undefined,
           spend_tokens: options.spendAmount || undefined,
           timeout: 1000 * 60 * 60 * 10,
-          tokens: !!options.amount ? parsedAmount(options.amount).tokens : Number(5e5),
+          tokens: display.parseAmount({amount: options.amount}).tokens,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return reject(logger.error({err}));
       }
     });
   })
