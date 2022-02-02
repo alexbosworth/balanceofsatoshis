@@ -52,7 +52,7 @@ const {INT} = prog;
 const {keys} = Object;
 const lndForNode = (logger, node) => lnd.authenticatedLnd({logger, node});
 const months = [...Array(12).keys()].map(n => ++n);
-const parsedAmount = (tokens) => {return parseAmount({amount: tokens});};
+const parsedAmount = (tokens) => {return parseAmount({amount: tokens})};
 const {REPEATABLE} = prog;
 const {STRING} = prog;
 const yearMatch = /^\d{4}$/;
