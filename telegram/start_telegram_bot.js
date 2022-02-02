@@ -280,6 +280,11 @@ module.exports = (args, cbk) => {
 
         bot.use(async (ctx, next) => {
           try {
+          // Ignore messages that are old
+            if (!!ctx.message && msSince(ctx.message.date) > maxCommandDelayMs) {
+              return;
+            }
+
             await handleEditedMessage({ctx});
           } catch (err) {
             logger.error({err});
@@ -462,6 +467,7 @@ module.exports = (args, cbk) => {
           try {
             await ctx.reply(interaction.stop_bot, markdown);
             await bot.stop();
+            process.exit();
           } catch (err) {
             logger.error({err});
           }
