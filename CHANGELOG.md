@@ -1,5 +1,9 @@
 # Versions
 
+## 11.45.0
+
+- `increase-inbound-liquidity`: Add support for formulas in `--amount`
+
 ## 11.44.0
 
 - `send`: Add support for `--max-fee-rate` to limit fees paid via PPM measure
