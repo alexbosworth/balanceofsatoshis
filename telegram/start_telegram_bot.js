@@ -599,15 +599,14 @@ module.exports = (args, cbk) => {
             return postClosedMessage({
               from,
               lnd,
-              request,
               capacity: update.capacity,
               id: connectedId,
               is_breach_close: update.is_breach_close,
               is_cooperative_close: update.is_cooperative_close,
               is_local_force_close: update.is_local_force_close,
               is_remote_force_close: update.is_remote_force_close,
-              key: apiKey.key,
               partner_public_key: update.partner_public_key,
+              send: (id, message) => bot.api.sendMessage(id, message, markdown),
             },
             err => !!err ? logger.error({node: from, closed_err: err}) : null);
           });
@@ -616,13 +615,12 @@ module.exports = (args, cbk) => {
             return postOpenMessage({
               from,
               lnd,
-              request,
               capacity: update.capacity,
               id: connectedId,
               is_partner_initiated: update.is_partner_initiated,
               is_private: update.is_private,
-              key: apiKey.key,
               partner_public_key: update.partner_public_key,
+              send: (id, message) => bot.api.sendMessage(id, message, markdown),
             },
             err => !!err ? logger.error({open_err: err}) : null);
           });
@@ -899,10 +897,9 @@ module.exports = (args, cbk) => {
 
               return await postChainTransaction({
                 from,
-                request,
                 confirmed: transaction.is_confirmed,
                 id: connectedId,
-                key: apiKey.key,
+                send: (id, message) => bot.api.sendMessage(id, message, markdown),
                 transaction: record,
               });
             } catch (err) {
