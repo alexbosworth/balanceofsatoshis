@@ -25,6 +25,7 @@ const {handleMempoolCommand} = require('ln-telegram');
 const {handlePayCommand} = require('ln-telegram');
 const {handlePendingCommand} = require('ln-telegram');
 const {handleStartCommand} = require('ln-telegram');
+const {handleStopCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
 const {InputFile} = require('grammy');
 const inquirer = require('inquirer');
@@ -280,11 +281,6 @@ module.exports = (args, cbk) => {
 
         bot.use(async (ctx, next) => {
           try {
-          // Ignore messages that are old
-            if (!!ctx.message && msSince(ctx.message.date) > maxCommandDelayMs) {
-              return;
-            }
-
             await handleEditedMessage({ctx});
           } catch (err) {
             logger.error({err});
@@ -463,10 +459,16 @@ module.exports = (args, cbk) => {
           });
         });
 
+        // Terminate the running bot
         bot.command('stop', async ctx => {
           try {
-            await ctx.reply(interaction.stop_bot, markdown);
-            await bot.stop();
+            await handleStopCommand({
+              from: ctx.message.from.id,
+              id: connectedId,
+              quit: () => bot.stop(),
+              reply: (msg, mode) => ctx.reply(msg, mode),
+            });
+
             process.exit();
           } catch (err) {
             logger.error({err});
