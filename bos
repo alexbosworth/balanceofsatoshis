@@ -907,12 +907,9 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const {tokens} = parseAmount({amount: options.amount});
-
         return swaps.swapOut({
           fetch,
           logger,
-          tokens,
           api_key: options.apiKey || undefined,
           avoid: flatten([options.avoid].filter(n => !!n)),
           confs: options.confs,
