@@ -19,6 +19,7 @@ const {handleConnectCommand} = require('ln-telegram');
 const {handleCostsCommand} = require('ln-telegram');
 const {handleEarningsCommand} = require('ln-telegram');
 const {handleEditedMessage} = require('ln-telegram');
+const {handleGraphCommand} = require('ln-telegram');
 const {handleInvoiceCommand} = require('ln-telegram');
 const {handleLiquidityCommand} = require('ln-telegram');
 const {handleMempoolCommand} = require('ln-telegram');
@@ -267,6 +268,7 @@ module.exports = (args, cbk) => {
           {command: 'connect', description: 'Get connect code for the bot'},
           {command: 'costs', description: 'Show costs over the week'},
           {command: 'earnings', description: 'Show earnings over the week'},
+          {command: 'graph', description: 'Show info about a node'},
           {command: 'help', description: 'Show the list of commands'},
           {command: 'invoice', description: 'Create an invoice'},
           {command: 'liquidity', description: 'Get liquidity [with-peer]'},
@@ -355,6 +357,21 @@ module.exports = (args, cbk) => {
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
 
           return;
+        });
+
+        bot.command('graph', async ctx => {
+          try {
+            await handleGraphCommand({
+              from: ctx.message.from.id,
+              id: connectedId,
+              nodes: allNodes,
+              reply: n => ctx.reply(n, markdown),
+              text: ctx.message.text,
+              working: () => ctx.replyWithChatAction('typing'),
+            });
+          } catch (err) {
+            logger.error({err});
+          }
         });
 
         // Handle creation of an invoice
@@ -494,6 +511,7 @@ module.exports = (args, cbk) => {
           '/connect - Connect bot',
           '/costs - View costs over the past week',
           '/earnings - View earnings over the past week',
+          '/graph - Show info about a node',
           '/invoice [amount] [memo] - Make an invoice',
           '/liquidity [with] - View node liquidity',
           '/mempool - BTC mempool report',
