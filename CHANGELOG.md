@@ -1,5 +1,9 @@
 # Versions
 
+## 11.47.1
+
+- `send`: Correct `max-fee-rate` parsing
+
 ## 11.47.0
 
 - `telegram`: Add `/graph <node public key or peer alias>` to lookup node info

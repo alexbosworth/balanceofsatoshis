@@ -352,8 +352,8 @@ module.exports = (args, cbk) => {
           const {tokens} = parseAmount({variables, amount: args.amount});
 
           // Exit early when there is no max fee rate to compute max fee for
-          if (!!args.max_fee_rate === undefined) {
-            return cbk(null, {tokens, max_fee: args.mage_fee});
+          if (args.max_fee_rate === undefined) {
+            return cbk(null, {tokens, max_fee: args.max_fee});
           }
 
           // Compute the max potential fee given the max fee rate constraint
