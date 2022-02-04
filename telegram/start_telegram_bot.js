@@ -644,7 +644,7 @@ module.exports = (args, cbk) => {
               is_local_force_close: update.is_local_force_close,
               is_remote_force_close: update.is_remote_force_close,
               partner_public_key: update.partner_public_key,
-              send: (id, message) => bot.api.sendMessage(id, message, markdown),
+              send: (id, msg, opt) => bot.api.sendMessage(id, msg, opt),
             },
             err => !!err ? logger.error({node: from, closed_err: err}) : null);
           });
@@ -658,7 +658,7 @@ module.exports = (args, cbk) => {
               is_partner_initiated: update.is_partner_initiated,
               is_private: update.is_private,
               partner_public_key: update.partner_public_key,
-              send: (id, message) => bot.api.sendMessage(id, message, markdown),
+              send: (id, msg, opt) => bot.api.sendMessage(id, msg, opt),
             },
             err => !!err ? logger.error({open_err: err}) : null);
           });

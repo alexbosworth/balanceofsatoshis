@@ -1,5 +1,9 @@
 # Versions
 
+## 11.47.2
+
+- `telegram`: Correct open and close channel messages not posting
+
 ## 11.47.1
 
 - `send`: Correct `max-fee-rate` parsing
