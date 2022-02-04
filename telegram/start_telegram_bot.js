@@ -365,7 +365,8 @@ module.exports = (args, cbk) => {
               from: ctx.message.from.id,
               id: connectedId,
               nodes: allNodes,
-              reply: n => ctx.reply(n, markdown),
+              remove: () => ctx.deleteMessage(),
+              reply: (message, options) => ctx.reply(message, options),
               text: ctx.message.text,
               working: () => ctx.replyWithChatAction('typing'),
             });
@@ -511,7 +512,7 @@ module.exports = (args, cbk) => {
           '/connect - Connect bot',
           '/costs - View costs over the past week',
           '/earnings - View earnings over the past week',
-          '/graph - Show info about a node',
+          '/graph [pubkey or peer alias] - Show info about a node',
           '/invoice [amount] [memo] - Make an invoice',
           '/liquidity [with] - View node liquidity',
           '/mempool - BTC mempool report',
