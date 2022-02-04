@@ -1,5 +1,9 @@
 # Versions
 
+## 11.47.0
+
+- `telegram`: Add `/graph <node public key or peer alias>` to lookup node info
+
 ## 11.46.0
 
 - `telegram`: Add `/stop` command to terminate the running bot
