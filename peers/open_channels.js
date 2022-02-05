@@ -11,7 +11,6 @@ const asyncMap = require('async/map');
 const asyncReflect = require('async/reflect');
 const asyncRetry = require('async/retry');
 const {cancelPendingChannel} = require('ln-service');
-const {decodePsbt} = require('psbt');
 const {fundPendingChannels} = require('ln-service');
 const {getFundedTransaction} = require('ln-sync');
 const {getNetwork} = require('ln-sync');
@@ -24,7 +23,6 @@ const {maintainUtxoLocks} = require('ln-sync');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
-const {transactionAsPsbt} = require('psbt');
 const {unlockUtxo} = require('ln-service');
 
 const adjustFees = require('./../routing/adjust_fees');
@@ -657,19 +655,7 @@ module.exports = (args, cbk) => {
         'setFeeRates',
         ({getFunding, fundingPsbt}, cbk) =>
       {
-        try {
-          const tx = getFunding.value.transaction;
-
-          const decoded = decodePsbt({psbt: fundingPsbt.value.psbt});
-
-          const transaction = tx || decoded.unsigned_transaction;
-
-          return cbk(null, {
-            transaction_id: Transaction.fromHex(transaction).getId(),
-          });
-        } catch (err) {
-          return cbk([503, 'UnexpectedErrorGettingTransactionId', {err}]);
-        }
+        return cbk(null, {transaction_id: getFunding.value.id});
       }],
     },
     returnResult({reject, resolve, of: 'completed'}, cbk));

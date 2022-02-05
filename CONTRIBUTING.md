@@ -17,6 +17,8 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Minimize function nesting, make new files if nesting is required
 - No extraneous whitespace
 - A single newline should appear at the end of a file
+- A single line should contain max 80 characters including the newline
+- If a top level scalar would go over 80 characters in a line, that's ok
 - Don't bother with () in functions when not needed: `const a = b => c`
 - If there are multiple things together, alphabetize them
 - Don't split up long strings over multiple lines
@@ -27,11 +29,14 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Use single '' quotes not double "" quotes, except when `` is required
 - If conditions should avoid spanning multiple lines
 - Avoid double specifying an attribute and value, `{type: type}` vs `{type}`
+- Always use {} with if, else, etc statements
+- Document the top of methods with what the arguments are and what is returned
 
 ### Control Flow
 
 - Async functions should support both cbk and Promise style
 - Use async.js methods for asynchronous control flow
+- Use async auto and returnResult for all non-event async functions
 - Try to exit early from functions when possible, and note this exit in comment
 - Prefer cbk over Promise style, aside from in tests or in Promise libs
 - Use `asyncAuto` for asynchronous control flow dependency management
@@ -49,6 +54,8 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Short properties always go first in objects: `{short, longer: type}`
 - If a statement relies on a statement above it, it should have a newline above
 - Avoid including scalar values such as strings or numbers in the code itself
+- Prefer hex serialization over base64 or Buffers in arguments or output
+- Avoid any function arguments that are multiple data types
 
 ### JS Features
 
@@ -60,6 +67,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Try to avoid passing objects in arguments as much as possible
 - Prefer using function iteration like map and forEach over for and while
 - Use arrow functions and not `function` functions whenever possible
+- Functions should only take and return a single object as argument, result
 
 ### Errors
 
@@ -70,3 +78,5 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Use HTTP status codes as a guideline: 4** is a local issue, 5** is remote
 - Return async errors as arrays: `[typeNumber, errorMsgString, extraDetails]`
 - Try to be very specific with error messages and try to not repeat one
+- Callbacks should always be called as (err, result)
+- Try and catch should not be used unless an error is expected

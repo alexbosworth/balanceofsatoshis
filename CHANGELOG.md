@@ -1,5 +1,9 @@
 # Versions
 
+## 11.48.0
+
+- `fund`: Support sending to P2TR addresses
+
 ## 11.47.2
 
 - `telegram`: Correct open and close channel messages not posting

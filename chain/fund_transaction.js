@@ -1,10 +1,15 @@
+const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
+const {createPsbt} = require('psbt');
 const {formatTokens} = require('ln-sync');
+const {fromBech32} = address;
 const {fundPsbt} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
 const {getMaxFundAmount} = require('ln-sync');
+const {getNetwork} = require('ln-sync');
 const {getUtxos} = require('ln-service');
+const {networks} = require('bitcoinjs-lib');
 const {returnResult} = require('asyncjs-util');
 const {signPsbt} = require('ln-service');
 const {Transaction} = require('bitcoinjs-lib');
@@ -16,6 +21,7 @@ const asBigUnit = n => (n / 1e8).toFixed(8);
 const asOutpoint = utxo => `${utxo.transaction_id}:${utxo.transaction_vout}`;
 const asInput = n => ({transaction_id: n.id, transaction_vout: n.vout});
 const asUtxo = n => ({id: n.slice(0, 64), vout: Number(n.slice(65))});
+const bufferAsHex = buffer => buffer.toString('hex');
 const dustValue = 293;
 const formattedFeeRate = n => n.toFixed(2);
 const {fromHex} = Transaction;
@@ -25,6 +31,8 @@ const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const minConfs = 1;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
+const taprootAddressVersion = 1;
+const {toOutputScript} = address;
 const txHashAsTxId = hash => hash.reverse().toString('hex');
 
 /** Fund and sign a transaction
@@ -97,6 +105,9 @@ module.exports = (args, cbk) => {
 
       // Get the current fee rate
       getFee: ['validate', ({}, cbk) => getChainFeeRate({lnd: args.lnd}, cbk)],
+
+      // Get the network name
+      getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
       // Derive a list of outputs to guide input selection
       outputs: ['validate', ({}, cbk) => {
@@ -241,8 +252,9 @@ module.exports = (args, cbk) => {
       fund: [
         'finalOutputs',
         'getFee',
+        'getNetwork',
         'utxos',
-        ({finalOutputs, getFee, utxos}, cbk) =>
+        ({finalOutputs, getFee, getNetwork, utxos}, cbk) =>
       {
         const inputs = utxos.map(asUtxo).map(asInput);
         const feeRate = args.fee_tokens_per_vbyte || getFee.tokens_per_vbyte;
@@ -258,11 +270,50 @@ module.exports = (args, cbk) => {
           requested_fee_rate: feeRate,
         });
 
+        const hasTaprootOutput = !!finalOutputs.find(n => {
+          try {
+            return fromBech32(n.address).version === taprootAddressVersion;
+          } catch (err) {
+            return false;
+          }
+        });
+
+        // Exit early when there is no taproot output
+        if (!hasTaprootOutput) {
+          return fundPsbt({
+            fee_tokens_per_vbyte: feeRate,
+            inputs: !!inputs.length ? inputs : undefined,
+            lnd: args.lnd,
+            outputs: finalOutputs,
+          },
+          cbk);
+        }
+
+        const network = networks[getNetwork.bitcoinjs];
+
+        if (!network) {
+          return cbk([400, 'UnsupportedNetworkForFundingOutputs']);
+        }
+
+        const warn = console.warn;
+
+        console.warn = () => {};
+
+        const {psbt} = createPsbt({
+          outputs: finalOutputs.map(({address, tokens}) => ({
+            tokens,
+            script: bufferAsHex(toOutputScript(address, network)),
+          })),
+          utxos: inputs.map(input => ({
+            id: input.transaction_id,
+            vout: input.transaction_vout,
+          })),
+        });
+
         return fundPsbt({
+          psbt,
           fee_tokens_per_vbyte: feeRate,
-          inputs: !!inputs.length ? inputs : undefined,
           lnd: args.lnd,
-          outputs: finalOutputs,
         },
         cbk);
       }],

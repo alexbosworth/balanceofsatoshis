@@ -27,7 +27,7 @@
     "colorette": "2.0.16",
     "crypto-js": "4.1.1",
     "csv-parse": "5.0.4",
-    "goldengate": "11.0.0",
+    "goldengate": "11.0.1",
     "grammy": "1.7.0",
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
@@ -35,13 +35,13 @@
     "inquirer": "8.2.0",
     "invoices": "2.0.3",
     "ln-accounting": "5.0.5",
-    "ln-service": "53.7.1",
-    "ln-sync": "3.9.0",
+    "ln-service": "53.7.2",
+    "ln-sync": "3.9.2",
     "ln-telegram": "3.14.1",
     "moment": "2.29.1",
     "paid-services": "3.11.0",
     "probing": "2.0.2",
-    "psbt": "1.1.11",
+    "psbt": "2.0.0",
     "qrcode-terminal": "0.12.0",
     "sanitize-filename": "1.6.3",
     "socks-proxy-agent": "6.1.1",
@@ -52,9 +52,9 @@
   "description": "Lightning balance CLI",
   "devDependencies": {
     "@alexbosworth/tap": "15.0.10",
-    "ln-docker-daemons": "2.2.3",
+    "ln-docker-daemons": "2.2.4",
     "mock-lnd": "1.4.1",
-    "secp256k1": "4.0.3"
+    "tiny-secp256k1": "2.2.0"
   },
   "engines": {
     "node": ">=12.20"
@@ -81,5 +81,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/wallets/*.js"
   },
-  "version": "11.47.2"
+  "version": "11.48.0"
 }

@@ -2,10 +2,12 @@ const EventEmitter = require('events');
 
 const {createSignedRequest} = require('invoices');
 const {createUnsignedRequest} = require('invoices');
-const sign = require('secp256k1').ecdsaSign;
+const secp256k1 = require('tiny-secp256k1');
 const {test} = require('@alexbosworth/tap');
 
 const getBalancedOpens = require('./../../services/get_balanced_opens');
+
+const sign = (h, k) => Buffer.from(secp256k1.sign(h, k));
 
 const createRequest = () => {
   const {hash, hrp, tags} = createUnsignedRequest({
@@ -32,7 +34,7 @@ const createRequest = () => {
   const bufFromHex = hex => Buffer.from(hex, 'hex');
   const privateKey = 'e126f68f7eafcc8b74f54d269fe206be715000f94dac067d1c04a8ca3b2db734';
 
-  const {signature} = sign(bufFromHex(hash), bufFromHex(privateKey));
+  const signature = sign(bufFromHex(hash), bufFromHex(privateKey));
 
   const {request} = createSignedRequest({
     hrp,
