@@ -1,6 +1,6 @@
 # Versions
 
-## 11.48.0
+## 11.48.1
 
 - `fund`: Support sending to P2TR addresses
 

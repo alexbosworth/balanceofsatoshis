@@ -299,7 +299,7 @@ module.exports = (args, cbk) => {
             key: apiKey.key,
             nodes: allNodes,
             reply: ctx.reply,
-            send: file => ctx.replyWithDocument(fileAsDoc(file)),
+            send: (file, opts) => ctx.replyWithDocument(fileAsDoc(file), opts),
           },
           err => !!err && !!err[0] >= 500 ? logger.error({err}) : null);
 
