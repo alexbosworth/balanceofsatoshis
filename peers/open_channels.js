@@ -35,12 +35,10 @@ const {parseAmount} = require('./../display');
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const defaultChannelCapacity = 5e6;
 const format = 'p2wpkh';
-const interval = 1000 * 15;
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const knownTypes = ['private', 'public'];
 const lineBreak = '\n';
-const minErrorCount = 4;
 const noInternalFundingVersions = ['0.11.0-beta', '0.11.1-beta'];
 const notFound = -1;
 const peerAddedDelayMs = 1000 * 5;
@@ -502,7 +500,7 @@ module.exports = (args, cbk) => {
             if (!!err) {
               return cbk(err);
             }
-            i++;
+            
             const pending = res.pending.slice();
   
             // Sort outputs using BIP 69
@@ -707,30 +705,17 @@ module.exports = (args, cbk) => {
         if (!!error || !!fundingError) {
           return cbk();
         }
-        const broadcastErrors = [];
-        return asyncRetry({interval, times}, cbk => {
-          return broadcastChainTransaction({lnd: args.lnd, transaction: getFunding.value.transaction}, (err, res) => {
-            if (!!err) {
-              broadcastErrors.push(err);
-            }
 
-            // Exit early when there are not many errors yet
-            if (!!err && broadcastErrors.length < minErrorCount) {
-              return cbk(err);
-            }
+        args.logger.info({transaction: getFunding.value.transaction});
+        args.logger.info(lineBreak);
 
-            // Exit early when there is an error broadcasting the tx
-            if (!!err) {
-              logger.error({err});
-
-              return cbk(err);
-            }
-
-            args.logger.info({broadcast: res.id});
-
-            return setTimeout(cbk, interval);
-          });
-        },
+        return broadcastChainTransaction({lnd: args.lnd, transaction: getFunding.value.transaction}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+          args.logger.info({broadcast: res.id});
+          return cbk();
+          },
         cbk);
       }],
 
