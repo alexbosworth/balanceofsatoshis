@@ -1062,8 +1062,7 @@ prog
       const lnds = !!nodes.length ? await Promise.all(nodes.map(async node => (await lnd.authenticatedLnd({logger, node: node !== 'true' ? node: options.node})).lnd)) : [];
 
       try {
-        // if (!!nodes.length && !!lnds.length) {
-          return peers.openChannelsForSavedNodes({
+          return peers.openChannels({
             logger,
             ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
             capacities: flatten([options.amount].filter(n => !!n)),
@@ -1080,23 +1079,6 @@ prog
             types: flatten([options.type].filter(n => !!n)),
           },
           responses.returnObject({logger, reject, resolve}));
-        // }
-        
-        // return peers.openChannels({
-        //   logger,
-        //   ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
-        //   capacities: flatten([options.amount].filter(n => !!n)),
-        //   cooperative_close_addresses: collect(options.coopCloseAddress),
-        //   fs: {getFile: readFile},
-        //   gives: flatten([options.give].filter(n => !!n)),
-        //   is_external: options.externalFunding,
-        //   lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-        //   public_keys: args.peerPublicKeys,
-        //   request: commands.simpleRequest,
-        //   set_fee_rates: flatten([options.setFeeRate]).filter(n => !!n),
-        //   types: flatten([options.type].filter(n => !!n)),
-        // },
-        // responses.returnObject({logger, reject, resolve}));
       } catch (err) {
         return reject(logger.error({err}));
       }
