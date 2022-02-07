@@ -1,6 +1,6 @@
 # Versions
 
-## 11.49.0
+## 11.49.1
 
 - `telegram`: Add support for notifying of new opening channels
 

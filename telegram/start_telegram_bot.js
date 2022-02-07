@@ -780,16 +780,14 @@ module.exports = (args, cbk) => {
 
       // Subscribe to invoices
       invoices: ['apiKey', 'getNodes', 'userId', ({apiKey, getNodes}, cbk) => {
-        return asyncEach(getNodes, ({from, lnd}, cbk) => {
-          const sub = subscribeToInvoices({lnd});
+        return asyncEach(getNodes, (node, cbk) => {
+          const sub = subscribeToInvoices({lnd: node.lnd});
 
           subscriptions.push(sub);
 
           sub.on('invoice_updated', invoice => {
             return postSettledInvoice({
-              from,
-              lnd,
-              request,
+              from: node.from,
               id: connectedId,
               invoice: {
                 description: invoice.description,
@@ -798,7 +796,9 @@ module.exports = (args, cbk) => {
                 payments: invoice.payments,
                 received: invoice.received,
               },
-              key: apiKey.key,
+              key: node.public_key,
+              lnd: node.lnd,
+              nodes: getNodes,
               quiz: ({answers, correct, question}) => {
                 return bot.api.sendQuiz(
                   connectedId,
@@ -807,6 +807,7 @@ module.exports = (args, cbk) => {
                   {correct_option_id: correct},
                 );
               },
+              send: (id, msg, opts) => bot.api.sendMessage(id, msg, opts),
             },
             err => !!err ? logger.error({settled_err: err}) : null);
           });
