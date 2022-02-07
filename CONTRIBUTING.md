@@ -68,6 +68,8 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Prefer using function iteration like map and forEach over for and while
 - Use arrow functions and not `function` functions whenever possible
 - Functions should only take and return a single object as argument, result
+- Use the || flags to select between truthy variable options
+- Use !! to explicitly coerce non Bool variables to Boolean
 
 ### Errors
 

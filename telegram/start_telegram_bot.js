@@ -36,6 +36,7 @@ const {postChainTransaction} = require('ln-telegram');
 const {postClosedMessage} = require('ln-telegram');
 const {postCreatedTrade} = require('ln-telegram');
 const {postOpenMessage} = require('ln-telegram');
+const {postOpeningMessage} = require('ln-telegram');
 const {postSettledInvoice} = require('ln-telegram');
 const {postSettledPayment} = require('ln-telegram');
 const {postSettledTrade} = require('ln-telegram');
@@ -49,6 +50,7 @@ const {subscribeToBlocks} = require('goldengate');
 const {subscribeToChannels} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
 const {subscribeToPastPayments} = require('ln-service');
+const {subscribeToPendingChannels} = require('ln-sync');
 const {subscribeToTransactions} = require('ln-service');
 
 const interaction = require('./interaction');
@@ -668,6 +670,36 @@ module.exports = (args, cbk) => {
             sub.removeAllListeners();
 
             return cbk([503, 'UnexpectedErrorInChannelsSubscription', {err}]);
+          });
+
+          return;
+        },
+        cbk);
+      }],
+
+      // Pending channels changes
+      pending: ['apiKey', 'getNodes', 'userId', ({getNodes, userId}, cbk) => {
+        return asyncEach(getNodes, ({from, lnd}, cbk) => {
+          const sub = subscribeToPendingChannels({lnd});
+
+          subscriptions.push(sub);
+
+          sub.on('opening', update => {
+            return postOpeningMessage({
+              from,
+              lnd,
+              id: connectedId,
+              opening: update.channels,
+              send: (id, msg, opt) => bot.api.sendMessage(id, msg, opt),
+            },
+            err => !!err ? logger.error({node: from, pend_err: err}) : null);
+          });
+
+          sub.once('error', err => {
+            // Terminate subscription and restart after a delay
+            sub.removeAllListeners();
+
+            return cbk([503, 'UnexpectedErrorInPendingSubscription', {err}]);
           });
 
           return;

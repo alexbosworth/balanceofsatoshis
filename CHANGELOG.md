@@ -1,5 +1,9 @@
 # Versions
 
+## 11.49.0
+
+- `telegram`: Add support for notifying of new opening channels
+
 ## 11.48.1
 
 - `fund`: Support sending to P2TR addresses
