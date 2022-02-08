@@ -212,6 +212,11 @@ module.exports = (args, cbk) => {
               return cbk(err);
             }
 
+            // Exit early when the channel policies are not defined
+            if (!!res.policies.find(n => n.cltv_delta === undefined)) {
+              return cbk();
+            }
+
             return cbk(null, res);
           });
         },

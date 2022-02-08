@@ -1,5 +1,9 @@
 # Versions
 
+## 11.49.2
+
+- `open`: Fix crash when using `--set-fee-rate` but policy details are missing
+
 ## 11.49.1
 
 - `telegram`: Add support for notifying of new opening channels
