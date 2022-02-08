@@ -1,8 +1,12 @@
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 const lnd = require('./../lnd');
+
 const flatten = arr => [].concat(...arr);
+const {isArray} = Array;
+const isString = n => typeof n === 'string';
 const openingNodes = n => flatten([n]);
+
 
 /** Get a list of opening saved nodes
 
@@ -17,15 +21,21 @@ const openingNodes = n => flatten([n]);
     lnds: [Array of authenticated lnd objects]
   }
 */
-
-
 module.exports = ({default_node, logger, opening_nodes}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       //Check Arguments
-      validate: cbk => {
-        if (!opening_nodes) {
-          return cbk([400, 'ExpectedOpeningNodesToGetLnds']);
+      validate: cbk => { 
+        if (!isString(default_node) && default_node !== undefined) {
+          return cbk([400, 'ExpectedDefaultNodeNameToGetOpeningNodeLnds']);
+        }
+
+        if (!logger) {
+          return cbk([400, 'ExpectedLoggerToGetOpeningNodeLnds']);
+        }
+        
+        if (!isArray(opening_nodes)) {
+          return cbk([400, 'ExpectedArrayOfOpeningNodesToGetOpeningNodeLnds']);
         }
 
         return cbk();
