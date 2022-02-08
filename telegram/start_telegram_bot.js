@@ -761,8 +761,8 @@ module.exports = (args, cbk) => {
                   return forward.tokens >= limits.min_forward_tokens;
                 }),
                 id: connectedId,
-                key: apiKey.key,
                 node: node.public_key,
+                send: (id, msg, opt) => bot.api.sendMessage(id, msg, opt),
               },
               err => {
                 if (!!err) {
@@ -845,10 +845,8 @@ module.exports = (args, cbk) => {
             }
 
             return postSettledPayment({
-              request,
               from: node.from,
               id: connectedId,
-              key: apiKey.key,
               lnd: node.lnd,
               nodes: getNodes.map(n => n.public_key),
               payment: {
@@ -857,10 +855,9 @@ module.exports = (args, cbk) => {
                 safe_fee: payment.safe_fee,
                 safe_tokens: payment.safe_tokens,
               },
+              send: (id, msg, opts) => bot.api.sendMessage(id, msg, opts),
             },
             err => !!err ? logger.error({post_payment_error: err}) : null);
-
-            return;
           });
 
           sub.on('error', err => {
