@@ -20,7 +20,6 @@ const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPsbtFromTransaction} = require('goldengate');
-const {getWalletVersion} = require('ln-service');
 const {openChannels} = require('ln-service');
 const {maintainUtxoLocks} = require('ln-sync');
 const moment = require('moment');
@@ -41,7 +40,6 @@ const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const knownTypes = ['private', 'public'];
 const lineBreak = '\n';
-const noInternalFundingVersions = ['0.11.0-beta', '0.11.1-beta'];
 const notFound = -1;
 const peerAddedDelayMs = 1000 * 5;
 const per = (a, b) => (a / b).toFixed(2);
@@ -174,7 +172,6 @@ module.exports = (args, cbk) => {
       
       //Map each pubkey to each opening lnd or default lnd if no opening node is specified
       mapPubkeysToLnds: ['capacities', 'validate', ({capacities}, cbk) => {
-        const mappedKeysToLnds = [];
 
         const coopCloseAddress = args.cooperative_close_addresses;
         const defaultLnd = args.lnd;
@@ -184,18 +181,18 @@ module.exports = (args, cbk) => {
         const publicKeys = args.public_keys;
         const types = args.types;
 
-        publicKeys.forEach((publicKey, i) => {
-          const obj = new Object();
-          obj.capacity = capacities[i] || undefined;
-          obj.cooperative_close_address = coopCloseAddress[i] || undefined;
-          obj.give = gives[i] || undefined;
-          obj.lnd = openingNodesLnds[i] || defaultLnd;
-          obj.opening_node_name = openingNodes[i] || undefined;
-          obj.public_key = publicKey;
-          obj.type = types[i] || undefined;
+        const mappedKeysToLnds = publicKeys.map((publicKey, i) => {
+          return {
+            capacity: capacities[i] || undefined,
+            cooperative_close_address: coopCloseAddress[i] || undefined,
+            give: gives[i] || undefined,
+            lnd: openingNodesLnds[i] || defaultLnd,
+            opening_node_name: openingNodes[i] || undefined,
+            public_key: publicKey,
+            type: types[i] || undefined
+          }
+        }); 
 
-          mappedKeysToLnds.push(obj);
-        });
         return cbk(null, mappedKeysToLnds);
       }],
 
@@ -366,17 +363,6 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Get the wallet version and check if it is compatible
-      getWalletVersion: ['validate', ({}, cbk) => {
-        return getWalletVersion({lnd: args.lnd}, (err, res) => {
-          if (!!err) {
-            return cbk([400, 'BackingLndCannotBeUsedToOpenChannels', {err}]);
-          }
-
-          return cbk(null, {version: res.version});
-        });
-      }],
-
       // Check all nodes that they will allow an inbound channel
       checkAcceptance: [
         'capacities',
@@ -430,17 +416,11 @@ module.exports = (args, cbk) => {
         'capacities',
         'checkAcceptance',
         'connect',
-        'getWalletVersion',
-        ({getWalletVersion}, cbk) =>
+        ({}, cbk) =>
       {
         // Exit early when external directive is supplied
         if (!!args.is_external) {
           return cbk(null, args.is_external);
-        }
-
-        // Early versions of LND do not support internal PSBT funding
-        if (noInternalFundingVersions.includes(getWalletVersion.version)) {
-          return cbk(null, true);
         }
 
         // Peers are connected - what type of funding will be used?
@@ -472,7 +452,6 @@ module.exports = (args, cbk) => {
         'capacities',
         'connect',
         'getNodes',
-        'getWalletVersion',
         'isExternal',
         ({capacities, getNodes}, cbk) =>
       {
@@ -600,23 +579,23 @@ module.exports = (args, cbk) => {
             funding_deadline: moment().add(10, 'minutes').calendar(),
           });
         }
-        const outputs = [];
-        openChannels.forEach(n => {
+
+        const outputs = openChannels.map(n => {
           const [{address}] = n;
           const [{tokens}] = n;
-          outputs.push({
+          return {
             address,
             tokens,
-          });
+          };
         });
 
         return getFundedTransaction({
+          outputs,
           ask: args.ask,
           chain_fee_tokens_per_vbyte: askForFeeRate.tokens_per_vbyte,
           is_external: isExternal,
           lnd: args.lnd,
           logger: args.logger,
-          outputs,
         },
         cbk);
       })],
