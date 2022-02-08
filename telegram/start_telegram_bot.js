@@ -752,7 +752,6 @@ module.exports = (args, cbk) => {
               return notifyOfForwards({
                 from,
                 lnd,
-                request,
                 forwards: res.forwards.filter(forward => {
                   if (!limits || !limits.min_forward_tokens) {
                     return true;
