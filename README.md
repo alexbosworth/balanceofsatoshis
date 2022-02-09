@@ -461,13 +461,13 @@ dir as an additional -v argument to docker run:
 If you are on MacOS:
 
 ```shell
---network="host" -v $HOME/Library/Application\ Support/Lnd/:/home/node/.lnd:ro
+--network="host" -v $HOME/Library/Application\ Support/Lnd/:/root/.lnd:ro
 ```
 
 Or on Linux:
 
 ```shell
---network="host" -v $HOME/.lnd:/home/node/.lnd:ro
+--network="host" -v $HOME/.lnd:/root/.lnd:ro
 ```
 
 On BTCPayServer:
@@ -487,8 +487,8 @@ On Umbrel this would be:
 # add Umbrel specific details:
 ## --network="host"
 ## --add-host=umbrel.local:192.168.1.23
-## -v $HOME/umbrel/lnd:/home/node/.lnd:ro
-docker run -it --rm --network="host" --add-host=umbrel.local:192.168.1.23 -v $HOME/.bos:/home/node/.bos -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
+## -v $HOME/umbrel/lnd:/root/.lnd:ro
+docker run -it --rm --network="host" --add-host=umbrel.local:192.168.1.23 -v $HOME/.bos:/home/node/.bos -v $HOME/umbrel/lnd:/root/.lnd:ro alexbosworth/balanceofsatoshis report
 ```
 
 Note: For [umbrel-os](https://github.com/getumbrel/umbrel-os) users, when
