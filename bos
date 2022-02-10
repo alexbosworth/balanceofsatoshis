@@ -44,7 +44,7 @@ const wallets = importLazy('./wallets');
 const {version} = importLazy('./package');
 
 const {BOOL} = prog;
-const collect = arr => [].concat(...arr).filter(n => !!n);
+const collect = arr => [].concat(...[arr]).filter(n => !!n);
 const {exit} = process;
 const flatten = arr => [].concat(...arr);
 const {FLOAT} = prog;
@@ -1061,17 +1061,17 @@ prog
         return peers.openChannels({
           logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
-          capacities: collect([options.amount]),
-          cooperative_close_addresses: collect([options.coopCloseAddress]),
+          capacities: collect(options.amount),
+          cooperative_close_addresses: collect(options.coopCloseAddress),
           fs: {getFile: readFile},
-          gives: collect([options.give]),
+          gives: collect(options.give),
           is_external: options.externalFunding,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          opening_nodes: collect([options.openingNode]),
+          opening_nodes: collect(options.openingNode),
           public_keys: args.peerPublicKeys,
           request: commands.simpleRequest,
-          set_fee_rates: collect([options.setFeeRate]),
-          types: collect([options.type]),
+          set_fee_rates: collect(options.setFeeRate),
+          types: collect(options.type),
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {

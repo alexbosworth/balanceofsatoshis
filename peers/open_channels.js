@@ -393,7 +393,7 @@ module.exports = (args, cbk) => {
         'connect',
         'getLnds',
         'opens',
-        ({connect, getLnds, opens}, cbk) => 
+        ({connect, getLnds, opens}, cbk) =>
       {
         // Flatten out the opens so that they can be tried serially
         const tests = opens.map(({channels, node}) => {
