@@ -761,6 +761,7 @@ module.exports = (args, cbk) => {
                 }),
                 id: connectedId,
                 node: node.public_key,
+                nodes: getNodes,
                 send: (id, msg, opt) => bot.api.sendMessage(id, msg, opt),
               },
               err => {
