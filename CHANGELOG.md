@@ -1,5 +1,9 @@
 # Versions
 
+## 11.51.0
+
+- `telegram`: Support notifications when a channel is pending closing
+
 ## 11.50.1
 
 - `telegram`: Support forwards and payments with `--use-proxy`
