@@ -292,6 +292,9 @@ module.exports = (args, cbk) => {
           }
 
           return cbk(null, channels.map(channel => {
+            // Only the highest CLTV delta across all peer channels applies
+            const cltvDelta = max(...currentPolicies.map(n => n.cltv_delta));
+
             // Exit early when there is no known policy
             if (!currentPolicies.length) {
               return {
@@ -301,9 +304,6 @@ module.exports = (args, cbk) => {
                 transaction_vout: channel.transaction_vout,
               };
             }
-
-            // Only the highest CLTV delta across all peer channels applies
-            const cltvDelta = max(...currentPolicies.map(n => n.cltv_delta));
 
             // Only the highest fee rate across all peer channels applies
             const maxFeeRate = max(...currentPolicies.map(n => n.fee_rate));

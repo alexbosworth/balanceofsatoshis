@@ -1,5 +1,9 @@
 # Versions
 
+## 11.52.1
+
+- `fees`, `open`: Fix regression crash when setting fees on a pending channel
+
 ## 11.52.0
 
 - `call`: Add command `getMasterPublicKeys` to list extended public keys
