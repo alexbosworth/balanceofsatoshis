@@ -1,5 +1,9 @@
 # Versions
 
+## 11.50.0
+
+- `open`: Add `--opening-node` to batch open channels with multiple saved nodes
+
 ## 11.49.2
 
 - `open`: Fix crash when using `--set-fee-rate` but policy details are missing
