@@ -685,17 +685,20 @@ module.exports = (args, cbk) => {
 
           subscriptions.push(sub);
 
+          // Listen for pending closing channel events
           sub.on('closing', update => {
             return postClosingMessage({
               from,
               lnd,
               closing: update.channels,
               id: connectedId,
+              nodes: getNodes,
               send: (id, msg, opt) => bot.api.sendMessage(id, msg, opt),
             },
-            err => !!err ? logger.error({node: from, closing_err: err}) : null);
+            err => !!err ? logger.error({from, closing_err: err}) : null);
           });
 
+          // Listen for pending opening events
           sub.on('opening', update => {
             return postOpeningMessage({
               from,
