@@ -428,6 +428,9 @@
       "method": "getLockedUtxos"
     },
     {
+      "method": "getMasterPublicKeys"
+    },
+    {
       "method": "getMethods"
     },
     {

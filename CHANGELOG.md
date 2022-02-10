@@ -1,5 +1,9 @@
 # Versions
 
+## 11.52.0
+
+- `call`: Add command `getMasterPublicKeys` to list extended public keys
+
 ## 11.51.0
 
 - `telegram`: Support notifications when a channel is pending closing
