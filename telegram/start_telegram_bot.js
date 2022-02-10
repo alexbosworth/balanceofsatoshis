@@ -34,6 +34,7 @@ const {isMessageReplyAction} = require('ln-telegram');
 const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
 const {postClosedMessage} = require('ln-telegram');
+const {postClosingMessage} = require('ln-telegram');
 const {postCreatedTrade} = require('ln-telegram');
 const {postOpenMessage} = require('ln-telegram');
 const {postOpeningMessage} = require('ln-telegram');
@@ -634,6 +635,24 @@ module.exports = (args, cbk) => {
           const sub = subscribeToChannels({lnd});
 
           subscriptions.push(sub);
+
+          sub.on('channel_active_changed', update => {
+            //Exit early if its a channel open event
+            if (!!update.is_active) {
+              return; 
+            }
+
+            return postClosingMessage({
+              from,
+              lnd,
+              id: connectedId,
+              is_active: update.is_active,
+              transaction_id: update.transaction_id,
+              transaction_vout: update.transaction_vout,
+              send: (id, msg, opt) => bot.api.sendMessage(id, msg, opt),
+            },
+            err => !!err ? logger.error({node: from, closing_err: err}) : null);
+          });
 
           sub.on('channel_closed', update => {
             return postClosedMessage({
