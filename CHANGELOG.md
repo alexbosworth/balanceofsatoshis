@@ -1,5 +1,9 @@
 # Versions
 
+## 11.50.1
+
+- `telegram`: Support forwards and payments with `--use-proxy`
+
 ## 11.50.0
 
 - `open`: Add `--opening-node` to batch open channels with multiple saved nodes
