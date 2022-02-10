@@ -1,5 +1,6 @@
 const {randomBytes} = require('crypto');
 
+const {acceptsChannelOpen} = require('ln-sync');
 const {addPeer} = require('ln-service');
 const {address} = require('bitcoinjs-lib');
 const {askForFeeRate} = require('ln-sync');
@@ -19,6 +20,7 @@ const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPsbtFromTransaction} = require('goldengate');
+const {getWalletVersion} = require('ln-service');
 const {openChannels} = require('ln-service');
 const {maintainUtxoLocks} = require('ln-sync');
 const moment = require('moment');
@@ -27,17 +29,20 @@ const {Transaction} = require('bitcoinjs-lib');
 const {unlockUtxo} = require('ln-service');
 
 const adjustFees = require('./../routing/adjust_fees');
+const {authenticatedLnd} = require('./../lnd');
 const channelsFromArguments = require('./channels_from_arguments');
 const {getAddressUtxo} = require('./../chain');
 const {parseAmount} = require('./../display');
 
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
-const defaultChannelCapacity = 5e6;
+const detectNetworks = ['btc', 'btctestnet'];
+const flatten = arr => [].concat(...arr);
 const format = 'p2wpkh';
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const knownTypes = ['private', 'public'];
 const lineBreak = '\n';
+const noInternalFundingVersions = ['0.11.0-beta', '0.11.1-beta'];
 const notFound = -1;
 const peerAddedDelayMs = 1000 * 5;
 const per = (a, b) => (a / b).toFixed(2);
@@ -61,6 +66,7 @@ const utxoPollingTimes = 20;
     [is_external]: <Use External Funds to Open Channels Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
+    opening_nodes: [<Open New Channel With Saved Node Name String>]
     public_keys: [<Public Key Hex String>]
     request: <Request Function>
     set_fee_rates: [<Fee Rate Number>]
@@ -101,6 +107,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToInitiateOpenChannelRequests']);
         }
 
+        if (!isArray(args.opening_nodes)) {
+          return cbk([400, 'ExpectedOpeningNodesArrayToInitiateOpenChannels']);
+        }
+
         if (!isArray(args.public_keys)) {
           return cbk([400, 'ExpectedPublicKeysToOpenChannels']);
         }
@@ -113,8 +123,8 @@ module.exports = (args, cbk) => {
         const hasCapacities = !!args.capacities.length;
         const hasGives = !!args.gives.length;
         const hasFeeRates = !!args.set_fee_rates.length;
+        const hasNodes = !!args.opening_nodes.length;
         const publicKeysLength = args.public_keys.length;
-        const hasOpeningNodes = !!args.opening_nodes.length;
 
         if (!!hasCapacities && publicKeysLength !== args.capacities.length) {
           return cbk([400, 'CapacitiesMustBeSpecifiedForEveryPublicKey']);
@@ -132,7 +142,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MustSetFeeRateForEveryPublicKey']);
         }
 
-        if (!!hasOpeningNodes && publicKeysLength !== args.opening_nodes.length) {
+        if (!!hasNodes && publicKeysLength !== args.opening_nodes.length) {
           return cbk([400, 'MustSetOpeningNodeForEveryPublicKey']);
         }
 
@@ -154,7 +164,7 @@ module.exports = (args, cbk) => {
 
         return cbk();
       },
-      
+
       // Parse capacities
       capacities: ['validate', ({}, cbk) => {
         const capacities = args.capacities.map(amount => {
@@ -164,130 +174,146 @@ module.exports = (args, cbk) => {
             return cbk([400, err.message]);
           }
         });
-        
+
         return cbk(null, capacities);
       }],
-      
-      //Map each pubkey to each opening lnd or default lnd if no opening node is specified
-      mapPubkeysToLnds: ['capacities', 'validate', ({capacities}, cbk) => {
 
-        const coopCloseAddress = args.cooperative_close_addresses;
-        const defaultLnd = args.lnd;
-        const gives = args.gives;
-        const openingNodes = args.opening_nodes;
-        const openingNodesLnds = args.opening_node_lnds;
-        const publicKeys = args.public_keys;
-        const types = args.types;
+      // Get LNDs associated with nodes specified for opening
+      getLnds: ['validate', ({}, cbk) => {
+        // Exit early when there are no opening nodes specified
+        if (!args.opening_nodes.length) {
+          return cbk(null, [{lnd: args.lnd}]);
+        }
 
-        const mappedKeysToLnds = publicKeys.map((publicKey, i) => {
-          return {
-            capacity: capacities[i] || undefined,
-            cooperative_close_address: coopCloseAddress[i] || undefined,
-            give: gives[i] || undefined,
-            lnd: openingNodesLnds[i] || defaultLnd,
-            opening_node_name: openingNodes[i] || undefined,
-            public_key: publicKey,
-            type: types[i] || undefined
-          }
-        }); 
+        return asyncMapSeries(uniq(args.opening_nodes), (node, cbk) => {
+          return authenticatedLnd({node, logger: args.logger}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
 
-        return cbk(null, mappedKeysToLnds);
+            return cbk(null, {node, lnd: res.lnd});
+          });
+        },
+        cbk);
       }],
 
       // Get the default network name
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
-      getOpeningNodesNetwork: ['validate', ({}, cbk) => {
-        //Exit early if no opening saved nodes
-        if (!args.opening_nodes || !args.opening_nodes.length) {
-          return cbk();
-        }
-        asyncMap(args.opening_node_lnds, (node, cbk) => {
-          return getNetwork({lnd: node}, (err, res) => {
+      // Get sockets in case we need to connect
+      getNodes: ['validate', ({}, cbk) => {
+        return asyncMap(uniq(args.public_keys), (key, cbk) => {
+          return getNode({lnd: args.lnd, public_key: key}, (err, res) => {
+            // Ignore errors when a node is unknown in the graph
             if (!!err) {
-              return cbk(err);
+              return cbk(null, {public_key: key, sockets: []});
             }
-            return cbk(null, res);
-          });
-        },
-        cbk);
 
-      }],
-
-      // Check if all networks are the same
-      checkNetworks: [
-        'getNetwork', 
-        'getOpeningNodesNetwork', 
-        ({getNetwork, getOpeningNodesNetwork}, cbk) => {
-        //Exit early if no opening saved nodes
-        if (!args.opening_nodes || !args.opening_nodes.length) {
-          return cbk();
-        }
-        const networks = [getNetwork, ...getOpeningNodesNetwork];
-      
-        const checkNetwork = networks.every((n, i, arr) => n.network === arr[0].network && n.bitcoinjs === arr[0].bitcoinjs);
-          if (!checkNetwork) {
-            return cbk([400, 'AllNodesMustBeOnTheSameNetwork']);
-          }
-        
-        return cbk();
-      
-      }],
-
-      // Get node details for each public key and sockets to connect if we need to
-      getNodes: [
-        'checkNetworks', 
-        'mapPubkeysToLnds', 
-        'validate', 
-        ({mapPubkeysToLnds}, cbk) => {
-        return asyncMap((mapPubkeysToLnds), (map, cbk) => {
-          return getNode({lnd: map.lnd, public_key: map.public_key}, (err, res) => {
-            if (!!err) {
-              return cbk(null, {public_key: map.public_key, sockets: []});
-            }
             const peers = res.channels.map(({policies}) => {
-              return policies.find(n => n.public_key !== map.public_key).public_key;
+              return policies.find(n => n.public_key !== key).public_key;
             });
 
             const isBig = res.features.find(n => n.type === 'large_channels');
 
             return cbk(null, {
               alias: res.alias,
-              capacity: map.capacity,
               channels_count: res.channels.length,
-              coop_close_address: map.coop_close_address,
-              give: map.give,
               is_accepting_large_channels: !!isBig || undefined,
-              opening_node_lnd: map.lnd,
-              opening_node_name: map.opening_node_name,
               peers_count: uniq(peers).length,
-              public_key: map.public_key,
+              public_key: key,
               sockets: res.sockets,
-              type: map.type,
             });
           });
         },
         cbk);
       }],
 
-      // Display opening message
-      openingMessage: [
-        'getNodes',
-        'mapPubkeysToLnds',
-        ({capacities, getNodes}, cbk) =>
-      {
-        const {channels} = channelsFromArguments({
+      // Get the wallet version to make sure the node supports internal funding
+      getWalletVersion: ['validate', ({}, cbk) => {
+        return getWalletVersion({lnd: args.lnd}, cbk);
+      }],
+
+      // Get the networks of the opening nodes
+      getOpeningNetworks: ['getLnds', ({getLnds}, cbk) => {
+        if (!getLnds) {
+          return cbk();
+        }
+
+        return asyncMap(getLnds, ({lnd}, cbk) => getNetwork({lnd}, cbk), cbk);
+      }],
+
+      // Get the opening parameters to use to open the new channels
+      opens: ['capacities', ({capacities}, cbk) => {
+        const {opens} = channelsFromArguments({
           capacities,
           addresses: args.cooperative_close_addresses,
           gives: args.gives,
           nodes: args.public_keys,
+          rates: args.set_fee_rates,
+          saved: args.opening_nodes,
           types: args.types,
         });
 
+        return cbk(null, opens);
+      }],
+
+      // Check if all networks are the same
+      checkNetworks: [
+        'getNetwork',
+        'getOpeningNetworks',
+        ({getNetwork, getOpeningNetworks}, cbk) =>
+      {
+        // Exit early when there are no networks to check
+        if (!getOpeningNetworks) {
+          return cbk();
+        }
+
+        if (!!getOpeningNetworks.find(n => n.network !== getNetwork.network)) {
+          return cbk([400, 'AllOpeningNodesMustBeOnSameChain']);
+        }
+
+        return cbk();
+      }],
+
+      // Get connected peers to see if we are already connected
+      getPeers: ['getLnds', ({getLnds}, cbk) => {
+        // Exit early when there are no opening nodes
+        if (!args.opening_nodes.length) {
+          return getPeers({lnd: args.lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            return cbk(null, [{peers: res.peers}]);
+          });
+        }
+
+        return asyncMap(args.opening_nodes, (node, cbk) => {
+          const {lnd} = getLnds.find(n => n.node === node);
+
+          return getPeers({lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            return cbk(null, {node, peers: res.peers});
+          });
+        },
+        cbk);
+      }],
+
+      // Connect up to the peers
+      connect: [
+        'getLnds',
+        'getNodes',
+        'getPeers',
+        'opens',
+        ({getLnds, getNodes, getPeers, opens}, cbk) =>
+      {
+        // Collect some details about nodes being connected to
         const nodes = getNodes.filter(n => !!n.channels_count).map(node => {
           return {
             node: `${node.alias || node.public_key}`,
-            opening_saved_node_name: node.opening_node_name,
             channels_per_peer: `${per(node.channels_count, node.peers_count)}`,
             is_accepting_large_channels: node.is_accepting_large_channels,
           };
@@ -295,116 +321,102 @@ module.exports = (args, cbk) => {
 
         args.logger.info(nodes);
 
-        const openingTo = getNodes.map(node => {
-          const {capacity} = channels.find(channel => {
-            return channel.partner_public_key === node.public_key;
-          });
-          if (!!args.opening_nodes && !!args.opening_nodes.length) {
-            return `${node.alias || node.public_key}: ${tokAsBigUnit(capacity)} from ${node.opening_node_name}`;
-          } else {
-            return `${node.alias || node.public_key}: ${tokAsBigUnit(capacity)}`;
-          }
-        });
+        // Connect up as peers
+        return asyncEach(opens, ({node, channels}, cbk) => {
+          // Summarize who is being opened to
+          const openingTo = getNodes
+            .filter(remote => {
+              return !!channels.find(channel => {
+                return channel.partner_public_key === remote.public_key;
+              });
+            })
+            .map(remote => {
+              const {capacity} = channels.find(channel => {
+                return channel.partner_public_key === remote.public_key;
+              });
 
-        args.logger.info({opening_to: openingTo});
+              const remoteNamed = remote.alias || remote.public_key;
 
-        return cbk();
-      }],
+              return `${remoteNamed}: ${tokAsBigUnit(capacity)}`;
+            });
 
-      // Get peers, check if already connected and connect if required
-      connect: ['getNodes', ({getNodes}, cbk) => {
-        return asyncEach((getNodes), (node, cbk) => {
-          return getPeers({lnd: node.opening_node_lnd}, (err, res) => {
-            if (!!err) {
-              return cbk(err);
+          args.logger.info({node, opening_to: openingTo});
+
+          const connectToKeys = channels.map(n => n.partner_public_key);
+          const {lnd} = getLnds.find(n => n.node === node);
+          const {peers} = getPeers.find(n => n.node === node);
+
+          return asyncEach(connectToKeys, (key, cbk) => {
+            // Exit early when the peer is already connected
+            if (peers.map(n => n.public_key).includes(key)) {
+              return cbk();
             }
-              // Exit early when the peer is already connected
-              if (res.peers.map(n => n.public_key).includes(node.public_key)) {
-                return cbk();
-              }
-    
-              if (!node.sockets.length) {
-                return cbk([503, 'NoAddressFoundToConnectToNode', {node}]);
-              }
 
-            if (!!args.opening_nodes && !!args.opening_nodes.length) {
-                  args.logger.info({
-                    connecting_to: {alias: node.alias, public_key: node.public_key, from: node.opening_node_name},
-                  });
-              } else {
-                  args.logger.info({
-                  connecting_to: {alias: node.alias, public_key: node.public_key},
-                });
-              }
+            const to = getNodes.find(n => n.public_key === key);
 
-              return asyncRetry({times}, cbk => {
-                return asyncDetectSeries(node.sockets, ({socket}, cbk) => {
-                  return addPeer({socket, lnd: node.opening_node_lnd, public_key: node.public_key}, err => {
-                    return cbk(null, !err);
-                  });
-                },
-                (err, res) => {
-                  if (!!err) {
-                    return cbk(err);
-                  }
-    
-                  if (!res) {
-                    return cbk([503, 'FailedToConnectToPeer', ({peer: node.public_key})]);
-                  }
-    
-                  return setTimeout(() => cbk(null, true), peerAddedDelayMs);
+            if (!to.sockets.length) {
+              return cbk([503, 'NoAddressFoundToConnectToNode', {to}]);
+            }
+
+            args.logger.info({
+              connecting_to: {alias: to.alias, public_key: to.public_key},
+              from: node,
+            });
+
+            return asyncRetry({times}, cbk => {
+              return asyncDetectSeries(to.sockets, ({socket}, cbk) => {
+                return addPeer({lnd, socket, public_key: key}, err => {
+                  return cbk(null, !err);
                 });
               },
-              cbk);
-          });
+              (err, res) => {
+                if (!!err) {
+                  return cbk(err);
+                }
+
+                if (!res) {
+                  return cbk([503, 'FailedToConnectToPeer', ({peer: key})]);
+                }
+
+                return setTimeout(() => cbk(null, true), peerAddedDelayMs);
+              });
+            },
+            cbk);
+          },
+          cbk);
         },
         cbk);
       }],
 
       // Check all nodes that they will allow an inbound channel
       checkAcceptance: [
-        'capacities',
         'connect',
-        'getNodes',
-        ({capacities, connect, getNodes}, cbk) => 
+        'getLnds',
+        'opens',
+        ({connect, getLnds, opens}, cbk) => 
       {
-        const {channels} = channelsFromArguments({
-          capacities,
-          addresses: args.cooperative_close_addresses,
-          gives: args.gives,
-          nodes: args.public_keys,
-          types: args.types,
+        // Flatten out the opens so that they can be tried serially
+        const tests = opens.map(({channels, node}) => {
+          return channels.map(channel => ({
+            capacity: channel.capacity,
+            cooperative_close_address: channel.cooperative_close_address,
+            give_tokens: channel.give_tokens,
+            is_private: channel.is_private,
+            lnd: getLnds.find(n => n.node === node).lnd,
+            partner_public_key: channel.partner_public_key,
+          }));
         });
 
-        return asyncEachSeries(getNodes, (node, cbk) => {
-          const to = node.public_key;
-          const channel = {
-            capacity: node.capacity || defaultChannelCapacity,
-            cooperative_close_address: node.coop_close_address || undefined,
-            give: !!node.give ? Number(node.give) : undefined,
-            partner_public_key: node.public_key,
-            is_private: !!node.type && node.type === 'private'
-          }
-
-          return openChannels({
-            channels: [channel],
-            lnd: node.opening_node_lnd,
+        return asyncEachSeries(flatten(tests), (test, cbk) => {
+          return acceptsChannelOpen({
+            capacity: test.capacity,
+            cooperative_close_address: test.cooperative_close_address,
+            give_tokens: test.give_tokens,
+            is_private: test.is_private,
+            lnd: test.lnd,
+            partner_public_key: test.partner_public_key,
           },
-          (err, res) => {
-            if (!!err) {
-              return cbk([503, 'UnexpectedErrorProposingChannel', {to, err}]);
-            }
-            
-            const [{id}] = res.pending;
-            
-            return cancelPendingChannel({id, lnd: node.opening_node_lnd}, (err, res) => {
-              if (!!err) {
-                return cbk([503, 'UnexpectedErrorCancelingChannel', {err}]);
-              }
-              
-              return cbk(null, false);
-            });
-          });
+          cbk);
         },
         cbk);
       }],
@@ -414,17 +426,23 @@ module.exports = (args, cbk) => {
         'capacities',
         'checkAcceptance',
         'connect',
-        ({}, cbk) =>
+        'getWalletVersion',
+        ({getWalletVersion}, cbk) =>
       {
         // Exit early when external directive is supplied
         if (!!args.is_external) {
           return cbk(null, args.is_external);
         }
 
+        // Early versions of LND do not support internal PSBT funding
+        if (noInternalFundingVersions.includes(getWalletVersion.version)) {
+          return cbk(null, true);
+        }
+
         // Peers are connected - what type of funding will be used?
         args.logger.info(lineBreak);
 
-        // Prompt to make sure that internal funding should really be used
+        // Prompt to make sure that internal funding should be used
         return args.ask({
           default: true,
           message: 'Use internal wallet funds?',
@@ -449,73 +467,98 @@ module.exports = (args, cbk) => {
         'askForFeeRate',
         'capacities',
         'connect',
+        'getLnds',
         'getNodes',
         'isExternal',
-        ({capacities, getNodes}, cbk) =>
+        'opens',
+        ({getLnds, getNodes, opens}, cbk) =>
       {
-        const {channels} = channelsFromArguments({
-          capacities,
-          addresses: args.cooperative_close_addresses,
-          gives: args.gives,
-          nodes: args.public_keys,
-          types: args.types,
-        });
+        // When there are multiple batches, broadcasting must be stopped
+        const [, hasMultipleBatches] = opens;
 
-        return asyncMapSeries(getNodes, (node, cbk) => { 
-          const to = node.public_key;
+        // Go through each batch and open channels
+        return asyncMapSeries(opens, asyncReflect(({channels, node}, cbk) => {
+          const {lnd} = getLnds.find(n => n.node === node);
 
-          const channel = {
-            capacity: node.capacity || defaultChannelCapacity,
-            cooperative_close_address: node.coop_close_address || undefined,
-            give: !!node.give ? Number(node.give) : undefined,
-            partner_public_key: to,
-            is_private: !!node.type && node.type === 'private'
-          }
           return openChannels({
-            channels: [channel], 
-            lnd: node.opening_node_lnd,
-            is_avoiding_broadcast: true,
-          }, (err, res) => {
+            channels,
+            lnd,
+            is_avoiding_broadcast: !!hasMultipleBatches,
+          },
+          (err, res) => {
             if (!!err) {
               return cbk(err);
             }
-            
-            const pending = res.pending.slice();
-  
-            // Sort outputs using BIP 69
-            try {
-              pending.sort((a, b) => {
-                // Sort by tokens ascending when no tie breaker needed
-                if (a.tokens !== b.tokens) {
-                  return a.tokens - b.tokens;
-                }
-  
-                return bech32AsData(a.address).compare(bech32AsData(b.address));
-              });
-            } catch (err) {}
 
-            return cbk(null, pending);
+            return cbk(null, {lnd, node, pending: res.pending});
           });
-        },
-        cbk);
+        }),
+        (err, res) => {
+          const openError = res.find(n => !!n.error);
+          const opening = res.map(n => n.value).filter(n => !!n);
+
+          if (!!openError) {
+            // Cancel past successful batch channel open proposals
+            return asyncEach(opening, ({lnd, pending}, cbk) => {
+              return asyncEach(pending, ({id}, cbk) => {
+                return cancelPendingChannel({id, lnd}, err => {
+                  // Suppress errors
+                  return cbk();
+                });
+              },
+              cbk);
+            },
+            () => {
+              // Return the original error
+              return cbk(openError.error);
+            });
+          }
+
+          return cbk(null, res.map(n => n.value));
+        });
+      }],
+
+      // Pending channel outputs
+      outputs: ['openChannels', ({openChannels}, cbk) => {
+        // All batches will be paid out together in a single tx
+        const pending = flatten(openChannels.map(({pending}) => {
+          return pending.map(n => ({address: n.address, tokens: n.tokens}));
+        }));
+
+        // Sort all the outputs using BIP 69
+        try {
+            pending.sort((a, b) => {
+            // Sort by tokens ascending when no tie breaker needed
+            if (a.tokens !== b.tokens) {
+              return a.tokens - b.tokens;
+            }
+
+            return bech32AsData(a.address).compare(bech32AsData(b.address));
+          });
+        } catch (err) {}
+
+        return cbk(null, pending);
       }],
 
       // Detect funding transaction
       detectFunding: [
         'getNetwork',
         'openChannels',
-        'getNodes',
-        ({getNetwork, openChannels, getNodes}, cbk) =>
+        ({getNetwork, openChannels}, cbk) =>
       {
+        if (!detectNetworks.includes(getNetwork.network)) {
+          return cbk();
+        }
+
+        const [{pending}] = openChannels;
+
+        const [{address, tokens}] = pending;
+
         return asyncRetry({
           interval: utxoPollingIntervalMs,
           times: utxoPollingTimes,
         },
         cbk => {
-          let i = 0;
-          return asyncEachSeries(openChannels, (channel, cbk) => {
-            i++;
-            const [{address, tokens}] = channel;
           return getAddressUtxo({
             address,
             tokens,
@@ -546,17 +589,18 @@ module.exports = (args, cbk) => {
               args.logger.info({
                 funding_detected: Transaction.fromHex(foundTx).getId(),
               });
-                const [{id}] = channel;
+
+              return asyncEach(openChannels, ({lnd, node, pending}, cbk) => {
                 return fundPendingChannels({
-                  channels: [id],
+                  lnd,
+                  channels: pending.map(n => n.id),
                   funding: res.psbt,
-                  lnd: getNodes[i].opening_node_lnd,
                 },
                 () => cbk());
-              });
+              },
+              cbk);
             });
-          },
-          cbk);
+          });
         },
         () => {
           // Ignore errors
@@ -568,8 +612,8 @@ module.exports = (args, cbk) => {
       getFunding: [
         'askForFeeRate',
         'isExternal',
-        'openChannels',
-        asyncReflect(({askForFeeRate, isExternal, openChannels}, cbk) =>
+        'outputs',
+        asyncReflect(({askForFeeRate, isExternal, outputs}, cbk) =>
       {
         // Warn external funding that funds are expected within 10 minutes
         if (!!isExternal) {
@@ -577,15 +621,6 @@ module.exports = (args, cbk) => {
             funding_deadline: moment().add(10, 'minutes').calendar(),
           });
         }
-
-        const outputs = openChannels.map(n => {
-          const [{address}] = n;
-          const [{tokens}] = n;
-          return {
-            address,
-            tokens,
-          };
-        });
 
         return getFundedTransaction({
           outputs,
@@ -638,64 +673,63 @@ module.exports = (args, cbk) => {
       fundChannels: [
         'fundingPsbt',
         'openChannels',
-        'getNodes',
-        asyncReflect(({fundingPsbt, openChannels, getNodes}, cbk) =>
+        'outputs',
+        asyncReflect(({fundingPsbt, openChannels, outputs}, cbk) =>
       {
         // Exit early when there is no funding PSBT
         if (!fundingPsbt.value || !fundingPsbt.value.psbt) {
           return cbk(null, {});
         }
 
-        args.logger.info({
-          funding: openChannels,
-        });
+        args.logger.info({funding: outputs.map(n => tokAsBigUnit(n.tokens))});
 
-        let i =0;
-        return asyncMapSeries(openChannels, (channel, cbk) => {
-          const [{id}] = channel;
-
+        return asyncMap(openChannels, ({lnd, node, pending}, cbk) => {
           return fundPendingChannels({
-            channels: [id],
+            lnd,
+            channels: pending.map(n => n.id),
             funding: fundingPsbt.value.psbt,
-            lnd: getNodes[i].opening_node_lnd,
           },
-          (err, res) => {
-            i++;
-            if (!!err) {
-              return cbk(err);
-            }
-            return cbk(null, res);
-          });
+          cbk);
         },
         cbk);
-
       })],
 
-      //Broadcast the funding transaction
+      // Broadcast the funding transaction when opening on multiple nodes
       broadcastChainTransaction: [
-        'fundChannels', 
-        'fundingPsbt', 
+        'fundChannels',
+        'fundingPsbt',
         'getFunding',
-        ({fundChannels, fundingPsbt, getFunding}, cbk) => {
+        'openChannels',
+        ({fundChannels, fundingPsbt, getFunding, openChannels}, cbk) =>
+      {
         const fundingError = getFunding.error || fundingPsbt.error;
         const error = fundChannels.error || fundingError;
-        
-        // Exit early when there is an error
+
+        // Exit early when the opening had an error and broadcasting isn't safe
         if (!!error || !!fundingError) {
           return cbk();
         }
 
-        args.logger.info({transaction: getFunding.value.transaction});
-        args.logger.info(lineBreak);
+        const [, multiNodeOpening] = openChannels;
 
-        return broadcastChainTransaction({lnd: args.lnd, transaction: getFunding.value.transaction}, (err, res) => {
+        // Exit early when not opening in multi-node mode
+        if (!multiNodeOpening) {
+          return cbk();
+        }
+
+        return broadcastChainTransaction({
+          lnd: args.lnd,
+          transaction: getFunding.value.transaction,
+        },
+        (err, res) => {
           if (!!err) {
             return cbk(err);
           }
-          args.logger.info({broadcast: res.id});
+
+          args.logger.info({transaction: getFunding.value.transaction});
+
           return cbk();
-          },
-        cbk);
+        });
       }],
 
       // Cancel pending if there is an error
@@ -703,9 +737,8 @@ module.exports = (args, cbk) => {
         'fundChannels',
         'fundingPsbt',
         'getFunding',
-        'getNodes',
         'openChannels',
-        ({fundChannels, fundingPsbt, getFunding, openChannels, getNodes}, cbk) =>
+        ({fundChannels, fundingPsbt, getFunding, openChannels}, cbk) =>
       {
         const fundingError = getFunding.error || fundingPsbt.error;
 
@@ -717,18 +750,20 @@ module.exports = (args, cbk) => {
         }
 
         args.logger.info({
-          canceling_pending_channels: openChannels,
+          canceling_pending_channels: openChannels.map(({node, pending}) => ({
+            node,
+            ids: pending.map(n => n.id),
+          })),
         });
 
-        let i =0;
-        // Cancel outstanding pending channels when there is an error
-        return asyncEachSeries(openChannels, (channel, cbk) => {
-          const [{id}] = channel;
-          return cancelPendingChannel({id: id, lnd: getNodes[i].opening_node_lnd}, (err, res) => {
-            i++;
-            // Ignore errors when trying to cancel a pending channel
-            return cbk();
-          });
+        return asyncEach(openChannels, ({lnd, pending}, cbk) => {
+          return asyncEach(pending => ({id}, cbk) => {
+            return cancelPendingChannel({id, lnd}, err => {
+              // Ignore errors when trying to cancel a pending channel
+              return cbk();
+            });
+          },
+          cbk);
         },
         () => {
           // Return the original error that canceled the finalization
@@ -747,7 +782,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        // Exit early when there is no UTXOs to unlock
+        // Exit early when there are no UTXOs to unlock, like external funding
         if (!isArray(getFunding.inputs)) {
           return cbk(cancelPending);
         }
@@ -775,31 +810,30 @@ module.exports = (args, cbk) => {
       // Set fee rates
       setFeeRates: [
         'broadcastChainTransaction',
-        'cancelPending',
+        'cancelLocks',
         'detectFunding',
         'fundChannels',
-        'getNodes',
-        ({getNodes}, cbk) =>
+        'getLnds',
+        'opens',
+        ({getLnds, opens}, cbk) =>
       {
         // Exit early when not specifying fee rates
         if (args.set_fee_rates.length !== args.public_keys.length) {
           return cbk();
         }
 
-        const feesToSet = args.set_fee_rates.map((rate, i) => ({
-          rate,
-          public_key: args.public_keys[i],
-        }));
+        return asyncEachSeries(opens, ({channels, node}, cbk) => {
+          const {lnd} = getLnds.find(n => n.node === node);
 
-        let i = -1;
-        return asyncEachSeries(feesToSet, (toSet, cbk) => {
-          i++;
-          return adjustFees({
-            fee_rate: toSet.rate,
-            fs: args.fs,
-            lnd: getNodes[i].opening_node_lnd,
-            logger: args.logger,
-            to: [toSet.public_key],
+          return asyncEachSeries(channels, (channel, cbk) => {
+            return adjustFees({
+              lnd,
+              fee_rate: channel.rate,
+              fs: args.fs,
+              logger: args.logger,
+              to: [channel.partner_public_key],
+            },
+            cbk);
           },
           cbk);
         },

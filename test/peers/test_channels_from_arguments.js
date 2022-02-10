@@ -8,6 +8,8 @@ const makeArgs = overrides => {
     capacities: [2],
     gives: ['1'],
     nodes: [Buffer.alloc(33, 3).toString('hex')],
+    rates: [],
+    saved: [],
     types: ['private'],
   };
 
@@ -21,12 +23,16 @@ const tests = [
     args: makeArgs({}),
     description: 'Arguments are mapped to channel details',
     expected: {
-      channels: [{
-        capacity: 2,
-        cooperative_close_address: 'address',
-        give_tokens: 1,
-        is_private: true,
-        partner_public_key: Buffer.alloc(33, 3).toString('hex'),
+      opens: [{
+        channels: [{
+          capacity: 2,
+          cooperative_close_address: 'address',
+          give_tokens: 1,
+          is_private: true,
+          node: undefined,
+          partner_public_key: Buffer.alloc(33, 3).toString('hex'),
+          rate: undefined,
+        }],
       }],
     },
   },
@@ -39,13 +45,57 @@ const tests = [
     }),
     description: 'Remove optional arguments',
     expected: {
-      channels: [{
-        capacity: 5000000,
-        cooperative_close_address: undefined,
-        give_tokens: undefined,
-        is_private: false,
-        partner_public_key: Buffer.alloc(33, 3).toString('hex'),
+      opens: [{
+        channels: [{
+          capacity: 5000000,
+          cooperative_close_address: undefined,
+          give_tokens: undefined,
+          is_private: false,
+          node: undefined,
+          partner_public_key: Buffer.alloc(33, 3).toString('hex'),
+          rate: undefined,
+        }],
       }],
+    },
+  },
+  {
+    args: makeArgs({
+      addresses: ['coopCloseAddressNodeA', 'coopCloseAddressNodeB'],
+      capacities: [1, 2],
+      gives: [3, 4],
+      nodes: ['remoteNodeA', 'remoteNodeB'],
+      rates: ['1', '2'],
+      saved: ['savedA', 'savedB'],
+      types: ['private', 'public'],
+    }),
+    description: 'Two nodes are batch opening',
+    expected: {
+      opens: [
+        {
+          channels: [{
+            capacity: 1,
+            cooperative_close_address: 'coopCloseAddressNodeA',
+            give_tokens: 3,
+            is_private: true,
+            node: 'savedA',
+            partner_public_key: 'remoteNodeA',
+            rate: '1',
+          }],
+          node: 'savedA',
+        },
+        {
+          channels: [{
+            capacity: 2,
+            cooperative_close_address: 'coopCloseAddressNodeB',
+            give_tokens: 4,
+            is_private: false,
+            node: 'savedB',
+            partner_public_key: 'remoteNodeB',
+            rate: '2',
+          }],
+          node: 'savedB',
+        },
+      ],
     },
   },
 ];

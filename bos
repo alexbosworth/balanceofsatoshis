@@ -44,6 +44,7 @@ const wallets = importLazy('./wallets');
 const {version} = importLazy('./package');
 
 const {BOOL} = prog;
+const collect = arr => [].concat(...arr).filter(n => !!n);
 const {exit} = process;
 const flatten = arr => [].concat(...arr);
 const {FLOAT} = prog;
@@ -1050,37 +1051,27 @@ prog
   .option('--coop-close-address <addr>', 'Coop-close address', REPEATABLE)
   .option('--external-funding', 'Use external funds for the channel open')
   .option('--give <give_amount>', 'Amount to gift to peer', REPEATABLE)
-  .option('--node <node_name>', 'Node to open channels')
-  .option('--opening-node <opening_node>', 'Node to open channels', REPEATABLE)
+  .option('--node <node_name>', 'Saved node to open channels')
+  .option('--opening-node <node_name>', 'Open with saved node', REPEATABLE)
   .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
   .option('--type <type>', 'Type of channel (private/public)', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
-      const collect = n => flatten([n]).filter(n => !!n);
-      const openingNodes = n => flatten([n]);
-
       try {
-        const lnds = await peers.getOpeningNodes({
-          logger,
-          default_node: options.node || undefined,
-          opening_nodes: options.openingNode || [],
-        });
-
         return peers.openChannels({
           logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
-          capacities: flatten([options.amount].filter(n => !!n)),
-          cooperative_close_addresses: collect(options.coopCloseAddress),
+          capacities: collect([options.amount]),
+          cooperative_close_addresses: collect([options.coopCloseAddress]),
           fs: {getFile: readFile},
-          gives: flatten([options.give].filter(n => !!n)),
+          gives: collect([options.give]),
           is_external: options.externalFunding,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          opening_nodes: !!options.openingNode ? openingNodes(options.openingNode) : [],
-          opening_node_lnds: lnds,
+          opening_nodes: collect([options.openingNode]),
           public_keys: args.peerPublicKeys,
           request: commands.simpleRequest,
-          set_fee_rates: flatten([options.setFeeRate]).filter(n => !!n),
-          types: flatten([options.type].filter(n => !!n)),
+          set_fee_rates: collect([options.setFeeRate]),
+          types: collect([options.type]),
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {

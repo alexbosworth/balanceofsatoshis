@@ -1,4 +1,5 @@
 const defaultChannelCapacity = 5e6;
+const uniq = arr => Array.from(new Set(arr));
 
 /** Derive channel to open details from channel argument list
 
@@ -6,32 +7,48 @@ const defaultChannelCapacity = 5e6;
     addresses: [<Address String>]
     capacities: [<Channel Capacity Tokens Number>]
     gives: [<Give Tokens String>]
-    nodes: [<Node Identity Public Key Hex String>]
+    nodes: [<Channel Partner Node Identity Public Key Hex String>]
+    rates: [<Set Fee Rate String>]
+    saved: [<Open on Saved Node Name String>]
     types: [<Channel Type String>]
   }
 
   @returns
   {
-    channels: [{
-      capacity: <Channel Capacity Tokens Number>
-      [give_tokens]: <Give Tokens Number>
-      is_private: <Channel Is Private Bool>
-      partner_public_key: <Channel Partner Identity Public Key Hex String>
+    opens: [{
+      channels: [{
+        capacity: <Channel Capacity Tokens Number>
+        [cooperative_close_address]: <Restrict Coop Close to Address String>
+        [give_tokens]: <Give Tokens Number>
+        is_private: <Channel Is Private Bool>
+        partner_public_key: <Channel Partner Identity Public Key Hex String>
+        [rate]: <Set Fee Rate String>
+      }]
+      [node]: <Saved Node Name String>
     }]
   }
 */
-module.exports = ({addresses, capacities, gives, nodes, types}) => {
-  const channels = nodes.map((key, i) => {
-    const type = types[i] || undefined;
-
+module.exports = args => {
+  const channels = args.nodes.map((key, i) => {
     return {
-      capacity: capacities[i] || defaultChannelCapacity,
-      cooperative_close_address: !!addresses[i] ? addresses[i] : undefined,
-      give_tokens: !!gives[i] ? Number(gives[i]) : undefined,
-      is_private: !!type && type === 'private',
+      capacity: args.capacities[i] || defaultChannelCapacity,
+      cooperative_close_address: args.addresses[i] || undefined,
+      give_tokens: !!args.gives[i] ? Number(args.gives[i]) : undefined,
+      is_private: !!args.types[i] && args.types[i] === 'private',
+      node: args.saved[i] || undefined,
       partner_public_key: key,
+      rate: args.rates[i] || undefined,
     };
   });
 
-  return {channels};
+  // Exit early when there are no saved nodes to use
+  if (!args.saved.length) {
+    return {opens: [{channels}]};
+  }
+
+  const opens = uniq(args.saved).map(node => {
+    return {node, channels: channels.filter(n => n.node === node)};
+  });
+
+  return {opens};
 };
