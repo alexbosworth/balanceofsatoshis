@@ -62,6 +62,7 @@ let allNodes;
 let bot;
 const botKeyFile = 'telegram_bot_api_key';
 const delay = 1000 * 60;
+let check_errors = [];
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const home = '.bos';
@@ -250,6 +251,14 @@ module.exports = (args, cbk) => {
         ({apiKey, getNodes, getProxyAgent}, cbk) =>
       {
         allNodes = getNodes;
+
+        check_errors = allNodes.map(n => {
+          return {
+            from: n.from,
+            lnd: n.lnd,
+            is_error: false,
+          }
+        });
 
         // Exit early when bot is already instantiated
         if (!!bot) {
@@ -831,16 +840,8 @@ module.exports = (args, cbk) => {
             sub.removeAllListeners();
 
             logger.error({invoices_err: err});
-
-            sendMessage({
-              request,
-              id: connectedId,
-              key: apiKey.key,
-              text: `_😵 Lost connection to nodes! Cannot connect to ${from}._`,
-            },
-            () => {
-              return cbk([503, 'InvoicesSubscriptionFailed', {err, from}]);
-            });
+            
+            return cbk([503, 'InvoicesSubscriptionFailed', {err, from}]);
           });
         },
         cbk);
@@ -1025,6 +1026,21 @@ module.exports = (args, cbk) => {
     (err, res) => {
       isStopped = true;
 
+      //Check for errors, if error exists check which node is down and send disconnect message
+      if (!!err) {
+        (async () => {
+          for (let error of check_errors) {
+            try {
+              await getWalletInfo({lnd: error.lnd});
+            } catch (e) {
+              if (!error.is_error) {
+                bot.api.sendMessage(connectedId, `_😵 Lost connection to ${error.from}._`, markdown);
+                error.is_error = true;
+              }
+            }
+          }          
+        })();
+      }
       subscriptions.forEach(n => n.removeAllListeners());
 
       return returnResult({reject, resolve}, cbk)(err, res);
