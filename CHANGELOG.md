@@ -1,5 +1,9 @@
 # Versions
 
+## 11.52.3
+
+- `telegram`: Fix crash when getting /liquidity and there is no liquidity
+
 ## 11.52.2
 
 - `telegram`: Fix connected node offline notifications
