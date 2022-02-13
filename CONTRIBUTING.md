@@ -10,13 +10,9 @@ If you want to help with style, here are some rough guidelines on style ideas:
 
 ### Formatting
 
-- Spaces not tabs, 2 spaces
 - Arguments to methods are snake_case
 - Regular variables are camelCase
 - Returned attributes are snake_case
-- Minimize function nesting, make new files if nesting is required
-- No extraneous whitespace
-- A single newline should appear at the end of a file
 - A single line should contain max 80 characters including the newline
 - If a top level scalar would go over 80 characters in a line, that's ok
 - Don't bother with () in functions when not needed: `const a = b => c`
@@ -25,12 +21,19 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Lines should be terminated by explicit semicolons
 - Logic like ternary operators should not extend beyond a single line
 - Don't let any lines linger when they don't do anything
-- Tightly space objects, like `{attribute: value}` not `{ attribute : value }`
 - Use single '' quotes not double "" quotes, except when `` is required
-- If conditions should avoid spanning multiple lines
 - Avoid double specifying an attribute and value, `{type: type}` vs `{type}`
 - Always use {} with if, else, etc statements
 - Document the top of methods with what the arguments are and what is returned
+
+### White Space
+
+- Spaces not tabs, 2 spaces
+- Minimize function nesting, make new files if nesting is required
+- No extraneous whitespace
+- A single newline should appear at the end of a file
+- Tightly space objects, like `{attribute: value}` not `{ attribute : value }`
+- If conditions should avoid spanning multiple lines
 
 ### Control Flow
 
@@ -82,3 +85,10 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Try to be very specific with error messages and try to not repeat one
 - Callbacks should always be called as (err, result)
 - Try and catch should not be used unless an error is expected
+
+### Testing
+
+- Ideally there is a tap unit test that has 100% coverage, using mock-lnd
+- Also good is a ln-docker-daemons integration test for common scenarios
+- Design methods so that they can easily tested with self-contained unit tests
+- Avoid breaking existing tests, changes should also change relevant tests
