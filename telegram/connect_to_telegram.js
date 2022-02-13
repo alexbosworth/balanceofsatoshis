@@ -1,16 +1,15 @@
-const {homedir} = require('os');
-const {join} = require('path');
-
 const asyncAuto = require('async/auto');
 const asyncForever = require('async/forever');
 const asyncMap = require('async/map');
-const {getWalletVersion} = require('ln-service');
+const {getWalletInfo} = require('ln-service');
+const {postNodesOffline} = require('ln-telegram');
 const {returnResult} = require('asyncjs-util');
 
 const {getLnds} = require('./../lnd');
-const startTelegramBot = require('./start_telegram_bot');
+const getTelegramBot = require('./get_telegram_bot');
+const runTelegramBot = require('./run_telegram_bot');
 
-const home = '.bos';
+const defaultPaymentsBudget = 0;
 const restartDelayMs = 1000 * 60 * 3;
 
 /** Connect nodes to Telegram
@@ -63,68 +62,72 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Check nodes
-      checkNodes: ['validate', async () => {
+      // Get the nodes
+      getNodes: ['validate', async () => {
         const {nodes} = args;
 
         const {lnds} = await getLnds({nodes, logger: args.logger});
 
         const withName = lnds.map((lnd, i) => ({lnd, node: (nodes || [])[i]}));
 
-        return await asyncMap(withName, async ({lnd, node}) => {
+        return asyncMap(withName, async ({lnd, node}) => {
           try {
-            return await getWalletVersion({lnd});
+            const wallet = await getWalletInfo({lnd});
+
+            return {node, alias: wallet.alias, id: wallet.public_key};
           } catch (err) {
             args.logger.error({node, err: 'failed_to_connect'});
-          }
 
-          return;
+            throw err;
+          }
         });
       }],
 
-      // Home directory path
-      path: ['checkNodes', ({}, cbk) => {
-        return cbk(null, join(...[homedir(), home]));
+      // Get the telegram bot
+      getBot: ['validate', ({}, cbk) => {
+        return getTelegramBot({fs: args.fs, proxy: args.proxy}, cbk);
       }],
 
       // Start bot
-      startTelegram: ['checkNodes', ({}, cbk) => {
+      start: ['getBot', 'getNodes', ({getBot, getNodes}, cbk) => {
         let {limit} = args.payments;
+        let online = getNodes.map(n => n.id);
 
         return asyncForever(cbk => {
-          return getLnds({
+          return runTelegramBot({
+            bot: getBot.bot,
+            fs: args.fs,
+            id: args.id,
+            min_forward_tokens: args.min_forward_tokens,
             logger: args.logger,
-            nodes: args.nodes
+            nodes: args.nodes,
+            payments_limit: limit || defaultPaymentsBudget,
+            request: args.request,
           },
           (err, res) => {
-            // Exit the loop when the backing LNDs cannot be found
             if (!!err) {
               return cbk(err);
             }
 
-            const {lnds} = res;
+            const offline = online.filter(id => !res.online.includes(id));
 
-            args.logger.info({connecting_to_telegram: args.nodes});
+            // Refresh the current online status
+            online = res.online.slice();
 
-            return startTelegramBot({
-              lnds,
-              fs: args.fs,
-              id: args.id,
-              limits: {
-                min_forward_tokens: args.min_forward_tokens || undefined,
-              },
-              logger: args.logger,
-              payments: {limit},
-              proxy: args.proxy,
-              request: args.request,
+            // Reset payment budget
+            limit = Number();
+
+            return postNodesOffline({
+              bot: getBot.bot,
+              connected: res.connected,
+              offline: getNodes.filter(n => offline.includes(n.id)),
             },
             err => {
-              args.logger.error(err || [503, 'TelegramBotFailed']);
+              if (!!err) {
+                return cbk(err);
+              }
 
-              // Reset payment budget
-              limit = Number();
-
-              return setTimeout(() => cbk(), restartDelayMs);
+              return setTimeout(cbk, restartDelayMs);
             });
           });
         },
