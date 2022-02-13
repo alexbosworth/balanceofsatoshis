@@ -865,7 +865,8 @@ module.exports = (args, cbk) => {
                 from,
                 confirmed: transaction.is_confirmed,
                 id: connectedId,
-                send: (id, msg) => args.bot.api.sendMessage(id, msg, markdown),
+                nodes: getNodes,
+                send: (id, msg, opt) => args.bot.api.sendMessage(id, msg, opt),
                 transaction: record,
               });
             } catch (err) {

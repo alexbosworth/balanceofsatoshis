@@ -1,6 +1,6 @@
 # Versions
 
-## 11.52.3
+## 11.52.4
 
 - `telegram`: Fix crash when getting /liquidity and there is no liquidity
 
