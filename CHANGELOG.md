@@ -1,5 +1,9 @@
 # Versions
 
+## 11.52.2
+
+- `telegram`: Fix connected node offline notifications
+
 ## 11.52.1
 
 - `fees`, `open`: Fix regression crash when setting fees on a pending channel

@@ -1,6 +1,6 @@
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
-const SocksProxyAgent = require('socks-proxy-agent');
+const {SocksProxyAgent} = require('socks-proxy-agent');
 
 const {parse} = JSON;
 
@@ -61,10 +61,10 @@ module.exports = ({fs, path}, cbk) => {
 
         try {
           const agent = new SocksProxyAgent({
-            host,
             password,
             port,
             userId,
+            hostname: host,
           });
 
           return cbk(null, {agent});
