@@ -188,6 +188,7 @@ bos utxos
 - Running `telegram` [via nohup/tmux howto](https://plebnet.wiki/wiki/Umbrel_-_Installing_BoS#Installing_Telegram_Bot)
 - Running `telegram` [via systemd](https://github.com/ziggie1984/miscellanous/blob/97c4905747fe23a824b6e53dc674c4a571ac0f5c/automation_telegram_bot.md)
 - Another `rebalance` + `tags` & `telegram` [commands howto](https://raspibolt.org/bonus/lightning/balance-of-satoshis.html#balance-of-satoshis-in-action)
+- Documentation for bos commands [commands howto](https://github.com/niteshbalusu11/BOS-Commands-Document#balance-of-satoshis-commands)
 
 Want to stack some sats? Write your own LN paywalled guide!
 
