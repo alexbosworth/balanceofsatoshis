@@ -1,5 +1,9 @@
 # Versions
 
+## 11.53.0
+
+- `call`: Add support for `getPendingPayments` to show in-flight payments
+
 ## 11.52.5
 
 - `open-balanced-channel`: Fix error preventing internal funding

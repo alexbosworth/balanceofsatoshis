@@ -493,6 +493,22 @@
     {
       "arguments": [
         {
+          "description": "Results limit",
+          "named": "limit",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Paging token",
+          "named": "token",
+          "optional": true
+        }
+      ],
+      "method": "getPendingPayments"
+    },
+    {
+      "arguments": [
+        {
           "description": "Key family number",
           "named": "family",
           "type": "number"
