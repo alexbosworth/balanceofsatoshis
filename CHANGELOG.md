@@ -1,5 +1,9 @@
 # Versions
 
+## 11.52.5
+
+- `open-balanced-channel`: Fix error preventing internal funding
+
 ## 11.52.4
 
 - `telegram`: Fix crash when getting /liquidity and there is no liquidity
