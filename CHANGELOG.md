@@ -1,5 +1,9 @@
 # Versions
 
+## 11.53.1
+
+- `change-channel-capacity`: Increase RBF delta for expand capacity flow
+
 ## 11.53.0
 
 - `call`: Add support for `getPendingPayments` to show in-flight payments
