@@ -1,5 +1,9 @@
 # Versions
 
+## 11.53.2
+
+- `change-channel-capacity`: Fix ExpectedEcpairObjectToUpdatePsbt error
+
 ## 11.53.1
 
 - `change-channel-capacity`: Increase RBF delta for expand capacity flow
