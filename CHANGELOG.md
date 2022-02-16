@@ -1,6 +1,6 @@
 # Versions
 
-## 11.53.2
+## 11.53.3
 
 - `change-channel-capacity`: Fix ExpectedEcpairObjectToUpdatePsbt error
 
