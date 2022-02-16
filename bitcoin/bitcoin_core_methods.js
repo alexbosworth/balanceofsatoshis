@@ -1,48 +1,73 @@
 const asyncAuto = require('async/auto');
+
+const {homedir} = require('os');
+const {platform} = require('os');
+const {userInfo} = require('os');
 const {returnResult} = require('asyncjs-util');
 
+const os = {homedir, platform, userInfo};
 const contentType = 'text/plain';
 const fetchMethods = require('./fetch_methods');
+const getRpcAuth = require('./get_rpc_auth');
+const {isArray} = Array;
 const method = 'POST';
-const requestBody = n => `{"jsonrpc":"1.0","id":"curltext","method":"${n}","params":[]}`;
+const requestBody = (n, param) => `{"jsonrpc":"1.0","id":"curltext","method":"${n}","params":${!!param.length ? `["${param}"]` : `[]`}}`;
 
-module.exports = ({core_method}, cbk) => {
+module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!core_method) {
-          return cbk([400, 'ExpectedBitcoinCoreMethodForLookUp']);
+        if (!args.core_method) {
+          return cbk([400, 'ExpectedCoreMethodForBitcoinCoreLookUp']);
+        }
+
+        if (!isArray(args.param)) {
+          return cbk([400, 'ExpectedArrayOfParamsForBitcoinCoreLookUp']);
         }
 
         return cbk();
       },
 
+      // Get cookie auth
+      rpcAuth: ['validate', ({}, cbk) => {
+        return getRpcAuth({os}, cbk);
+      }],
+
       //Get blockcount
-      getBlockcount: ['validate', async ({}) => {
-        const body = requestBody(core_method);
-        const url = 'http://__cookie__:8c7c278c62f3729a700cb1660c1a511ecd54e1b489951425def23b1e28753412@127.0.0.1:18444/';
-        
+      getrawtransaction: ['rpcAuth', async ({rpcAuth}) => {
+        if (!rpcAuth) {
+          return;
+        }
+
+        const body = requestBody(args.core_method, args.param);
+
         try {
           const response = await fetchMethods({
             contentType,
             method,
             body,
-            url,
+            url: rpcAuth,
           });
 
         return response;
-
+        
+        //Ignore errors and return undefined
         } catch (err) {
-          throw new Error (err);
+          return;
         }
 
       }],
 
-      result: ['getBlockcount', ({getBlockcount}, cbk) => {
-        return cbk(null, getBlockcount);
+      //Return result
+      result: ['getrawtransaction', ({getrawtransaction}, cbk) => {
+        if (!!getrawtransaction) {
+          return cbk(null, getrawtransaction);
+        }
+        
+        return cbk();
       }],
     },
-    returnResult({reject, resolve, of: 'getBlockcount'}, cbk));
+    returnResult({reject, resolve, of: 'result'}, cbk));
   });
 };

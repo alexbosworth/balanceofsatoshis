@@ -14,7 +14,8 @@ module.exports = async ({body, contentType, method, url}) => {
 
     return data;
 
+  //Ignore errors and return undefined
   } catch (err) {
-    throw new Error(err);
+    return;
   }
 };
