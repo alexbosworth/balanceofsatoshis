@@ -124,7 +124,7 @@ module.exports = (args, cbk) => {
             },
             err => {
               if (!!err) {
-                return cbk(err);
+                args.logger.error({post_nodes_offline_error: err});
               }
 
               return setTimeout(cbk, restartDelayMs);
