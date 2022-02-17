@@ -1,5 +1,9 @@
 # Versions
 
+## 11.53.5
+
+- `change-channel-capacity`: Reduce change failure due to disconnection
+
 ## 11.53.4
 
 - `change-channel-capacity`: Fix ExpectedEcpairObjectToUpdatePsbt error
