@@ -828,6 +828,7 @@ module.exports = (args, cbk) => {
           return asyncEachSeries(channels, (channel, cbk) => {
             return adjustFees({
               lnd,
+              cltv_delta: undefined,
               fee_rate: channel.rate,
               fs: args.fs,
               logger: args.logger,

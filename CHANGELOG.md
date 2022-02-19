@@ -1,5 +1,9 @@
 # Versions
 
+## 11.53.7
+
+- `open`: Fix issue using `--set-fee-rate` when opening to new channel partners
+
 ## 11.53.6
 
 - `change-channel-capacity`: Reduce change failure due to disconnection
