@@ -1,6 +1,6 @@
 # Versions
 
-## 11.53.5
+## 11.53.6
 
 - `change-channel-capacity`: Reduce change failure due to disconnection
 

@@ -266,11 +266,19 @@ module.exports = (args, cbk) => {
         const sorted = peers
           .sort((a, b) => {
             if (args.sort === 'earned_in') {
-              return a.earned_inbound_fees - b.earned_inbound_fees;
+              if (a.earned_inbound_fees !== b.earned_inbound_fees) {
+                return a.earned_inbound_fees - b.earned_inbound_fees;
+              } else {
+                return b.earned_outbound_fees - a.earned_outbound_fees;
+              }
             }
 
             if (args.sort === 'earned_out') {
-              return a.earned_outbound_fees - b.earned_outbound_fees;
+              if (a.earned_outbound_fees !== b.earned_outbound_fees) {
+                return a.earned_outbound_fees - b.earned_outbound_fees;
+              } else {
+                return b.earned_inbound_fees - a.earned_inbound_fees;
+              }
             }
 
             if (args.sort === 'earned_total') {
