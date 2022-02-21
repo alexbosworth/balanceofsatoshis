@@ -303,7 +303,7 @@ module.exports = (args, cbk) => {
                 from: ctx.message.from.id,
                 id: connectedId,
                 nodes: getNodes,
-                reply: n => ctx.reply(n, markdown),
+                reply: (n, opt) => ctx.reply(n, opt),
                 text: ctx.message.text,
                 working: () => ctx.replyWithChatAction('typing'),
               });

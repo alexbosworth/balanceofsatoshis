@@ -1,6 +1,6 @@
 # Versions
 
-## 11.53.7
+## 11.53.8
 
 - `open`: Fix issue using `--set-fee-rate` when opening to new channel partners
 
