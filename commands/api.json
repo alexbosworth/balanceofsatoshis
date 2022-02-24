@@ -238,6 +238,11 @@
           "description": "Channel to enable funding transaction output index",
           "named": "transaction_vout",
           "type": "number"
+        },
+        {
+          "description": "Force enable of channel and override auto-disable?",
+          "named": "is_force_enable",
+          "type": "boolean"
         }
       ],
       "method": "enableChannel"

@@ -1,5 +1,9 @@
 # Versions
 
+## 11.53.9
+
+- `call`: Add support for force-enabling when calling `enableChannel`
+
 ## 11.53.8
 
 - `open`: Fix issue using `--set-fee-rate` when opening to new channel partners
