@@ -31,6 +31,7 @@ const getMempoolRetries = 10;
 const maxMempoolSize = 2e6;
 const minOutbound = 4294967;
 const minForwarded = 1e5;
+const openedPublicKey = [];
 const regularConf = 72;
 const slowConf = 144;
 
@@ -330,6 +331,8 @@ module.exports = (args, cbk) => {
                     is_private: args.is_private || undefined,
                   });
 
+                  openedPublicKey.push(node.public_key);
+
                   return cbk(null, true);
                 });
               });
@@ -350,26 +353,19 @@ module.exports = (args, cbk) => {
       }],
 
       // Set fee rate
-      setFeeRate: [
-        'candidates',
-        'openChannel',
-        ({candidates}, cbk) =>
-      {
+      setFeeRate: [ 'openChannel', ({}, cbk) => {
         // Exit early when not specifying fee rates
         if (!args.set_fee_rate) {
           return cbk();
         }
 
-        return asyncEachSeries(candidates, ({public_key}, cbk) => {
-          return adjustFees({
-            cltv_delta: undefined,
-            fee_rate: String(args.set_fee_rate),
-            fs: args.fs,
-            lnd: args.lnd,
-            logger: args.logger,
-            to: [public_key],
-          },
-          cbk);
+        return adjustFees({
+          cltv_delta: undefined,
+          fee_rate: String(args.set_fee_rate),
+          fs: args.fs,
+          lnd: args.lnd,
+          logger: args.logger,
+          to: openedPublicKey,
         },
         cbk);
       }],
