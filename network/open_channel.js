@@ -1,6 +1,7 @@
 const {addPeer} = require('ln-service');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
+const asyncEachSeries = require('async/eachSeries');
 const asyncTimeout = require('async/timeout');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -14,6 +15,7 @@ const {getSeedNodes} = require('ln-sync');
 const {openChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const adjustFees = require('./../routing/adjust_fees');
 const {getMempoolSize} = require('./../chain');
 const {getPastForwards} = require('./../routing');
 const peersWithActivity = require('./peers_with_activity');
@@ -42,6 +44,7 @@ const slowConf = 144;
     logger: <Winston Logger Object>
     [peer]: <Peer Public Key Hex String>
     request: <Request Function>
+    set_fee_rate: [<Fee Rate Number>]
     [tokens]: <Tokens for New Channel Number>
   }
 */
@@ -154,8 +157,6 @@ module.exports = (args, cbk) => {
         const allChannels = []
           .concat(getChannels.channels)
           .concat(getPending.pending_channels.filter(n => !!n.is_opening));
-
-        const scored = getSeed.nodes.map(n => n.public_key);
 
         const {peers} = peersWithActivity({
           additions: [].concat(args.peer).filter(n => !!n),
@@ -346,6 +347,31 @@ module.exports = (args, cbk) => {
             return cbk();
           },
         );
+      }],
+
+      // Set fee rate
+      setFeeRate: [
+        'candidates',
+        'openChannel',
+        ({candidates}, cbk) =>
+      {
+        // Exit early when not specifying fee rates
+        if (!args.set_fee_rate) {
+          return cbk();
+        }
+
+        return asyncEachSeries(candidates, ({public_key}, cbk) => {
+          return adjustFees({
+            cltv_delta: undefined,
+            fee_rate: String(args.set_fee_rate),
+            fs: args.fs,
+            lnd: args.lnd,
+            logger: args.logger,
+            to: [public_key],
+          },
+          cbk);
+        },
+        cbk);
       }],
     },
     returnResult({reject, resolve, of: 'openChannel'}, cbk));
