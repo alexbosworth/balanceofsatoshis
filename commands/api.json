@@ -137,6 +137,11 @@
           "description": "Millitokens to request",
           "named": "mtokens",
           "optional": true
+        },
+        {
+          "description": "Include private channels in the payment request?",
+          "named": "is_including_private_channels",
+          "type": "boolean"
         }
       ],
       "method": "createInvoice"

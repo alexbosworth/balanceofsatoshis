@@ -1,5 +1,9 @@
 # Versions
 
+## 11.53.10
+
+- `call`: Add support for including hop hints in `createInvoice`
+
 ## 11.53.9
 
 - `call`: Add support for force-enabling when calling `enableChannel`

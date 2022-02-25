@@ -425,6 +425,15 @@ Docker example:
 docker run -d --restart always -v $HOME/.bos:/home/node/.bos alexbosworth/balanceofsatoshis telegram --connect CONNECT_CODE
 ```
 
+You can also create a shell-script.sh to run a command repeatedly, with a delay
+
+```bash
+while true;
+do bos rebalance;
+sleep 2000;
+done
+```
+
 ## Docker
 
 This presumes you have Docker installed.
