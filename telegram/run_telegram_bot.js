@@ -8,8 +8,10 @@ const {returnResult} = require('asyncjs-util');
 const {getLnds} = require('./../lnd');
 const {lndCredentials} = require('./../lnd');
 const startTelegramBot = require('./start_telegram_bot');
-
+const currentDate = new Date();
 const defaultError = [503, 'TelegramBotStopped'];
+const expiryDuration = 1000 * 60 * 60 * 24 * 180;
+const macaroonExpiryDate = new Date(currentDate.getTime() + expiryDuration).toISOString();
 const {isArray} = Array;
 
 /** Run the telegram bot for a node or multiple nodes
@@ -80,10 +82,11 @@ module.exports = (args, cbk) => {
         }
 
         const nodes = args.nodes;
-        
+
         //if no saved node is specified, use the default node
         if (!nodes || !nodes.length) {
           const credentials =  await lndCredentials({
+            expiry: macaroonExpiryDate,
             logger: args.logger,
             is_nospend: true,
             node: args.node,
@@ -101,6 +104,7 @@ module.exports = (args, cbk) => {
         //if saved node(s) is specified, use the saved node(s)
         const lnds = await asyncMap(nodes, async (node) => {
           const credentials =  await lndCredentials({
+            expiry: macaroonExpiryDate,
             logger: args.logger,
             is_nospend: true,
             node,
