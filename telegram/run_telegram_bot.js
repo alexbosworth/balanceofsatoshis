@@ -75,7 +75,7 @@ module.exports = (args, cbk) => {
       // Get associated LNDs
       getLnds: ['validate', async ({}) => {
         //Use default macaroon if budget is set
-        if (!!args.payments_limit){
+        if (!!args.payments_limit) {
           return await getLnds({logger: args.logger, nodes: args.nodes});
         }
 
@@ -122,6 +122,7 @@ module.exports = (args, cbk) => {
       // Start the bot going
       startBot: ['getLnds', ({getLnds}, cbk) => {
         args.logger.info({connecting_to_telegram: args.nodes});
+
         return startTelegramBot({
           bot: args.bot,
           fs: args.fs,
