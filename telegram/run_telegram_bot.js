@@ -1,10 +1,12 @@
 const asyncAuto = require('async/auto');
 const asyncFilter = require('async/filter');
 const asyncMap = require('async/map');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {getLnds} = require('./../lnd');
+const {lndCredentials} = require('./../lnd');
 const startTelegramBot = require('./start_telegram_bot');
 
 const defaultError = [503, 'TelegramBotStopped'];
@@ -71,14 +73,55 @@ module.exports = (args, cbk) => {
       },
 
       // Get associated LNDs
-      getLnds: ['validate', ({}, cbk) => {
-        return getLnds({logger: args.logger, nodes: args.nodes}, cbk);
+      getLnds: ['validate', async ({}) => {
+        //Use default macaroon if budget is set
+        if (!!args.payments_limit){
+          return await getLnds({logger: args.logger, nodes: args.nodes});
+        }
+
+        const nodes = args.nodes;
+        
+        //if no saved node is specified, use the default node
+        if (!nodes || !nodes.length) {
+          const credentials =  await lndCredentials({
+            logger: args.logger,
+            is_nospend: true,
+            node: args.node,
+          });
+
+          const {lnd} = await authenticatedLndGrpc({
+            cert: credentials.cert,
+            macaroon: credentials.macaroon,
+            socket: credentials.socket,
+          });
+
+          return {lnds: [lnd]};
+        }
+
+        //if saved node(s) is specified, use the saved node(s)
+        const lnds = await asyncMap(nodes, async (node) => {
+          const credentials =  await lndCredentials({
+            logger: args.logger,
+            is_nospend: true,
+            node,
+          });
+
+          const {lnd} = await authenticatedLndGrpc({
+            cert: credentials.cert,
+            macaroon: credentials.macaroon,
+            socket: credentials.socket,
+          });
+
+          return lnd;
+        });
+
+        return {lnds};
+
       }],
 
       // Start the bot going
       startBot: ['getLnds', ({getLnds}, cbk) => {
         args.logger.info({connecting_to_telegram: args.nodes});
-
         return startTelegramBot({
           bot: args.bot,
           fs: args.fs,
