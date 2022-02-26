@@ -1,5 +1,9 @@
 # Versions
 
+## 11.53.11
+
+- `telegram`: Fix handling of error posting from incorrect user ids
+
 ## 11.53.10
 
 - `call`: Add support for including hop hints in `createInvoice`
