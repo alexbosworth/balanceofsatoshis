@@ -1,5 +1,9 @@
 # Versions
 
+## 11.54.1
+
+- `telegram`: Require connected user to use /blocknotify
+
 ## 11.54.0
 
 - `increase-outbound-liquidity`: Add `--set-fee-rate` to set routing fee
