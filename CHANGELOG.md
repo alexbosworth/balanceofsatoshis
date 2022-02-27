@@ -1,5 +1,9 @@
 # Versions
 
+## 11.54.0
+
+- `increase-outbound-liquidity`: Add `--set-fee-rate` to set routing fee
+
 ## 11.53.11
 
 - `telegram`: Fix handling of error posting from incorrect user ids
