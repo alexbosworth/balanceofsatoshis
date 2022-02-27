@@ -1,7 +1,6 @@
 const {addPeer} = require('ln-service');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
-const asyncEachSeries = require('async/eachSeries');
 const asyncTimeout = require('async/timeout');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -31,7 +30,6 @@ const getMempoolRetries = 10;
 const maxMempoolSize = 2e6;
 const minOutbound = 4294967;
 const minForwarded = 1e5;
-const openedPublicKey = [];
 const regularConf = 72;
 const slowConf = 144;
 
@@ -45,7 +43,7 @@ const slowConf = 144;
     logger: <Winston Logger Object>
     [peer]: <Peer Public Key Hex String>
     request: <Request Function>
-    set_fee_rate: [<Fee Rate Number>]
+    [set_fee_rate]: <Fee Rate String>
     [tokens]: <Tokens for New Channel Number>
   }
 */
@@ -331,8 +329,6 @@ module.exports = (args, cbk) => {
                     is_private: args.is_private || undefined,
                   });
 
-                  openedPublicKey.push(node.public_key);
-
                   return cbk(null, true);
                 });
               });
@@ -347,13 +343,13 @@ module.exports = (args, cbk) => {
               return cbk([400, 'FailedToConnectToAnyCandidatePeer']);
             }
 
-            return cbk();
+            return cbk(null, selected);
           },
         );
       }],
 
       // Set fee rate
-      setFeeRate: [ 'openChannel', ({}, cbk) => {
+      setFeeRate: ['openChannel', ({openChannel}, cbk) => {
         // Exit early when not specifying fee rates
         if (!args.set_fee_rate) {
           return cbk();
@@ -361,11 +357,11 @@ module.exports = (args, cbk) => {
 
         return adjustFees({
           cltv_delta: undefined,
-          fee_rate: String(args.set_fee_rate),
+          fee_rate: args.set_fee_rate,
           fs: args.fs,
           lnd: args.lnd,
           logger: args.logger,
-          to: openedPublicKey,
+          to: [openChannel.public_key],
         },
         cbk);
       }],

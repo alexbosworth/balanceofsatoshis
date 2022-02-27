@@ -949,7 +949,7 @@ prog
   .option('--fee-rate <fee_rate>', 'Use specific fee rate (per vbyte)', FLOAT)
   .option('--node <node_name>', 'Increase outbound liquidity on saved node')
   .option('--private', 'Mark new channel as private')
-  .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', INT)
+  .option('--set-fee-rate <ppm>', 'Fee in parts per million or use a formula')
   .option('--with <peer_public_key>', 'Select a specific peer to open with')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
