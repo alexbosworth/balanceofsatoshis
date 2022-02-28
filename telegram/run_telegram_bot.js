@@ -85,41 +85,53 @@ module.exports = (args, cbk) => {
 
         //if no saved node is specified, use the default node
         if (!nodes || !nodes.length) {
-          const credentials =  await lndCredentials({
-            expiry: macaroonExpiryDate,
-            logger: args.logger,
-            is_nospend: true,
-            node: args.node,
-          });
+          try {
+            const credentials =  await lndCredentials({
+              expiry: macaroonExpiryDate,
+              logger: args.logger,
+              is_nospend: true,
+              node: args.node,
+            });
+  
+            const {lnd} = await authenticatedLndGrpc({
+              cert: credentials.cert,
+              macaroon: credentials.macaroon,
+              socket: credentials.socket,
+            });
 
-          const {lnd} = await authenticatedLndGrpc({
-            cert: credentials.cert,
-            macaroon: credentials.macaroon,
-            socket: credentials.socket,
-          });
+            return {lnds: [lnd]};
 
-          return {lnds: [lnd]};
+            //Ignore errors if unable to generate LND credentials
+          } catch (err) {
+          return await getLnds({logger: args.logger, nodes: args.nodes});
+          }
         }
 
         //if saved node(s) is specified, use the saved node(s)
-        const lnds = await asyncMap(nodes, async (node) => {
-          const credentials =  await lndCredentials({
-            expiry: macaroonExpiryDate,
-            logger: args.logger,
-            is_nospend: true,
-            node,
+        try {
+          const lnds = await asyncMap(nodes, async (node) => {
+            const credentials =  await lndCredentials({
+              expiry: macaroonExpiryDate,
+              logger: args.logger,
+              is_nospend: true,
+              node,
+            });
+            
+            const {lnd} = await authenticatedLndGrpc({
+              cert: credentials.cert,
+              macaroon: credentials.macaroon,
+              socket: credentials.socket,
+            });
+
+            return lnd;
           });
 
-          const {lnd} = await authenticatedLndGrpc({
-            cert: credentials.cert,
-            macaroon: credentials.macaroon,
-            socket: credentials.socket,
-          });
+          return {lnds};
 
-          return lnd;
-        });
-
-        return {lnds};
+          //Ignore errors if unable to generate LND credentials
+        } catch (err) {
+          return await getLnds({logger: args.logger, nodes: args.nodes});
+        }
 
       }],
 
