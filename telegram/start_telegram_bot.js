@@ -16,6 +16,7 @@ const {handleCostsCommand} = require('ln-telegram');
 const {handleEarningsCommand} = require('ln-telegram');
 const {handleEditedMessage} = require('ln-telegram');
 const {handleGraphCommand} = require('ln-telegram');
+const {handleInfoCommand} = require('ln-telegram');
 const {handleInvoiceCommand} = require('ln-telegram');
 const {handleLiquidityCommand} = require('ln-telegram');
 const {handleMempoolCommand} = require('ln-telegram');
@@ -145,6 +146,7 @@ module.exports = (args, cbk) => {
           {command: 'earnings', description: 'Show earnings over the week'},
           {command: 'graph', description: 'Show info about a node'},
           {command: 'help', description: 'Show the list of commands'},
+          {command: 'info', description: 'Show wallet info'},
           {command: 'invoice', description: 'Create an invoice'},
           {command: 'liquidity', description: 'Get liquidity [with-peer]'},
           {command: 'mempool', description: 'Get info about the mempool'},
@@ -255,6 +257,21 @@ module.exports = (args, cbk) => {
               reply: (message, options) => ctx.reply(message, options),
               text: ctx.message.text,
               working: () => ctx.replyWithChatAction('typing'),
+            });
+          } catch (err) {
+            args.logger.error({err});
+          }
+        });
+
+        // Handle command to look up wallet info
+        args.bot.command('info', async ctx => {
+          try {
+            await handleInfoCommand({
+              from: ctx.message.from.id,
+              id: connectedId,
+              nodes: getNodes,
+              remove: () => ctx.deleteMessage(),
+              reply: (message, options) => ctx.reply(message, options),
             });
           } catch (err) {
             args.logger.error({err});
@@ -405,6 +422,7 @@ module.exports = (args, cbk) => {
             '/costs - View costs over the past week',
             '/earnings - View earnings over the past week',
             '/graph <pubkey or peer alias> - Show info about a node',
+            '/info - Show wallet info',
             '/invoice [amount] [memo] - Make an invoice',
             '/liquidity [with] - View node liquidity',
             '/mempool - BTC mempool report',

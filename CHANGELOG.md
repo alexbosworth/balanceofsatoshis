@@ -1,5 +1,9 @@
 # Versions
 
+## 11.55.0
+
+- `telegram`: Add `/info` command to get high level node info
+
 ## 11.54.1
 
 - `telegram`: Require connected user to use /blocknotify
