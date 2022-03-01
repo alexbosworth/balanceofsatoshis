@@ -1,20 +1,12 @@
 const asyncAuto = require('async/auto');
 const asyncFilter = require('async/filter');
+const {balancedOpenRequest} = require('paid-services');
 const {getInvoices} = require('ln-service');
 const {getPayment} = require('ln-service');
 const {parsePaymentRequest} = require('invoices');
 const {returnResult} = require('asyncjs-util');
 
 const {balancedChannelKeyTypes} = require('./service_key_types');
-
-const expectedRequestMtokens = '10000';
-const expectedResponseMtokens = '1000';
-const hexAsUtf8 = hex => Buffer.from(hex, 'hex').toString();
-const isHexHashSized = hex => hex.length === 64;
-const isHexNumberSized = hex => hex.length < 14;
-const isOdd = n => n % 2;
-const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
-const parseHexNumber = hex => parseInt(hex, 16);
 
 /** Get balanced open requests received
 
@@ -55,114 +47,35 @@ module.exports = ({lnd}, cbk) => {
 
       // Filter out incoming opens that are still active
       incomingOpens: ['getInvoices', ({getInvoices}, cbk) => {
-        const receivedRequests = getInvoices.invoices
-          .filter(n => !!n.is_confirmed)
-          .filter(n => !!n.is_push)
-          .filter(n => n.received_mtokens === expectedRequestMtokens);
-
         const nodes = [];
 
-        const balancedChannelRequests = receivedRequests.map(invoice => {
-          const payment = invoice.payments.find(payment => {
-            return !!payment.messages.find(({type}) => {
-              return type === balancedChannelKeyTypes.accept_request;
+        const requests = getInvoices.invoices
+          .filter(n => !!n.is_confirmed)
+          .map(invoice => {
+            const {proposal} = balancedOpenRequest({
+              confirmed_at: invoice.confirmed_at,
+              is_push: invoice.is_push,
+              payments: invoice.payments,
+              received_mtokens: invoice.received_mtokens,
             });
-          });
 
-          if (!payment) {
-            return;
-          }
+            // Exit early when there is no proposal
+            if (!proposal) {
+              return;
+            }
 
-          const acceptRequest = payment.messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.accept_request;
-          });
+            // Exit early when this peer already has a request
+            if (nodes.includes(proposal.partner_public_key)) {
+              return;
+            }
 
-          const request = hexAsUtf8(acceptRequest.value);
+            nodes.push(proposal.partner_public_key);
 
-          try {
-            parsePaymentRequest({request});
-          } catch (err) {
-            return;
-          }
+            return proposal;
+          })
+          .filter(n => !!n);
 
-          const {destination, mtokens} = parsePaymentRequest({request});
-
-          // Exit early when this peer already has a request
-          if (nodes.includes(destination)) {
-            return;
-          }
-
-          nodes.push(destination);
-
-          if (mtokens !== expectedResponseMtokens) {
-            return;
-          }
-
-          const channelCapacity = payment.messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.channel_capacity;
-          });
-
-          if (!channelCapacity || !isHexNumberSized(channelCapacity.value)) {
-            return;
-          }
-
-          if (isOdd(parseHexNumber(channelCapacity.value))) {
-            return;
-          }
-
-          const fundingFeeRate = payment.messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.funding_tx_fee_rate;
-          });
-
-          if (!fundingFeeRate || !isHexNumberSized(fundingFeeRate.value)) {
-            return;
-          }
-
-          if (!parseHexNumber(fundingFeeRate.value)) {
-            return;
-          }
-
-          const remoteMultiSigKey = payment.messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.multisig_public_key;
-          });
-
-          if (!remoteMultiSigKey) {
-            return;
-          }
-
-          if (!isPublicKey(remoteMultiSigKey.value)) {
-            return;
-          }
-
-          const remoteTxId = payment.messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.transit_tx_id;
-          });
-
-          if (!remoteTxId || !isHexHashSized(remoteTxId.value)) {
-            return;
-          }
-
-          const remoteTxVout = payment.messages.find(({type}) => {
-            return type === balancedChannelKeyTypes.transit_tx_vout;
-          });
-
-          if (!remoteTxVout || !isHexNumberSized(remoteTxVout.value)) {
-            return;
-          }
-
-          return {
-            accept_request: request,
-            capacity: parseHexNumber(channelCapacity.value),
-            fee_rate: parseHexNumber(fundingFeeRate.value),
-            partner_public_key: destination,
-            proposed_at: invoice.confirmed_at,
-            remote_multisig_key: remoteMultiSigKey.value,
-            remote_tx_id: remoteTxId.value,
-            remote_tx_vout: parseHexNumber(remoteTxVout.value),
-          };
-        });
-
-        return cbk(null, balancedChannelRequests.filter(n => !!n));
+        return cbk(null, requests);
       }],
 
       // Filter out incoming opens that were already accepted

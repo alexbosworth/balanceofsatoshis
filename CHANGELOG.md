@@ -1,5 +1,9 @@
 # Versions
 
+## 11.56.0
+
+- `telegram`: Add support for showing `open-balanced-channel` proposals
+
 ## 11.55.0
 
 - `telegram`: Add `/info` command to get high level node info
