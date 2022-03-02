@@ -1658,7 +1658,7 @@ prog
   .help('See README for info on persisting the bot through Docker/nohup')
   .help('--use-proxy requires path to JSON file for host/password/port/userId')
   .option('--budget <amount>', 'Spending amount to allow', INT, Number())
-  .option('--connect <connect_code>', 'Connection code', INT)
+  .option('--connect <connect_code>', 'Connection code')
   .option('--ignore-forwards-below <amount>', 'Ignore forwards of value', INT)
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .option('--reset-api-key', 'Reset the Telegram API key')
@@ -1666,6 +1666,11 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const isNumber = n => !isNaN(n);
+        if (!!options.connect && !isNumber(options.connect)) {
+          return reject(logger.error({err: 'ExpectedNumericConnectCode'}));
+        }
+
         return await telegram.connectToTelegram({
           logger,
           fs: {
