@@ -51,6 +51,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedFilesystemMethodsToRunTelegramBot']);
         }
 
+        if (!args.key) {
+          return cbk([400, 'ExpectedApiKeyToRunTelegramBot']);
+        }
+
         if (!args.logger) {
           return cbk([400, 'ExpectedWinstonLoggerToRunTelegramBot']);
         }
