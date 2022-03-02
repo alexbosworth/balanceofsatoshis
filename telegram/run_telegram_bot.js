@@ -83,6 +83,7 @@ module.exports = (args, cbk) => {
           bot: args.bot,
           fs: args.fs,
           id: args.id,
+          key: args.key,
           min_forward_tokens: args.min_forward_tokens,
           lnds: getLnds.lnds,
           logger: args.logger,

@@ -53,7 +53,7 @@ const {subscribeToTransactions} = require('ln-service');
 const interaction = require('./interaction');
 const named = require('./../package').name;
 const {version} = require('./../package');
-
+const ask = (n, cbk) => inquirer.prompt(n).then(n => cbk(null, n));
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const {isArray} = Array;
@@ -480,17 +480,25 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        inquirer.prompt([interaction.user_id_prompt]).then(({code}) => {
-          if (!code) {
-            return cbk([400, 'ExpectedNumericConnectCode']);
-          }
+          return ask({
+            type: 'input',
+            message: interaction.user_id_prompt.message,
+            name: interaction.user_id_prompt.name,
+            validate: code => {
+              if (!code || !isNumber(code)) {
+                return `Expected Numeric Connect Code`;
+              }
 
-          connectedId = code;
-
-          return cbk();
-        });
-
-        return;
+              if (code === args.key) {
+                return `Expected Connect Code and not API Key`;
+              }
+              
+              connectedId = Number(code);
+              
+              return true;
+            }
+          }, 
+          cbk);
       }],
 
       // Subscribe to backups
