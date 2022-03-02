@@ -97,6 +97,14 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLndsToStartTelegramBot']);
         }
 
+        if (!args.key) {
+          return cbk([400, 'ExpectedApiKeyToStartTelegramBot']);
+        }
+
+        if (!!args.id && args.key.startsWith(args.id)){
+          return cbk([400, 'ExpectedConnectCodeAndNotApiKeyOrBotId']);
+        }
+
         if (!args.logger) {
           return cbk([400, 'ExpectedLoggerToStartTelegramBot']);
         }
@@ -480,18 +488,19 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-          return ask({
-            type: 'input',
-            message: interaction.user_id_prompt.message,
-            name: interaction.user_id_prompt.name,
-            validate: code => {
-              if (!code || !isNumber(code)) {
-                return `Expected Numeric Connect Code`;
-              }
+        return ask({
+          type: 'input',
+          message: interaction.user_id_prompt.message,
+          name: interaction.user_id_prompt.name,
+          validate: code => {
+            if (!code || !isNumber(code)) {
+              return `Expected Numeric Connect Code`;
+            }
+            const key = args.key;
 
-              if (code === args.key) {
-                return `Expected Connect Code and not API Key`;
-              }
+            if (key.startsWith(code)) {
+              return `Expected Connect Code and not API Key or Bot Id`;
+            }
               
               connectedId = Number(code);
               
