@@ -21,6 +21,7 @@ const {isArray} = Array;
       writeFile: <Write File Function>
     }
     [id]: <Authorized User Id Number>
+    key: <Telegram Bot API Key String>
     [min_forward_tokens]: <Minimum Forward Tokens To Notify Number>
     logger: <Winston Logger Object>
     nodes: [<Node Name String>]

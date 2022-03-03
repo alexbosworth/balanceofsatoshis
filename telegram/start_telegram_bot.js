@@ -53,6 +53,7 @@ const {subscribeToTransactions} = require('ln-service');
 const interaction = require('./interaction');
 const named = require('./../package').name;
 const {version} = require('./../package');
+
 const ask = (n, cbk) => inquirer.prompt(n).then(n => cbk(n));
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
@@ -70,6 +71,7 @@ const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
   {
     bot: <Telegram Bot Object>
     [id]: <Authorized User Id Number>
+    key: <Telegram API Key String>
     [min_forward_tokens]: <Minimum Forward Tokens To Notify Number>
     lnds: [<Authenticated LND API Object>]
     logger: <Winston Logger Object>
@@ -102,7 +104,7 @@ module.exports = (args, cbk) => {
         }
 
         if (!!args.id && args.key.startsWith(`${args.id}:`)){
-          return cbk([400, 'ExpectedConnectCodeAndNotApiKeyOrBotId']);
+          return cbk([400, 'ExpectedConnectCodeFromConnectCommandNotBotId']);
         }
 
         if (!args.logger) {
@@ -489,27 +491,32 @@ module.exports = (args, cbk) => {
         }
 
         return ask({
-          type: 'input',
           message: interaction.user_id_prompt.message,
           name: 'code',
+          type: 'input',
           validate: input => {
-            if (!input || !isNumber(input)) {
-              return `Expected Numeric Connect Code`;
+            if (!input) {
+              return false;
             }
-            const key = args.key;
 
-            if (key.startsWith(`${input}:`)) {
-              return `Expected Connect Code and not API Key or Bot Id`;
+            // The connect code should be entirely numeric, not an API key
+            if (!isNumber(input)) {
+              return `Expected numeric connect code from /connect command`;
             }
-            
+
+            // the connect code number should not match bot id from the API key
+            if (args.key.startsWith(`${input}:`)) {
+              return `Expected /connect code, not bot id from API key`;
+            }
+
             return true;
           },
-        }, 
+        },
         ({code}) => {
-
           if (!code) {
             return cbk([400, 'ExpectedConnectCodeToStartTelegramBot']);
           }
+
           connectedId = Number(code);
 
           return cbk();
