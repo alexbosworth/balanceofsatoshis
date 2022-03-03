@@ -10,6 +10,7 @@ const getTelegramBot = require('./get_telegram_bot');
 const runTelegramBot = require('./run_telegram_bot');
 
 const defaultPaymentsBudget = 0;
+const isNumber = n => !isNaN(n);
 const restartDelayMs = 1000 * 60 * 3;
 
 /** Connect nodes to Telegram
@@ -45,6 +46,10 @@ module.exports = (args, cbk) => {
 
         if (!args.fs) {
           return cbk([400, 'ExpectedFsToConnectToTelegram']);
+        }
+
+        if (!!args.id && !isNumber(args.id)) {
+          return cbk([400, 'ExpectedNumericConnectCodeToConnectToTelegram']);
         }
 
         if (!args.logger) {
@@ -97,7 +102,7 @@ module.exports = (args, cbk) => {
           return runTelegramBot({
             bot: getBot.bot,
             fs: args.fs,
-            id: args.id,
+            id: Number(args.id),
             key: getBot.key,
             min_forward_tokens: args.min_forward_tokens,
             logger: args.logger,

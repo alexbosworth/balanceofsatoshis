@@ -1666,11 +1666,6 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const isNumber = n => !isNaN(n);
-        if (!!options.connect && !isNumber(options.connect)) {
-          return reject(logger.error({err: 'ExpectedNumericConnectCode'}));
-        }
-
         return await telegram.connectToTelegram({
           logger,
           fs: {
@@ -1680,7 +1675,7 @@ prog
             is_reset_state: options.resetApiKey || undefined,
             makeDirectory: mkdir,
           },
-          id: Number(options.connect),
+          id: options.connect,
           min_forward_tokens: options.ignoreForwardsBelow || undefined,
           nodes: flatten([options.node].filter(n => !!n)),
           payments: {limit: options.budget},

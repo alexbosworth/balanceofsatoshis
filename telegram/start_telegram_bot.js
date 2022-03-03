@@ -53,7 +53,7 @@ const {subscribeToTransactions} = require('ln-service');
 const interaction = require('./interaction');
 const named = require('./../package').name;
 const {version} = require('./../package');
-const ask = (n, cbk) => inquirer.prompt(n).then(n => cbk(null, n));
+const ask = (n, cbk) => inquirer.prompt(n).then(n => cbk(n));
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const {isArray} = Array;
@@ -491,23 +491,29 @@ module.exports = (args, cbk) => {
         return ask({
           type: 'input',
           message: interaction.user_id_prompt.message,
-          name: interaction.user_id_prompt.name,
-          validate: code => {
-            if (!code || !isNumber(code)) {
+          name: 'code',
+          validate: input => {
+            if (!input || !isNumber(input)) {
               return `Expected Numeric Connect Code`;
             }
             const key = args.key;
 
-            if (key.startsWith(code)) {
+            if (key.startsWith(`${input}:`)) {
               return `Expected Connect Code and not API Key or Bot Id`;
             }
-              
-              connectedId = Number(code);
-              
-              return true;
-            }
-          }, 
-          cbk);
+            
+            return true;
+          },
+        }, 
+        ({code}) => {
+
+          if (!code) {
+            return cbk([400, 'ExpectedConnectCodeToStartTelegramBot']);
+          }
+          connectedId = Number(code);
+
+          return cbk();
+        });
       }],
 
       // Subscribe to backups
