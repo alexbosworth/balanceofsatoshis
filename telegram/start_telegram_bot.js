@@ -101,7 +101,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedApiKeyToStartTelegramBot']);
         }
 
-        if (!!args.id && args.key.startsWith(args.id)){
+        if (!!args.id && args.key.startsWith(`${args.id}:`)){
           return cbk([400, 'ExpectedConnectCodeAndNotApiKeyOrBotId']);
         }
 
