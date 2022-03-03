@@ -1,5 +1,9 @@
 # Versions
 
+## 11.56.1
+
+- `telegram`: Validate /connect code to be numeric and not the bot id
+
 ## 11.56.0
 
 - `telegram`: Add support for showing `open-balanced-channel` proposals
