@@ -146,6 +146,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MustSetOpeningNodeForEveryPublicKey']);
         }
 
+        if (!!args.is_external && !!args.internal_fund_fee_rate){
+          return cbk([400, 'CannotUseExternalFundsAndInternalFundFeeRate']);
+        }
+
         if (!args.request) {
           return cbk([400, 'ExpectedRequestFunctionToOpenChannels']);
         }
@@ -429,6 +433,10 @@ module.exports = (args, cbk) => {
         'getWalletVersion',
         ({getWalletVersion}, cbk) =>
       {
+        // Exit early if internal funding fee rate is specified
+        if (!!args.internal_fund_fee_rate) {
+          return cbk(null, false);
+        }
         // Exit early when external directive is supplied
         if (!!args.is_external) {
           return cbk(null, args.is_external);
@@ -454,8 +462,8 @@ module.exports = (args, cbk) => {
 
       // Ask for the fee rate to use for internally funded opens
       askForFeeRate: ['isExternal', ({isExternal}, cbk) => {
-        // Exit early when there are no internal funds being spent
-        if (!!isExternal) {
+        // Exit early when there are no internal funds being spent or internal fee rate is specified
+        if (!!isExternal || !!args.internal_fund_fee_rate) {
           return cbk(null, {});
         }
 
@@ -621,11 +629,12 @@ module.exports = (args, cbk) => {
             funding_deadline: moment().add(10, 'minutes').calendar(),
           });
         }
+        const internalFundingFeeRate = args.internal_fund_fee_rate || askForFeeRate.tokens_per_vbyte;
 
         return getFundedTransaction({
           outputs,
           ask: args.ask,
-          chain_fee_tokens_per_vbyte: askForFeeRate.tokens_per_vbyte,
+          chain_fee_tokens_per_vbyte: internalFundingFeeRate,
           is_external: isExternal,
           lnd: args.lnd,
           logger: args.logger,

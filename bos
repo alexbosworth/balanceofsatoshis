@@ -1054,6 +1054,7 @@ prog
   .option('--coop-close-address <addr>', 'Coop-close address', REPEATABLE)
   .option('--external-funding', 'Use external funds for the channel open')
   .option('--give <give_amount>', 'Amount to gift to peer', REPEATABLE)
+  .option('--internal-fund-with-fee-rate <internal_fee_rate>', 'Use internal funds and set fee rate', INT)
   .option('--node <node_name>', 'Saved node to open channels')
   .option('--opening-node <node_name>', 'Open with saved node', REPEATABLE)
   .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
@@ -1068,6 +1069,7 @@ prog
           cooperative_close_addresses: collect(options.coopCloseAddress),
           fs: {getFile: readFile},
           gives: collect(options.give),
+          internal_fund_fee_rate: options.internalFundWithFeeRate || undefined,
           is_external: options.externalFunding,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           opening_nodes: collect(options.openingNode),
