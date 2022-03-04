@@ -147,7 +147,7 @@ module.exports = (args, cbk) => {
         }
 
         if (!!args.is_external && !!args.internal_fund_fee_rate){
-          return cbk([400, 'CannotUseExternalFundsAndInternalFundFeeRate']);
+          return cbk([400, 'CannotUseExternalFundsAndInternalFundFeeRateToOpenChannels']);
         }
 
         if (!args.request) {
