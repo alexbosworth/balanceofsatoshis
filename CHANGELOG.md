@@ -1,5 +1,9 @@
 # Versions
 
+## 11.57.0
+
+- `open`: Add `--internal-fund-at-fee-rate` to skip interactive entry
+
 ## 11.56.1
 
 - `telegram`: Validate /connect code to be numeric and not the bot id
