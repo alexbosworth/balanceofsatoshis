@@ -146,7 +146,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MustSetOpeningNodeForEveryPublicKey']);
         }
 
-        if (!!args.is_external && !!args.internal_fund_fee_rate){
+        if (!!args.is_external && !!args.internal_fund_fee_rate) {
           return cbk([400, 'CannotUseExternalFundsAndInternalFundFeeRateToOpenChannels']);
         }
 
