@@ -19,6 +19,7 @@ const {getFundedTransaction} = require('ln-sync');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
+const {getPendingChannels} = require('ln-service');
 const {getPsbtFromTransaction} = require('goldengate');
 const {getWalletVersion} = require('ln-service');
 const {openChannels} = require('ln-service');
@@ -38,6 +39,8 @@ const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const detectNetworks = ['btc', 'btctestnet'];
 const flatten = arr => [].concat(...arr);
 const format = 'p2wpkh';
+const {fromHex} = Transaction;
+const interval = 1000;
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const knownTypes = ['private', 'public'];
@@ -45,6 +48,7 @@ const lineBreak = '\n';
 const noInternalFundingVersions = ['0.11.0-beta', '0.11.1-beta'];
 const notFound = -1;
 const peerAddedDelayMs = 1000 * 5;
+const pendingCheckTimes = 60 * 10;
 const per = (a, b) => (a / b).toFixed(2);
 const relockIntervalMs = 1000 * 20;
 const times = 10;
@@ -492,7 +496,7 @@ module.exports = (args, cbk) => {
           return openChannels({
             channels,
             lnd,
-            is_avoiding_broadcast: !!hasMultipleBatches,
+            is_avoiding_broadcast: true,
           },
           (err, res) => {
             if (!!err) {
@@ -721,26 +725,50 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const [, multiNodeOpening] = openChannels;
+        const toOpen = flatten(openChannels.map(n => n.pending));
+        const txId = fromHex(getFunding.value.transaction).getId();
 
-        // Exit early when not opening in multi-node mode
-        if (!multiNodeOpening) {
-          return cbk();
-        }
+        args.logger.info({confirming_pending_open: true});
 
-        return broadcastChainTransaction({
-          lnd: args.lnd,
-          transaction: getFunding.value.transaction,
+        // Make sure that pending channels are showing up: got commitment tx
+        return asyncRetry({interval, times: pendingCheckTimes}, cbk => {
+          return asyncMap(openChannels, ({lnd, node, pending}, cbk) => {
+            return getPendingChannels({lnd}, cbk);
+          },
+          (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            // Consolidate all pending channels from all nodes
+            const pending = flatten(res.map(n => n.pending_channels));
+
+            // Only consider pending channels related to this funding tx
+            const opening = pending.filter(n => n.transaction_id === txId);
+
+            // Every channel to open should be reflected in a pending channel
+            if (opening.length !== toOpen.length) {
+              return cbk([503, 'FailedToFindPendingChannelOpen']);
+            }
+
+            args.logger.info({broadcasting: getFunding.value.transaction});
+
+            return broadcastChainTransaction({
+              lnd: args.lnd,
+              transaction: getFunding.value.transaction,
+            },
+            (err, res) => {
+              if (!!err) {
+                return cbk(err);
+              }
+
+              args.logger.info({broadcast: res.id});
+
+              return cbk();
+            });
+          });
         },
-        (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          args.logger.info({transaction: getFunding.value.transaction});
-
-          return cbk();
-        });
+        cbk);
       }],
 
       // Cancel pending if there is an error

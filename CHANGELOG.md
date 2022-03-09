@@ -1,5 +1,9 @@
 # Versions
 
+## 11.57.1
+
+- `open`: Restructure funding flow to look for pending channels before publish
+
 ## 11.57.0
 
 - `open`: Add `--internal-fund-at-fee-rate` to skip interactive entry

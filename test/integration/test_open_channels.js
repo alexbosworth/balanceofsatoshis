@@ -43,7 +43,9 @@ test(`Open channels`, async ({end, equal, strictSame}) => {
       });
     });
 
-    const {address} = await createChainAddress({lnd});
+    const {address} = await asyncRetry({interval, times}, async () => {
+      return await createChainAddress({lnd});
+    });
 
     await delay(4000);
 
