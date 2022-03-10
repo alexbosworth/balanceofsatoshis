@@ -1696,6 +1696,8 @@ prog
   .help('Create or view a trade')
   .help('Example: purchase/sell an invite link to a private group')
   .help('Example: purchase/sell a link to a file')
+  .help('Example: buy/sell channels (experimental)')
+  .option('--experimental', 'Unlocks experimental feature of channel sale')
   .option('--node <name>', 'Saved node to use for trade')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -1713,6 +1715,7 @@ prog
           balance,
           logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(null, res)),
+          experimental: options.experimental,
           separator: () => new inquirer.Separator(),
         },
         responses.returnObject({exit, logger, reject, resolve}));
