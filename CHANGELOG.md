@@ -1,5 +1,9 @@
 # Versions
 
+## 11.58.0
+
+- `trade-secret`: Add experimental channel sales feature
+
 ## 11.57.1
 
 - `open`: Restructure funding flow to look for pending channels before publish
