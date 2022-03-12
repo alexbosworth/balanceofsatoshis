@@ -1704,15 +1704,8 @@ prog
       try {
         const {lnd} = await lndForNode(logger, options.node);
 
-        const {balance} = await balances.getBalance({
-          lnd,
-          is_confirmed: true,
-          is_onchain_only: true,
-        });
-
         return paidServices.manageTrades({
           lnd,
-          balance,
           logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(null, res)),
           experimental: options.experimental,
