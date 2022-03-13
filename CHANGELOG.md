@@ -1,5 +1,10 @@
 # Versions
 
+## 11.59.0
+
+- `chart-fees-paid`: Add `--in` to filter on routes in specified node
+- `chart-fees-paid`: Add `--out` to filter on routes out specified peer
+
 ## 11.58.0
 
 - `trade-secret`: Add experimental channel sales feature

@@ -396,10 +396,12 @@ prog
   .help('Show the routing fees paid to forwarding nodes')
   .help('--rebalances can return results much more quickly')
   .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
+  .option('--in <public_key>', 'Fees paid on routes in node with public key')
   .option('--most-fees', 'View table of fees paid per node')
   .option('--most-forwarded', 'View table of forwarded per node')
   .option('--network', 'Show only non-peers in table view')
   .option('--node <node_name>', 'Get fees chart for saved node(s)', REPEATABLE)
+  .option('--out <public_key>', 'Fees paid on routes out peer with public key')
   .option('--peers', 'Show only peers in table view')
   .option('--rebalances', 'Only consider fees paid in self-to-self transfers')
   .action((args, options, logger) => {
@@ -414,12 +416,14 @@ prog
         return routing.getFeesPaid({
           days: options.days,
           fs: {getFile: readFile},
+          in: options.in,
           is_most_fees_table: options.mostFees,
           is_most_forwarded_table: options.mostForwarded,
           is_network: options.network,
           is_peer: options.peers,
           is_rebalances_only: options.rebalances,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
+          out: options.out,
         },
         (options.mostFees || options.mostForwarded) ? asTable : chart);
       } catch (err) {

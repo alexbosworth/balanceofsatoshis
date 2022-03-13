@@ -3,6 +3,7 @@
 - Feel free to open issues or pull requests
 - They may not be addressed or merged
 - You can ignore coding styles if you want
+- Readability trumps almost everything else
 
 ## Coding Style
 

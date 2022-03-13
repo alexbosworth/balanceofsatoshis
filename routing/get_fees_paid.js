@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const {getNode} = require('ln-service');
+const {getNodeAlias} = require('ln-sync');
 const {getChannels} = require('ln-service');
 const {getPayments} = require('ln-sync');
 const {getRebalancePayments} = require('ln-sync');
@@ -24,6 +25,7 @@ const minChartDays = 4;
 const maxChartDays = 90;
 const mtokensAsBigUnit = n => (Number(n / BigInt(1e3)) / 1e8).toFixed(8);
 const mtokensAsTokens = mtokens => Number(mtokens / BigInt(1e3));
+const title = 'Routing fees paid';
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 
 /** Get routing fees paid
@@ -135,9 +137,63 @@ module.exports = (args, cbk) => {
 
       // Filter the payments
       forwards: ['getPayments', 'start', ({getPayments, start}, cbk) => {
-        const payments = getPayments.filter(payment => {
-          return payment.confirmed_at > start.toISOString();
-        });
+        const payments = getPayments
+          .filter(payment => {
+            return payment.confirmed_at > start.toISOString();
+          })
+          .map(payment => {
+            const attempts = payment.attempts.filter(({route}) => {
+              const keys = route.hops.map(n => n.public_key);
+
+              const [outHop] = keys;
+
+              const [, inHop] = keys.slice().reverse();
+
+              if (!outHop) {
+                return false;
+              }
+
+              // Ignore attempts that do not include the specified out hop
+              if (!!args.out && outHop !== args.out) {
+                return false;
+              }
+
+              if (!!args.in && !inHop) {
+                return false;
+              }
+
+              // Ignore attempts that do not include the specified in hop
+              if (!!args.in && inHop !== args.in) {
+                return false;
+              }
+
+              return true;
+            });
+
+            if (!attempts.length) {
+              return;
+            }
+
+            const totalFees = attempts.reduce((sum, attempt) => {
+              return sum + BigInt(attempt.route.fee_mtokens);
+            },
+            BigInt(Number()));
+
+            const totalTokens = attempts.reduce((sum, attempt) => {
+              return sum + BigInt(attempt.route.mtokens);
+            },
+            BigInt(Number()));
+
+            return {
+              attempts,
+              confirmed_at: payment.confirmed_at,
+              created_at: payment.created_at,
+              fee: mtokensAsTokens(totalFees),
+              fee_mtokens: totalFees.toString(),
+              mtokens: totalTokens.toString(),
+            };
+          })
+          .filter(n => !!n);
 
         return cbk(null, payments);
       }],
@@ -315,12 +371,28 @@ module.exports = (args, cbk) => {
         return cbk(null, `${duration} ${since}. Total: ${paid}`);
       }],
 
-      // Fees paid
-      data: ['description', 'rows', 'sum', ({description, rows, sum}, cbk) => {
-        const data = sum.fees;
-        const title = 'Routing fees paid';
+      // Title for fees paid
+      title: ['validate', async ({}) => {
+        const [lnd] = args.lnds;
 
-        return cbk(null, {data, description, rows, title});
+        const into = !args.in ? null : await getNodeAlias({lnd, id: args.in});
+        const out = !args.out ? null : await getNodeAlias({lnd, id: args.out});
+
+        const inPeer = !!args.in ? `in ${into.alias || into.id}` : '';
+        const outPeer = !!args.out ? `out ${out.alias || out.id}` : '';
+
+        return [title, outPeer, inPeer].filter(n => !!n).join(' ');
+      }],
+
+      // Fees paid
+      data: [
+        'description',
+        'rows',
+        'sum',
+        'title',
+        ({description, rows, sum, title}, cbk) =>
+      {
+        return cbk(null, {description, rows, title, data: sum.fees});
       }],
     },
     returnResult({reject, resolve, of: 'data'}, cbk));
