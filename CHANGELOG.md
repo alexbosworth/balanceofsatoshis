@@ -1,5 +1,9 @@
 # Versions
 
+## 11.59.1
+
+- `chart-fees-paid`: Fix `--rebalances` to return data
+
 ## 11.59.0
 
 - `chart-fees-paid`: Add `--in` to filter on routes in specified node

@@ -119,7 +119,12 @@ module.exports = (args, cbk) => {
               return cbk(err);
             }
 
-            return cbk(null, res.payments);
+            return cbk(null, res.payments.map(payment => ({
+              attempts: payment.paths.map(route => ({route})),
+              confirmed_at: payment.confirmed_at,
+              created_at: payment.created_at,
+              is_confirmed: payment.is_confirmed,
+            })));
           });
         }
 
@@ -138,9 +143,8 @@ module.exports = (args, cbk) => {
       // Filter the payments
       forwards: ['getPayments', 'start', ({getPayments, start}, cbk) => {
         const payments = getPayments
-          .filter(payment => {
-            return payment.confirmed_at > start.toISOString();
-          })
+          .filter(payment => payment.is_confirmed !== false)
+          .filter(payment => payment.confirmed_at > start.toISOString())
           .map(payment => {
             const attempts = payment.attempts.filter(({route}) => {
               const keys = route.hops.map(n => n.public_key);
@@ -209,12 +213,8 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const confirmed = arr => arr.filter(n => !!n.is_confirmed);
-
-        const fees = forwards.reduce((sum, {attempts, paths}) => {
-          const confirmedPaths = !!attempts ? confirmed(attempts) : paths;
-
-          confirmedPaths.forEach(({hops, route}) => {
+        const fees = forwards.reduce((sum, {attempts}) => {
+          attempts.forEach(({hops, route}) => {
             const usedHops = !!route ? route.hops : hops;
 
             return usedHops.slice().reverse().forEach((hop, i) => {
@@ -236,10 +236,8 @@ module.exports = (args, cbk) => {
         },
         {});
 
-        const forwarded = forwards.reduce((sum, {attempts, paths}) => {
-          const confirmedPaths = !!attempts ? confirmed(attempts) : paths;
-
-          confirmedPaths.forEach(({hops, route}) => {
+        const forwarded = forwards.reduce((sum, {attempts}) => {
+          attempts.forEach(({hops, route}) => {
             const usedHops = !!route ? route.hops : hops;
 
             return usedHops.slice().reverse().forEach((hop, i) => {
