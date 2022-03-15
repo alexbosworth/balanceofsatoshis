@@ -1701,6 +1701,7 @@ prog
   .help('Example: purchase/sell an invite link to a private group')
   .help('Example: purchase/sell a link to a file')
   .help('Example: buy/sell channels (experimental)')
+  .help('Channel sales support fiat pricing, (Example: 25*USD, 35*EUR)')
   .option('--experimental', 'Unlocks experimental feature of channel sale')
   .option('--node <name>', 'Saved node to use for trade')
   .action((args, options, logger) => {
@@ -1713,6 +1714,7 @@ prog
           logger,
           ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(null, res)),
           experimental: options.experimental,
+          request: commands.simpleRequest,
           separator: () => new inquirer.Separator(),
         },
         responses.returnObject({exit, logger, reject, resolve}));
