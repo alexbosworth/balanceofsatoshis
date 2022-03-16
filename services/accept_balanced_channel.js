@@ -39,7 +39,7 @@ const numAsHex = num => num.toString(16);
 const paddedHexNumber = n => n.length % 2 ? `0${n}` : n;
 const {p2ms} = payments;
 const {p2pkh} = payments;
-const p2pTimeoutMs = 5000;
+const p2pTimeoutMs = 1000 * 90;
 const {p2wsh} = payments;
 const relockIntervalMs = 1000 * 20;
 const times = 60 * 6;

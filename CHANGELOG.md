@@ -1,5 +1,9 @@
 # Versions
 
+## 11.59.2
+
+- `open-balanced-channel`: Increase fail timeout for acceptance from 5s to 90s
+
 ## 11.59.1
 
 - `chart-fees-paid`: Fix `--rebalances` to return data
