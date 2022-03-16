@@ -399,11 +399,8 @@ module.exports = (args, cbk) => {
             await handleStopCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              quit: () => args.bot.stop(),
               reply: (msg, mode) => ctx.reply(msg, mode),
             });
-
-            process.exit();
           } catch (err) {
             args.logger.error({err});
           }
@@ -452,7 +449,12 @@ module.exports = (args, cbk) => {
         // Handle button push type commands
         args.bot.on('callback_query:data', async ctx => {
           try {
-            await handleButtonPush({ctx, id: connectedId, nodes: getNodes});
+            await handleButtonPush({
+              ctx,
+              bot: args.bot,
+              id: connectedId,
+              nodes: getNodes,
+            });
           } catch (err) {
             args.logger.error({err});
           }

@@ -1,5 +1,10 @@
 # Versions
 
+## 11.59.3
+
+- `telegram`: Fix oepn trade-secret serving
+- `telegram`: Fix `/stop` command to require confirmation before termination
+
 ## 11.59.2
 
 - `open-balanced-channel`: Increase fail timeout for acceptance from 5s to 90s
