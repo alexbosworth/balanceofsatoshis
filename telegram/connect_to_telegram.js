@@ -98,6 +98,8 @@ module.exports = (args, cbk) => {
         let {limit} = args.payments;
         let online = getNodes.map(n => n.id);
 
+        process.env.PREFERRED_TOKENS_TYPE = args.use_sats ? 'full' : 'divided';
+
         return asyncForever(cbk => {
           return runTelegramBot({
             bot: getBot.bot,

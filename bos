@@ -1670,6 +1670,7 @@ prog
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .option('--reset-api-key', 'Reset the Telegram API key')
   .option('--use-proxy <path>', 'Proxy agent to connect to Telegram')
+  .option('--use-sats', 'Send messages with the amounts in satoshis')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1688,6 +1689,7 @@ prog
           payments: {limit: options.budget},
           proxy: options.useProxy || undefined,
           request: commands.fetchRequest({fetch}),
+          use_sats: options.useSats,
         });
       } catch (err) {
         return reject(logger.error({err}));
