@@ -829,11 +829,20 @@ module.exports = (args, cbk) => {
       secrets: ['getNodes', 'userId', ({getNodes}, cbk) => {
         return asyncEach(getNodes, (node, cbk) => {
           const start = new Date().toISOString();
-          const sub = serviceAnchoredTrades({lnd: node.lnd});
+
+          const sub = serviceAnchoredTrades({
+            lnd: node.lnd,
+            request: args.request,
+          });
 
           subscriptions.push(sub);
 
           sub.on('settled', async trade => {
+            // Ignore trades without tokens
+            if (!trade.tokens) {
+              return;
+            }
+
             try {
               await postSettledTrade({
                 api: args.bot.api,
@@ -851,8 +860,8 @@ module.exports = (args, cbk) => {
           });
 
           sub.on('start', async trade => {
-            // Exit early when this is an older trade
-            if (trade.created_at < start) {
+            // Exit early when this is an older trade or has no tokens
+            if (!trade.tokens || trade.created_at < start) {
               return;
             }
 

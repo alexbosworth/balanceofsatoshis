@@ -1,6 +1,6 @@
 # Versions
 
-## 11.60.0
+## 11.60.1
 
 - `trade-secret`: Add support for charging dynamic fiat-based prices
 
