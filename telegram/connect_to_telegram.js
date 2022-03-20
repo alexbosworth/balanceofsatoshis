@@ -12,6 +12,7 @@ const runTelegramBot = require('./run_telegram_bot');
 const defaultPaymentsBudget = 0;
 const isNumber = n => !isNaN(n);
 const restartDelayMs = 1000 * 60 * 3;
+const smallUnitsType = 'full';
 
 /** Connect nodes to Telegram
 
@@ -23,6 +24,7 @@ const restartDelayMs = 1000 * 60 * 3;
       writeFile: <Write File Function>
     }
     [id]: <Authorized User Id Number>
+    is_small_units: <Formatting Should Use Small Units Bool>
     logger: <Winston Logger Object>
     [min_forward_tokens]: <Minimum Forward Tokens Number>
     [nodes]: [<Node Name String>]
@@ -93,12 +95,22 @@ module.exports = (args, cbk) => {
         return getTelegramBot({fs: args.fs, proxy: args.proxy}, cbk);
       }],
 
+      // Set the units formatting
+      setUnits: ['validate', ({}, cbk) => {
+        // Exit early when using default units formatting
+        if (!args.is_small_units) {
+          return cbk();
+        }
+
+        process.env.PREFERRED_TOKENS_TYPE = smallUnitsType;
+
+        return cbk();
+      }],
+
       // Start bot
-      start: ['getBot', 'getNodes', ({getBot, getNodes}, cbk) => {
+      start: ['getBot', 'getNodes', 'setUnits', ({getBot, getNodes}, cbk) => {
         let {limit} = args.payments;
         let online = getNodes.map(n => n.id);
-
-        process.env.PREFERRED_TOKENS_TYPE = args.use_sats ? 'full' : 'divided';
 
         return asyncForever(cbk => {
           return runTelegramBot({

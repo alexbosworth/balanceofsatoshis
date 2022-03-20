@@ -1670,7 +1670,7 @@ prog
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .option('--reset-api-key', 'Reset the Telegram API key')
   .option('--use-proxy <path>', 'Proxy agent to connect to Telegram')
-  .option('--use-sats', 'Send messages with the amounts in satoshis')
+  .option('--use-small-units', 'Avoid showing leading zeros on amounts')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1684,12 +1684,12 @@ prog
             makeDirectory: mkdir,
           },
           id: options.connect,
+          is_small_units: options.useSmallUnits || undefined,
           min_forward_tokens: options.ignoreForwardsBelow || undefined,
           nodes: flatten([options.node].filter(n => !!n)),
           payments: {limit: options.budget},
           proxy: options.useProxy || undefined,
           request: commands.fetchRequest({fetch}),
-          use_sats: options.useSats,
         });
       } catch (err) {
         return reject(logger.error({err}));
