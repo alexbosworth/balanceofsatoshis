@@ -1,5 +1,9 @@
 # Versions
 
+## 11.60.2
+
+- `trade-secret`: Fix listing of open trades that have dynamic fiat prices
+
 ## 11.60.1
 
 - `trade-secret`: Add support for charging dynamic fiat-based prices
