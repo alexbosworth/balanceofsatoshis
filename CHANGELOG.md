@@ -1,5 +1,9 @@
 # Versions
 
+## 11.61.0
+
+- `telegram`: add `--use-small-units` to avoid showing leading zeros on amounts
+
 ## 11.60.2
 
 - `trade-secret`: Fix listing of open trades that have dynamic fiat prices
