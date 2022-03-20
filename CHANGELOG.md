@@ -1,5 +1,9 @@
 # Versions
 
+## 11.60.0
+
+- `trade-secret`: Add support for charging dynamic fiat-based prices
+
 ## 11.59.4
 
 - `telegram`: Fix oepn trade-secret serving
