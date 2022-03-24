@@ -203,17 +203,14 @@ module.exports = (args, cbk) => {
         });
 
         // Handle command to get notified on the next block
-        args.bot.command('blocknotify', async ctx => {
-          try {
-            await handleBlocknotifyCommand({
-              from: ctx.message.from.id,
-              id: connectedId,
-              reply: n => ctx.reply(n, markdown),
-              request: args.request,
-            });
-          } catch (err) {
-            args.logger.error({err});
-          }
+        args.bot.command('blocknotify', ctx => {
+          handleBlocknotifyCommand({
+            from: ctx.message.from.id,
+            id: connectedId,
+            reply: n => ctx.reply(n, markdown),
+            request: args.request,
+          },
+          err => !!err ? logger.error({err}) : null);
         });
 
         // Handle command to get the connect id
