@@ -146,8 +146,13 @@ module.exports = (args, cbk) => {
           .filter(payment => payment.is_confirmed !== false)
           .filter(payment => payment.confirmed_at > start.toISOString())
           .map(payment => {
-            const attempts = payment.attempts.filter(({route}) => {
-              const keys = route.hops.map(n => n.public_key);
+            const attempts = payment.attempts.filter(attempt => {
+              // Only consider attempts that confirmed
+              if (attempt.is_confirmed === false) {
+                return false;
+              }
+
+              const keys = attempt.route.hops.map(n => n.public_key);
 
               const [outHop] = keys;
 

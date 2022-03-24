@@ -1,5 +1,9 @@
 # Versions
 
+## 11.61.1
+
+- `chart-fees-paid`: Check HTLC attempts to confirm only counting paid fees
+
 ## 11.61.0
 
 - `telegram`: add `--use-small-units` to avoid showing leading zeros on amounts
