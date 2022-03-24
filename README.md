@@ -705,5 +705,5 @@ bos inbound-channel-rules "capacity < 2*m"
 [docker-install-guide]: https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-18-04
 [nodejs-install-guide]: https://gist.github.com/alexbosworth/8fad3d51f9e1ff67995713edf2d20126
 [raspiblitz-install-guide]: https://gist.github.com/openoms/823f99d1ab6e1d53285e489f7ba38602
-[raspibolt-install-guide]: https://raspibolt.org/bonus/lightning/balance-of-satoshis.html
+[raspibolt-install-guide]: https://raspibolt.org/guide/bonus/lightning/balance-of-satoshis.html
 [umbrel-install-guide]: https://plebnet.wiki/wiki/Umbrel_-_Installing_BoS
