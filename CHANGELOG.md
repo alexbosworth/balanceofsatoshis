@@ -1,6 +1,6 @@
 # Versions
 
-## 11.61.2
+## 11.61.3
 
 - `chart-fees-paid`: Check HTLC attempts to confirm only counting paid fees
 

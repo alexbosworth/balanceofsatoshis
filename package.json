@@ -10,7 +10,7 @@
     "url": "https://github.com/alexbosworth/balanceofsatoshis/issues"
   },
   "dependencies": {
-    "@alexbosworth/caporal": "1.4.0",
+    "@alexbosworth/caporal": "1.4.1",
     "@alexbosworth/fiat": "1.0.1",
     "@alexbosworth/html2unicode": "1.1.5",
     "@alexbosworth/node-fetch": "2.6.2",
@@ -32,7 +32,7 @@
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
     "ini": "2.0.0",
-    "inquirer": "8.2.1",
+    "inquirer": "8.2.2",
     "invoices": "2.0.4",
     "ln-accounting": "5.0.5",
     "ln-service": "53.9.3",
@@ -51,8 +51,8 @@
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
-    "@alexbosworth/tap": "15.0.10",
-    "ln-docker-daemons": "2.2.4",
+    "@alexbosworth/tap": "15.0.11",
+    "ln-docker-daemons": "2.2.5",
     "mock-lnd": "1.4.1",
     "tiny-secp256k1": "2.2.1"
   },
@@ -81,5 +81,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "11.61.2"
+  "version": "11.61.3"
 }
