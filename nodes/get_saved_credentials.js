@@ -7,6 +7,7 @@ const {returnResult} = require('asyncjs-util');
 const {home} = require('./constants');
 
 const credentials = 'credentials.json';
+const {isArray} = Array;
 const {parse} = JSON;
 
 /** Get saved credentials for node
@@ -41,6 +42,10 @@ module.exports = ({fs, node}, cbk) => {
 
         if (!node) {
           return cbk([400, 'ExpectedNodeNameToGetSavedCredentials']);
+        }
+
+        if (!!isArray(node)) {
+          return cbk([400, 'ExpectedSingleSavedNodeNameToGetCredentialsFor']);
         }
 
         return cbk();

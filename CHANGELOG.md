@@ -1,5 +1,9 @@
 # Versions
 
+## 11.62.0
+
+- `telegram`: Add complete amounts to forward messages, improve rate fidelity
+
 ## 11.61.3
 
 - `chart-fees-paid`: Check HTLC attempts to confirm only counting paid fees
