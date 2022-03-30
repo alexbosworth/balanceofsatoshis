@@ -1,5 +1,9 @@
 # Versions
 
+## 11.62.1
+
+- `advertise`: Optimize advertise speed when only advertising to peers
+
 ## 11.62.0
 
 - `telegram`: Add complete amounts to forward messages, improve rate fidelity
