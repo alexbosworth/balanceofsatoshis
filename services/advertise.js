@@ -8,13 +8,13 @@ const asyncTimeout = require('async/timeout');
 const {createInvoice} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
-const {getNode} = require('ln-service');
 const {getRouteToDestination} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToProbeForRoute} = require('ln-service');
 
+const getNodesGraph = require('./get_nodes_graph');
 const {isMatchingFilters} = require('./../display');
 const {shuffle} = require('./../arrays');
 
@@ -23,6 +23,7 @@ const cltvDelay = 144;
 const createSecret = () => randomBytes(32).toString('hex');
 const defaultFilter = ['channels_count > 9'];
 const defaultMsg = (alias, key) => `Check out my node! ${alias} ${key}`;
+const directPeersDistance = 0;
 const filterLimit = 10;
 const hashOf = n => createHash('sha256').update(n).digest().toString('hex');
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
@@ -77,68 +78,34 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      //Get channels
-      getChannels: ['validate', ({}, cbk) => getChannels({lnd: args.lnd}, cbk)],
+      // Get channels to substitute for graph when ads are for peers only
+      getChannels: ['validate', ({}, cbk) => {
+        // Exit early when advertising to more than direct peers
+        if (args.max_hops !== 0) {
+          return cbk();
+        }
 
-      // Get the local identity
+        return getChannels({lnd: args.lnd}, cbk);
+      }],
+
+      // Get the local identity to compose the ad message
       getIdentity: ['validate', ({}, cbk) => {
         return getWalletInfo({lnd: args.lnd}, cbk);
       }],
 
-      // Get peer graph
-      getPeerGraph: ['getChannels', async ({getChannels}) => {
-        args.logger.info({sending_to_all_graph_nodes: true});
+      // Get the graph to use to find candidates to send ads to
+      getGraph: ['getChannels', ({getChannels}, cbk) => {
+        // Exit early when using the entire graph
+        if (args.max_hops !== directPeersDistance) {
+          args.logger.info({sending_to_all_graph_nodes: true});
 
-        if (args.max_hops !== undefined) {
-          args.logger.info({maximum_relay_distance_allowed: args.max_hops});
-        }
-
-        if (args.min_hops !== undefined) {
-          args.logger.info({minimum_relay_distance_required: args.min_hops});
-        }
-
-        // Exit early when not advertising to peers
-        if (args.max_hops > 0 || args.max_hops === undefined) {
-          return;
-        }
-
-        const nodes = [];
-        const channels = [];
-        // Get unique peers from all channels
-        const uniquePeers = uniq(getChannels.channels.map((channels) => channels.partner_public_key));
-
-        const peerGraph = uniquePeers.map(peer => {
-            return getNode({lnd: args.lnd, public_key: peer});
-        });
-
-        const results = await Promise.all(peerGraph);
-
-        results.forEach((res, i=0) => {
-          nodes.push({
-            alias: res.alias,
-            color: res.color,
-            features: res.features,
-            public_key: uniquePeers[i],
-            sockets: res.sockets,
-            updated_at: res.updated_at,
-          });
-
-          res.channels.forEach(channel => {
-            channels.push(channel);
-          });
-        });
-
-        return {channels, nodes};
-      }],
-
-      // Get the network graph
-      getGraph: ['getPeerGraph', ({getPeerGraph}, cbk) => {
-        // Exit early when advertising to whole graph
-        if (!getPeerGraph) {
           return getNetworkGraph({lnd: args.lnd}, cbk);
         }
 
-        return cbk(null, {channels: getPeerGraph.channels, nodes: getPeerGraph.nodes});
+        // Collect all ids of channel peers
+        const nodes = getChannels.channels.map(n => n.partner_public_key);
+
+        return getNodesGraph({lnd: args.lnd, nodes: uniq(nodes)}, cbk);
       }],
 
       // Derive the message to send
@@ -161,6 +128,7 @@ module.exports = (args, cbk) => {
         ({getGraph, getIdentity, message}, cbk) =>
       {
         const {shuffled} = shuffle({array: getGraph.nodes});
+
         // Only consider 3rd party nodes that have known features
         const filteredNodes = shuffled
           .filter(n => n.public_key !== getIdentity.public_key)
