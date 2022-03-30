@@ -6,7 +6,9 @@ const asyncFilterLimit = require('async/filterLimit');
 const asyncMapSeries = require('async/mapSeries');
 const asyncTimeout = require('async/timeout');
 const {createInvoice} = require('ln-service');
+const {getChannels} = require('ln-service');
 const {getNetworkGraph} = require('ln-service');
+const {getNode} = require('ln-service');
 const {getRouteToDestination} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
@@ -40,6 +42,7 @@ const routeDistance = route => route.hops.length - 1;
 const sendTokens = 10;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const textMessageType = '34349334';
+const uniq = arr => Array.from(new Set(arr));
 const utf8AsHex = utf8 => Buffer.from(utf8, 'utf8').toString('hex');
 
 /** Advertise to nodes that accept KeySend
@@ -74,8 +77,16 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get the network graph
-      getGraph: ['validate', ({}, cbk) => {
+      //Get channels
+      getChannels: ['validate', ({}, cbk) => getChannels({lnd: args.lnd}, cbk)],
+
+      // Get the local identity
+      getIdentity: ['validate', ({}, cbk) => {
+        return getWalletInfo({lnd: args.lnd}, cbk);
+      }],
+
+      // Get peer graph
+      getPeerGraph: ['getChannels', async ({getChannels}) => {
         args.logger.info({sending_to_all_graph_nodes: true});
 
         if (args.max_hops !== undefined) {
@@ -86,12 +97,48 @@ module.exports = (args, cbk) => {
           args.logger.info({minimum_relay_distance_required: args.min_hops});
         }
 
-        return getNetworkGraph({lnd: args.lnd}, cbk);
+        // Exit early when not advertising to peers
+        if (args.max_hops > 0 || args.max_hops === undefined) {
+          return;
+        }
+
+        const nodes = [];
+        const channels = [];
+        // Get unique peers from all channels
+        const uniquePeers = uniq(getChannels.channels.map((channels) => channels.partner_public_key));
+
+        const peerGraph = uniquePeers.map(peer => {
+            return getNode({lnd: args.lnd, public_key: peer});
+        });
+
+        const results = await Promise.all(peerGraph);
+
+        results.forEach((res, i=0) => {
+          nodes.push({
+            alias: res.alias,
+            color: res.color,
+            features: res.features,
+            public_key: uniquePeers[i],
+            sockets: res.sockets,
+            updated_at: res.updated_at,
+          });
+
+          res.channels.forEach(channel => {
+            channels.push(channel);
+          });
+        });
+
+        return {channels, nodes};
       }],
 
-      // Get the local identity
-      getIdentity: ['validate', ({}, cbk) => {
-        return getWalletInfo({lnd: args.lnd}, cbk);
+      // Get the network graph
+      getGraph: ['getPeerGraph', ({getPeerGraph}, cbk) => {
+        // Exit early when advertising to whole graph
+        if (!getPeerGraph) {
+          return getNetworkGraph({lnd: args.lnd}, cbk);
+        }
+
+        return cbk(null, {channels: getPeerGraph.channels, nodes: getPeerGraph.nodes});
       }],
 
       // Derive the message to send
@@ -114,7 +161,6 @@ module.exports = (args, cbk) => {
         ({getGraph, getIdentity, message}, cbk) =>
       {
         const {shuffled} = shuffle({array: getGraph.nodes});
-
         // Only consider 3rd party nodes that have known features
         const filteredNodes = shuffled
           .filter(n => n.public_key !== getIdentity.public_key)
