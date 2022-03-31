@@ -1028,16 +1028,20 @@ prog
   .option('--url <url>', 'URL to pay', STRING)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
-      return lnurl.pay({
-        fetch,
-        logger,
-        ask: (n, cbk) => inquirer.prompt(n).then(n => cbk(n)),
-        function: args.function,
-        lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-        lnurl: options.url,
-        max_fee: options.maxFee,
-      },
-      responses.returnObject({logger, reject, resolve}));
+      try {
+        return lnurl.pay({
+          logger,
+          ask: (n, cbk) => inquirer.prompt(n).then(n => cbk(n)),
+          function: args.function,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          lnurl: options.url,
+          max_fee: options.maxFee,
+          request: commands.simpleRequest,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return reject(logger.error({err}));
+      }
     });
   })
 
