@@ -7,6 +7,9 @@
     "invoices": "invoices",
     "payments": "payments"
   },
+  "lnurlFunctions": {
+    "pay": "pay"
+  },
   "peerSortOptions": [
     "alias",
     "est_disk_usage_mb",
