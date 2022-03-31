@@ -1,6 +1,6 @@
 # Versions
 
-## 11.63.0
+## 11.63.1
 
 - `lnurl`: Add command to decode and make payments to LNURL payRequests
 
