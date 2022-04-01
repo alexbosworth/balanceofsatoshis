@@ -13,7 +13,6 @@ const asLnurl = n => n.substring(n.startsWith('lightning:') ? 10 : 0);
 const bech32CharLimit = 2000;
 const errorStatus = 'ERROR';
 const {decode} = bech32;
-const defaultMaxPaths = 1;
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
 const lowestSendableValue = 1000;
@@ -36,11 +35,14 @@ const wordsAsUtf8 = n => Buffer.from(bech32.fromWords(n)).toString('utf8');
 /** Pay to lnurl
  {
   ask: <Ask Function>
+  avoid: [<Avoid Forwarding Through String>]
   fetch: <Fetch Function>
   lnd: <Authenticated LND API Object>
   lnurl: <Lnurl String>
   logger: <Winston Logger Object>
   max_fee: <Max Fee Tokens Number>
+  max_paths: <Maximum Paths Number>
+  out: [<Out Through Peer With Public Key Hex String>]
  }
 */
 module.exports = (args, cbk) => {
@@ -50,6 +52,10 @@ module.exports = (args, cbk) => {
       validate: cbk => {
         if (!args.ask) {
           return cbk([400, 'ExpectedAskFunctionToGetPaymentRequestFromLnurl']);
+        }
+
+        if (!isArray(args.avoid)) {
+          return cbk([400, 'ExpectedAvoidArrayToGetPaymentRequestFromLnurl']);
         }
 
         if (!args.request) {
@@ -80,6 +86,14 @@ module.exports = (args, cbk) => {
 
         if (!args.max_fee) {
           return cbk([400, 'ExpectedMaxFeeToGetPaymentRequestFromLnurl']);
+        }
+
+        if (!args.max_paths) {
+          return cbk([400, 'ExpectedMaxPathsCountToGetPaymentRequestFromLnurl']);
+        }
+
+        if (!isArray(args.out)) {
+          return cbk([400, 'ExpectedArrayOfOutPeersToGetPaymentRequestFromLnurl']);
         }
 
         return cbk();
@@ -303,12 +317,12 @@ module.exports = (args, cbk) => {
       // Pay the payment request
       pay: ['confirm', 'getRequest', ({getRequest}, cbk) => {
         return pay({
-          avoid: [],
+          avoid: args.avoid,
           lnd: args.lnd,
           logger: args.logger,
           max_fee: args.max_fee,
-          max_paths: defaultMaxPaths,
-          out: [],
+          max_paths: args.max_paths,
+          out: args.out,
           request: getRequest,
         },
         cbk);

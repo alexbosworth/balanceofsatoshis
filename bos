@@ -1023,8 +1023,11 @@ prog
   .command('lnurl', 'Collection of lnurl features')
   .argument('<function>', 'lnurl function', keys(lnurlFunctions))
   .help(`Functions: ${keys(lnurlFunctions).join(', ')}`)
+  .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT, 1337)
+  .option('--max-paths <max_paths>', 'Maximum paths to use', INT, 1)
   .option('--node <node_name>', 'Node to run a lnurl function')
+  .option('--out <public_key>', 'Make first hop through peer', REPEATABLE)
   .option('--url <url>', 'URL to pay', STRING)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -1032,10 +1035,13 @@ prog
         return lnurl.pay({
           logger,
           ask: (n, cbk) => inquirer.prompt(n).then(n => cbk(n)),
+          avoid: flatten([options.avoid].filter(n => !!n)),
           function: args.function,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           lnurl: options.url,
           max_fee: options.maxFee,
+          max_paths: options.maxPaths,
+          out: flatten([options.out].filter(n => !!n)),
           request: commands.simpleRequest,
         },
         responses.returnObject({logger, reject, resolve}));
