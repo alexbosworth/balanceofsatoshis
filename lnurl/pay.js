@@ -89,11 +89,11 @@ module.exports = (args, cbk) => {
         }
 
         if (!args.max_paths) {
-          return cbk([400, 'ExpectedMaxPathsCountToGetPaymentRequestFromLnurl']);
+          return cbk([400, 'ExpectedMaxPathsCountToPayViaLnurl']);
         }
 
         if (!isArray(args.out)) {
-          return cbk([400, 'ExpectedArrayOfOutPeersToGetPaymentRequestFromLnurl']);
+          return cbk([400, 'ExpectedArrayOfOutPeersToPayViaLnurl']);
         }
 
         return cbk();
