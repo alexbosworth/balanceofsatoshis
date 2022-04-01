@@ -1,5 +1,9 @@
 # Versions
 
+## 11.64.0
+
+- `lnurl`: Add `--avoid`, `--max-paths`, `--out` options to control payments
+
 ## 11.63.1
 
 - `lnurl`: Add command to decode and make payments to LNURL payRequests
