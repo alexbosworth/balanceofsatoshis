@@ -1,5 +1,9 @@
 # Versions
 
+## 11.64.1
+
+- `trade-secret`: Fix connecting when not already peered with seller
+
 ## 11.64.0
 
 - `lnurl`: Add `--avoid`, `--max-paths`, `--out` options to control payments

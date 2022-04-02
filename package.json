@@ -36,11 +36,11 @@
     "inquirer": "8.2.2",
     "invoices": "2.0.4",
     "ln-accounting": "5.0.5",
-    "ln-service": "53.9.3",
+    "ln-service": "53.9.4",
     "ln-sync": "3.11.0",
     "ln-telegram": "3.21.0",
     "moment": "2.29.1",
-    "paid-services": "3.14.4",
+    "paid-services": "3.14.5",
     "probing": "2.0.3",
     "psbt": "2.0.0",
     "qrcode-terminal": "0.12.0",
@@ -82,5 +82,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "11.64.0"
+  "version": "11.64.1"
 }
