@@ -9,6 +9,8 @@ ENV GROUP_ID=$GROUP_ID
 
 WORKDIR /app/
 
+RUN apk add --no-cache --upgrade bash
+
 RUN chown -R $USER_ID:$GROUP_ID /app/
 
 USER $USER_ID:$GROUP_ID
