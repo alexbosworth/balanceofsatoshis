@@ -1,6 +1,6 @@
 # Versions
 
-## 11.64.1
+## 11.64.2
 
 - `trade-secret`: Fix connecting when not already peered with seller
 
