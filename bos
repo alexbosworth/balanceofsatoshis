@@ -1429,19 +1429,19 @@ prog
 
   // Remove a peer
   .command('remove-peer', 'Close out with a channel-connected peer')
+  .help('--filter command uses same filters as peers command')
   .argument('[public_key]', 'Choose a specific peer to close with')
   .option('--active', 'Make sure the peer is online')
   .option('--address <address>', 'Address to close out funds to')
   .option('--dryrun', 'Avoid actually closing channels with peer')
   .option('--fee-rate <rate>', 'Fee rate per vbyte to close out with', FLOAT)
+  .option('--filter <formula>', 'Filter formula to apply', REPEATABLE)
   .option('--force', 'Force close channels if they cannot be coop closed')
   .option('--idle-days <days>', 'No receives or routes for n days', INT)
-  .option('--inbound-below <amount>', 'Peer inbound is below amount', INT)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to remove peer on')
   .option('--offline', 'Make sure the peer is offline')
   .option('--omit <key>', 'Avoid closing peer with public key', REPEATABLE)
-  .option('--outbound-below <amount>', 'Peer outbound is below amount', INT)
   .option('--outpoint', 'Only remove specific channel with funding txid:vout')
   .option('--private', 'Peer is privately connected')
   .option('--public', 'Peer is publicly connected')
@@ -1457,6 +1457,7 @@ prog
           address: options.address,
           ask: (n, cbk) => inquirer.prompt([n]).then(n => cbk(n)),
           chain_fee_rate: options.feeRate || undefined,
+          filters: flatten([options.filter].filter(n => !!n)),
           fs: {getFile: readFile},
           idle_days: options.idleDays,
           inbound_liquidity_below: options.inboundBelow,

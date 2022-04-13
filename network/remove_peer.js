@@ -36,7 +36,6 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     [idle_days]: <No Activity From Peer For Days Number>
-    [inbound_liquidity_below]: <Peer Has Inbound Liquidity Below Tokens Number>
     [is_active]: <Peer Is Actively Connected Bool>
     [is_dry_run]: <Avoid Actually Closing Channel Bool>
     [is_forced]: <Force Close When Cooperative Close Is Impossible Bool>
@@ -47,7 +46,6 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [omit]: [<Avoid Peer With Public Key String>]
-    [outbound_liquidity_below]: <Has Outbound Liquidity Below Tokens Number>
     outpoints: [<Only Remove Specific Channel Funding Outpoint String>]
     [public_key]: <Public Key Hex String>
     request: <Request Function>
@@ -131,9 +129,9 @@ module.exports = (args, cbk) => {
       getPeers: ['validate', ({}, cbk) => {
         return getPeers({
           earnings_days: args.idle_days || defaultDays,
+          filters: args.filters,
           fs: args.fs,
           idle_days: args.idle_days || Number(),
-          inbound_liquidity_below: args.inbound_liquidity_below,
           is_active: args.is_active,
           is_offline: args.is_offline,
           is_private: args.is_private,
@@ -141,7 +139,6 @@ module.exports = (args, cbk) => {
           is_showing_last_received: true,
           lnd: args.lnd,
           omit: args.omit || [],
-          outbound_liquidity_below: args.outbound_liquidity_below,
           sort_by: 'last_activity',
         },
         cbk);

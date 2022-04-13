@@ -1,5 +1,18 @@
 # Versions
 
+## 12.0.0
+
+- `peers`: Add `capacity` as a variable for the `--filter` option
+- `remove-peer`: Add `capacity` as a variable for the `--filter` option
+- `remove-peer`: Add `--filter` option to filter the type of peer to remove
+
+### Breaking Changes
+
+For `peers` and `remove-peer` commands:
+
+- `--inbound-below`: Removed option. Use `--filter "inbound_liquidity < X"`
+- `--outbound-below`: Removed option. Use `--filter "outbound_liquidity < X"`
+
 ## 11.64.2
 
 - `trade-secret`: Fix connecting when not already peered with seller
