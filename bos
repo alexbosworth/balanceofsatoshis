@@ -91,7 +91,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve, table}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -124,7 +124,7 @@ prog
           min_hops: options.minHops,
         });
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -154,7 +154,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -193,7 +193,7 @@ prog
         },
         responses.returnNumber({logger, reject, resolve, number: 'balance'}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -214,7 +214,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -237,7 +237,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -271,7 +271,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -298,7 +298,7 @@ prog
           write: writeFile,
         }));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -339,7 +339,7 @@ prog
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -362,7 +362,7 @@ prog
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -388,7 +388,7 @@ prog
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -429,7 +429,7 @@ prog
         },
         (options.mostFees || options.mostForwarded) ? asTable : chart);
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -448,7 +448,7 @@ prog
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -468,7 +468,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -490,7 +490,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -535,7 +535,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -552,7 +552,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -574,7 +574,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -603,7 +603,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -635,7 +635,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve, table: 'rows'}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -655,7 +655,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -689,7 +689,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve, table}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -722,7 +722,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -744,7 +744,7 @@ prog
           remote: options.remote,
         });
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -768,7 +768,7 @@ prog
         },
         responses.returnNumber({logger, number, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -796,7 +796,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve, table: 'rows'}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -826,7 +826,7 @@ prog
           rules: flatten([options.rule].filter(n => !!n)),
         });
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -854,7 +854,7 @@ prog
           only_allow: flatten([options.onlyAllow].filter(n => !!n)),
         });
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -882,7 +882,7 @@ prog
         },
         responses.returnNumber({logger, reject, resolve, number: 'balance'}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -942,7 +942,7 @@ prog
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -974,7 +974,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1014,7 +1014,7 @@ prog
         },
         responses.returnNumber({logger, reject, resolve, number: 'cost'}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1046,7 +1046,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1119,7 +1119,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1145,7 +1145,7 @@ prog
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1171,7 +1171,7 @@ prog
         },
         responses.returnNumber({logger, reject, resolve, number: 'balance'}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1209,7 +1209,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1262,7 +1262,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve, table}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1326,7 +1326,7 @@ prog
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1380,7 +1380,7 @@ prog
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1399,7 +1399,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1422,7 +1422,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1476,7 +1476,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1537,7 +1537,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1589,7 +1589,7 @@ prog
           profile_urls: flatten([options.profileLink].filter(n => !!n)),
         });
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1619,7 +1619,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(err);
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1657,7 +1657,7 @@ prog
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1683,7 +1683,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1724,7 +1724,7 @@ prog
           request: commands.fetchRequest({fetch}),
         });
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1750,7 +1750,7 @@ prog
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1789,7 +1789,7 @@ prog
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1831,7 +1831,7 @@ prog
           node: args.serverId,
         });
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   })
@@ -1857,7 +1857,7 @@ prog
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
-        return reject(logger.error({err}));
+        return logger.error({err}) && reject();
       }
     });
   });

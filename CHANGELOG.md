@@ -1,6 +1,6 @@
 # Versions
 
-## 12.0.0
+## 12.0.1
 
 - `peers`: Add `capacity` as a variable for the `--filter` option
 - `remove-peer`: Add `capacity` as a variable for the `--filter` option
