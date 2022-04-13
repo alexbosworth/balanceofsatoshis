@@ -58,7 +58,6 @@ const maxPaySize = 4294967;
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     [idle_days]: <Not Active For Days Number>
-    [inbound_liquidity_below]: <Inbound Liquidity Below Tokens Number>
     [is_active]: <Active Channels Only Bool>
     [is_monochrome]: <Mute Colors Bool>
     [is_offline]: <Offline Channels Only Bool>
@@ -67,7 +66,6 @@ const maxPaySize = 4294967;
     [is_table]: <Peers As Table Bool>
     lnd: <Authenticated LND gRPC API Object>
     omit: [<Omit Peer With Public Key Hex String>]
-    [outbound_liquidity_below]: <Outbound Liquidity Below Tokens Number>
     [sort_by]: <Sort Results By Attribute String>
     [tags]: [<Tag Identifier String>]
   }
@@ -415,8 +413,6 @@ module.exports = (args, cbk) => {
         },
         {});
 
-        const maxInbound = args.inbound_liquidity_below;
-        const maxOutbound = args.outbound_liquidity_below;
         const {network} = getNetwork.value || {};
         const peerKeys = getChannels.channels.map(n => n.partner_public_key);
         const wallet = await getHeight({lnd: args.lnd});
@@ -507,6 +503,7 @@ module.exports = (args, cbk) => {
             filters: args.filters || [],
             variables: {
               age: blocks,
+              capacity: totalCapacity,
               disk_usage_mb: estimateDiskFootprint(pastStates),
               fee_earnings: mtokensAsTokens(feeMtokens),
               inbound_fee_rate: feeRate,
@@ -565,8 +562,6 @@ module.exports = (args, cbk) => {
         return {
           peers: sortBy({array: peers, attribute: args.sort_by || defaultSort})
             .sorted
-            .filter(n => !maxInbound || n.inbound_liquidity < maxInbound)
-            .filter(n => !maxOutbound || n.outbound_liquidity < maxOutbound)
             .filter(n => args.omit.indexOf(n.public_key) === notFoundIndex)
             .filter(n => {
               // Always return peer when no idle days are specified

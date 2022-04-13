@@ -1222,6 +1222,7 @@ prog
   .help('Icons: 🦐 limited max htlc')
   .help('Filters can take formula expressions to limit results')
   .help('Filter variable AGE: "age > 144 * 7" for peers older than a week')
+  .help('Filter variable CAPACITY: "capacity > 8*m"')
   .help('Filter variable DISK_USAGE_MB: "disk_usage_mb > 9" for disk estimate')
   .help('Filter variable INBOUND_LIQUIDITY: "inbound_liquidity > 1*m"')
   .help('Filter variable OUTBOUND_LIQUIDITY: "outbound_liquidity > 1*m"')
@@ -1230,12 +1231,10 @@ prog
   .option('--fee-days <past_days>', 'Include fees earned over n days', INT)
   .option('--filter <formula>', 'Filter formula to apply', REPEATABLE)
   .option('--idle-days <days>', 'No receives or routes for n days', INT)
-  .option('--inbound-below <amount>', 'Inbound liquidity below amount', INT)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to get peers for')
   .option('--offline', 'Only offline peer channels')
   .option('--omit <key>', 'Omit peer with public key', REPEATABLE)
-  .option('--outbound-below <amount>', 'Outbound liquidity below amount', INT)
   .option('--private', 'Only private channels')
   .option('--public', 'Only peers with public channels')
   .option('--sort <by>', 'Sort results by peer attribute', peerSortOptions)
@@ -1250,7 +1249,6 @@ prog
           filters: flatten([options.filter].filter(n => !!n)),
           fs: {getFile: readFile},
           idle_days: options.idleDays || undefined,
-          inbound_liquidity_below: options.inboundBelow,
           is_active: !!options.active,
           is_monochrome: !!options.noColor,
           is_offline: !!options.offline,
@@ -1259,7 +1257,6 @@ prog
           is_table: !options.complete,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           omit: flatten([options.omit].filter(n => !!n)),
-          outbound_liquidity_below: options.outboundBelow,
           sort_by: options.sort,
           tags: flatten([options.tag].filter(n => !!n)),
         },
