@@ -1,5 +1,9 @@
 # Versions
 
+## 12.0.2
+
+- `open-balanced-channel`: Fix display issue where `undefined` was printed
+
 ## 12.0.1
 
 - `peers`: Add `capacity` as a variable for the `--filter` option
