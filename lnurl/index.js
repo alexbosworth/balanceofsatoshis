@@ -1,3 +1,5 @@
-const pay = require('./pay');
+const manageLnurl = require('./manage_lnurl');
 
-module.exports = {pay};
+module.exports = {
+  manageLnurl,
+};

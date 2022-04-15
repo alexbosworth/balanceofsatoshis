@@ -36,7 +36,7 @@ const wordsAsUtf8 = n => Buffer.from(bech32.fromWords(n)).toString('utf8');
  {
   ask: <Ask Function>
   avoid: [<Avoid Forwarding Through String>]
-  fetch: <Fetch Function>
+  request: <Request Function>
   lnd: <Authenticated LND API Object>
   lnurl: <Lnurl String>
   logger: <Winston Logger Object>
