@@ -1,20 +1,29 @@
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
+
 const pay = require('./pay');
 const withdraw = require('./withdraw');
 
-/** Manage Lnurl Functions
- {
-  ask: <Ask Function>
-  avoid: [<Avoid Forwarding Through String>]
-  request: <Request Function>
-  lnd: <Authenticated LND API Object>
-  lnurl: <Lnurl String>
-  logger: <Winston Logger Object>
-  max_fee: <Max Fee Tokens Number>
-  max_paths: <Maximum Paths Number>
-  out: [<Out Through Peer With Public Key Hex String>]
- }
+const functionPay = 'pay';
+const functionWithdraw = 'withdraw';
+const {isArray} = Array;
+
+/** Manage Lnurl functions
+
+  {
+    ask: <Ask Function>
+    avoid: [<Avoid Forwarding Through String>]
+    function: <Lnurl Function String>
+    request: <Request Function>
+    lnd: <Authenticated LND API Object>
+    lnurl: <Lnurl String>
+    logger: <Winston Logger Object>
+    [max_fee]: <Max Fee Tokens Number>
+    [max_paths]: <Maximum Paths Number>
+    out: [<Out Through Peer With Public Key Hex String>]
+  }
+
+  @returns via cbk or Promise
 */
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
@@ -25,7 +34,11 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedAskFunctionToManageLnurl']);
         }
 
-        if (!args.function) {
+        if (!isArray(args.avoid)) {
+          return cbk([400, 'ExpectedArrayOfAvoidsToManageLnurl']);
+        }
+
+        if (![functionPay, functionWithdraw].includes(args.function)) {
           return cbk([400, 'ExpectedLnurlFunctionToManageLnurl']);
         }
 
@@ -41,6 +54,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToManageLnurl']);
         }
 
+        if (!isArray(args.out)) {
+          return cbk([400, 'ExpectedArrayOfOutPeersToManageLnurl']);
+        }
+
         if (!args.request) {
           return cbk([400, 'ExpectedRequestFunctionToManageLnurl']);
         }
@@ -51,9 +68,10 @@ module.exports = (args, cbk) => {
       // Pay to lnurl
       pay: ['validate', ({}, cbk) => {
         // Exit early if not lnurl pay
-        if (args.function !== 'pay') {
+        if (args.function !== functionPay) {
           return cbk();
         }
+
         return pay({
           ask: args.ask,
           avoid: args.avoid,
@@ -71,9 +89,10 @@ module.exports = (args, cbk) => {
       // Withdraw from lnurl
       withdraw: ['validate', ({}, cbk) => {
         // Exit early if not lnurl withdraw
-        if (args.function !== 'withdraw') {
+        if (args.function !== functionWithdraw) {
           return cbk();
         }
+
         return withdraw({
           ask: args.ask,
           lnd: args.lnd,
