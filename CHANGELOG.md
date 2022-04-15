@@ -1,5 +1,9 @@
 # Versions
 
+## 12.1.0
+
+- `lnurl`: Add support for the `withdraw` function to send a payment request
+
 ## 12.0.2
 
 - `open-balanced-channel`: Fix display issue where `undefined` was printed

@@ -36,13 +36,13 @@ const wordsAsUtf8 = n => Buffer.from(bech32.fromWords(n)).toString('utf8');
  {
   ask: <Ask Function>
   avoid: [<Avoid Forwarding Through String>]
-  request: <Request Function>
   lnd: <Authenticated LND API Object>
   lnurl: <Lnurl String>
   logger: <Winston Logger Object>
   max_fee: <Max Fee Tokens Number>
   max_paths: <Maximum Paths Number>
   out: [<Out Through Peer With Public Key Hex String>]
+  request: <Request Function>
  }
 */
 module.exports = (args, cbk) => {
@@ -56,10 +56,6 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.avoid)) {
           return cbk([400, 'ExpectedAvoidArrayToGetPaymentRequestFromLnurl']);
-        }
-
-        if (!args.request) {
-          return cbk([400, 'ExpectedRequestFunctionToGetLnurlData']);
         }
 
         if (!args.lnurl) {
@@ -94,6 +90,10 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.out)) {
           return cbk([400, 'ExpectedArrayOfOutPeersToPayViaLnurl']);
+        }
+
+        if (!args.request) {
+          return cbk([400, 'ExpectedRequestFunctionToGetLnurlData']);
         }
 
         return cbk();

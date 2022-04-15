@@ -2,7 +2,7 @@ const asyncAuto = require('async/auto');
 const {formatTokens} = require('ln-sync');
 const {getNodeAlias} = require('ln-sync');
 const {getPayment} = require('ln-service');
-const {parsePaymentRequest} = require('invoices');
+const {parsePaymentRequest} = require('ln-service');
 const {payViaPaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 

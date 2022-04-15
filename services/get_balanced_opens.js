@@ -3,7 +3,7 @@ const asyncFilter = require('async/filter');
 const {balancedOpenRequest} = require('paid-services');
 const {getInvoices} = require('ln-service');
 const {getPayment} = require('ln-service');
-const {parsePaymentRequest} = require('invoices');
+const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {balancedChannelKeyTypes} = require('./service_key_types');
