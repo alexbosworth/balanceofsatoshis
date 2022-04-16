@@ -1626,6 +1626,27 @@ prog
     });
   })
 
+  // Submarine swap
+  .command('swap', 'Trade off-chain coins for on-chain via submarine swap')
+  .visible(false)
+  .option('--node <node_name>', 'Node to use for swap')
+  .action((args, options, logger) => {
+    const {manageSwap} = require('paid-services');
+    return new Promise(async (resolve, reject) => {
+      try {
+        return manageSwap({
+          logger,
+          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          request: commands.simpleRequest,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
   // Create submarine swap to convert on-chain funds to off-chain
   .command('swap-in', 'Trade on-chain coins for off-chain via submarine swap')
   .argument('[amount]', 'Amount to receive', INT, 1e6)
