@@ -79,7 +79,7 @@ module.exports = (args, cbk) => {
         try {
           new URL(url);
         } catch (err) {
-          return cbk([503, 'ExpectedValidCallbackUrlInDecodedLnurl']);
+          return cbk([503, 'ExpectedValidCallbackUrlInDecodedLnurlForAuthentication']);
         }
 
         const decodeUrl = new URL(url);
