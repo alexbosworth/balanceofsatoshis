@@ -1,5 +1,9 @@
 # Versions
 
+## 12.3.0
+
+- `lnurl`: Add support for the `auth` function to authenticate with a node key
+
 ## 12.2.0
 
 - `swap`: Add utility command for testing submarine swaps
