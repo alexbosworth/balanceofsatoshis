@@ -1023,6 +1023,7 @@ prog
   .command('lnurl', 'Collection of lnurl features')
   .argument('<function>', 'lnurl function', keys(lnurlFunctions))
   .help(`Functions: ${keys(lnurlFunctions).join(', ')}`)
+  .help('lnurl auth will request authorization')
   .help('lnurl pay will request a payment request from a service')
   .help('lnurl withdraw will create an invoice and send it to a service')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)

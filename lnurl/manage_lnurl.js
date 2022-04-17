@@ -1,9 +1,11 @@
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
+const auth = require('./auth');
 const pay = require('./pay');
 const withdraw = require('./withdraw');
 
+const functionAuth = 'auth';
 const functionPay = 'pay';
 const functionWithdraw = 'withdraw';
 const {isArray} = Array;
@@ -38,7 +40,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedArrayOfAvoidsToManageLnurl']);
         }
 
-        if (![functionPay, functionWithdraw].includes(args.function)) {
+        if (![functionAuth, functionPay, functionWithdraw].includes(args.function)) {
           return cbk([400, 'ExpectedLnurlFunctionToManageLnurl']);
         }
 
@@ -64,6 +66,23 @@ module.exports = (args, cbk) => {
 
         return cbk();
       },
+
+      // Authenticate using lnurl
+      auth: ['validate', ({}, cbk) => {
+        // Exit early if not lnurl auth
+        if (args.function !== functionAuth) {
+          return cbk();
+        }
+
+        return auth({
+          ask: args.ask,
+          lnd: args.lnd,
+          lnurl: args.lnurl,
+          logger: args.logger,
+          request: args.request,
+        },
+        cbk);
+      }],
 
       // Pay to lnurl
       pay: ['validate', ({}, cbk) => {
