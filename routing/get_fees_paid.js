@@ -14,8 +14,9 @@ const feesForSegment = require('./fees_for_segment');
 const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
-const by = 'confirmed_at';
 const allEqual = arr => arr.every(({public_key}) => public_key === arr[0].public_key );
+const by = 'confirmed_at';
+const checkError = n => n[1] === 'AmbiguousAliasSpecified';
 const daysPerWeek = 7;
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
@@ -103,8 +104,13 @@ module.exports = (args, cbk) => {
 
         return asyncMap(args.lnds, (lnd, cbk) => {
           return findKey({lnd, query: args.in}, (err, res) => {
+            // Exit for ambiguous queries
+            if (!!err && checkError(err)) {
+              return cbk(err);
+            }
+
+            // Ignore all other errors
             if (!!err) {
-              // Ignore errors
               return cbk(null, {});
             }
 
@@ -141,8 +147,13 @@ module.exports = (args, cbk) => {
 
         return asyncMap(args.lnds, (lnd, cbk) => {
           return findKey({lnd, query: args.out}, (err, res) => {
+            // Exit for ambiguous queries
+            if (!!err && checkError(err)) {
+              return cbk(err);
+            }
+
+            // Ignore all other errors
             if (!!err) {
-              // Ignore errors
               return cbk(null, {});
             }
 
