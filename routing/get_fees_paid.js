@@ -15,6 +15,7 @@ const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
 const by = 'confirmed_at';
+const allEqual = arr => arr.every(({public_key}) => public_key === arr[0].public_key );
 const daysPerWeek = 7;
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
@@ -101,18 +102,31 @@ module.exports = (args, cbk) => {
         }
 
         return asyncMap(args.lnds, (lnd, cbk) => {
-          return findKey({lnd, query: args.in}, cbk);
+          return findKey({lnd, query: args.in}, (err, res) => {
+            if (!!err) {
+              // Ignore errors
+              return cbk(null, {});
+            }
+
+            return cbk(null, res);
+          });
         },
         (err, res) => {
           if (!!err) {
             return cbk(err);
           }
 
-          if (res.length > 1) {
-            return cbk([400, 'MultipleMatchesForInQuery']);
+          const result = res.filter(n => !!n.public_key);
+
+          if (!result.length) {
+            return cbk([400, 'NoMatchesForOutQuery']);
           }
 
-          const key = res[0].public_key;
+          if (!allEqual(result)) {
+            return cbk([400, 'MultipleMatchesForOutQuery']);
+          }
+
+          const key = result[0].public_key;
 
           return cbk(null, {key});
         });
@@ -126,18 +140,31 @@ module.exports = (args, cbk) => {
         }
 
         return asyncMap(args.lnds, (lnd, cbk) => {
-          return findKey({lnd, query: args.out}, cbk);
+          return findKey({lnd, query: args.out}, (err, res) => {
+            if (!!err) {
+              // Ignore errors
+              return cbk(null, {});
+            }
+
+            return cbk(null, res);
+          });
         },
         (err, res) => {
           if (!!err) {
             return cbk(err);
           }
 
-          if (res.length > 1) {
+          const result = res.filter(n => !!n.public_key);
+
+          if (!result.length) {
+            return cbk([400, 'NoMatchesForOutQuery']);
+          }
+
+          if (!allEqual(result)) {
             return cbk([400, 'MultipleMatchesForOutQuery']);
           }
 
-          const key = res[0].public_key;
+          const key = result[0].public_key;
 
           return cbk(null, {key});
         });
