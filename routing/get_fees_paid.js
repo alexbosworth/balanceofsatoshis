@@ -3,6 +3,7 @@ const asyncMap = require('async/map');
 const {getNode} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
 const {getChannels} = require('ln-service');
+const {findKey} = require('ln-sync');
 const {getPayments} = require('ln-sync');
 const {getRebalancePayments} = require('ln-sync');
 const moment = require('moment');
@@ -35,11 +36,13 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
+    [in]: <In Node Public Key or Alias String>
     [is_most_fees_table]: <Is Most Fees Table Bool>
     [is_most_forwarded_table]: <Is Most Forwarded Bool>
     [is_network]: <Show Only Non-Peers In Table Bool>
     [is_peer]: <Show Only Peers In Table Bool>
     lnds: [<Authenticated LND API Object>]
+    [out]: <Out Node Public Key or Alias String>
   }
 
   @returns via cbk or Promise
@@ -89,6 +92,56 @@ module.exports = (args, cbk) => {
 
       // Get node icons
       getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
+
+      // Determine the In public key to use
+      getInKey: ['validate', (({}, cbk) => {
+        // Exit early if no in query is specified
+        if (!args.in) {
+          return cbk();
+        }
+
+        return asyncMap(args.lnds, (lnd, cbk) => {
+          return findKey({lnd, query: args.in}, cbk);
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          if (res.length > 1) {
+            return cbk([400, 'MultipleMatchesForInQuery']);
+          }
+
+          const key = res[0].public_key;
+
+          return cbk(null, {key});
+        });
+      })],
+
+      // Determine the Out public key to use
+      getOutKey: ['validate', (({}, cbk) => {
+        // Exit early if no out query is specified
+        if (!args.out) {
+          return cbk();
+        }
+
+        return asyncMap(args.lnds, (lnd, cbk) => {
+          return findKey({lnd, query: args.out}, cbk);
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          if (res.length > 1) {
+            return cbk([400, 'MultipleMatchesForOutQuery']);
+          }
+
+          const key = res[0].public_key;
+
+          return cbk(null, {key});
+        });
+      })],
 
       // Segment measure
       measure: ['validate', ({}, cbk) => {
@@ -141,7 +194,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Filter the payments
-      forwards: ['getPayments', 'start', ({getPayments, start}, cbk) => {
+      forwards: [
+        'getInKey', 
+        'getOutKey', 
+        'getPayments', 
+        'start', 
+        ({getInKey, getOutKey, getPayments, start}, cbk) => {
         const payments = getPayments
           .filter(payment => payment.is_confirmed !== false)
           .filter(payment => payment.confirmed_at > start.toISOString())
@@ -163,7 +221,7 @@ module.exports = (args, cbk) => {
               }
 
               // Ignore attempts that do not include the specified out hop
-              if (!!args.out && outHop !== args.out) {
+              if (!!args.out && outHop !== getOutKey.key) {
                 return false;
               }
 
@@ -172,7 +230,7 @@ module.exports = (args, cbk) => {
               }
 
               // Ignore attempts that do not include the specified in hop
-              if (!!args.in && inHop !== args.in) {
+              if (!!args.in && inHop !== getInKey.key) {
                 return false;
               }
 
@@ -375,11 +433,15 @@ module.exports = (args, cbk) => {
       }],
 
       // Title for fees paid
-      title: ['validate', async ({}) => {
+      title: [
+        'validate', 
+        'getInKey', 
+        'getOutKey', 
+        async ({getInKey, getOutKey}) => {
         const [lnd] = args.lnds;
 
-        const into = !args.in ? null : await getNodeAlias({lnd, id: args.in});
-        const out = !args.out ? null : await getNodeAlias({lnd, id: args.out});
+        const into = !args.in ? null : await getNodeAlias({lnd, id: getInKey.key});
+        const out = !args.out ? null : await getNodeAlias({lnd, id: getOutKey.key});
 
         const inPeer = !!args.in ? `in ${into.alias || into.id}` : '';
         const outPeer = !!args.out ? `out ${out.alias || out.id}` : '';
