@@ -302,6 +302,8 @@ module.exports = (args, cbk) => {
         args.bot.command('mempool', async ctx => {
           try {
             return await handleMempoolCommand({
+              from: ctx.message.from.id,
+              id: connectedId,
               reply: n => ctx.reply(n, markdown),
               request: args.request,
             });
@@ -409,6 +411,8 @@ module.exports = (args, cbk) => {
             await handleVersionCommand({
               named,
               version,
+              from: ctx.message.from.id,
+              id: connectedId,
               request: args.request,
               reply: n => ctx.reply(n, markdown),
             });
