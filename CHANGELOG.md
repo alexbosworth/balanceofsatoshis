@@ -1,5 +1,9 @@
 # Versions
 
+## 12.4.0
+
+- `chart-fees-paid`: Allow using aliases when specifying --in and --out peers
+
 ## 12.3.0
 
 - `lnurl`: Add support for the `auth` function to authenticate with a node key
