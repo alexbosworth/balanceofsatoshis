@@ -1,5 +1,10 @@
 # Versions
 
+## 12.4.1
+
+- Add support for LND 0.14.3-beta
+- `telegram`: Disallow non connect user id queries for /mempool and /version
+
 ## 12.4.0
 
 - `chart-fees-paid`: Allow using aliases when specifying --in and --out peers
