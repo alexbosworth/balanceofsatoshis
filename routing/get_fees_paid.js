@@ -1,9 +1,9 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {findKey} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
 const {getChannels} = require('ln-service');
-const {findKey} = require('ln-sync');
 const {getPayments} = require('ln-sync');
 const {getRebalancePayments} = require('ln-sync');
 const moment = require('moment');
@@ -14,22 +14,23 @@ const feesForSegment = require('./fees_for_segment');
 const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
-const allEqual = arr => arr.every(({public_key}) => public_key === arr[0].public_key );
 const by = 'confirmed_at';
-const checkError = n => n[1] === 'AmbiguousAliasSpecified';
 const daysPerWeek = 7;
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
 const heading = [['Node', 'Public Key', 'Fees Paid', 'Forwarded']];
 const hoursPerDay = 24;
+const isAmbiguous = n => n[1] === 'AmbiguousAliasSpecified';
 const {isArray} = Array;
 const {keys} = Object;
 const minChartDays = 4;
 const maxChartDays = 90;
 const mtokensAsBigUnit = n => (Number(n / BigInt(1e3)) / 1e8).toFixed(8);
 const mtokensAsTokens = mtokens => Number(mtokens / BigInt(1e3));
+const niceAlias = n => `${(n.alias || n.id).trim()} ${n.id.substring(0, 8)}`;
 const title = 'Routing fees paid';
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
+const uniq = arr => Array.from(new Set(arr));
 
 /** Get routing fees paid
 
@@ -95,9 +96,9 @@ module.exports = (args, cbk) => {
       // Get node icons
       getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
 
-      // Determine the In public key to use
-      getInKey: ['validate', (({}, cbk) => {
-        // Exit early if no in query is specified
+      // Determine the in public key to use
+      getInKey: ['validate', ({}, cbk) => {
+        // Exit early when no in query is specified
         if (!args.in) {
           return cbk();
         }
@@ -105,16 +106,16 @@ module.exports = (args, cbk) => {
         return asyncMap(args.lnds, (lnd, cbk) => {
           return findKey({lnd, query: args.in}, (err, res) => {
             // Exit for ambiguous queries
-            if (!!err && checkError(err)) {
+            if (!!err && isAmbiguous(err)) {
               return cbk(err);
             }
 
-            // Ignore all other errors
+            // Ignore all other errors, since a peer may not exist on all nodes
             if (!!err) {
-              return cbk(null, {});
+              return cbk();
             }
 
-            return cbk(null, res);
+            return cbk(null, res.public_key);
           });
         },
         (err, res) => {
@@ -122,25 +123,23 @@ module.exports = (args, cbk) => {
             return cbk(err);
           }
 
-          const result = res.filter(n => !!n.public_key);
+          const [key, otherKey] = uniq(res.filter(n => !!n));
 
-          if (!result.length) {
-            return cbk([400, 'NoMatchesForOutQuery']);
+          if (!key) {
+            return cbk([400, 'FailedToFindMatchesForInQueryAlias']);
           }
 
-          if (!allEqual(result)) {
-            return cbk([400, 'MultipleMatchesForOutQuery']);
+          if (!!otherKey) {
+            return cbk([400, 'MultipleMatchesForInQueryAlias']);
           }
 
-          const key = result[0].public_key;
-
-          return cbk(null, {key});
+          return cbk(null, key);
         });
-      })],
+      }],
 
-      // Determine the Out public key to use
-      getOutKey: ['validate', (({}, cbk) => {
-        // Exit early if no out query is specified
+      // Determine the out public key to use
+      getOutKey: ['validate', ({}, cbk) => {
+        // Exit early when no out query is specified
         if (!args.out) {
           return cbk();
         }
@@ -148,16 +147,16 @@ module.exports = (args, cbk) => {
         return asyncMap(args.lnds, (lnd, cbk) => {
           return findKey({lnd, query: args.out}, (err, res) => {
             // Exit for ambiguous queries
-            if (!!err && checkError(err)) {
+            if (!!err && isAmbiguous(err)) {
               return cbk(err);
             }
 
-            // Ignore all other errors
+            // Ignore all other errors, since a peer may not exist on all nodes
             if (!!err) {
-              return cbk(null, {});
+              return cbk();
             }
 
-            return cbk(null, res);
+            return cbk(null, res.public_key);
           });
         },
         (err, res) => {
@@ -165,21 +164,19 @@ module.exports = (args, cbk) => {
             return cbk(err);
           }
 
-          const result = res.filter(n => !!n.public_key);
+          const [key, otherKey] = uniq(res.filter(n => !!n));
 
-          if (!result.length) {
-            return cbk([400, 'NoMatchesForOutQuery']);
+          if (!key) {
+            return cbk([400, 'FailedToFindMatchesForOutQueryAlias']);
           }
 
-          if (!allEqual(result)) {
-            return cbk([400, 'MultipleMatchesForOutQuery']);
+          if (!!otherKey) {
+            return cbk([400, 'MultipleMatchesForOutQueryAlias']);
           }
 
-          const key = result[0].public_key;
-
-          return cbk(null, {key});
+          return cbk(null, key);
         });
-      })],
+      }],
 
       // Segment measure
       measure: ['validate', ({}, cbk) => {
@@ -233,11 +230,12 @@ module.exports = (args, cbk) => {
 
       // Filter the payments
       forwards: [
-        'getInKey', 
-        'getOutKey', 
-        'getPayments', 
-        'start', 
-        ({getInKey, getOutKey, getPayments, start}, cbk) => {
+        'getInKey',
+        'getOutKey',
+        'getPayments',
+        'start',
+        ({getInKey, getOutKey, getPayments, start}, cbk) =>
+      {
         const payments = getPayments
           .filter(payment => payment.is_confirmed !== false)
           .filter(payment => payment.confirmed_at > start.toISOString())
@@ -259,7 +257,7 @@ module.exports = (args, cbk) => {
               }
 
               // Ignore attempts that do not include the specified out hop
-              if (!!args.out && outHop !== getOutKey.key) {
+              if (!!args.out && outHop !== getOutKey) {
                 return false;
               }
 
@@ -268,7 +266,7 @@ module.exports = (args, cbk) => {
               }
 
               // Ignore attempts that do not include the specified in hop
-              if (!!args.in && inHop !== getInKey.key) {
+              if (!!args.in && inHop !== getInKey) {
                 return false;
               }
 
@@ -472,17 +470,18 @@ module.exports = (args, cbk) => {
 
       // Title for fees paid
       title: [
-        'validate', 
-        'getInKey', 
-        'getOutKey', 
-        async ({getInKey, getOutKey}) => {
+        'validate',
+        'getInKey',
+        'getOutKey',
+        async ({getInKey, getOutKey}) =>
+      {
         const [lnd] = args.lnds;
 
-        const into = !args.in ? null : await getNodeAlias({lnd, id: getInKey.key});
-        const out = !args.out ? null : await getNodeAlias({lnd, id: getOutKey.key});
+        const into = !args.in ? {} : await getNodeAlias({lnd, id: getInKey});
+        const out = !args.out ? {} : await getNodeAlias({lnd, id: getOutKey});
 
-        const inPeer = !!args.in ? `in ${into.alias || into.id}` : '';
-        const outPeer = !!args.out ? `out ${out.alias || out.id}` : '';
+        const inPeer = !!args.in ? `in ${niceAlias(into)}` : '';
+        const outPeer = !!args.out ? `out ${niceAlias(out)}` : '';
 
         return [title, outPeer, inPeer].filter(n => !!n).join(' ');
       }],
@@ -495,6 +494,13 @@ module.exports = (args, cbk) => {
         'title',
         ({description, rows, sum, title}, cbk) =>
       {
+        const isRows = args.is_most_fees_table || args.is_most_forwarded_table;
+
+        // Add a title row when there is a restriction involved
+        if (!!isRows && (!!args.in || !!args.out)) {
+          rows.unshift([String(), title, String(), String()]);
+        }
+
         return cbk(null, {description, rows, title, data: sum.fees});
       }],
     },

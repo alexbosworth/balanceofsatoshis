@@ -67,7 +67,7 @@ For `peers` and `remove-peer` commands:
 
 ## 11.59.4
 
-- `telegram`: Fix oepn trade-secret serving
+- `telegram`: Fix open trade-secret serving
 - `telegram`: Fix `/stop` command to require confirmation before termination
 
 ## 11.59.2
