@@ -6,7 +6,7 @@ const bech32CharLimit = 2000;
 const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
 const prefix = 'lnurl';
 const sslProtocol = n => (!!/onion/.test(n) ? 'http://' : 'https://');
-const testUrl = n => emailPattern.test(n);
+const testEmail = n => emailPattern.test(n);
 const testUsername = n => /^[a-z0-9_.]*$/.test(n);
 const urlString = '/.well-known/lnurlp/';
 const wordsAsUtf8 = n => Buffer.from(bech32.fromWords(n)).toString('utf8');
@@ -28,7 +28,7 @@ module.exports = ({url}) => {
   }
 
   // Check if its a valid email address
-  if (!!testUrl(url)) {
+  if (!!testEmail(url)) {
     const [username, domain] = url.split('@');
 
     // Check if the user name is valid
