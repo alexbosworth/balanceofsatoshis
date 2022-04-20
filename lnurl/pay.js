@@ -1,18 +1,15 @@
 const {createHash} = require('crypto');
 
 const asyncAuto = require('async/auto');
-const {bech32} = require('bech32');
 const {getNodeAlias} = require('ln-sync');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 const {parsePaymentRequest} = require('ln-service');
 
+const parseUrl = require('./parse_url');
 const {pay} = require('./../network');
 
-const asLnurl = n => n.substring(n.startsWith('lightning:') ? 10 : 0);
-const bech32CharLimit = 2000;
 const errorStatus = 'ERROR';
-const {decode} = bech32;
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
 const lowestSendableValue = 1000;
@@ -22,7 +19,6 @@ const minMinSendable = 1;
 const mtokensAsTokens = n => Math.floor(n / 1000);
 const {parse} = JSON;
 const payRequestTag = 'payRequest';
-const prefix = 'lnurl';
 const {round} = Math;
 const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
 const sslProtocol = 'https:';
@@ -30,7 +26,6 @@ const textPlain = 'text/plain';
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const tokensAsMillitokens = n => n * 1000;
 const utf8AsBuffer = utf8 => Buffer.from(utf8, 'utf8');
-const wordsAsUtf8 = n => Buffer.from(bech32.fromWords(n)).toString('utf8');
 
 /** Pay to lnurl
  {
@@ -62,16 +57,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedUrlToGetPaymentRequestFromLnurl']);
         }
 
-        try {
-          decode(asLnurl(args.lnurl), bech32CharLimit);
-        } catch (err) {
-          return cbk([400, 'FailedToDecodeLnurlToPay']);
-        }
-
-        if (decode(asLnurl(args.lnurl), bech32CharLimit).prefix !== prefix) {
-          return cbk([400, 'ExpectedLnUrlPrefixToPay']);
-        }
-
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToGetPaymentRequestFromLnurl']);
         }
@@ -99,11 +84,16 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get accepted terms from the encoded url
-      getTerms: ['validate', ({}, cbk) => {
-        const {words} = decode(asLnurl(args.lnurl), bech32CharLimit);
+      // Get the call back url
+      getCallBackUrl: ['validate', ({}, cbk) => {
+        const url = parseUrl({url: args.lnurl});
 
-        const url = wordsAsUtf8(words);
+        return cbk(null, url);
+      }],
+
+      // Get accepted terms from the encoded url
+      getTerms: ['getCallBackUrl', ({getCallBackUrl}, cbk) => {
+        const url = getCallBackUrl;
 
         return args.request({url, json: true}, (err, r, json) => {
           if (!!err) {
