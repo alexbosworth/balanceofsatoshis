@@ -1,6 +1,7 @@
 const {createHash} = require('crypto');
 
 const asyncAuto = require('async/auto');
+const {bech32} = require('bech32');
 const {getNodeAlias} = require('ln-sync');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
@@ -9,6 +10,10 @@ const {parsePaymentRequest} = require('ln-service');
 const parseUrl = require('./parse_url');
 const {pay} = require('./../network');
 
+const asLnurl = n => n.substring(n.startsWith('lightning:') ? 10 : 0);
+const bech32CharLimit = 2000;
+const {decode} = bech32;
+const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
 const errorStatus = 'ERROR';
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
@@ -19,9 +24,11 @@ const minMinSendable = 1;
 const mtokensAsTokens = n => Math.floor(n / 1000);
 const {parse} = JSON;
 const payRequestTag = 'payRequest';
+const prefix = 'lnurl';
 const {round} = Math;
 const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
 const sslProtocol = 'https:';
+const testEmail = n => emailPattern.test(n);
 const textPlain = 'text/plain';
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const tokensAsMillitokens = n => n * 1000;
@@ -55,6 +62,18 @@ module.exports = (args, cbk) => {
 
         if (!args.lnurl) {
           return cbk([400, 'ExpectedUrlToGetPaymentRequestFromLnurl']);
+        }
+
+        if (!testEmail(args.lnurl)) {
+          try {
+            decode(asLnurl(args.lnurl), bech32CharLimit);
+          } catch (err) {
+              return cbk([400, 'FailedToDecodeLnurlOrLightningAddressToPay']);
+          }
+        }
+
+        if (!testEmail(args.lnurl) && decode(asLnurl(args.lnurl), bech32CharLimit).prefix !== prefix) {
+          return cbk([400, 'ExpectedLnUrlPrefixToPay']);
         }
 
         if (!args.lnd) {
