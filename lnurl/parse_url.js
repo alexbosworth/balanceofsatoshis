@@ -1,26 +1,30 @@
 const {bech32} = require('bech32');
 
-const {decode} = bech32;
 const asLnurl = n => n.substring(n.startsWith('lightning:') ? 10 : 0);
 const bech32CharLimit = 2000;
-const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
-const isOnion = n => /onion/.test(n);
+const {decode} = bech32;
+const isEmail = n => /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/.test(n);
+const isOnion = n => /.onion$/.test(n);
+const isUsername = n => /^[a-z0-9_.]*$/.test(n);
+const join = arr => arr.join('');
+const parseEmail = email => email.split('@');
 const prefix = 'lnurl';
 const sslProtocol = 'https://';
-const testEmail = n => emailPattern.test(n);
-const testUsername = n => /^[a-z0-9_.]*$/.test(n);
 const urlString = '/.well-known/lnurlp/';
 const wordsAsUtf8 = n => Buffer.from(bech32.fromWords(n)).toString('utf8');
 
-/** Parse lnurl or lightning address
+/** Parse lnurl or LUD-16 lightning address
 
   {
     url: <Lnurl or Lightning Address String>
   }
 
+  @throws
+  <Error>
+
   @returns
   {
-    url: <Callback Url>
+    url: <Callback Url String>
   }
 */
 module.exports = ({url}) => {
@@ -28,42 +32,28 @@ module.exports = ({url}) => {
     throw new Error('ExpectedLnurlOrLightningAddressToParse');
   }
 
-  // Check if its a valid email address
-  if (!!testEmail(url)) {
-    const [username, domain] = url.split('@');
+  // Exit early when the URL looks like an email, indicating lightning address
+  if (!!isEmail(url)) {
+    const [username, domain] = parseEmail(url);
 
     // Check if the user name is valid
-    if (!testUsername(username)) {
+    if (!isUsername(username)) {
       throw new Error('ExpectedValidUsernameInLightningAddress');
     }
 
+    // Because of restrictions on the HTTP request library, disallow onion URLs
     if (!!isOnion(domain)) {
-      throw new Error('ExpectedValidClearnetLightningAddress');
+      throw new Error('LnurlOnionUrlsCurrentlyUnsupported');
     }
 
-    const callbackUrl = [
-      sslProtocol,
-      domain,
-      urlString,
-      username,
-    ];
-
-    return callbackUrl.join('');
+    return {url: join([sslProtocol, domain, urlString, username])};
   }
-
-  // Check for lnurl is valid
-  try {
-    decode(asLnurl(url), bech32CharLimit);
-  } catch (err) {
-    throw new Error(400, 'FailedToDecodeLnurl', {err});
-  }
-  
 
   if (decode(asLnurl(url), bech32CharLimit).prefix !== prefix) {
-    throw new Error(400, 'ExpectedLnUrlPrefix');
+    throw new Error('ExpectedLnurlPrefix');
   }
 
   const {words} = decode(asLnurl(url), bech32CharLimit);
 
-  return wordsAsUtf8(words);
-}
+  return {url: wordsAsUtf8(words)};
+};
