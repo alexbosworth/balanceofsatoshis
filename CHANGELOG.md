@@ -1,5 +1,9 @@
 # Versions
 
+## 12.5.0
+
+- `lnurl`: Add support for paying to https://lightningaddress.com/ type urls
+
 ## 12.4.1
 
 - Add support for LND 0.14.3-beta
