@@ -1,5 +1,9 @@
 # Versions
 
+## 12.5.1
+
+- `open-balanced-channel`: Correct potential future regression in signing
+
 ## 12.5.0
 
 - `lnurl`: Add support for paying to https://lightningaddress.com/ type urls
