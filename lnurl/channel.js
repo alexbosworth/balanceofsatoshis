@@ -145,11 +145,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Get peers
-      getPeers: ['validate', ({}, cbk) => {
+      getPeers: ['getTerms', 'validate', ({}, cbk) => {
           return getPeers({lnd: args.lnd}, (err, res) => {
             if (!!err) {
               return cbk(err);
             }
+
             return cbk(null, res);
           });
       }],
