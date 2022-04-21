@@ -11,6 +11,7 @@ const functionChannel = 'channel';
 const functionPay = 'pay';
 const functionWithdraw = 'withdraw';
 const {isArray} = Array;
+const supportedFunctions = ['auth', 'channel', 'pay', 'withdraw'];
 
 /** Manage Lnurl functions
 
@@ -42,7 +43,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedArrayOfAvoidsToManageLnurl']);
         }
 
-        if (![functionAuth, functionChannel, functionPay, functionWithdraw].includes(args.function)) {
+        if (!supportedFunctions.includes(args.function)) {
           return cbk([400, 'ExpectedLnurlFunctionToManageLnurl']);
         }
 
@@ -88,7 +89,7 @@ module.exports = (args, cbk) => {
 
       // Request inbound channel
       channel: ['validate', ({}, cbk) => {
-        // Exit early if not lnurl auth
+        // Exit early if not lnurl channel
         if (args.function !== functionChannel) {
           return cbk();
         }

@@ -1,35 +1,35 @@
+const {isIP} = require('net');
+
 const asyncAuto = require('async/auto');
 const {bech32} = require('bech32');
 const {addPeer} = require('ln-service');
+const {getIdentity} = require('ln-service');
+const {getNodeAlias} = require('ln-sync');
 const {getPeers} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
-const {isIP} = require('net');
 const {returnResult} = require('asyncjs-util');
 
-const {decode} = bech32;
 const asLnurl = n => n.substring(n.startsWith('lightning:') ? 10 : 0);
 const bech32CharLimit = 2000;
-const channelTypes = ['Public', 'Private'];
-const defaultType = 'Public';
+const {decode} = bech32;
 const errorStatus = 'ERROR';
-const isClear = n => !!n && !!isIP(n.split(':')[0]);
-const isOnion = n => n => !!n && /onion/.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const okStatus = 'OK';
 const parseUri = n => n.split('@');
 const prefix = 'lnurl';
 const sslProtocol = 'https:';
 const tag = 'channelRequest';
+const typeDefault = '0';
+const types = [{name: 'Public', value: '0'}, {name: 'Private', value: '1'}];
 const wordsAsUtf8 = n => Buffer.from(bech32.fromWords(n)).toString('utf8');
 
 /** Request inbound channel from lnurl
 
   {
     ask: <Ask Function>
-    request: <Request Function>
     lnd: <Authenticated LND API Object>
     lnurl: <Lnurl String>
     logger: <Winston Logger Object>
+    request: <Request Function>
   }
 
   @returns via cbk or Promise
@@ -66,16 +66,19 @@ module.exports = (args, cbk) => {
         }
 
         if (!args.request) {
-          return cbk([400, 'ExpectedRequestFunctionToGetLnurlRequestChannelData']);
+          return cbk([400, 'ExpectedRequestFunctionToGetLnurlRequestChannel']);
         }
 
         return cbk();
       },
 
-      // Get identity public key
-      getWalletInfo: ['validate', ({}, cbk) => {
-        return getWalletInfo({lnd: args.lnd}, cbk);
+      // Get node identity public key
+      getIdentity: ['validate', ({}, cbk) => {
+        return getIdentity({lnd: args.lnd}, cbk);
       }],
+
+      // Get the list of connected peers to determine if connection is needed
+      getPeers: ['validate', ({}, cbk) => getPeers({lnd: args.lnd}, cbk)],
 
       // Get accepted terms from the encoded url
       getTerms: ['validate', ({}, cbk) => {
@@ -85,7 +88,7 @@ module.exports = (args, cbk) => {
 
         return args.request({url, json: true}, (err, r, json) => {
           if (!!err) {
-            return cbk([503, 'FailureGettingLnUrlDataFromUrl', {err}]);
+            return cbk([503, 'FailureGettingLnurlDataFromUrl', {err}]);
           }
 
           if (!json) {
@@ -93,7 +96,7 @@ module.exports = (args, cbk) => {
           }
 
           if (json.status === errorStatus) {
-            return cbk([503, 'LnurlChannelRequestReturnedErr', {err: json.reason}]);
+            return cbk([503, 'UnexpectedServiceError', {err: json.reason}]);
           }
 
           if (!json.callback) {
@@ -103,7 +106,7 @@ module.exports = (args, cbk) => {
           try {
             new URL(json.callback);
           } catch (err) {
-            return cbk([503, 'ExpectedValidCallbackUrlInLnurlResponseJson']);
+            return cbk([503, 'ExpectedValidLnurlResponseCallbackUrl', {err}]);
           }
 
           if ((new URL(json.callback)).protocol !== sslProtocol) {
@@ -111,11 +114,11 @@ module.exports = (args, cbk) => {
           }
 
           if (!json.k1) {
-            return cbk([503, 'ExpectedK1InLnurlResponseJson']);
+            return cbk([503, 'ExpectedK1InLnurlChannelResponseJson']);
           }
 
           if (!json.tag) {
-            return cbk([503, 'ExpectedTagInLnurlResponseJson']);
+            return cbk([503, 'ExpectedTagInLnurlChannelResponseJson']);
           }
 
           if (json.tag !== tag) {
@@ -126,115 +129,151 @@ module.exports = (args, cbk) => {
             return cbk([503, 'ExpectedUriInLnurlResponseJson']);
           }
 
-          const [pubkey, socket] = parseUri(json.uri);
+          // uri: remote node address of form node_key@ip_address:port_number
+          const [id, socket] = parseUri(json.uri);
 
-          if (!isPublicKey(pubkey)) {
-            return cbk([503, 'ExpectedValidPublicKeyInLnurlResponseJson']);
+          if (!isPublicKey(id)) {
+            return cbk([503, 'ExpectedValidPublicKeyIdInLnurlResponseJson']);
           }
 
-          if (!isOnion(socket) && !isClear(socket)) {
-            return cbk([503, 'ExpectedValidOnionOrClearSocketInLnurlResponseJson']);
+          if (!socket) {
+            return cbk([503, 'ExpectedNetworkSocketAddressInLnurlResponse']);
           }
 
-          return cbk(null, {
-            k1: json.k1,
-            uri: json.uri,
-            url: json.callback,
-          });
+          return cbk(null, {id, socket, k1: json.k1, url: json.callback});
         });
       }],
 
-      // Get peers
-      getPeers: ['getTerms', 'validate', ({}, cbk) => {
-          return getPeers({lnd: args.lnd}, (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            return cbk(null, res);
-          });
+      // Get the node alias
+      getAlias: ['getTerms', ({getTerms}, cbk) => {
+        return getNodeAlias({id: getTerms.id, lnd: args.lnd}, cbk);
       }],
 
-      // Connect to peer
-      connect: ['getPeers', 'getTerms', ({getPeers, getTerms}, cbk) => {
-        const {uri} = getTerms;
-        const [pubkey, socket] = parseUri(uri);
-        const {peers} = getPeers;
-        
-        if (!peers.find(n => n.public_key === pubkey)) {
-          args.logger.info({connecting_to_peer: pubkey});
-          
-          return addPeer({lnd: args.lnd, socket, public_key: pubkey}, cbk);
+      // Connect to the peer returned in the lnurl response
+      connect: [
+        'getAlias',
+        'getPeers',
+        'getTerms',
+        ({getAlias, getPeers, getTerms}, cbk) =>
+      {
+        // Exit early when the node is already connected
+        if (getPeers.peers.map(n => n.public_key).includes(getTerms.id)) {
+          return cbk();
         }
-        
-        return cbk();
-      }],
 
-      //Ask channel type
-      askChannelType: ['getTerms', 'connect', ({getTerms}, cbk) => {
-        return args.ask({
-          choices: channelTypes,
-          default: defaultType,
-          message: 'Channel type?',
-          name: 'type',
-          type: 'list',
-          validate: input => {
-            if (!input) {
-              return false;
-            }
+        args.logger.info({
+          connecting_to: {
+            alias: getAlias.alias || undefined,
+            public_key: getTerms.id,
+            socket: getTerms.socket,
+          },
+        });
 
-            return true;
-          }
+        return addPeer({
+          lnd: args.lnd,
+          public_key: getTerms.id,
+          socket: getTerms.socket,
         },
-        ({type}) => {
-          if (type === defaultType) {
-            return cbk(null, true);
-          }
-
-          return cbk(null, false);
-        })
+        cbk);
       }],
 
-      // Confirm
-      ok: ['askChannelType', ({}, cbk) => {
+      // Select private or public mode for the channel
+      askPrivate: ['connect', 'getTerms', ({getTerms}, cbk) => {
+        return args.ask({
+          choices: types,
+          default: typeDefault,
+          message: 'Channel type?',
+          name: 'priv',
+          type: 'list',
+        },
+        ({priv}) => cbk(null, priv));
+      }],
+
+      // Confirm that an inbound channel should be requested
+      ok: ['askPrivate', 'getAlias', ({askPrivate, getAlias}, cbk) => {
+        const node = getAlias.alias || getAlias.id;
+        const type = !!askPrivate ? 'a private' : 'an';
+
         return args.ask({
           default: true,
-          message: `Confirm inbound channel request?`,
+          message: `Request ${type} inbound channel from ${node}?`,
           name: 'ok',
           type: 'confirm',
         },
         ({ok}) => cbk(null, ok));
       }],
 
-      // Request inbound channel
-      channel: [
-        'askChannelType', 
-        'getTerms', 
-        'getWalletInfo', 
-        'ok', 
-        ({
-          askChannelType, 
-          getTerms, 
-          getWalletInfo, 
-          ok
-        }, cbk) => 
+      // Send a signal to cancel the channel request
+      sendCancelation: [
+        'getIdentity',
+        'getTerms',
+        'ok',
+        ({channel, getTerms, ok}, cbk) =>
       {
-        // Exit early if user decides to cancel
+        // Exit early when user wants to proceed with the channel request
+        if (!!ok) {
+          return cbk();
+        }
+
+        return args.request({
+          json: true,
+          qs: {
+            cancel: Number(!ok),
+            k1: getTerms.k1,
+            remoteid: getIdentity.public_key,
+          },
+          url: getTerms.url,
+        },
+        (err, r, json) => {
+          if (!!err) {
+            return cbk([503, 'UnexpectedErrorCancelingChannelRequest', {err}]);
+          }
+
+          if (!json) {
+            return cbk([503, 'ExpectedJsonObjectInCancelChannelResponse']);
+          }
+
+          if (json.status === errorStatus) {
+            return cbk([503, 'ChannelCancelReturnedErr', {err: json.reason}]);
+          }
+
+          if (json.status !== okStatus) {
+            return cbk([503, 'ExpectedOkStatusInCancelChannelResponse']);
+          }
+
+          return cbk([400, 'CanceledRequestForInboundChannel']);
+        });
+      }],
+
+      // Make the request to confirm a request for an inbound channel
+      sendConfirmation: [
+        'askPrivate',
+        'getIdentity',
+        'getTerms',
+        'ok',
+        ({askPrivate, getIdentity, getTerms, ok}, cbk) =>
+      {
+        // Exit early when the user decides to cancel
         if (!ok) {
           return cbk();
         }
 
-        const {k1} = getTerms;
-        const {url} = getTerms;
-        const qs = {k1, private: !!askChannelType ? '0' : '1', remoteid: getWalletInfo.public_key};
-
-        return args.request({url, qs, json: true}, (err, r, json) => {
+        return args.request({
+          json: true,
+          qs: {
+            k1: getTerms.k1,
+            private: askPrivate,
+            remoteid: getIdentity.public_key,
+          },
+          url: getTerms.url,
+        },
+        (err, r, json) => {
           if (!!err) {
-            return cbk([503, 'FailureRequestingInboundChannelFromLnurl', {err}]);
+            return cbk([503, 'UnexpectedErrorRequestingLnurlChannel', {err}]);
           }
 
           if (!json) {
-            return cbk([503, 'ExpectedJsonObjectReturnedInChannelRequestResponse']);
+            return cbk([503, 'ExpectedJsonObjectReturnedInChannelResponse']);
           }
 
           if (json.status === errorStatus) {
@@ -245,52 +284,7 @@ module.exports = (args, cbk) => {
             return cbk([503, 'ExpectedOkStatusInChannelRequestResponse']);
           }
 
-          args.logger.info({channel_open_request_sent: true});
-
-          return cbk();
-        });
-      }],
-
-      // Cancel channel request
-      cancel: [
-        'channel',
-        'getTerms',
-        'getWalletInfo',
-        'ok',
-        ({
-          channel,
-          getTerms,
-          getWalletInfo,
-          ok,
-        }, cbk) => 
-      {
-        // Exit early if user proceeds
-        if (!!ok) {
-          return cbk();
-        }
-
-        const {k1} = getTerms;
-        const {url} = getTerms;
-        const qs = {cancel: '1', k1, remoteid: getWalletInfo.public_key};
-
-        return args.request({url, qs, json: true}, (err, r, json) => {
-          if (!!err) {
-            return cbk([503, 'FailureCancellingInboundChannelFromLnurl', {err}]);
-          }
-
-          if (!json) {
-            return cbk([503, 'ExpectedJsonObjectReturnedInCancelChannelRequestResponse']);
-          }
-
-          if (json.status === errorStatus) {
-            return cbk([503, 'ChannelRequestReturnedErr', {err: json.reason}]);
-          }
-
-          if (json.status !== okStatus) {
-            return cbk([503, 'ExpectedOkStatusInCancelChannelRequestResponse']);
-          }
-
-          args.logger.info({channel_open_request_cancelled: true});
+          args.logger.info({requested_channel_open: true});
 
           return cbk();
         });
