@@ -1,5 +1,9 @@
 # Versions
 
+## 12.6.0
+
+- `lnurl`: Add support for `channel` to request an inbound channel
+
 ## 12.5.1
 
 - `open-balanced-channel`: Correct potential future regression in signing
