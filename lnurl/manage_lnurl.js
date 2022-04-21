@@ -2,10 +2,12 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
 const auth = require('./auth');
+const channel = require('./channel');
 const pay = require('./pay');
 const withdraw = require('./withdraw');
 
 const functionAuth = 'auth';
+const functionChannel = 'channel';
 const functionPay = 'pay';
 const functionWithdraw = 'withdraw';
 const {isArray} = Array;
@@ -40,7 +42,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedArrayOfAvoidsToManageLnurl']);
         }
 
-        if (![functionAuth, functionPay, functionWithdraw].includes(args.function)) {
+        if (![functionAuth, functionChannel, functionPay, functionWithdraw].includes(args.function)) {
           return cbk([400, 'ExpectedLnurlFunctionToManageLnurl']);
         }
 
@@ -75,6 +77,23 @@ module.exports = (args, cbk) => {
         }
 
         return auth({
+          ask: args.ask,
+          lnd: args.lnd,
+          lnurl: args.lnurl,
+          logger: args.logger,
+          request: args.request,
+        },
+        cbk);
+      }],
+
+      // Request inbound channel
+      channel: ['validate', ({}, cbk) => {
+        // Exit early if not lnurl auth
+        if (args.function !== functionChannel) {
+          return cbk();
+        }
+
+        return channel({
           ask: args.ask,
           lnd: args.lnd,
           lnurl: args.lnurl,

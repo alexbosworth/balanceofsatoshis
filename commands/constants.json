@@ -9,6 +9,7 @@
   },
   "lnurlFunctions": {
     "auth": "auth",
+    "channel": "channel",
     "pay": "pay",
     "withdraw": "withdraw"
   },
