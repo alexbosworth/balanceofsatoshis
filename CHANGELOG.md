@@ -1,6 +1,6 @@
 # Versions
 
-## 12.6.0
+## 12.6.1
 
 - `lnurl`: Add support for `channel` to request an inbound channel
 
