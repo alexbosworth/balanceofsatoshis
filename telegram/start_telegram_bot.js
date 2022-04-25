@@ -58,6 +58,7 @@ const ask = (n, cbk) => inquirer.prompt(n).then(n => cbk(n));
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const {isArray} = Array;
+const isHash = n => /^[0-9A-F]{64}$/i.test(n);
 let isBotInit = false;
 const isNumber = n => !isNaN(n);
 const limit = 99999;
@@ -694,6 +695,11 @@ module.exports = (args, cbk) => {
           subscriptions.push(sub);
 
           sub.on('invoice_updated', invoice => {
+            // Exit early when an invoice has no associated hash
+            if (!isHash(invoice.id)) {
+              return;
+            }
+
             return postSettledInvoice({
               from: node.from,
               id: connectedId,

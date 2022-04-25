@@ -1,5 +1,9 @@
 # Versions
 
+## 12.6.2
+
+- `telegram`: Avoid bot crash when receiving an AMP push payment
+
 ## 12.6.1
 
 - `lnurl`: Add support for `channel` to request an inbound channel
