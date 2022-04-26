@@ -1,6 +1,6 @@
 # Versions
 
-## 12.6.2
+## 12.6.3
 
 - `telegram`: Avoid bot crash when receiving an AMP push payment
 

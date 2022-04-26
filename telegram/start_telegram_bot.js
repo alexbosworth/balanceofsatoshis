@@ -377,7 +377,7 @@ module.exports = (args, cbk) => {
               from: ctx.message.from.id,
               id: connectedId,
               nodes: getNodes,
-              reply: n => ctx.reply(n),
+              reply: (message, options) => ctx.reply(message, options),
               working: () => ctx.replyWithChatAction('typing'),
             });
           } catch (err) {
