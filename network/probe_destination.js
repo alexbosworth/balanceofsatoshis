@@ -25,6 +25,7 @@ const dateType = '34349343';
 const defaultCltvDelta = 144;
 const defaultMaxFee = 1337;
 const defaultTokens = 1;
+const featureTypeChannelType = 45;
 const {floor} = Math;
 const fromKeyType = '34349339';
 const keySendPreimageType = '5482373484';
@@ -227,10 +228,12 @@ module.exports = (args, cbk) => {
           return cbk(null, {features: to.features});
         }
 
-        const features = getDestinationNode.features || [];
+        // Only requires features are important to finding routes
+        const features = (getDestinationNode.features || [])
+          .filter(n => !!n.is_known)
+          .filter(n => n.bit !== featureTypeChannelType);
 
-        // Only known features may be passed to find routes
-        return cbk(null, {features: features.filter(n => !!n.is_known)});
+        return cbk(null, {features});
       }],
 
       // Determine messages to attach

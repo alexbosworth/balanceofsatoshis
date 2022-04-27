@@ -1,5 +1,9 @@
 # Versions
 
+## 12.6.4
+
+- `probe`: Fix `feature pair exists` error when probing Eclair destinations
+
 ## 12.6.3
 
 - `telegram`: Avoid bot crash when receiving an AMP push payment
