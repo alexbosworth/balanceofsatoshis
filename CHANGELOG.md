@@ -1,6 +1,6 @@
 # Versions
 
-## 12.6.4
+## 12.6.5
 
 - `probe`: Fix `feature pair exists` error when probing Eclair destinations
 
