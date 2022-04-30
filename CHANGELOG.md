@@ -1,5 +1,9 @@
 # Versions
 
+## 12.7.0
+
+- `swap`: Add keysend support to swap for pushing swap requests
+
 ## 12.6.5
 
 - `probe`: Fix `feature pair exists` error when probing Eclair destinations

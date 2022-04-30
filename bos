@@ -1628,9 +1628,8 @@ prog
     });
   })
 
-  // Submarine swap
+  // Submarine swap with another node
   .command('swap', 'Trade off-chain coins for on-chain via submarine swap')
-  .visible(false)
   .option('--node <node_name>', 'Node to use for swap')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {

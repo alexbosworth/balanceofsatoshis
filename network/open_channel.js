@@ -137,6 +137,11 @@ module.exports = (args, cbk) => {
 
       // Get seed nodes
       getSeed: ['getNetwork', ({getNetwork}, cbk) => {
+        // Exit early when a peer is specified
+        if (!!args.peer) {
+          return cbk(null, {nodes: []});
+        }
+
         return getSeedNodes({
           network: getNetwork.network,
           request: args.request,
