@@ -1,6 +1,6 @@
 # Versions
 
-## 12.7.0
+## 12.7.1
 
 - `swap`: Add keysend support to swap for pushing swap requests
 
