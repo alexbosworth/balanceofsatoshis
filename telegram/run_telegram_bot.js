@@ -1,13 +1,17 @@
 const asyncAuto = require('async/auto');
 const asyncFilter = require('async/filter');
 const asyncMap = require('async/map');
+const {authenticatedLndGrpc} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {getLnds} = require('./../lnd');
+const {lndCredentials} = require('./../lnd');
 const startTelegramBot = require('./start_telegram_bot');
-
+const currentDate = new Date();
 const defaultError = [503, 'TelegramBotStopped'];
+const expiryDuration = 1000 * 60 * 60 * 24 * 180;
+const macaroonExpiryDate = new Date(currentDate.getTime() + expiryDuration).toISOString();
 const {isArray} = Array;
 
 /** Run the telegram bot for a node or multiple nodes
@@ -76,8 +80,64 @@ module.exports = (args, cbk) => {
       },
 
       // Get associated LNDs
-      getLnds: ['validate', ({}, cbk) => {
-        return getLnds({logger: args.logger, nodes: args.nodes}, cbk);
+      getLnds: ['validate', async ({}) => {
+        //Use default macaroon if budget is set
+        if (!!args.payments_limit) {
+          return await getLnds({logger: args.logger, nodes: args.nodes});
+        }
+
+        const nodes = args.nodes;
+
+        //if no saved node is specified, use the default node
+        if (!nodes || !nodes.length) {
+          try {
+            const credentials =  await lndCredentials({
+              expiry: macaroonExpiryDate,
+              logger: args.logger,
+              is_nospend: true,
+              node: args.node,
+            });
+  
+            const {lnd} = await authenticatedLndGrpc({
+              cert: credentials.cert,
+              macaroon: credentials.macaroon,
+              socket: credentials.socket,
+            });
+
+            return {lnds: [lnd]};
+
+            //Ignore errors if unable to generate LND credentials
+          } catch (err) {
+          return await getLnds({logger: args.logger, nodes: args.nodes});
+          }
+        }
+
+        //if saved node(s) is specified, use the saved node(s)
+        try {
+          const lnds = await asyncMap(nodes, async (node) => {
+            const credentials =  await lndCredentials({
+              expiry: macaroonExpiryDate,
+              logger: args.logger,
+              is_nospend: true,
+              node,
+            });
+            
+            const {lnd} = await authenticatedLndGrpc({
+              cert: credentials.cert,
+              macaroon: credentials.macaroon,
+              socket: credentials.socket,
+            });
+
+            return lnd;
+          });
+
+          return {lnds};
+
+          //Ignore errors if unable to generate LND credentials
+        } catch (err) {
+          return await getLnds({logger: args.logger, nodes: args.nodes});
+        }
+
       }],
 
       // Start the bot going
