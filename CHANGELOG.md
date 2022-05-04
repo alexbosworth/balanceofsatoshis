@@ -1,5 +1,9 @@
 # Versions
 
+## 12.8.1
+
+- `telegram`: Add safeguards to deal with errors on /graph command
+
 ## 12.8.0
 
 - `send`: Add support for specifying a LNURL or lightning.address to send to
