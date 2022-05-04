@@ -1506,7 +1506,7 @@ prog
   .help('Formulas supported in amount, and N*USD or N*EUR')
   .help('Also supported in formulas: LIQUIDITY, INBOUND, OUTBOUND (with peer)')
   .help('OUT_INBOUND, OUT_OUTBOUND (when specifying outbound peer)')
-  .argument('<to>', 'Send to node with public key, or zero amount pay request')
+  .argument('<to>', 'Send to public key, zero pay request, lnurl, ln.address')
   .option('--amount <amount>', 'Amount to send to destination', STRING, '1')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
   .option('--dryrun', 'Avoid actually sending funds')

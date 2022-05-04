@@ -10,8 +10,10 @@ const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {getIgnores} = require('./../routing');
+const getLnurlRequest = require('./../lnurl/get_lnurl_request');
 const {getTags} = require('./../tags');
 const {parseAmount} = require('./../display');
+const parseUrl = require('./../lnurl/parse_url');
 const probeDestination = require('./probe_destination');
 
 const coins = ['BTC', 'LTC'];
@@ -153,28 +155,39 @@ module.exports = (args, cbk) => {
       // Payment details
       payment: ['validate', ({}, cbk) => {
         try {
-          const {destination, mtokens} = parsePaymentRequest({
-            request: args.destination,
-          });
+          const {url} = parseUrl({url: args.destination});
+
+          return cbk(null, {lnurl: args.destination});
+        } catch (err) {
+          // Ignore errors, destination isn't a LNURL
+        }
+
+        try {
+          const details = parsePaymentRequest({request: args.destination});
+
+          const {destination, mtokens} = details;
 
           if (!!BigInt(mtokens)) {
             return cbk([400, 'ExpectedZeroAmountPayRequestToSendFunds']);
           }
 
           return cbk(null, {destination, request: args.destination});
-        } catch (_) {
-          return findKey({
-            lnd: args.lnd,
-            query: args.destination,
-          },
-          (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            return cbk(null, {destination: res.public_key, is_push: true});
-          });
+        } catch (err) {
+          // Ignore errors, destination isn't BOLT 11
         }
+
+        // Find the key to send to
+        return findKey({
+          lnd: args.lnd,
+          query: args.destination,
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, {destination: res.public_key, is_push: true});
+        });
       }],
 
       // Get ignores
@@ -366,22 +379,61 @@ module.exports = (args, cbk) => {
         }
       }],
 
-      // Push the amount to the destination
-      push: [
-        'getIgnores',
-        'getInKey',
-        'getOutKey',
+      // Get LNURL payment request
+      getLnurlRequest: [
         'parseAmount',
         'payment',
-        ({getIgnores, getInKey, getOutKey, parseAmount, payment}, cbk) =>
+        ({parseAmount, payment}, cbk) =>
       {
         if (parseAmount.tokens < minTokens) {
           return cbk([400, 'ExpectedNonZeroAmountToPushPayment']);
         }
 
+        // Exit early when there is no LNURL to send to
+        if (!payment.lnurl) {
+          return cbk(null, {});
+        }
+
+        return getLnurlRequest({
+          lnurl: payment.lnurl,
+          request: args.request,
+          tokens: parseAmount.tokens,
+        },
+        cbk);
+      }],
+
+      // Final payment details
+      send: [
+        'getLnurlRequest',
+        'parseAmount',
+        'payment',
+        ({getLnurlRequest, parseAmount, payment}, cbk) =>
+      {
+        if (parseAmount.tokens < minTokens) {
+          return cbk([400, 'ExpectedNonZeroAmountToPushPayment']);
+        }
+
+        return cbk(null, {
+          destination: getLnurlRequest.destination || payment.destination,
+          is_push: payment.is_push,
+          max_fee: parseAmount.max_fee,
+          request: getLnurlRequest.request || payment.request,
+          tokens: !getLnurlRequest.request ? parseAmount.tokens : undefined,
+        });
+      }],
+
+      // Push the amount to the destination
+      push: [
+        'getIgnores',
+        'getInKey',
+        'getOutKey',
+        'send',
+        ({getIgnores, getInKey, getOutKey, send}, cbk) =>
+      {
         args.logger.info({
-          paying: formatTokens({tokens: parseAmount.tokens}).display,
-          to: payment.destination,
+          max_fee: send.max_fee,
+          paying: formatTokens({tokens: send.tokens}).display,
+          to: send.destination,
         });
 
         if (!!args.is_dry_run) {
@@ -389,25 +441,25 @@ module.exports = (args, cbk) => {
         }
 
         return probeDestination({
-          destination: payment.destination,
+          destination: send.destination,
           fs: args.fs,
           ignore: getIgnores.ignore,
           lnd: args.lnd,
           logger: args.logger,
           in_through: getInKey,
           is_omitting_message_from: args.is_omitting_message_from,
-          is_push: payment.is_push,
+          is_push: send.is_push,
           is_real_payment: true,
-          max_fee: parseAmount.max_fee,
+          max_fee: send.max_fee,
           message: args.message,
           messages: args.quiz_answers.map((answer, i) => ({
             type: (quizStart + i).toString(),
             value: utf8AsHex(answer),
           })),
           out_through: getOutKey,
-          request: payment.request,
+          request: send.request,
           timeout_minutes: args.timeout_minutes,
-          tokens: parseAmount.tokens,
+          tokens: send.tokens,
         },
         cbk);
       }],

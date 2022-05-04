@@ -1,5 +1,9 @@
 # Versions
 
+## 12.8.0
+
+- `send`: Add support for specifying a LNURL or lightning.address to send to
+
 ## 12.7.1
 
 - `swap`: Add keysend support to swap for pushing swap requests
