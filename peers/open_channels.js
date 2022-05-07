@@ -556,9 +556,15 @@ module.exports = (args, cbk) => {
       // Detect funding transaction
       detectFunding: [
         'getNetwork',
+        'isExternal',
         'openChannels',
-        ({getNetwork, openChannels}, cbk) =>
+        ({getNetwork, isExternal, openChannels}, cbk) =>
       {
+        // Exit early when the funding is coming from the internal wallet
+        if (!isExternal) {
+          return cbk();
+        }
+
         if (!detectNetworks.includes(getNetwork.network)) {
           return cbk();
         }
