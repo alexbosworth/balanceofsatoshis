@@ -8,7 +8,7 @@ const daysAsMs = days => Number(days) * 1000 * 60 * 60 * 24;
 const defaultTriggerDays = 365;
 const futureDate = ms => new Date(Date.now() + ms).toISOString();
 
-/** Create a follow node trigger
+/** Create a connectivity with peer trigger
 
   {
     id: <Node Id Public Key Hex String>
@@ -23,11 +23,11 @@ module.exports = ({id, lnd}, cbk) => {
       // Check arguments
       validate: cbk => {
         if (!id) {
-          return cbk([400, 'ExpectedNodeIdToFollowToCreateFollowNodeTrigger']);
+          return cbk([400, 'ExpectedNodeIdToCreateConnectivityTrigger']);
         }
 
         if (!lnd) {
-          return cbk([400, 'ExpectedLndToCreateFollowNodeTrigger']);
+          return cbk([400, 'ExpectedLndToCreateConnectivityTrigger']);
         }
 
         return cbk();
@@ -36,7 +36,7 @@ module.exports = ({id, lnd}, cbk) => {
       // Encode the trigger
       description: ['validate', ({}, cbk) => {
         try {
-          const {encoded} = encodeTrigger({follow: {id}});
+          const {encoded} = encodeTrigger({connectivity: {id}});
 
           return cbk(null, encoded);
         } catch (err) {

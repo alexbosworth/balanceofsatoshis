@@ -7,6 +7,7 @@ const {getInvoices} = require('ln-service');
 const {subscribeToGraph} = require('ln-service');
 const {subscribeToInvoice} = require('ln-service');
 const {subscribeToInvoices} = require('ln-service');
+const {subscribeToPeers} = require('ln-service');
 
 const decodeTrigger = require('./decode_trigger');
 
@@ -24,6 +25,16 @@ const {keys} = Object;
     [capacity]: <Channel Token Capacity Number>
     id: <Standard Format Channel Id String>
     public_keys: [<Announcing Public Key>, <Target Public Key String>]
+  }
+
+  @event 'peer_connected'
+  {
+    public_key: <Node Identity Public Key Hex String>
+  }
+
+  @event 'peer_disconnected'
+  {
+    public_key: <Node Identity Public Key Hex String>
   }
 
   @returns
@@ -89,11 +100,13 @@ module.exports = ({lnds}) => {
   lnds.forEach(lnd => {
     const graphSub = subscribeToGraph({lnd});
     const invoicesSub = subscribeToInvoices({lnd});
+    const peersSub = subscribeToPeers({lnd});
     let startHeight;
     let token;
 
     subs.push(graphSub);
     subs.push(invoicesSub);
+    subs.push(peersSub);
 
     getHeight({lnd}, (err, res) => {
       if (!!err) {
@@ -125,9 +138,9 @@ module.exports = ({lnds}) => {
       }
 
       // See if the channel matches a relevant trigger
-      const follows = keys(triggers).filter(id => {
-        return update.public_keys.includes(triggers[id].follow.id);
-      });
+      const follows = keys(triggers)
+        .filter(id => !!triggers[id].follow)
+        .filter(id => update.public_keys.includes(triggers[id].follow.id));
 
       // Exit early when this channel doesn't match any follow trigger
       if (!follows.length) {
@@ -150,6 +163,43 @@ module.exports = ({lnds}) => {
         id: update.id,
         public_keys: update.public_keys,
       });
+    });
+
+    // Listen for errors on the peers subscription
+    peersSub.on('error', err => errored(err));
+
+    // Listen for connected peers subscription
+    peersSub.on('connected', (update, cbk) => {
+      const id = update.public_key;
+
+      // See if the peer matches a relevant trigger
+      const follows = keys(triggers)
+        .filter(id => !!triggers[id].connectivity)
+        .filter(id => update.public_key === triggers[id].connectivity.id);
+
+      // Exit early when this peer doesn't match any connectivity trigger
+      if (!follows.length) {
+        return;
+      }
+
+      return emitter.emit('peer_connected', update);
+    });
+
+    // Listen for disconnected peers subscription
+    peersSub.on('disconnected', (update, cbk) => {
+      const id = update.public_key;
+
+      // See if the peer matches a relevant trigger
+      const follows = keys(triggers)
+        .filter(id => !!triggers[id].connectivity)
+        .filter(id => update.public_key === triggers[id].connectivity.id);
+
+      // Exit early when this peer doesn't match any connectivity trigger
+      if (!follows.length) {
+        return;
+      }
+
+      return emitter.emit('peer_disconnected', update);
     });
 
     // Register past trigger invoices

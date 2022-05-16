@@ -16,7 +16,10 @@ const defaultInvoicesLimit = 100;
   @returns via cbk or Promise
   {
     triggers: [{
-      follow: {
+      [connectivity]: {
+        id: <Node Identity Public Key Hex String>
+      }
+      [follow]: {
         id: <Node Identity Public Key Hex String>
       }
       id: <Trigger Id Hex String>
@@ -59,9 +62,13 @@ module.exports = ({lnd}, cbk) => {
 
               res.invoices.forEach(({description, id}) => {
                 try {
-                  const {follow} = decodeTrigger({encoded: description});
+                  const trigger = decodeTrigger({encoded: description});
 
-                  return triggers.push({follow, id});
+                  return triggers.push({
+                    id,
+                    connectivity: trigger.connectivity,
+                    follow: trigger.follow,
+                  });
                 } catch (err) {
                   // Ignore invoices that are not triggers
                   return;

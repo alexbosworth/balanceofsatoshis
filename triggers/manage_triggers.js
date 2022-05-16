@@ -2,11 +2,13 @@ const asyncAuto = require('async/auto');
 const {cancelHodlInvoice} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const createConnectivityTrigger = require('./create_connectivity_trigger');
 const createFollowNodeTrigger = require('./create_follow_node_trigger');
 const getTriggers = require('./get_triggers');
 const subscribeToTriggers = require('./subscribe_to_triggers');
 
-const actionAddTrigger = 'action-add-trigger';
+const actionAddConnectivityTrigger = 'action-add-connectivity-trigger';
+const actionAddFollowTrigger = 'action-add-follow-trigger';
 const actionDeleteTrigger = 'action-delete-trigger';
 const actionListTriggers = 'action-list-triggers';
 const actionSubscribeToTriggers = 'action-subscribe-to-triggers';
@@ -47,8 +49,12 @@ module.exports = ({ask, lnd, logger}, cbk) => {
         return ask({
           choices: [
             {
+              name: 'Add Node Connectivity Trigger',
+              value: actionAddConnectivityTrigger,
+            },
+            {
               name: 'Add Follow Node Trigger',
-              value: actionAddTrigger,
+              value: actionAddFollowTrigger,
             },
             {
               name: 'View Triggers',
@@ -66,10 +72,36 @@ module.exports = ({ask, lnd, logger}, cbk) => {
         ({action}) => cbk(null, action));
       }],
 
-      // Ask for details about a new trigger
+      // Ask for details about a new connectivity trigger
+      askForConnectivityTrigger: ['selectAction', ({selectAction}, cbk) => {
+        // Exit early when not adding a trigger
+        if (selectAction !== actionAddConnectivityTrigger) {
+          return cbk();
+        }
+
+        return ask({
+          message: 'Node public key to watch connectivity with?',
+          name: 'id',
+          type: 'input',
+          validate: input => {
+            if (!input) {
+              return false;
+            }
+
+            if (!isPublicKey(input)) {
+              return 'Enter a node identity public key';
+            }
+
+            return true;
+          },
+        },
+        ({id}) => cbk(null, id));
+      }],
+
+      // Ask for details about a new follow trigger
       askForFollowTrigger: ['selectAction', ({selectAction}, cbk) => {
         // Exit early when not adding a trigger
-        if (selectAction !== actionAddTrigger) {
+        if (selectAction !== actionAddFollowTrigger) {
           return cbk();
         }
 
@@ -114,13 +146,34 @@ module.exports = ({ask, lnd, logger}, cbk) => {
         const sub = subscribeToTriggers({lnds: [lnd]});
 
         sub.on('channel_opened', opened => logger.info({opened}));
+        sub.on('peer_connected', connected => logger.info({connected}));
+        sub.on('peer_disconnected', disconnect => logger.info({disconnect}));
         sub.on('error', err => cbk(err));
 
         return logger.info({listening_for_trigger_events: true});
       }],
 
-      // Create a new trigger
-      createTrigger: ['askForFollowTrigger', ({askForFollowTrigger}, cbk) => {
+      // Create a new connectivity trigger
+      createConnectivityTrigger: [
+        'askForConnectivityTrigger',
+        ({askForConnectivityTrigger}, cbk) =>
+      {
+        if (!askForConnectivityTrigger) {
+          return cbk();
+        }
+
+        return createConnectivityTrigger({
+          lnd,
+          id: askForConnectivityTrigger,
+        },
+        cbk);
+      }],
+
+      // Create a new follow trigger
+      createFollowTrigger: [
+        'askForFollowTrigger',
+        ({askForFollowTrigger}, cbk) =>
+      {
         if (!askForFollowTrigger) {
           return cbk();
         }
@@ -139,10 +192,19 @@ module.exports = ({ask, lnd, logger}, cbk) => {
         }
 
         return ask({
-          choices: getTriggers.map(({follow, id}) => ({
-            name: `Following ${follow.id}`,
-            value: id,
-          })),
+          choices: getTriggers.map(({connectivity, follow, id}) => {
+            if (!!connectivity) {
+              return {
+                name: `Connectivity with ${connectivity.id}`,
+                value: id,
+              };
+            } else {
+              return {
+                name: `Following ${follow.id}`,
+                value: id,
+              };
+            }
+          }),
           message: 'Triggers:',
           name: 'view',
           type: 'list',
