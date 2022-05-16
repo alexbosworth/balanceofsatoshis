@@ -42,6 +42,7 @@ const services = importLazy('./services');
 const {swapTypes} = commandConstants;
 const swaps = importLazy('./swaps');
 const telegram = importLazy('./telegram');
+const triggers = importLazy('./triggers');
 const wallets = importLazy('./wallets');
 const {version} = importLazy('./package');
 
@@ -1809,6 +1810,25 @@ prog
           out_through: options.out,
           through: options.through,
           to: (await lndForNode(logger, args.to)).lnd,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
+  // Manage triggers
+  .command('triggers', 'Manage event triggers')
+  .option('--node <name>', 'Node to manage triggers on')
+  .visible(false)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return triggers.manageTriggers({
+          logger,
+          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          lnd: (await lndForNode(logger, options.node)).lnd,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {

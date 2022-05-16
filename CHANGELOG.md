@@ -1,6 +1,6 @@
 # Versions
 
-## 12.8.2
+## 12.8.3
 
 - `telegram`: Add safeguards to deal with errors on /graph command
 
