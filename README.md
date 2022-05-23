@@ -499,7 +499,7 @@ On Umbrel this would be:
 ## --network="host"
 ## --add-host=umbrel.local:192.168.1.23
 ## -v $HOME/umbrel/lnd:/home/node/.lnd:ro
-docker run -it --rm --network="host" --add-host=umbrel.local:192.168.1.23 -v $HOME/.bos:/home/node/.bos -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
+docker run -it --rm --network=umbrel_main_network --add-host=umbrel.local:192.168.1.23 -v $HOME/.bos:/home/node/.bos -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
 ```
 
 Note: For [umbrel-os](https://github.com/getumbrel/umbrel-os) users, when
