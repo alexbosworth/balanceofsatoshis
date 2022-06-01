@@ -211,7 +211,7 @@ module.exports = (args, cbk) => {
             reply: n => ctx.reply(n, markdown),
             request: args.request,
           },
-          err => !!err ? logger.error({err}) : null);
+          err => !!err ? args.logger.error({err}) : null);
         });
 
         // Handle command to get the connect id
@@ -335,7 +335,7 @@ module.exports = (args, cbk) => {
               });
             });
           } catch (err) {
-            args.logger.error(err);
+            args.logger.error({err});
           }
         });
 

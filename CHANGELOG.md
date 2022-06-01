@@ -1,5 +1,9 @@
 # Versions
 
+## 12.8.5
+
+- `telegram`: Fix error logging on /blocknotify
+
 ## 12.8.4
 
 - `telegram`: Add safeguards to deal with errors on /graph command
