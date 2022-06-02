@@ -1,5 +1,9 @@
 # Versions
 
+## 12.9.0
+
+- `gateway`: Add `--minutes`, `--nospend` to limit credentials validity, access
+
 ## 12.8.5
 
 - `telegram`: Fix error logging on /blocknotify
