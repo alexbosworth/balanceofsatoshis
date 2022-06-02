@@ -5,7 +5,8 @@ const {restrictMacaroon} = require('ln-service');
 
 const base64AsBuf = base64 => Buffer.from(base64, 'base64');
 const bufferAsHex = buffer => buffer.toString('hex');
-const defaultExpireMs = 1000 * 60 * 10;
+const expiryMs = n => 1000 * 60 * n;
+const maxTimeLimitMinutes = 60;
 const {now} = Date;
 const path = '/v0/grpc/';
 
@@ -16,7 +17,9 @@ const path = '/v0/grpc/';
       cert: <LND Base64 Encoded String>
       socket: <LND Socket String>
     }
+    [is_nospend]: <Restrict Credentials To Non-Spending Permissions Bool>
     logger: <Winston Logger Object>
+    minutes: <Expire Access in Minutes Number>
     port: <Listen Port Number>
     remote: <Remote Gateway URL String>
   }
@@ -24,7 +27,7 @@ const path = '/v0/grpc/';
   @returns
   {}
 */
-module.exports = ({credentials, logger, port, remote}) => {
+module.exports = ({credentials, is_nospend, logger, minutes, port, remote}) => {
   if (!credentials) {
     throw new Error('ExpectedCredentialsForLndGateway');
   }
@@ -37,6 +40,14 @@ module.exports = ({credentials, logger, port, remote}) => {
     throw new Error('ExpectedLoggerToStartLndGateway');
   }
 
+  if (!minutes) {
+    throw new Error('ExpectedMinutesToStartLndGateway');
+  }
+
+  if (minutes > maxTimeLimitMinutes) {
+    throw new Error('ExpectedMinutesToBeLessThanOrEqualTo60');
+  }
+
   if (!port) {
     throw new Error('ExpectedPortToStartLndGateway');
   }
@@ -45,7 +56,7 @@ module.exports = ({credentials, logger, port, remote}) => {
     throw new Error('ExpectedLndRpcSocketToStartLndGateway');
   }
 
-  const expiry = new Date(now() + defaultExpireMs);
+  const expiry = new Date(now() + expiryMs(minutes));
 
   const {macaroon} = restrictMacaroon({
     expires_at: expiry.toISOString(),
@@ -72,7 +83,10 @@ module.exports = ({credentials, logger, port, remote}) => {
       return logger.error({gateway: err});
     }
 
-    return logger.info({gateway: line})
+    return logger.info({
+      gateway: line,
+      is_nospend: !!is_nospend,
+    })
   };
 
   const {app, server, wss} = grpcProxyServer({
