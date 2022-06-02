@@ -732,7 +732,7 @@ prog
   .command('gateway', 'Request gateway for https://ln-operator.github.io/')
   .help('Start LND gateway server listening for Web UI access')
   .help('Using the --remote option generates credentials for a remote gateway')
-  .option('--minutes <minutes>', 'Minutes to keep the gateway open', INT, 10)
+  .option('--minutes <minutes>', 'Minutes credentials valid for', INT, 10)
   .option('--node <node_name>', 'Node for gateway')
   .option('--nospend', 'Credentials do not include spending privileges')
   .option('--port <port>', 'Port for gateway', INT, 4805)
@@ -742,7 +742,10 @@ prog
       try {
         return lnd.gateway({
           logger,
-          credentials: await lnd.lndCredentials({ is_nospend: options.nospend, node: options.node}),
+          credentials: await lnd.lndCredentials({
+            is_nospend: options.nospend,
+            node: options.node,
+          }),
           minutes: options.minutes,
           is_nospend: options.nospend || undefined,
           port: options.port,

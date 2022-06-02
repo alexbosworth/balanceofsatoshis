@@ -27,76 +27,74 @@ const path = '/v0/grpc/';
   @returns
   {}
 */
-module.exports = (args) => {
-  const {credentials, is_nospend, logger, minutes, port, remote} = args;
-  
-  if (!credentials) {
+module.exports = args => {
+  if (!args.credentials) {
     throw new Error('ExpectedCredentialsForLndGateway');
   }
 
-  if (!credentials.cert) {
+  if (!args.credentials.cert) {
     throw new Error('ExpectedCertToStartLndGateway');
   }
 
-  if (!logger) {
+  if (!args.logger) {
     throw new Error('ExpectedLoggerToStartLndGateway');
   }
 
-  if (!minutes) {
+  if (!args.minutes) {
     throw new Error('ExpectedMinutesToStartLndGateway');
   }
 
-  if (minutes > maxTimeLimitMinutes) {
-    throw new Error('ExpectedMinutesToBeLessThanOrEqualTo60');
+  if (args.minutes > maxTimeLimitMinutes) {
+    throw new Error('ExpectedMinutesToBeLessThanOrEqualToOneHour');
   }
 
-  if (!port) {
+  if (!args.port) {
     throw new Error('ExpectedPortToStartLndGateway');
   }
 
-  if (!credentials.socket) {
+  if (!args.credentials.socket) {
     throw new Error('ExpectedLndRpcSocketToStartLndGateway');
   }
 
-  const expiry = new Date(now() + expiryMs(minutes));
+  const expiry = new Date(now() + expiryMs(args.minutes));
 
   const {macaroon} = restrictMacaroon({
     expires_at: expiry.toISOString(),
-    macaroon: credentials.macaroon,
+    macaroon: args.credentials.macaroon,
   });
 
   const code = encode({
     macaroon: base64AsBuf(macaroon),
-    port: !remote ? port : undefined,
-    url: remote || undefined,
+    port: !args.remote ? args.port : undefined,
+    url: args.remote || undefined,
   });
 
-  logger.info({
+  args.logger.info({
     connection_code: bufferAsHex(code),
     expires_at: moment(expiry).calendar(),
   });
 
-  if (!!remote) {
+  if (!!args.remote) {
     return;
   }
 
   const log = (err, line) => {
     if (!!err) {
-      return logger.error({gateway: err});
+      return args.logger.error({gateway: err});
     }
 
-    return logger.info({
+    return args.logger.info({
       gateway: line,
-      is_nospend: !!is_nospend,
+      is_nospend: !!args.is_nospend,
     })
   };
 
   const {app, server, wss} = grpcProxyServer({
     log,
     path,
-    port,
-    cert: credentials.cert,
-    socket: credentials.socket,
+    cert: args.credentials.cert,
+    port: args.port,
+    socket: args.credentials.socket,
   });
 
   return {};
