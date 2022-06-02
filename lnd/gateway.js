@@ -27,7 +27,9 @@ const path = '/v0/grpc/';
   @returns
   {}
 */
-module.exports = ({credentials, is_nospend, logger, minutes, port, remote}) => {
+module.exports = (args) => {
+  const {credentials, is_nospend, logger, minutes, port, remote} = args;
+  
   if (!credentials) {
     throw new Error('ExpectedCredentialsForLndGateway');
   }
