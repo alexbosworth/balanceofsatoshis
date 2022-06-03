@@ -1,5 +1,9 @@
 # Versions
 
+## 12.10.0
+
+- `open`: Add support for using p2tr and multi-sig funding for external funds
+
 ## 12.9.0
 
 - `gateway`: Add `--minutes`, `--nospend` to limit credentials validity, access
