@@ -1,5 +1,9 @@
 # Versions
 
+## 12.11.0
+
+- `telegram`: Add inbound and outbound fee rates to /liquidity message
+
 ## 12.10.0
 
 - `open`: Add support for using p2tr and multi-sig funding for external funds
