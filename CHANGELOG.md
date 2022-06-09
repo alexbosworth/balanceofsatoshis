@@ -1,6 +1,6 @@
 # Versions
 
-## 12.11.1
+## 12.11.2
 
 - `telegram`: Add inbound and outbound fee rates to /liquidity message
 
