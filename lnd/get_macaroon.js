@@ -23,6 +23,7 @@ const macName = 'admin.macaroon';
       platform: <Platform Function> () => <Platform Name String>
       userInfo: <User Info Function> () => {username: <User Name String>}
     }
+    [path]: <LND Data Directory Path String>
   }
 
   @returns via cbk or Promise
@@ -30,7 +31,7 @@ const macName = 'admin.macaroon';
     [macaroon]: <Base64 Encoded Macaroon String>
   }
 */
-module.exports = ({fs, node, os}, cbk) => {
+module.exports = ({fs, node, os, path}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -55,7 +56,7 @@ module.exports = ({fs, node, os}, cbk) => {
 
         const [chains, nets] = defaults;
         let defaultMacaroon;
-        const {path} = lndDirectory({os});
+        const dir = path || lndDirectory({os}).path;
 
         const all = chains.map(chain => {
           return nets.map(network => ({chain, network}));
@@ -65,7 +66,7 @@ module.exports = ({fs, node, os}, cbk) => {
         return asyncDetectSeries(flatten(all), ({chain, network}, cbk) => {
           const macPath = [].concat(macDirs).concat([chain, network, macName]);
 
-          return fs.getFile(join(...[path].concat(macPath)), (_, macaroon) => {
+          return fs.getFile(join(...[dir].concat(macPath)), (_, macaroon) => {
             defaultMacaroon = macaroon;
 
             return cbk(null, !!defaultMacaroon);

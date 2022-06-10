@@ -204,6 +204,10 @@ Default LND directories:
 
 It will check first for a mainnet macaroon, then a testnet macaroon.
 
+The LND directory can be overriden with an environment variable:
+
+`BOS_DEFAULT_LND_PATH=/path/to/lnd/data/dir`
+
 ### Saved Nodes
 
 If you have another node and it is already using `balanceofsatoshis`, you can

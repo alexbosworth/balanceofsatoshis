@@ -25,6 +25,7 @@ const scheme = 'rpc://';
       platform: <Platform Function> () => <Platform Name String>
       userInfo: <User Info Function> () => {username: <User Name String>}
     }
+    [path]: <Lnd Data Directory Path String>
   }
 
   @returns via cbk or Promise
@@ -32,7 +33,7 @@ const scheme = 'rpc://';
     [socket]: <RPC Socket String>
   }
 */
-module.exports = ({fs, node, os}, cbk) => {
+module.exports = ({fs, node, os, path}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -55,9 +56,9 @@ module.exports = ({fs, node, os}, cbk) => {
           return cbk();
         }
 
-        const {path} = lndDirectory({os});
+        const dir = path || lndDirectory({os}).path;
 
-        return fs.getFile(join(...[path].concat(confPath)), (err, conf) => {
+        return fs.getFile(join(...[dir].concat(confPath)), (err, conf) => {
           // Don't report errors, the conf file is either there or not
           return cbk(null, conf);
         });

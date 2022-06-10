@@ -17,12 +17,14 @@ const {decryptCiphertext} = require('./../encryption');
 const {derAsPem} = require('./../encryption');
 const getCert = require('./get_cert');
 const getMacaroon = require('./get_macaroon');
+const getPath = require('./get_path');
 const {getSavedCredentials} = require('./../nodes');
 const getSocket = require('./get_socket');
 const {noSpendPerms} = require('./constants');
 const {permissionEntities} = require('./constants');
 
 const config = 'config.json';
+const defaultLndDirPath = process.env.BOS_DEFAULT_LND_PATH;
 const defaultNodeName = process.env.BOS_DEFAULT_SAVED_NODE;
 const fs = {getFile: readFile};
 const home = '.bos';
@@ -89,14 +91,29 @@ module.exports = (args, cbk) => {
         });
       },
 
+      // Look for a special path
+      getPath: ['forNode', ({forNode}, cbk) => {
+        // Exit early when a specific node is used
+        if (!!forNode) {
+          return cbk(null, {});
+        }
+
+        // Exit early when there is a default LND path
+        if (!!defaultLndDirPath) {
+          return cbk(null, {path: defaultLndDirPath});
+        }
+
+        return getPath({fs, os}, cbk);
+      }],
+
       // Get the default cert
-      getCert: ['forNode', ({forNode}, cbk) => {
-        return getCert({fs, os, node: forNode}, cbk);
+      getCert: ['forNode', 'getPath', ({forNode, getPath}, cbk) => {
+        return getCert({fs, os, node: forNode, path: getPath.path}, cbk);
       }],
 
       // Get the default macaroon
-      getMacaroon: ['forNode', ({forNode}, cbk) => {
-        return getMacaroon({fs, os, node: forNode}, cbk);
+      getMacaroon: ['forNode', 'getPath', ({forNode, getPath}, cbk) => {
+        return getMacaroon({fs, os, node: forNode, path: getPath.path}, cbk);
       }],
 
       // Get the node credentials, if applicable
@@ -109,8 +126,8 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the socket out of the ini file
-      getSocket: ['forNode', ({forNode}, cbk) => {
-        return getSocket({fs, os, node: forNode}, cbk);
+      getSocket: ['forNode', 'getPath', ({forNode, getPath}, cbk) => {
+        return getSocket({fs, os, node: forNode, path: getPath.path}, cbk);
       }],
 
       // Node credentials

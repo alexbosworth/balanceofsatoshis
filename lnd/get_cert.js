@@ -21,6 +21,7 @@ const certPath = ['tls.cert'];
       platform: <Platform Function> () => <Platform Name String>
       userInfo: <User Info Function> () => {username: <User Name String>}
     }
+    [path]: <Lnd Data Directory Path String>
   }
 
   @returns via cbk or Promise
@@ -28,7 +29,7 @@ const certPath = ['tls.cert'];
     [cert]: <Cert File Base64 Encoded String>
   }
 */
-module.exports = ({fs, node, os}, cbk) => {
+module.exports = ({fs, node, os, path}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -50,9 +51,9 @@ module.exports = ({fs, node, os}, cbk) => {
           return cbk();
         }
 
-        const {path} = lndDirectory({os});
+        const dir = path || lndDirectory({os}).path;
 
-        return fs.getFile(join(...[path].concat(certPath)), (err, cert) => {
+        return fs.getFile(join(...[dir].concat(certPath)), (err, cert) => {
           if (!!err) {
             return cbk([503, 'UnexpectedErrorGettingCertFileData', {err}]);
           }
