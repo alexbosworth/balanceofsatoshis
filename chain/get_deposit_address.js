@@ -4,12 +4,12 @@ const qrcode = require('qrcode-terminal');
 const {returnResult} = require('asyncjs-util');
 
 const bigTok = tokens => !tokens ? '0' : (tokens / 1e8).toFixed(8);
-const format = 'p2wpkh';
 
 /** Get deposit address
 
   {
-    lnd: <Authenticated LND gRPC API Object>
+    [format]: <Address Format String>
+    lnd: <Authenticated LND API Object>
     [tokens]: <Tokens to Receive Number>
   }
 
@@ -19,7 +19,7 @@ const format = 'p2wpkh';
     deposit_qr: <Deposit Address URL QR Code String>
   }
 */
-module.exports = ({lnd, tokens}, cbk) => {
+module.exports = ({format, lnd, tokens}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments

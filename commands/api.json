@@ -15,6 +15,13 @@
       "method": "addPeer"
     },
     {
+      "arguments": [{
+        "description": "Add advertised node network address host:port",
+        "named": "socket"
+      }],
+      "method": "addExternalSocket"
+    },
+    {
       "arguments": [
         {
           "description": "Raw hex encoded signed raw transaction",
@@ -82,7 +89,7 @@
     {
       "arguments": [
         {
-          "description": "Chain address format, np2wpkh or p2wpkh",
+          "description": "Chain address format: np2wpkh, p2wpkh or p2tr",
           "named": "format"
         }
       ],
@@ -673,6 +680,13 @@
       "method": "pay"
     },
     {
+      "arguments": [{
+        "description": "Remove advertised node network address host:port",
+        "named": "socket"
+      }],
+      "method": "removeExternalSocket"
+    },
+    {
       "arguments": [
         {
           "description": "Peer hex encoded public key id",
@@ -863,6 +877,13 @@
       "method": "unlockUtxo"
     },
     {
+      "arguments": [{
+        "description": "Alias to use for node identity",
+        "named": "alias"
+      }],
+      "method": "updateAlias"
+    },
+    {
       "arguments": [
         {
           "description": "Transaction label",
@@ -875,6 +896,13 @@
         }
       ],
       "method": "updateChainTransaction"
+    },
+    {
+      "arguments": [{
+        "description": "Color value for node advertisement: ex #000000",
+        "named": "color"
+      }],
+      "method": "updateColor"
     },
     {
       "arguments": [

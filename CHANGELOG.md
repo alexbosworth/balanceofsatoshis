@@ -1,5 +1,13 @@
 # Versions
 
+## 12.13.0
+
+- `call`: Add method to add a new advertised p2p address: `addExternalSocket`
+- `call`: Add method to remove p2p addresses: `removeExternalSocket`
+- `call`: Add method to update the advertised node alias: `updateAlias`
+- `call`: Add method to update the advertised node color: `updateColor`
+- `chain-deposit`: Add new option for NP2WPKH/P2TR addresses: `--format`
+
 ## 12.12.0
 
 - Add `BOS_DEFAULT_LND_PATH` to set the default path to LND data directory
