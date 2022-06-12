@@ -1,6 +1,6 @@
 # Versions
 
-## 12.13.0
+## 12.13.1
 
 - `call`: Add method to add a new advertised p2p address: `addExternalSocket`
 - `call`: Add method to remove p2p addresses: `removeExternalSocket`
