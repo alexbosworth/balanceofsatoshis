@@ -6,7 +6,6 @@ const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
-const {removePeer} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const connectToNodes = require('./connect_to_nodes');
@@ -99,67 +98,17 @@ module.exports = ({lnd, retries}, cbk) => {
         cbk);
       }],
 
-      // Disconnect connected peers that have an inactive channel
-      disconnect: [
-        'getChannels',
-        'getDisabled',
-        'getPeers',
-        ({getChannels, getDisabled, getPeers}, cbk) =>
-      {
-        // Some peers have active channels but they are marked disabled
-        const disabled = getDisabled.map(n => n.partner_public_key);
-
-        // Only look at channels that are inactive
-        const inactive = getChannels.channels.filter(n => !n.is_active);
-
-        // Find peers that have an inactive channel but are connected peers
-        const peers = getPeers.peers
-          .filter(peer => {
-            return !!inactive.find(channel => {
-              return channel.partner_public_key === peer.public_key;
-            });
-          })
-          .map(n => n.public_key);
-
-        const remove = uniq([].concat(disabled).concat(peers)).filter(key => {
-          const details = getPeers.peers.find(n => n.public_key === key);
-
-          if (!details || !details.last_reconnection) {
-            return true;
-          }
-
-          const lastReconnectAt = new Date(details.last_reconnection);
-
-
-          return new Date() - lastReconnectAt > minimumReconnectMs;
-        });
-
-        return asyncMap(remove, (peer, cbk) => {
-          return removePeer({lnd, public_key: peer}, cbk);
-        },
-        err => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          return cbk(null, remove);
-        });
-      }],
-
       // Disconnected peers
       disconnected: [
-        'disconnect',
-        'getChannels',
-        'getPeers',
-        ({disconnect, getChannels, getPeers}, cbk) =>
+        'getChannels', 'getPeers',
+        ({getChannels, getPeers}, cbk) =>
       {
         const connected = getPeers.peers.map(n => n.public_key);
 
         const disconnected = getChannels.channels
           .filter(n => !n.is_active)
           .filter(n => connected.indexOf(n.partner_public_key) === notFound)
-          .map(n => n.partner_public_key)
-          .concat(disconnect);
+          .map(n => n.partner_public_key);
 
         return cbk(null, shuffle({array: uniq(disconnected)}).shuffled);
       }],

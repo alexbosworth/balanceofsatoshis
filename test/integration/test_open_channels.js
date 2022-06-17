@@ -53,38 +53,40 @@ test(`Open channels`, async ({end, equal, strictSame}) => {
     await asyncAuto({
       // Open channel
       propose: async () => {
-        await openChannels({
-          lnd,
-          ask: async (args, cbk) => {
-            if (args.name === 'internal') {
-              return cbk({internal: false});
-            }
+        return asyncRetry({interval, times}, async () => {
+          await openChannels({
+            lnd,
+            ask: async (args, cbk) => {
+              if (args.name === 'internal') {
+                return cbk({internal: false});
+              }
 
-            if (args.name === 'fund') {
-              const address = args.message.split(' ')[9];
+              if (args.name === 'fund') {
+                const address = args.message.split(' ')[9];
 
-              const {psbt} = await fundPsbt({
-                lnd,
-                outputs: [{address, tokens: 6e6}],
-              });
+                const {psbt} = await fundPsbt({
+                  lnd,
+                  outputs: [{address, tokens: 6e6}],
+                });
 
-              const signed = await signPsbt({lnd, psbt});
+                const signed = await signPsbt({lnd, psbt});
 
-              return cbk({fund: signed.psbt});
-            }
+                return cbk({fund: signed.psbt});
+              }
 
-            throw new Error('UnrecognizedParameter');
-          },
-          capacities: ['6*m'],
-          cooperative_close_addresses: [address],
-          fs: {getFile: () => {}},
-          gives: [1e5],
-          logger: {info: log, error: log},
-          opening_nodes: [],
-          public_keys: [target.id],
-          request: () => {},
-          set_fee_rates: [],
-          types: [],
+              throw new Error('UnrecognizedParameter');
+            },
+            capacities: ['6*m'],
+            cooperative_close_addresses: [address],
+            fs: {getFile: () => {}},
+            gives: [1e5],
+            logger: {info: log, error: log},
+            opening_nodes: [],
+            public_keys: [target.id],
+            request: () => {},
+            set_fee_rates: [],
+            types: [],
+          });
         });
       },
 
