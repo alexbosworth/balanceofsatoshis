@@ -158,7 +158,7 @@ module.exports = (args, cbk) => {
           {command: 'graph', description: 'Show info about a node'},
           {command: 'help', description: 'Show the list of commands'},
           {command: 'info', description: 'Show wallet info'},
-          {command: 'invoice', description: 'Create an invoice'},
+          {command: 'invoice', description: 'Create an invoice [amt] [memo]'},
           {command: 'liquidity', description: 'Get liquidity [with-peer]'},
           {command: 'mempool', description: 'Get info about the mempool'},
           {command: 'pay', description: 'Pay a payment request'},

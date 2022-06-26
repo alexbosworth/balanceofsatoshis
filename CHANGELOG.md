@@ -1,6 +1,6 @@
 # Versions
 
-## 12.13.2
+## 12.13.3
 
 - `reconnect`: Stop removing peers that have an inbound disabled routing policy
 
