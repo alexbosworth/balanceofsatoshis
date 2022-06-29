@@ -1,5 +1,9 @@
 # Versions
 
+## 12.13.4
+
+- Remove update notifier functionality
+
 ## 12.13.3
 
 - `reconnect`: Stop removing peers that have an inbound disabled routing policy

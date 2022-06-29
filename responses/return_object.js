@@ -1,6 +1,5 @@
 const {getBorderCharacters} = require('table');
 const renderTable = require('table').table;
-const updateNotifier = require('update-notifier');
 
 const pkg = require('./../package.json');
 const writeJsonFile = require('./write_json_file');
@@ -8,7 +7,6 @@ const writeJsonFile = require('./write_json_file');
 const border = getBorderCharacters('norc');
 const emptyCell = ' ';
 const {isArray} = Array;
-const notifier = updateNotifier({pkg});
 const summary = n => `${n}_summary`;
 
 /** Return an object result to a logger in a promise
@@ -72,12 +70,6 @@ module.exports = ({exit, file, logger, reject, resolve, table, write}) => {
       logger.info(`${res}`);
     } else {
       logger.info(res);
-    }
-
-    try {
-      notifier.notify({isGlobal: true});
-    } catch (err) {
-      // Suppress errors on version notify issues
     }
 
     if (!!exit) {
