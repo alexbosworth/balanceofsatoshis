@@ -1,5 +1,9 @@
 # Versions
 
+## 12.13.5
+
+- `telegram`: Add mtokens precision to rebalance messages
+
 ## 12.13.4
 
 - Remove update notifier functionality
