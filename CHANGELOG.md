@@ -1,5 +1,9 @@
 # Versions
 
+## 12.13.6
+
+- `probe`: Fix probing to nodes that advertise unknown type features
+
 ## 12.13.5
 
 - `telegram`: Add mtokens precision to rebalance messages

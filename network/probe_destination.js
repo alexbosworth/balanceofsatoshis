@@ -231,7 +231,8 @@ module.exports = (args, cbk) => {
         // Only requires features are important to finding routes
         const features = (getDestinationNode.features || [])
           .filter(n => !!n.is_known)
-          .filter(n => n.bit !== featureTypeChannelType);
+          .filter(n => n.bit !== featureTypeChannelType)
+          .filter(n => !!n.type);
 
         return cbk(null, {features});
       }],
