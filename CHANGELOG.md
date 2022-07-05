@@ -1,5 +1,9 @@
 # Versions
 
+## 12.14.0
+
+- `open-group-channel`: Add method to open balanced channels in a group tx
+
 ## 12.13.6
 
 - `probe`: Fix probing to nodes that advertise unknown type features

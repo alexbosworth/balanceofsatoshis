@@ -1165,6 +1165,27 @@ prog
     });
   })
 
+  // Open a group channel with multiple peers
+  .command('open-group-channel', 'Open balanced channels with multiple peers')
+  .visible(false)
+  .help('Remote nodes must be prepared to participate in this type of channel')
+  .help('The remote node should also run this same command to join the group')
+  .option('--node <node_name>', 'Use saved node details instead of local node')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return paidServices.manageGroupJoin({
+          logger,
+          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
   // Get outbound liquidity information: available outbound off-chain tokens
   .command('outbound-liquidity', 'Get outbound liquidity size')
   .option('--above <tokens>', 'Return amount above watermark', INT)
