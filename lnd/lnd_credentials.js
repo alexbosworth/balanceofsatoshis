@@ -22,12 +22,12 @@ const {getSavedCredentials} = require('./../nodes');
 const getSocket = require('./get_socket');
 const {noSpendPerms} = require('./constants');
 const {permissionEntities} = require('./constants');
+const {home} = require('../storage');
 
 const config = 'config.json';
 const defaultLndDirPath = process.env.BOS_DEFAULT_LND_PATH;
 const defaultNodeName = process.env.BOS_DEFAULT_SAVED_NODE;
 const fs = {getFile: readFile};
-const home = '.bos';
 const os = {homedir, platform, userInfo};
 const {parse} = JSON;
 const readPerms = permissionEntities.map(entity => `${entity}:read`);
@@ -67,7 +67,7 @@ module.exports = (args, cbk) => {
           return cbk(null, defaultNodeName);
         }
 
-        const path = join(...[homedir(), home, config]);
+        const path = join(...[homedir(), home(), config]);
 
         return fs.getFile(path, (err, res) => {
           // Exit early on errors, there is no config found

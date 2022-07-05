@@ -10,7 +10,7 @@ const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const getSavedCredentials = require('./get_saved_credentials');
-const {home} = require('./constants');
+const {home} = require('../storage');
 
 /** Get a list of saved nodes
 
@@ -59,7 +59,7 @@ module.exports = ({fs, network}, cbk) => {
 
       // Data directory
       dataDir: ['validate', ({}, cbk) => {
-        return cbk(null, join(...[homedir(), home]));
+        return cbk(null, join(...[homedir(), home()]));
       }],
 
       // Check that the data directory exists
@@ -81,7 +81,7 @@ module.exports = ({fs, network}, cbk) => {
       getDirs: ['checkDataDir', 'dataDir', ({dataDir}, cbk) => {
         return fs.getDirectoryFiles(dataDir, (err, files) => {
           return asyncFilter(files, (file, cbk) => {
-            const path = join(...[homedir(), home, file]);
+            const path = join(...[homedir(), home(), file]);
 
             return fs.getFileStatus(path, (err, res) => {
               if (!!err) {

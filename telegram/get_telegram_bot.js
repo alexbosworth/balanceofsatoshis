@@ -8,10 +8,10 @@ const inquirer = require('inquirer');
 const {returnResult} = require('asyncjs-util');
 
 const getSocksProxy = require('./get_socks_proxy');
+const {home} = require('../storage');
 const interaction = require('./interaction');
 
 const botKeyFile = 'telegram_bot_api_key';
-const home = '.bos';
 
 /** Get the Telegram Bot object
 
@@ -54,7 +54,7 @@ module.exports = ({fs, proxy}, cbk) => {
       }],
 
       // Home directory path
-      path: ['validate', ({}, cbk) => cbk(null, join(...[homedir(), home]))],
+      path: ['validate', ({}, cbk) => cbk(null, join(...[homedir(), home()]))],
 
       // Ask for an API key
       apiKey: ['path', ({path}, cbk) => {

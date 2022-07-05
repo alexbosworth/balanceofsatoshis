@@ -5,8 +5,9 @@ const {randomBytes} = require('crypto');
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
+const {home} = require('../storage');
+
 const defaultTagsFile = {tags: []};
-const home = '.bos';
 const {isArray} = Array;
 const isHash = n => !!n && /^[0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
@@ -15,7 +16,7 @@ const makeId = () => randomBytes(32).toString('hex');
 const makeTag = (alias, id) => ({alias, id});
 const {parse} = JSON;
 const stringify = obj => JSON.stringify(obj, null, 2);
-const tagFilePath = () => join(...[homedir(), '.bos', 'tags.json']);
+const tagFilePath = () => join(...[homedir(), home(), 'tags.json']);
 const uniq = arr => Array.from(new Set(arr));
 
 /** Adjust tags
@@ -81,7 +82,7 @@ module.exports = (args, cbk) => {
 
       // Register the home directory
       registerHomeDir: ['validate', ({}, cbk) => {
-        return args.fs.makeDirectory(join(...[homedir(), home]), err => {
+        return args.fs.makeDirectory(join(...[homedir(), home()]), err => {
           // Ignore errors, the directory may already be there
           return cbk();
         });

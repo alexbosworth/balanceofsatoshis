@@ -4,7 +4,8 @@ const {join} = require('path');
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
-const {home} = require('./constants');
+const {home} = require('../storage');
+
 
 const credentials = 'credentials.json';
 const {isArray} = Array;
@@ -53,7 +54,7 @@ module.exports = ({fs, node}, cbk) => {
 
       // Get the credentials file
       getFile: ['validate', ({}, cbk) => {
-        const path = join(...[homedir(), home, node, credentials]);
+        const path = join(...[homedir(), home(), node, credentials]);
 
         return fs.getFile(path, (err, res) => {
           // Exit early on errors, there is no credential found
