@@ -11,7 +11,7 @@ const deleteNodeCredentials = require('./delete_node_credentials');
 const encryptSavedMacaroons = require('./encrypt_saved_macaroons');
 const getSavedCredentials = require('./get_saved_credentials');
 const getSavedNodes = require('./get_saved_nodes');
-const {home} = require('./constants');
+const {home} = require('../storage');
 const registerNode = require('./register_node');
 
 const {isArray} = Array;
@@ -96,7 +96,7 @@ module.exports = (args, cbk) => {
 
       // Make sure the home directory is there
       registerHomeDir: ['validate', ({}, cbk) => {
-        return args.fs.makeDirectory(join(...[homedir(), home]), err => {
+        return args.fs.makeDirectory(join(...[homedir(), home()]), err => {
           // Ignore errors, the directory may already be there
           return cbk();
         });

@@ -1,6 +1,6 @@
 const {join} = require('path');
 
-const home = '.bos';
+const home = require('./home');
 
 /** Get the path to the home directory
 
@@ -20,5 +20,5 @@ module.exports = ({fs}) => {
     throw new Error('ExpectedFsToDeriveHomePath');
   }
 
-  return {path: join(...[fs.homeDirectory(), home])};
+  return {path: join(...[fs.homeDirectory(), home()])};
 };

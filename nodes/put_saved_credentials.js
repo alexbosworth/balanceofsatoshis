@@ -4,7 +4,7 @@ const {homedir} = require('os');
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
-const {home} = require('./constants');
+const {home} = require('../storage');
 
 const credentials = 'credentials.json';
 const {isArray} = Array;
@@ -61,7 +61,7 @@ module.exports = (args, cbk) => {
 
       // Make sure the node directory is there
       registerDirectory: ['validate', ({}, cbk) => {
-        const nodeDirectory = join(...[homedir(), home, args.node]);
+        const nodeDirectory = join(...[homedir(), home(), args.node]);
 
         return args.fs.makeDirectory(nodeDirectory, err => {
           // Ignore errors, the directory may already be there
@@ -79,7 +79,7 @@ module.exports = (args, cbk) => {
           socket: args.socket,
         });
 
-        const path = join(...[homedir(), home, args.node, credentials]);
+        const path = join(...[homedir(), home(), args.node, credentials]);
 
         return args.fs.writeFile(path, file, err => {
           if (!!err) {

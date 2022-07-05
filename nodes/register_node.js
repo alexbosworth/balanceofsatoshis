@@ -8,7 +8,7 @@ const {returnResult} = require('asyncjs-util');
 const sanitize = require('sanitize-filename');
 
 const {derAsPem} = require('./../encryption');
-const {home} = require('./constants');
+const {home} = require('../storage');
 const putSavedCredentials = require('./put_saved_credentials');
 
 const credentialsFileName = 'credentials.json';
@@ -62,7 +62,7 @@ module.exports = ({ask, cryptography, fs, logger, node}, cbk) => {
 
       // Make sure the home directory is there
       registerHomeDirectory: ['validate', ({}, cbk) => {
-        return fs.makeDirectory(join(...[homedir(), home]), err => {
+        return fs.makeDirectory(join(...[homedir(), home()]), err => {
           // Ignore errors, the directory may already be there
           return cbk();
         });
@@ -295,7 +295,7 @@ module.exports = ({ask, cryptography, fs, logger, node}, cbk) => {
         'nodeName',
         'registerHomeDirectory', ({nodeName}, cbk) =>
       {
-        return fs.makeDirectory(join(...[homedir(), home, nodeName]), err => {
+        return fs.makeDirectory(join(...[homedir(), home(), nodeName]), err => {
           // Ignore errors, the directory may already be there
           return cbk();
         });
