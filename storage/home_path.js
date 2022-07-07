@@ -1,24 +1,14 @@
+const {homedir} = require('os');
 const {join} = require('path');
 
-const home = require('./home');
+const home = join(...[homedir(), '.bos']);
 
-/** Get the path to the home directory
-
-  {
-    fs: {
-      homeDirectory: () => <Home Directory String>
-    }
-  }
-
+/** Get the path of the bos storage directory
   @returns
   {
-    path: <Path To Home Directory String>
+    home: <Home directory path String>
   }
 */
-module.exports = ({fs}) => {
-  if (!fs) {
-    throw new Error('ExpectedFsToDeriveHomePath');
-  }
-
-  return {path: join(...[fs.homeDirectory(), home()])};
+module.exports = ({}) => {
+  return process.env.BOS_DIRECTORY || home;
 };

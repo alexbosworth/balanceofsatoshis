@@ -4,7 +4,7 @@ const {join} = require('path');
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
-const {home} = require('../storage');
+const {homePath} = require('../storage');
 
 const credentialsFileName = 'credentials.json';
 
@@ -38,7 +38,7 @@ module.exports = ({fs, node}, cbk) => {
 
       // Remove credentials file
       removeCredentials: ['validate', ({}, cbk) => {
-        const path = join(...[homedir(), home(), node, credentialsFileName]);
+        const path = join(...[homePath({}), node, credentialsFileName]);
 
         return fs.removeFile(path, err => {
           if (!!err) {
@@ -51,7 +51,7 @@ module.exports = ({fs, node}, cbk) => {
 
       // Remove credentials directory
       removeDirectory: ['removeCredentials', ({}, cbk) => {
-        const path = join(...[homedir(), home(), node]);
+        const path = join(...[homePath({}), node]);
 
         return fs.removeDirectory(path, err => {
           if (!!err) {

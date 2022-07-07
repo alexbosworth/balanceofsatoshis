@@ -1,14 +1,13 @@
-const {homedir} = require('os');
 const {join} = require('path');
 
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
-const {home} = require('../storage');
+const {homePath} = require('../storage');
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
 const {parse} = JSON;
-const tagFilePath = () => join(...[homedir(), home(), 'tags.json']);
+const tagFilePath = () => join(...[homePath({}), 'tags.json']);
 const uniq = arr => Array.from(new Set(arr));
 
 /** Get icons for public keys from tags
