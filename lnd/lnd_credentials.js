@@ -22,7 +22,7 @@ const {getSavedCredentials} = require('./../nodes');
 const getSocket = require('./get_socket');
 const {noSpendPerms} = require('./constants');
 const {permissionEntities} = require('./constants');
-const {home} = require('../storage');
+const {homePath} = require('../storage');
 
 const config = 'config.json';
 const defaultLndDirPath = process.env.BOS_DEFAULT_LND_PATH;
@@ -67,7 +67,7 @@ module.exports = (args, cbk) => {
           return cbk(null, defaultNodeName);
         }
 
-        const path = join(...[homedir(), home(), config]);
+        const path = join(...[homePath({}), config]);
 
         return fs.getFile(path, (err, res) => {
           // Exit early on errors, there is no config found
