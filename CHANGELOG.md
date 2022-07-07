@@ -1,5 +1,9 @@
 # Versions
 
+## 12.14.1
+
+- `limit-forwarding`: Fix `--only-allow` to properly parse allowed pairs
+
 ## 12.14.0
 
 - `open-group-channel`: Add method to open balanced channels in a group tx

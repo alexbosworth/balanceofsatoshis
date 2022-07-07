@@ -6,6 +6,7 @@ const disableAllForwards = 0;
 const hoursAsSeconds = hours => hours * 60 * 60;
 const {isArray} = Array;
 const isEdge = n => !!n && /^[0-9A-F]{66}\/[0-9A-F]{66}$/i.test(n);
+const splitEdge = n => n.split('/');
 
 /** Limit forwarding requests
 
@@ -73,7 +74,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const allow = args.only_allow.map(([inKey, outKey]) => {
+        const allow = args.only_allow.map(splitEdge).map(([inKey, outKey]) => {
           return {inbound_peer: inKey, outbound_peer: outKey};
         });
 
