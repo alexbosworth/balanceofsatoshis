@@ -101,7 +101,7 @@ module.exports = ({fs, proxy}, cbk) => {
           return cbk();
         }
 
-        const {path} = homePath({file: botKeyFile}).path;
+        const {path} = homePath({file: botKeyFile});
 
         // Ignore errors when making directory, it may already be present
         return fs.writeFile(path, apiKey.key, err => {

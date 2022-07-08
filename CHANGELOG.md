@@ -1,5 +1,9 @@
 # Versions
 
+## 12.15.1
+
+- `telegram`: Fix regression TypeError when setting up new bot api key
+
 ## 12.15.0
 
 - Support `BOS_DATA_PATH` environment variable to override ~/.bos data dir path
