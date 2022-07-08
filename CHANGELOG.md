@@ -1,5 +1,9 @@
 # Versions
 
+## 12.15.0
+
+- Support `BOS_DATA_PATH` environment variable to override ~/.bos data dir path
+
 ## 12.14.1
 
 - `limit-forwarding`: Fix `--only-allow` to properly parse allowed pairs
