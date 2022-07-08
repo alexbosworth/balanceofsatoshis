@@ -1,5 +1,4 @@
 const {homedir} = require('os');
-const {join} = require('path');
 const {platform} = require('os');
 const {publicEncrypt} = require('crypto');
 const {readFile} = require('fs');
@@ -20,9 +19,9 @@ const getMacaroon = require('./get_macaroon');
 const getPath = require('./get_path');
 const {getSavedCredentials} = require('./../nodes');
 const getSocket = require('./get_socket');
+const {homePath} = require('../storage');
 const {noSpendPerms} = require('./constants');
 const {permissionEntities} = require('./constants');
-const {homePath} = require('../storage');
 
 const config = 'config.json';
 const defaultLndDirPath = process.env.BOS_DEFAULT_LND_PATH;
@@ -67,7 +66,8 @@ module.exports = (args, cbk) => {
           return cbk(null, defaultNodeName);
         }
 
-        const path = join(...[homePath({}), config]);
+        // Look for a config file to see if there is a default node
+        const {path} = homePath({file: config});
 
         return fs.getFile(path, (err, res) => {
           // Exit early on errors, there is no config found

@@ -1,6 +1,3 @@
-const {homedir} = require('os');
-const {join} = require('path');
-
 const asyncAuto = require('async/auto');
 const asyncFilter = require('async/filter');
 const asyncMap = require('async/map');
@@ -58,9 +55,7 @@ module.exports = ({fs, network}, cbk) => {
       },
 
       // Data directory
-      dataDir: ['validate', ({}, cbk) => {
-        return cbk(null, join(...[homePath({})]));
-      }],
+      dataDir: ['validate', ({}, cbk) => cbk(null, homePath({}).path)],
 
       // Check that the data directory exists
       checkDataDir: ['dataDir', ({dataDir}, cbk) => {
@@ -81,9 +76,7 @@ module.exports = ({fs, network}, cbk) => {
       getDirs: ['checkDataDir', 'dataDir', ({dataDir}, cbk) => {
         return fs.getDirectoryFiles(dataDir, (err, files) => {
           return asyncFilter(files, (file, cbk) => {
-            const path = join(...[homePath({}), file]);
-
-            return fs.getFileStatus(path, (err, res) => {
+            return fs.getFileStatus(homePath({file}).path, (err, res) => {
               if (!!err) {
                 return cbk([503, 'UnexpectedErrCheckingForNodeDir', {err}]);
               }

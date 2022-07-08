@@ -1,5 +1,3 @@
-const {homedir} = require('os');
-const {join} = require('path');
 const {randomBytes} = require('crypto');
 
 const asyncAuto = require('async/auto');
@@ -16,7 +14,7 @@ const makeId = () => randomBytes(32).toString('hex');
 const makeTag = (alias, id) => ({alias, id});
 const {parse} = JSON;
 const stringify = obj => JSON.stringify(obj, null, 2);
-const tagFilePath = () => join(...[homePath({}), 'tags.json']);
+const tagFilePath = () => homePath({file: 'tags.json'}).path;
 const uniq = arr => Array.from(new Set(arr));
 
 /** Adjust tags
@@ -82,7 +80,7 @@ module.exports = (args, cbk) => {
 
       // Register the home directory
       registerHomeDir: ['validate', ({}, cbk) => {
-        return args.fs.makeDirectory(join(...[homePath({})]), err => {
+        return args.fs.makeDirectory(homePath({}).path, err => {
           // Ignore errors, the directory may already be there
           return cbk();
         });

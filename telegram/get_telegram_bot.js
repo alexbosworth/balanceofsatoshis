@@ -1,6 +1,3 @@
-const {homedir} = require('os');
-const {join} = require('path');
-
 const asyncAuto = require('async/auto');
 const asyncReflect = require('async/reflect');
 const {Bot} = require('grammy');
@@ -43,22 +40,9 @@ module.exports = ({fs, proxy}, cbk) => {
         return cbk();
       },
 
-      // Get proxy agent
-      getProxy: ['validate', ({}, cbk) => {
-        // Exit early if not using a proxy
-        if (!proxy) {
-          return cbk();
-        }
-
-        return getSocksProxy({fs, path: proxy}, cbk);
-      }],
-
-      // Home directory path
-      path: ['validate', ({}, cbk) => cbk(null, join(...[homePath({})]))],
-
       // Ask for an API key
-      apiKey: ['path', ({path}, cbk) => {
-        return fs.getFile(join(...[path, botKeyFile]), (err, res) => {
+      apiKey: ['validate', ({}, cbk) => {
+        return fs.getFile(homePath({file: botKeyFile}).path, (err, res) => {
           // Exit early when resetting the API key
           if (!!err || !res || !res.toString() || !!fs.is_reset_state) {
             const token = interaction.api_token_prompt;
@@ -70,6 +54,16 @@ module.exports = ({fs, proxy}, cbk) => {
 
           return cbk(null, {is_saved: true, key: res.toString()});
         });
+      }],
+
+      // Get proxy agent
+      getProxy: ['validate', ({}, cbk) => {
+        // Exit early if not using a proxy
+        if (!proxy) {
+          return cbk();
+        }
+
+        return getSocksProxy({fs, path: proxy}, cbk);
       }],
 
       // Create the bot
@@ -96,19 +90,21 @@ module.exports = ({fs, proxy}, cbk) => {
       }],
 
       // Make the home directory if it's not already present
-      makeDir: ['apiKey', 'path', 'test', asyncReflect(({path}, cbk) => {
-        return fs.makeDirectory(path, cbk);
+      makeDir: ['apiKey', 'test', asyncReflect(({}, cbk) => {
+        return fs.makeDirectory(homePath({}).path, cbk);
       })],
 
       // Save the bot API key so it doesn't need to be entered next run
-      saveKey: ['apiKey', 'path', 'makeDir', ({apiKey, path}, cbk) => {
+      saveKey: ['apiKey', 'makeDir', ({apiKey}, cbk) => {
         // Exit early when API key is already saved
         if (!!apiKey.is_saved) {
           return cbk();
         }
 
+        const {path} = homePath({file: botKeyFile}).path;
+
         // Ignore errors when making directory, it may already be present
-        return fs.writeFile(join(...[path, botKeyFile]), apiKey.key, err => {
+        return fs.writeFile(path, apiKey.key, err => {
           if (!!err) {
             return cbk([503, 'FailedToSaveTelegramApiToken', {err}]);
           }

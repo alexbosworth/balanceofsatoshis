@@ -1,4 +1,3 @@
-const {homedir} = require('os');
 const {join} = require('path');
 
 const asyncAuto = require('async/auto');
@@ -38,7 +37,7 @@ module.exports = ({fs, node}, cbk) => {
 
       // Remove credentials file
       removeCredentials: ['validate', ({}, cbk) => {
-        const path = join(...[homePath({}), node, credentialsFileName]);
+        const path = join(...[homePath({}).path, node, credentialsFileName]);
 
         return fs.removeFile(path, err => {
           if (!!err) {
@@ -51,9 +50,7 @@ module.exports = ({fs, node}, cbk) => {
 
       // Remove credentials directory
       removeDirectory: ['removeCredentials', ({}, cbk) => {
-        const path = join(...[homePath({}), node]);
-
-        return fs.removeDirectory(path, err => {
+        return fs.removeDirectory(homePath({file: node}).path, err => {
           if (!!err) {
             return cbk([503, 'FailedToRemoveCredentialsDirectory', {err}]);
           }

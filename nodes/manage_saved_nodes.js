@@ -1,6 +1,3 @@
-const {homedir} = require('os');
-const {join} = require('path');
-
 const asyncAuto = require('async/auto');
 const {generateKeyPair} = require('crypto');
 const {privateDecrypt} = require('crypto');
@@ -96,7 +93,7 @@ module.exports = (args, cbk) => {
 
       // Make sure the home directory is there
       registerHomeDir: ['validate', ({}, cbk) => {
-        return args.fs.makeDirectory(join(...[homePath({})]), err => {
+        return args.fs.makeDirectory(homePath({}).path, err => {
           // Ignore errors, the directory may already be there
           return cbk();
         });

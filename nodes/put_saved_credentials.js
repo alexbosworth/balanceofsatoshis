@@ -1,5 +1,4 @@
 const {join} = require('path');
-const {homedir} = require('os');
 
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
@@ -61,9 +60,7 @@ module.exports = (args, cbk) => {
 
       // Make sure the node directory is there
       registerDirectory: ['validate', ({}, cbk) => {
-        const nodeDirectory = join(...[homePath({}), args.node]);
-
-        return args.fs.makeDirectory(nodeDirectory, err => {
+        return args.fs.makeDirectory(homePath({file: args.node}).path, err => {
           // Ignore errors, the directory may already be there
           return cbk();
         });
@@ -79,7 +76,7 @@ module.exports = (args, cbk) => {
           socket: args.socket,
         });
 
-        const path = join(...[homePath({}), args.node, credentials]);
+        const path = join(...[homePath({}).path, args.node, credentials]);
 
         return args.fs.writeFile(path, file, err => {
           if (!!err) {

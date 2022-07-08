@@ -1,6 +1,3 @@
-const {homedir} = require('os');
-const {join} = require('path');
-
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
@@ -9,7 +6,7 @@ const {homePath} = require('../storage');
 const defaultTags = {tags: []};
 const {isArray} = Array;
 const {parse} = JSON;
-const tagFilePath = () => join(...[homePath({}), 'tags.json']);
+const tagFilePath = () => homePath({file: 'tags.json'}).path;
 
 /** Get tagged nodes
 

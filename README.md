@@ -249,6 +249,10 @@ Use any shorthand you'd like when choosing this profile node name
 You can also set `cert_path` and `macaroon_path` to the path of the relevant
 files instead.
 
+The BOS directory path can be overriden with an environment variable:
+
+`BOS_DATA_PATH=/path/to/bos/data/dir`
+
 #### Umbrel Saved Node
 
 *Note: Umbrel is not FOSS software, use at your own risk.*

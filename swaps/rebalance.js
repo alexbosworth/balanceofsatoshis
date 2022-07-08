@@ -1,6 +1,3 @@
-const {homedir} = require('os');
-const {join} = require('path');
-
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
 const asyncMapSeries = require('async/mapSeries');
@@ -59,7 +56,7 @@ const pubKeyHexLength = 66;
 const rateDivisor = 1e6;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
-const tagFilePath = () => join(...[homePath({}), 'tags.json']);
+const tagFilePath = () => homePath({file: 'tags.json'}).path;
 const times = 6;
 const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
 const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));

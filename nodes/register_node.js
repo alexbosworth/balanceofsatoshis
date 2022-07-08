@@ -1,6 +1,3 @@
-const {homedir} = require('os');
-const {join} = require('path');
-
 const asyncAuto = require('async/auto');
 const {decodeFirst} = require('cbor');
 const inquirer = require('inquirer');
@@ -62,7 +59,7 @@ module.exports = ({ask, cryptography, fs, logger, node}, cbk) => {
 
       // Make sure the home directory is there
       registerHomeDirectory: ['validate', ({}, cbk) => {
-        return fs.makeDirectory(join(...[homePath({})]), err => {
+        return fs.makeDirectory(homePath({}).path, err => {
           // Ignore errors, the directory may already be there
           return cbk();
         });
@@ -293,9 +290,10 @@ module.exports = ({ask, cryptography, fs, logger, node}, cbk) => {
       nodeDir: [
         'details',
         'nodeName',
-        'registerHomeDirectory', ({nodeName}, cbk) =>
+        'registerHomeDirectory',
+        ({nodeName}, cbk) =>
       {
-        return fs.makeDirectory(join(...[homePath({}), nodeName]), err => {
+        return fs.makeDirectory(homePath({file: nodeName}).path, err => {
           // Ignore errors, the directory may already be there
           return cbk();
         });
