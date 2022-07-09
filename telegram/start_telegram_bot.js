@@ -26,7 +26,6 @@ const {handleStartCommand} = require('ln-telegram');
 const {handleStopCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
 const {InputFile} = require('grammy');
-const inquirer = require('inquirer');
 const {isMessageReplyAction} = require('ln-telegram');
 const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
@@ -54,7 +53,6 @@ const interaction = require('./interaction');
 const named = require('./../package').name;
 const {version} = require('./../package');
 
-const ask = (n, cbk) => inquirer.prompt(n).then(n => cbk(n));
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const {isArray} = Array;
@@ -70,6 +68,7 @@ const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
 /** Start a Telegram bot
 
   {
+    ask: <Ask Function>
     bot: <Telegram Bot Object>
     [id]: <Authorized User Id Number>
     key: <Telegram API Key String>
@@ -96,6 +95,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!args.ask) {
+          return cbk([400, 'ExpectedAskFunctionToStartTelegramBot']);
+        }
+
         if (!isArray(args.lnds) || !args.lnds.length) {
           return cbk([400, 'ExpectedLndsToStartTelegramBot']);
         }
@@ -494,7 +497,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return ask({
+        return args.ask({
           message: interaction.user_id_prompt.message,
           name: 'code',
           type: 'input',

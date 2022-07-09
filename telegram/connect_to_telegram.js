@@ -17,6 +17,7 @@ const smallUnitsType = 'full';
 /** Connect nodes to Telegram
 
   {
+    ask: <Ask Function>
     fs: {
       getFile: <Get File Contents Function>
       getFileStatus: <Get File Status Function>
@@ -44,6 +45,10 @@ module.exports = (args, cbk) => {
       validate: cbk => {
         if (!Object.fromEntries) {
           return cbk([400, 'ExpectedLaterVersionOfNodeJsInstalled']);
+        }
+
+        if (!args.ask) {
+          return cbk([400, 'ExpectedAskFunctionToConnectToTelegram']);
         }
 
         if (!args.fs) {
@@ -114,6 +119,7 @@ module.exports = (args, cbk) => {
 
         return asyncForever(cbk => {
           return runTelegramBot({
+            ask: args.ask,
             bot: getBot.bot,
             fs: args.fs,
             id: Number(args.id),

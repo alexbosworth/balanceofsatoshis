@@ -1,6 +1,5 @@
 const asyncAuto = require('async/auto');
 const {decodeFirst} = require('cbor');
-const inquirer = require('inquirer');
 const {returnResult} = require('asyncjs-util');
 const sanitize = require('sanitize-filename');
 

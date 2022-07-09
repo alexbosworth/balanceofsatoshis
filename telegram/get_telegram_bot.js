@@ -1,7 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncReflect = require('async/reflect');
 const {Bot} = require('grammy');
-const inquirer = require('inquirer');
 const {returnResult} = require('asyncjs-util');
 
 const getSocksProxy = require('./get_socks_proxy');
@@ -31,6 +30,9 @@ const botKeyFile = 'telegram_bot_api_key';
 module.exports = ({fs, proxy}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
+      // Import inquirer
+      inquirer: async () => (await import('inquirer')).default,
+
       // Check arguments
       validate: cbk => {
         if (!fs) {
@@ -41,7 +43,7 @@ module.exports = ({fs, proxy}, cbk) => {
       },
 
       // Ask for an API key
-      apiKey: ['validate', ({}, cbk) => {
+      apiKey: ['inquirer', 'validate', ({inquirer}, cbk) => {
         return fs.getFile(homePath({file: botKeyFile}).path, (err, res) => {
           // Exit early when resetting the API key
           if (!!err || !res || !res.toString() || !!fs.is_reset_state) {

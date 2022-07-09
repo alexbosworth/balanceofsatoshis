@@ -436,7 +436,10 @@ module.exports = (args, cbk) => {
               return cbk([503, 'UnexpectedErrorClosingChannel', {err}]);
             }
 
-            args.logger.info({close_transaction_id: res.transaction_id});
+            args.logger.info({
+              close_transaction_id: res.transaction_id,
+              close_transaction_vout: res.transaction_vout,
+            });
 
             return cbk();
           });

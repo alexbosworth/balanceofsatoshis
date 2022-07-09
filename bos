@@ -13,7 +13,6 @@ const importLazy = require('import-lazy')(require);
 
 const fetch = importLazy('@alexbosworth/node-fetch');
 const fiat = importLazy('@alexbosworth/fiat');
-const inquirer = importLazy('inquirer');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
 const paidServices = importLazy('paid-services');
@@ -231,7 +230,7 @@ prog
       try {
         return commands.callRawApi({
           logger,
-          ask: (n, cbk) => inquirer.prompt([n]).then(n => cbk(null, n)),
+          ask: await commands.interrogate({}),
           lnd: (await lndForNode(logger, options.node)).lnd,
           method: args.method,
           params: flatten([options.param].filter(n => !!n)),
@@ -320,7 +319,7 @@ prog
         const saved = await nodes.manageSavedNodes({
           logger,
           spawn,
-          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          ask: await commands.interrogate({}),
           fs: {
             writeFile,
             getDirectoryFiles: readdir,
@@ -338,7 +337,7 @@ prog
         return paidServices.changeChannelCapacity({
           lnd,
           logger,
-          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          ask: await commands.interrogate({}),
           nodes: saved.nodes,
         },
         responses.returnObject({exit, logger, reject, resolve}));
@@ -509,10 +508,10 @@ prog
   .option('--nospend', 'Credentials do not include spending privileges')
   .option('--readonly', 'Credentials only include read permissions')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       return lnd.getCredentials({
         logger,
-        ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+        ask: await commands.interrogate({}),
         expire_days: options.days,
         is_cleartext: options.cleartext,
         is_nospend: options.nospend,
@@ -717,7 +716,7 @@ prog
           logger,
           addresses: args.addressAmount.filter((n, i) => !(i % 2)),
           amounts: args.addressAmount.filter((n, i) => i % 2),
-          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          ask: await commands.interrogate({}),
           fee_tokens_per_vbyte: options.feeRate,
           is_dry_run: !!options.dryrun,
           is_selecting_utxos: options.selectUtxos,
@@ -1049,7 +1048,7 @@ prog
       try {
         return lnurl.manageLnurl({
           logger,
-          ask: (n, cbk) => inquirer.prompt(n).then(n => cbk(n)),
+          ask: await commands.interrogate({}),
           avoid: flatten([options.avoid].filter(n => !!n)),
           function: args.function,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
@@ -1075,11 +1074,11 @@ prog
   .option('--remove', 'Remove saved node')
   .option('--unlock', 'Remove encryption from auth macaroon')
   .action((args, options, logger) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       return nodes.manageSavedNodes({
         logger,
         spawn,
-        ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+        ask: await commands.interrogate({}),
         fs: {
           writeFile,
           getDirectoryFiles: readdir,
@@ -1118,7 +1117,7 @@ prog
       try {
         return peers.openChannels({
           logger,
-          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          ask: await commands.interrogate({}),
           capacities: collect(options.amount),
           cooperative_close_addresses: collect(options.coopCloseAddress),
           fs: {getFile: readFile},
@@ -1154,7 +1153,7 @@ prog
           logger,
           address: options.coopCloseAddress || undefined,
           after: new Date(Date.now() - (1000 * 60 * 60 * 6)).toISOString(),
-          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          ask: await commands.interrogate({}),
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           recover: options.recover,
         },
@@ -1176,7 +1175,7 @@ prog
       try {
         return paidServices.manageGroupJoin({
           logger,
-          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          ask: await commands.interrogate({}),
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
         },
         responses.returnObject({exit, logger, reject, resolve}));
@@ -1491,7 +1490,7 @@ prog
           lnd,
           logger,
           address: options.address,
-          ask: (n, cbk) => inquirer.prompt([n]).then(n => cbk(n)),
+          ask: await commands.interrogate({}),
           chain_fee_rate: options.feeRate || undefined,
           filters: flatten([options.filter].filter(n => !!n)),
           fs: {getFile: readFile},
@@ -1668,7 +1667,7 @@ prog
       try {
         return paidServices.manageSwap({
           logger,
-          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          ask: await commands.interrogate({}),
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           request: commands.simpleRequest,
         },
@@ -1763,6 +1762,7 @@ prog
       try {
         return await telegram.connectToTelegram({
           logger,
+          ask: await commands.interrogate({}),
           fs: {
             writeFile,
             getFile: readFile,
@@ -1795,13 +1795,14 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         const {lnd} = await lndForNode(logger, options.node);
+        const {Separator} = (await import('inquirer')).default;
 
         return paidServices.manageTrades({
           lnd,
           logger,
-          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(null, res)),
+          ask: await commands.interrogate({}),
           request: commands.simpleRequest,
-          separator: () => new inquirer.Separator(),
+          separator: () => new Separator(),
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
@@ -1858,7 +1859,7 @@ prog
       try {
         return triggers.manageTriggers({
           logger,
-          ask: (n, cbk) => inquirer.prompt([n]).then(res => cbk(res)),
+          ask: await commands.interrogate({}),
           lnd: (await lndForNode(logger, options.node)).lnd,
         },
         responses.returnObject({exit, logger, reject, resolve}));
@@ -1899,7 +1900,7 @@ prog
         return await services.usePaidService({
           lnd,
           logger,
-          ask: (n, cbk) => inquirer.prompt(n).then(res => cbk(res)),
+          ask: await commands.interrogate({}),
           fs: {getFile: readFile},
           network: (await lnSync.getNetwork({lnd})).network,
           node: args.serverId,

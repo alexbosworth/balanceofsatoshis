@@ -68,7 +68,7 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
           name: 'method',
           type: 'list',
         },
-        cbk);
+        ({method}) => cbk(null, method));
       }],
 
       // Get method arguments
@@ -112,7 +112,7 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
               prefix: `[${named}]`,
               type: 'confirm',
             },
-            cbk);
+            res => cbk(null, res));
           }
 
           return ask({
@@ -158,7 +158,7 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
               return true;
             },
           },
-          cbk);
+          res => cbk(null, res));
         },
         cbk);
       }],

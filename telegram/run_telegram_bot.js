@@ -13,6 +13,7 @@ const {isArray} = Array;
 /** Run the telegram bot for a node or multiple nodes
 
   {
+    ask: <Ask Function>
     bot: <Telegram Bot Object>
     fs: {
       getFile: <Get File Contents Function>
@@ -44,6 +45,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!args.ask) {
+          return cbk([400, 'ExpectedAskFunctionToRunTelegramBot']);
+        }
+
         if (!args.bot) {
           return cbk([400, 'ExpectedTelegramBotToRunTelegramBot']);
         }
@@ -85,6 +90,7 @@ module.exports = (args, cbk) => {
         args.logger.info({connecting_to_telegram: args.nodes});
 
         return startTelegramBot({
+          ask: args.ask,
           bot: args.bot,
           fs: args.fs,
           id: args.id,
