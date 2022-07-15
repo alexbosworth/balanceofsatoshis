@@ -1,5 +1,10 @@
 # Versions
 
+## 12.16.0
+
+- `swap`: Add support for responder to require a specific inbound offchain peer
+- `swap`: Add support for requester to specify a custom final on-chain address
+
 ## 12.15.3
 
 - `telegram`: Fix regression TypeError when setting up new bot api key
