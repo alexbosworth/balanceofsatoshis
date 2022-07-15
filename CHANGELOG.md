@@ -1,6 +1,6 @@
 # Versions
 
-## 12.15.2
+## 12.15.3
 
 - `telegram`: Fix regression TypeError when setting up new bot api key
 

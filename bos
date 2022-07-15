@@ -1166,7 +1166,6 @@ prog
 
   // Open a group channel with multiple peers
   .command('open-group-channel', 'Open balanced channels with multiple peers')
-  .visible(false)
   .help('Remote nodes must be prepared to participate in this type of channel')
   .help('The remote node should also run this same command to join the group')
   .option('--node <node_name>', 'Use saved node details instead of local node')
