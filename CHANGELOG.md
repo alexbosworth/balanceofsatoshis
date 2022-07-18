@@ -1,5 +1,10 @@
 # Versions
 
+## 12.16.1
+
+- `balance`: Disambiguate unconfirmed and confirmed chain balances
+- `call`: Fix finding arguments when selecting a method
+
 ## 12.16.0
 
 - `swap`: Add support for responder to require a specific inbound offchain peer

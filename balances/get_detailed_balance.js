@@ -108,27 +108,28 @@ module.exports = (args, cbk) => {
         'locked',
         ({getChannels, getPending, getTx, getUtxos, locked}, cbk) =>
       {
+        const confUtxos = getUtxos.utxos.filter(n => !!n.confirmation_count);
+        const confirmedTx = getTx.transactions.filter(n => !!n.is_confirmed);
         const format = tokens => formatTokens({tokens}).display.trim();
 
-        const balances = detailedBalances({
+        const confirmed = detailedBalances({
           locked,
           channels: getChannels.channels,
           pending: getPending.pending_channels,
-          transactions: getTx.transactions.filter(tx => {
-            if (!!args.is_confirmed && !tx.is_confirmed) {
-              return false;
-            }
-
-            return true;
-          }),
-          utxos: getUtxos.utxos.filter(utxo => utxo => {
-            if (!!args.is_confirmed && !utxo.confirmation_count) {
-              return false;
-            }
-
-            return true;
-          }),
+          transactions: confirmedTx,
+          utxos: confUtxos,
         });
+
+        const unconfirmed = detailedBalances({
+          locked,
+          channels: getChannels.channels,
+          pending: getPending.pending_channels,
+          transactions: getTx.transactions,
+          utxos: getUtxos.utxos,
+        });
+
+        const balances = !!args.is_confirmed ? confirmed : unconfirmed;
+        const limbo = unconfirmed.onchain_balance - confirmed.onchain_balance;
 
         return cbk(null, {
           closing_balance: format(balances.closing_balance) || undefined,
@@ -136,8 +137,10 @@ module.exports = (args, cbk) => {
           invalid_pending: format(balances.invalid_pending) || undefined,
           offchain_balance: format(balances.offchain_balance) || undefined,
           offchain_pending: format(balances.offchain_pending) || undefined,
-          onchain_balance: format(balances.onchain_balance) || undefined,
+          onchain_confirmed: format(confirmed.onchain_balance) || undefined,
+          onchain_pending: format(limbo) || undefined,
           onchain_vbytes: balances.onchain_vbytes || undefined,
+          utxos_count: getUtxos.utxos.length || undefined,
         });
       }],
     },

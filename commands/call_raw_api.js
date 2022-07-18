@@ -68,7 +68,7 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
           name: 'method',
           type: 'list',
         },
-        ({method}) => cbk(null, method));
+        method => cbk(null, method));
       }],
 
       // Get method arguments
