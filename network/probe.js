@@ -354,7 +354,7 @@ module.exports = (args, cbk) => {
           const numPaths = paths.filter(n => !!n).length;
           const target = !args.find_max ? decodeRequest.tokens : undefined;
 
-          return args.logger.info({
+          args.logger.info({
             target_amount: !!target ? formatTokens({tokens: target}) : target,
             total_liquidity: formatTokens({tokens: liquidity}).display,
             total_paths: args.max_paths !== singlePath ? numPaths : undefined,

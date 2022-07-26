@@ -1,5 +1,9 @@
 # Versions
 
+## 12.16.2
+
+- `probe`: Exit probe cleanly on probe success
+
 ## 12.16.1
 
 - `balance`: Disambiguate unconfirmed and confirmed chain balances

@@ -21,10 +21,15 @@ const {fromHex} = Transaction;
 
   @returns via cbk or Promise
   {
-    [offchain_balance]: <Total Value of Channel Balances String>
-    [offchain_pending]: <Total Pending Local Balance String>
-    [onchain_balance]: <Collective Value of UTXOs String>
-    [onchain_vbytes]: <Estimated Size of Spending On Chain Funds Number>
+    [closing_balance]: <Total Coins Closing Big Unit Tokens String>
+    [conflicted_pending]: <Conflicted Transaction Big Unit Tokens String>
+    [invalid_pending]: <Invalid Pending Tokens Big Unit Tokens String>
+    [offchain_balance]: <Channel Tokens Balance Big Unit Tokens String>
+    [offchain_pending]: <Pending Channel Tokens Balance Big Unit Tokens String>
+    [onchain_confirmed]: <Confirmed On Chain Balance Big Unit Tokens String>
+    [onchain_pending]: <Pending Chain Tokens Balance Big Unit Tokens String>
+    [onchain_vbytes]: <UTXO Footprint Virtual Bytes Number>
+    [utxos_count]: <Total UTXOs Count Number>
   }
 */
 module.exports = (args, cbk) => {
