@@ -1,5 +1,9 @@
 # Versions
 
+## 12.16.3
+
+- `open-balanced-channel`: Fix support for node 18 digital envelope unsupported
+
 ## 12.16.2
 
 - `probe`: Exit probe cleanly on probe success
