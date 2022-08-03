@@ -49,7 +49,6 @@ const uniq = arr => Array.from(new Set(arr));
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     lnd: <Authenticated LND API Object>
-    logger: <Winston Logger Object>
     query: <Graph Query String>
     sort: <Sort By Field String>
   }
