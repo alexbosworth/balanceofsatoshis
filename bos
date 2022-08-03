@@ -798,7 +798,6 @@ prog
 
         return network.getGraphEntry({
           lnd,
-          logger,
           filters: flatten([options.filter].filter(n => !!n)),
           fs: {getFile: readFile},
           query: args.aliasOrPublicKey.trim(),

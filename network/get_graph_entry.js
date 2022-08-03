@@ -60,7 +60,7 @@ const uniq = arr => Array.from(new Set(arr));
     rows_summary: [[<Table Cell String>]]
   }
 */
-module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
+module.exports = ({filters, fs, lnd, query, sort}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -75,10 +75,6 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
 
         if (!lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToGetGraphEntry']);
-        }
-
-        if (!logger) {
-          return cbk([400, 'ExpectedWinstonLoggerToGetGraphEntry']);
         }
 
         if (!query) {
