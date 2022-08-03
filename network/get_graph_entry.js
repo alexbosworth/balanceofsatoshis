@@ -36,6 +36,7 @@ const isOnion = sockets => !!sockets.find(n => /onion/.test(n.socket));
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const {max} = Math;
 const {min} = Math;
+const notNull = array => array.filter(n => n !== null);
 const sortBy = (a, b) => a > b ? 1 : (a !== b ? -1 : 0);
 const sorts = ['capacity', 'age', 'in_fee', 'out_fee'];
 const uniq = arr => Array.from(new Set(arr));
@@ -56,6 +57,7 @@ const uniq = arr => Array.from(new Set(arr));
   @returns via cbk or Promise
   {
     rows: [[<Table Cell String>]]
+    rows_summary: [[<Table Cell String>]]
   }
 */
 module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
@@ -134,7 +136,7 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
           public_key: key,
         });
 
-        logger.info({
+        const nodeDetails = {
           id: key,
           node: mainAlias.display,
           capacity: displayTokens(getNode.capacity),
@@ -143,9 +145,9 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
           is_clearnet: isClear(getNode.sockets) || undefined,
           is_unconnectable: !getNode.sockets.length || undefined,
           peer_count: peerKeys.length,
-        });
+        };
 
-        return cbk();
+        return cbk(null, nodeDetails);
       }],
 
       // Get distances
@@ -298,7 +300,7 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
       }],
 
       // Final set of rows
-      rows: ['getRowsWithAliases', ({getRowsWithAliases}, cbk) => {
+      rows: ['getRowsWithAliases', 'nodeDetails', ({getRowsWithAliases, nodeDetails}, cbk) => {
         const [titles] = header;
 
         const headers = titles.slice();
@@ -310,9 +312,32 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
           headers.unshift(first);
         }
 
+        const summaryHeadings = notNull([
+          'Public Key', 
+          'Node', 
+          'Capacity', 
+          !!nodeDetails.is_accepting_large_channels ? 'IsAcceptingLargeChannels' : null, 
+          !!nodeDetails.is_onion ? 'IsOnion' : null,
+          !!nodeDetails.is_clearnet ? 'IsClearnet' : null, 
+          !!nodeDetails.is_unconnectable ? 'IsUnconnectable' : null, 
+          'Peer Count'
+        ]);
+
+        const summary = [
+          summaryHeadings,
+          notNull([
+            nodeDetails.id, nodeDetails.node, nodeDetails.capacity, 
+            nodeDetails.is_accepting_large_channels || null, 
+            nodeDetails.is_onion || null, 
+            nodeDetails.is_clearnet || null, 
+            nodeDetails.is_unconnectable || null, 
+            nodeDetails.peer_count
+          ]),
+        ];
+
         const rows = [].concat([headers]).concat(getRowsWithAliases);
 
-        return cbk(null, {rows});
+        return cbk(null, {rows, rows_summary: summary});
       }],
     },
     returnResult({reject, resolve, of: 'rows'}, cbk));
