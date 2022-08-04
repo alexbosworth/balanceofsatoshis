@@ -270,8 +270,8 @@ have to make sure the hostname is known to the client.
 
 ```
 {
-  "cert_path": "/home/umbrel/umbrel/lnd/tls.cert",
-  "macaroon_path": "/home/umbrel/umbrel/lnd/data/chain/bitcoin/mainnet/admin.macaroon",
+  "cert_path": "/home/umbrel/umbrel/app-data/lightning/data/lnd/tls.cert",
+  "macaroon_path": "/home/umbrel/umbrel/app-data/lightning/data/lnd/data/chain/bitcoin/mainnet/admin.macaroon",
   "socket": "LND_IP:10009"
 }
 ```
@@ -506,8 +506,8 @@ On Umbrel this would be:
 # add Umbrel specific details:
 ## --network="host"
 ## --add-host=umbrel.local:192.168.1.23
-## -v $HOME/umbrel/lnd:/home/node/.lnd:ro
-docker run -it --rm --network=umbrel_main_network --add-host=umbrel.local:192.168.1.23 -v $HOME/.bos:/home/node/.bos -v $HOME/umbrel/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
+## -v $HOME/umbrel/app-data/lightning/data/lnd:/home/node/.lnd:ro
+docker run -it --rm --network=umbrel_main_network --add-host=umbrel.local:192.168.1.23 -v $HOME/.bos:/home/node/.bos -v $HOME/umbrel/app-data/lightning/data/lnd:/home/node/.lnd:ro alexbosworth/balanceofsatoshis report
 ```
 
 Note: For [umbrel-os](https://github.com/getumbrel/umbrel-os) users, when
