@@ -1,5 +1,9 @@
 # Versions
 
+## 12.17.0
+
+- `open-group-channel`: Add support for pair groupings
+
 ## 12.16.3
 
 - `open-balanced-channel`: Fix support for node 18 digital envelope unsupported
