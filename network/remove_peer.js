@@ -29,7 +29,7 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 /** Close out channels with a peer and disconnect them
 
   {
-    [address]: <Close Out Funds to On-Chain Address String>
+    addresses: [<Close Out Funds to On-Chain Address String>]
     ask: <Ask Function>
     [chain_fee_rate]: <Chain Fee Per VByte Number>
     fs: {
@@ -58,6 +58,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!isArray(args.addresses)) {
+          return cbk([400, 'ExpectedArrayOfAddressesToRemovePeer']);
+        }
+
         if (!args.ask) {
           return cbk([400, 'ExpectedAskFunctionToRemovePeer']);
         }
@@ -401,7 +405,8 @@ module.exports = (args, cbk) => {
             }
 
             return !!outpoints.includes(asOutpoint(chan));
-          });
+          })
+          .map((channel, index) => ({channel, index}));
 
         // Exit early when there are no channels to close
         if (!toClose.length) {
@@ -410,7 +415,7 @@ module.exports = (args, cbk) => {
 
         args.logger.info({
           close_with_peer: selectPeer,
-          channels_to_close: toClose.map(n => n.id),
+          channels_to_close: toClose.map(n => n.channel.id),
           fee_rate: !args.is_forced ? feeRate : undefined,
         });
 
@@ -420,11 +425,14 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return asyncEachSeries(toClose, (channel, cbk) => {
+        const [defaultAddress] = args.addresses;
+
+        return asyncEachSeries(toClose, ({channel, index}, cbk) => {
+          const address = args.addresses[index] || defaultAddress;
           const isLocked = !!channel.cooperative_close_address;
 
           return closeChannel({
-            address: !isLocked && !!args.address ? args.address : undefined,
+            address: !isLocked && !!address ? address : undefined,
             is_force_close: !channel.is_active,
             lnd: args.lnd,
             tokens_per_vbyte: !!channel.is_active ? feeRate : undefined,

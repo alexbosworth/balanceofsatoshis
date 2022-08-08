@@ -1464,9 +1464,10 @@ prog
   // Remove a peer
   .command('remove-peer', 'Close out with a channel-connected peer')
   .help('--filter command uses same filters as peers command')
+  .help('--address can have multiple addresses specified')
   .argument('[public_key]', 'Choose a specific peer to close with')
   .option('--active', 'Make sure the peer is online')
-  .option('--address <address>', 'Address to close out funds to')
+  .option('--address <address>', 'Address to close out funds to', REPEATABLE)
   .option('--dryrun', 'Avoid actually closing channels with peer')
   .option('--fee-rate <rate>', 'Fee rate per vbyte to close out with', FLOAT)
   .option('--filter <formula>', 'Filter formula to apply', REPEATABLE)
@@ -1488,7 +1489,7 @@ prog
         return network.removePeer({
           lnd,
           logger,
-          address: options.address,
+          addresses: flatten([options.address].filter(n => !!n)),
           ask: await commands.interrogate({}),
           chain_fee_rate: options.feeRate || undefined,
           filters: flatten([options.filter].filter(n => !!n)),

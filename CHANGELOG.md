@@ -1,5 +1,9 @@
 # Versions
 
+## 12.18.0
+
+- `remove-peer`: Add support for multiple close addresses
+
 ## 12.17.0
 
 - `open-group-channel`: Add support for pair groupings
