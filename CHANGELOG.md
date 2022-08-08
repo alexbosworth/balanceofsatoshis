@@ -1,5 +1,9 @@
 # Versions
 
+## 12.18.1
+
+- `trade-secret`: Fix connecting to seller when not already connected
+
 ## 12.18.0
 
 - `remove-peer`: Add support for multiple close addresses
