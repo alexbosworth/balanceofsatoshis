@@ -11,6 +11,7 @@ const {returnResult} = require('asyncjs-util');
 const {segmentMeasure} = require('./../display');
 const {sumsForSegment} = require('./../display');
 
+const defaultDays = 60;
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
 const isNumber = n => !isNaN(n);
@@ -40,10 +41,6 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!args.days) {
-          return cbk([400, 'ExpectedNumberOfDaysToGetFeesOverForChart']);
-        }
-
         if (!isArray(args.lnds)) {
           return cbk([400, 'ExpectedLndToGetFeesChart']);
         }
@@ -53,6 +50,10 @@ module.exports = (args, cbk) => {
         }
 
         if (!!args.start_date || !!args.end_date) {
+          if ((!!args.end_date || !!args.start_date) && !!args.days ) {
+            return cbk([400, 'ExpectedEitherDaysOrDatesToGetFeesChart']);
+          }
+          
           if (!args.start_date || !args.end_date) {
             return cbk([400, 'ExpectedStartAndEndDateToGetFeesChart']);
           }
@@ -83,7 +84,7 @@ module.exports = (args, cbk) => {
       // Segment measure
       segment: ['validate', ({}, cbk) => {
         if (!args.start_date && !args.end_date) {
-          return cbk(null, segmentMeasure({days: args.days}));
+          return cbk(null, segmentMeasure({days: args.days || defaultDays}));
         }
 
         const days = moment(args.end_date).diff(args.start_date, 'days');
@@ -96,7 +97,7 @@ module.exports = (args, cbk) => {
           return cbk(null, moment(args.start_date));
         }
 
-        return cbk(null, moment().subtract(args.days, 'days'));
+        return cbk(null, moment().subtract(args.days || defaultDays, 'days'));
       }],
 
       // End date for received payments
