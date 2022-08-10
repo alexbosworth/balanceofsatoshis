@@ -13,15 +13,19 @@ const {sumsForSegment} = require('./../display');
 
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
+const isNumber = n => !isNaN(n);
 const maxGetPayments = 100;
 const mtokensAsTokens = n => Number(n / BigInt(1e3));
 const notFound = 404;
+const parseDate = n => Date.parse(n);
 
 /** Get data for received payments chart
 
   {
     days: <Received Over Days Count Number>
+    [end_date]: <End Date String>
     lnds: [<Authenticated LND API Object>]
+    [start_date]: <Start Date String>
   }
 
   @returns via cbk or Promise
@@ -48,21 +52,64 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedAnLndToGetFeesChart']);
         }
 
+        if (!!args.start_date || !!args.end_date) {
+          if (!args.start_date || !args.end_date) {
+            return cbk([400, 'ExpectedStartAndEndDateToGetFeesChart']);
+          }
+          
+          const startDate = parseDate(args.start_date);
+          const endDate =  parseDate(args.end_date);
+
+          if (!isNumber(startDate) || !isNumber(endDate)) {
+            return cbk([400, 'FailedToParseStartAndEndDateToGetFeesChart']);
+          }
+
+          if (startDate > Date.now()) {
+            return cbk([400, 'ExpectedPastStartDateToGetFeesChart']);
+          }
+
+          if (endDate > Date.now()) {
+            return cbk([400, 'ExpectedPastEndDateToGetFeesChart']);
+          }
+
+          if (startDate > endDate) {
+            return cbk([400, 'ExpectedStartDateToBeBeforeEndDateToGetFeesChart']);
+          }
+        }
+
         return cbk();
       },
 
       // Segment measure
       segment: ['validate', ({}, cbk) => {
-        return cbk(null, segmentMeasure({days: args.days}));
+        if (!args.start_date && !args.end_date) {
+          return cbk(null, segmentMeasure({days: args.days}));
+        }
+
+        const days = moment(args.end_date).diff(args.start_date, 'days');
+        return cbk(null, segmentMeasure({days}));
       }],
 
       // Start date for received payments
       start: ['validate', ({}, cbk) => {
+        if (!!args.start_date) {
+          return cbk(null, moment(args.start_date));
+        }
+
         return cbk(null, moment().subtract(args.days, 'days'));
       }],
 
+      // End date for received payments
+      end: ['validate', ({}, cbk) => {
+        if (!args.end_date) {
+          return cbk();
+        }
+        
+        return cbk(null, moment(args.end_date));
+      }],
+
       // Get all the settled invoices using a subscription
-      getSettled: ['start', ({start}, cbk) => {
+      getSettled: ['end', 'start', ({end, start}, cbk) => {
         return asyncMap(args.lnds, (lnd, cbk) => {
           return getAllInvoices({
             lnd,
@@ -73,6 +120,10 @@ module.exports = (args, cbk) => {
         (err, res) => {
           if (!!err) {
             return cbk(err);
+          }
+
+          if (!!end) {
+            return cbk(null, flatten(res.map(n => n.invoices)).filter(n => new Date(n.confirmed_at) <= new Date(end.toISOString())));
           }
 
           return cbk(null, flatten(res.map(n => n.invoices)));
@@ -129,25 +180,35 @@ module.exports = (args, cbk) => {
 
       // Summary description of the received payments
       description: [
+        'end',
         'getReceived',
         'segment',
         'start',
         'sum',
         'totalReceived',
-        ({getReceived, segment, start, totalReceived, sum}, cbk) =>
+        ({end, getReceived, segment, start, totalReceived, sum}, cbk) =>
       {
         const action = 'Received in';
         const {measure} = segment;
         const since = `since ${start.calendar().toLowerCase()}`;
+        const to = !!end ? `to ${end.calendar().toLowerCase()}` : undefined;
 
         if (!!args.is_count) {
           const duration = `${action} ${sum.count.length} ${measure}s`;
           const total = `Total: ${getReceived.length} received payments`;
 
+          if (!!to) {
+            return cbk(null, `${duration} ${since} ${to}. ${total}`);
+          }
+ 
           return cbk(null, `${duration} ${since}. ${total}`);
         } else {
           const duration = `${action} ${sum.sum.length} ${measure}s`;
           const total = formatTokens({tokens: totalReceived}).display;
+
+          if (!!to) {
+            return cbk(null, `${duration} ${since} ${to}. ${total}`);
+          }
 
           return cbk(null, `${duration} ${since}. Total: ${total}`);
         }

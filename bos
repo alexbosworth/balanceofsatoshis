@@ -441,13 +441,17 @@ prog
   .command('chart-payments-received', 'Get a chart of received payments')
   .help('Show chart for settled invoices from external parties')
   .option('--days <days>', 'Chart over the past number of days', INT, 60)
+  .option('--end <end_date>', 'End date for chart in YYYY-MM-DD format')
   .option('--node <node_name>', 'Get payments from saved node(s)', REPEATABLE)
+  .option('--start <start_date>', 'Start date for chart in YYYY-MM-DD format')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return wallets.getReceivedChart({
           days: options.days,
+          end_date: options.end,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
+          start_date: options.start,
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
