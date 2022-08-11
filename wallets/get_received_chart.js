@@ -64,6 +64,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedStartDateToRangeToEndDate']);
         }
 
+        if (!isDate(args.start_date)) {
+          return cbk([400, 'ExpectedValidDateTypeForReceivedChartStartDate']);
+        }
+
         if (!moment(args.start_date).isValid()) {
           return cbk([400, 'ExpectedValidEndDateForReceivedChartEndDate']);
         }
@@ -91,10 +95,6 @@ module.exports = (args, cbk) => {
 
         if (parseDate(args.end_date) > now()) {
           return cbk([400, 'ExpectedPastEndDateToGetFeesChart']);
-        }
-
-        if (!isDate(args.start_date)) {
-          return cbk([400, 'ExpectedValidDateFormatToForChartStartDate']);
         }
 
         return cbk();

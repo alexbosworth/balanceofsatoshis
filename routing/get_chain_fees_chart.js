@@ -66,6 +66,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedStartDateToRangeToEndDateForChainChart']);
         }
 
+        if (!isDate(args.start_date)) {
+          return cbk([400, 'ExpectedValidDateTypeForChainFeeChartStartDate']);
+        }
+
         if (!moment(args.start_date).isValid()) {
           return cbk([400, 'ExpectedValidEndDateForReceivedChartEndDate']);
         }
@@ -93,10 +97,6 @@ module.exports = (args, cbk) => {
 
         if (parseDate(args.end_date) > now()) {
           return cbk([400, 'ExpectedPastEndDateToGetChainFeesChart']);
-        }
-
-        if (!isDate(args.start_date)) {
-          return cbk([400, 'ExpectedValidDateTypeForChainFeeChartStartDate']);
         }
 
         return cbk();

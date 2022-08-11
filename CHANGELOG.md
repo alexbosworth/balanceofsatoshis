@@ -1,5 +1,10 @@
 # Versions
 
+## 12.20.1
+
+- `chart-chain-fees`: validate --start date
+- `chart-payments-received`: validate --start date
+
 ## 12.20.0
 
 - `chart-chain-fees`: Add `--end` and `--start` options to specify a date range
