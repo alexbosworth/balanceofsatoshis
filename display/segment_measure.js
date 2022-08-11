@@ -28,7 +28,7 @@ module.exports = ({days, end, start}) => {
   }
 
   // A chart with a near start date should be seen as hours from start
-  if (!!start && !!end && days < minChartDays) {
+  if (!!start && days < minChartDays) {
     return {measure: 'hour', segments: hoursBetween(moment(end), start)};
   }
 

@@ -8,12 +8,13 @@ const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
 
-const daysBetween = (a, b) => moment(a).diff(b, 'days') || 1;
+const daysBetween = (a, b) => moment(a).diff(b, 'days') + 1;
 const daysPerWeek = 7;
 const defaultDays = 60;
 const isDate = n => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(n);
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
+const hoursCount = (a, b) => moment(a).diff(b, 'hours') + 1;
 const hoursPerDay = 24;
 const {isArray} = Array;
 const minChartDays = 4;
@@ -62,7 +63,7 @@ module.exports = (args, cbk) => {
         }
 
         if (!!args.end_date && !args.start_date) {
-          return cbk([400, 'ExpectedStartDateToRangeToEndDate']);
+          return cbk([400, 'ExpectedStartDateToRangeToEndDateForChainChart']);
         }
 
         if (!moment(args.start_date).isValid()) {
@@ -79,15 +80,15 @@ module.exports = (args, cbk) => {
         }
 
         if (args.start_date >= args.end_date) {
-          return cbk([400, 'ExpectedStartDateBeforeEndDateToGetChainFeesChart']);
+          return cbk([400, 'ExpectedStartDateBeforeEndDateForChainFeesChart']);
         }
 
         if (!isDate(args.end_date)) {
-          return cbk([400, 'ExpectedValidDateFormatToForChartEndDate']);
+          return cbk([400, 'ExpectedValidDateFormatForChainFeeChartEndDate']);
         }
 
         if (!moment(args.end_date).isValid()) {
-          return cbk([400, 'ExpectedValidEndDateForReceivedChartEndDate']);
+          return cbk([400, 'ExpectedValidEndDateForChainFeeChartEndDate']);
         }
 
         if (parseDate(args.end_date) > now()) {
@@ -95,7 +96,7 @@ module.exports = (args, cbk) => {
         }
 
         if (!isDate(args.start_date)) {
-          return cbk([400, 'ExpectedValidDateFormatToForChartStartDate']);
+          return cbk([400, 'ExpectedValidDateTypeForChainFeeChartStartDate']);
         }
 
         return cbk();
@@ -110,13 +111,34 @@ module.exports = (args, cbk) => {
         return cbk(null, moment(args.end_date));
       }],
 
-      // Start date for received payments
+      // Calculate the start date
       start: ['validate', ({}, cbk) => {
         if (!!args.start_date) {
           return cbk(null, moment(args.start_date));
         }
 
         return cbk(null, moment().subtract(args.days || defaultDays, 'days'));
+      }],
+
+      // Determine how many days to chart over
+      days: ['validate', ({}, cbk) => {
+        // Exit early when not using a date range
+        if (!args.start_date) {
+          return cbk(null, args.days || defaultDays);
+        }
+
+        return cbk(null, daysBetween(args.end_date, args.start_date));
+      }],
+
+      // Segment measure
+      measure: ['days', ({days}, cbk) => {
+        if (days > maxChartDays) {
+          return cbk(null, 'week');
+        } else if (days < minChartDays) {
+          return cbk(null, 'hour');
+        } else {
+          return cbk(null, 'day');
+        }
       }],
 
       // Get chain transactions
@@ -145,26 +167,16 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Segment measure
-      measure: ['validate', ({}, cbk) => {
-        const days = (!!args.days || !!args.start_date) ? (args.days || daysBetween(args.end_date, args.start_date)) : defaultDays;
-
-        if (days > maxChartDays) {
-          return cbk(null, 'week');
-        } else if (days < minChartDays) {
-          return cbk(null, 'hour');
-        } else {
-          return cbk(null, 'day');
-        }
-      }],
-
       // Total number of segments
-      segments: ['measure', ({measure}, cbk) => {
-        const days = (!!args.days || !!args.start_date) ? (args.days || daysBetween(args.end_date, args.start_date)) : defaultDays;
-        
+      segments: ['days', 'measure', ({days, measure}, cbk) => {
         switch (measure) {
         case 'hour':
-          return cbk(null, hoursPerDay * days);
+          // Exit early when using full days
+          if (!args.start_date) {
+            return cbk(null, hoursPerDay * days);
+          }
+
+          return cbk(null, hoursCount(moment(args.end_date), args.start_date));
 
         case 'week':
           return cbk(null, floor(days / daysPerWeek));
@@ -182,16 +194,22 @@ module.exports = (args, cbk) => {
         ({end, getTransactions, start}, cbk) =>
       {
         const transactions = getTransactions.filter(tx => {
-          if (!tx.is_confirmed) {
+          // Exit early when no fee was paid
+          if (!tx.is_confirmed || !tx.fee) {
             return false;
           }
 
-          if (!args.end_date) {
-            return !!tx.fee && tx.created_at > start.toISOString();
+          // Exit early when the transaction is before the range start
+          if (moment(tx.created_at).isBefore(start)) {
+            return false;
           }
 
-          return !!tx.fee && tx.created_at > start.toISOString() && tx.created_at <= end.toISOString();
+          // Exit early when the transaction is after the range end
+          if (!!end && moment(tx.created_at).isAfter(end, 'day')) {
+            return false;
+          }
 
+          return true;
         });
 
         return cbk(null, transactions);
@@ -230,7 +248,7 @@ module.exports = (args, cbk) => {
         async ({end, measure, start, sum, total}) =>
       {
         const duration = `Chain fees paid in ${sum.fees.length} ${measure}s`;
-        const since = `since ${start.calendar().toLowerCase()}`;
+        const since = `from ${start.calendar().toLowerCase()}`;
         const to = !!end ? ` to ${end.calendar().toLowerCase()}` : '';
 
         const {display} = formatTokens({
