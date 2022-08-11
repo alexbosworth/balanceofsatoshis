@@ -11,6 +11,7 @@ const maxChartDays = 90;
 
   {
     days: <Days Count Number>
+    [end]: <End Date String>
     [start]: <Start Date YYYY-MM-DD String>
   }
 
@@ -20,15 +21,15 @@ const maxChartDays = 90;
     segments: <Count of Segments In Window Number>
   }
 */
-module.exports = ({days, start}) => {
+module.exports = ({days, end, start}) => {
   // A chart with a lot of days should be seen as weeks
   if (days > maxChartDays) {
     return {measure: 'week', segments: floor(days / daysPerWeek)};
   }
 
   // A chart with a near start date should be seen as hours from start
-  if (!!start && !days < minChartDays) {
-    return {measure: 'hour', segments: hoursBetween(moment(), start)};
+  if (!!start && !!end && days < minChartDays) {
+    return {measure: 'hour', segments: hoursBetween(moment(end), start)};
   }
 
   // A chart with very few days should be seen as hours

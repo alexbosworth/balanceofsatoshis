@@ -8,23 +8,28 @@ const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
 
+const daysBetween = (a, b) => moment(a).diff(b, 'days');
 const daysPerWeek = 7;
+const defaultDays = 60;
+const isDate = n => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(n);
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
 const hoursPerDay = 24;
 const {isArray} = Array;
-const {keys} = Object;
 const minChartDays = 4;
 const maxChartDays = 90;
-const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
+const {now} = Date;
+const parseDate = n => Date.parse(n);
 
 /** Get Blockchain fees paid
 
   {
-    days: <Chain Fees Paid Over Days Count Number>
+    [days]: <Chain Fees Paid Over Days Count Number>
+    [end_date]: <End Date YYYY-MM-DD String>
     is_monochrome: <Omit Colors Bool>
     lnds: [<Authenticated LND API Object>]
     request: <Request Function>
+    [start_date]: <Start Date YYYY-MM-DD String>
   }
 
   @returns via cbk or Promise
@@ -39,10 +44,6 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!args.days) {
-          return cbk([400, 'ExpectedNumberOfDaysToGetChainFeesOverForChart']);
-        }
-
         if (!isArray(args.lnds) || !args.lnds.length) {
           return cbk([400, 'ExpectedLndToGetChainFeesChart']);
         }
@@ -51,11 +52,75 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedRequestFunctionToGetChainFees']);
         }
 
+        // Exit early when there is no end date and no start date
+        if (!args.end_date && !args.start_date) {
+          return cbk();
+        }
+
+        if (!!args.days) {
+          return cbk([400, 'ExpectedEitherDaysOrDatesToGetChainFeesChart']);
+        }
+
+        if (!!args.end_date && !args.start_date) {
+          return cbk([400, 'ExpectedStartDateToRangeToEndDate']);
+        }
+
+        if (!moment(args.start_date).isValid()) {
+          return cbk([400, 'ExpectedValidEndDateForReceivedChartEndDate']);
+        }
+
+        if (parseDate(args.start_date) > now()) {
+          return cbk([400, 'ExpectedPastStartDateToGetChainFeesChart']);
+        }
+
+        // Exit early when there is no end date
+        if (!args.end_date) {
+          return cbk();
+        }
+
+        if (args.start_date >= args.end_date) {
+          return cbk([400, 'ExpectedStartDateBeforeEndDateToGetChainFeesChart']);
+        }
+
+        if (!isDate(args.end_date)) {
+          return cbk([400, 'ExpectedValidDateFormatToForChartEndDate']);
+        }
+
+        if (!moment(args.end_date).isValid()) {
+          return cbk([400, 'ExpectedValidEndDateForReceivedChartEndDate']);
+        }
+
+        if (parseDate(args.end_date) > now()) {
+          return cbk([400, 'ExpectedPastEndDateToGetChainFeesChart']);
+        }
+
+        if (!isDate(args.start_date)) {
+          return cbk([400, 'ExpectedValidDateFormatToForChartStartDate']);
+        }
+
         return cbk();
       },
 
+      // End date for chain transactions
+      end: ['validate', ({}, cbk) => {
+        if (!args.end_date) {
+          return cbk();
+        }
+
+        return cbk(null, moment(args.end_date));
+      }],
+
+      // Start date for received payments
+      start: ['validate', ({}, cbk) => {
+        if (!!args.start_date) {
+          return cbk(null, moment(args.start_date));
+        }
+
+        return cbk(null, moment().subtract(args.days || defaultDays, 'days'));
+      }],
+
       // Get chain transactions
-      getTransactions: ['validate', ({}, cbk) => {
+      getTransactions: ['start', ({start}, cbk) => {
         return asyncMap(args.lnds, (lnd, cbk) => {
           return getNetwork({lnd}, (err, res) => {
             if (!!err) {
@@ -64,7 +129,7 @@ module.exports = (args, cbk) => {
 
             return getChainTransactions({
               lnd,
-              after: moment().subtract(args.days, 'days').toISOString(),
+              after: start.toISOString(),
               network: res.network,
               request: args.request,
             },
@@ -82,46 +147,51 @@ module.exports = (args, cbk) => {
 
       // Segment measure
       measure: ['validate', ({}, cbk) => {
-        if (args.days > maxChartDays) {
+        const days = args.days || daysBetween(args.end_date, args.start_date);
+
+        if (days > maxChartDays) {
           return cbk(null, 'week');
-        } else if (args.days < minChartDays) {
+        } else if (days < minChartDays) {
           return cbk(null, 'hour');
         } else {
           return cbk(null, 'day');
         }
       }],
 
-      // Start date for payments
-      start: ['validate', ({}, cbk) => {
-        return cbk(null, moment().subtract(args.days, 'days'));
-      }],
-
       // Total number of segments
       segments: ['measure', ({measure}, cbk) => {
+        const days = args.days || daysBetween(args.end_date, args.start_date);
+        
         switch (measure) {
         case 'hour':
-          return cbk(null, hoursPerDay * args.days);
+          return cbk(null, hoursPerDay * days);
 
         case 'week':
-          return cbk(null, floor(args.days / daysPerWeek));
+          return cbk(null, floor(days / daysPerWeek));
 
         default:
-          return cbk(null, args.days);
+          return cbk(null, days);
         }
       }],
 
       // Filter the transactions by date
       transactions: [
+        'end',
         'getTransactions',
         'start',
-        ({getTransactions, start}, cbk) =>
+        ({end, getTransactions, start}, cbk) =>
       {
         const transactions = getTransactions.filter(tx => {
           if (!tx.is_confirmed) {
             return false;
           }
 
-          return !!tx.fee && tx.created_at > start.toISOString();
+          if (!args.end_date) {
+            return !!tx.fee && tx.created_at > start.toISOString();
+          }
+
+          return !!tx.fee && tx.created_at > start.toISOString() && tx.created_at <= end.toISOString();
+
         });
 
         return cbk(null, transactions);
@@ -136,35 +206,39 @@ module.exports = (args, cbk) => {
 
       // Payments activity aggregated
       sum: [
+        'end',
         'measure',
         'segments',
         'transactions',
-        ({measure, segments, transactions}, cbk) =>
+        ({end, measure, segments, transactions}, cbk) =>
       {
         return cbk(null, feesForSegment({
-          forwards: transactions,
+          end,
           measure,
           segments,
+          forwards: transactions,
         }));
       }],
 
       // Summary description of the chain fees paid
       description: [
+        'end',
         'measure',
         'start',
         'sum',
         'total',
-        async ({measure, start, sum, total}) =>
+        async ({end, measure, start, sum, total}) =>
       {
         const duration = `Chain fees paid in ${sum.fees.length} ${measure}s`;
         const since = `since ${start.calendar().toLowerCase()}`;
+        const to = !!end ? ` to ${end.calendar().toLowerCase()}` : '';
 
         const {display} = formatTokens({
           is_monochrome: args.is_monochrome,
           tokens: total,
         });
 
-        return `${duration} ${since}. Total: ${display}`;
+        return `${duration} ${since}${to}. Total: ${display}`;
       }],
 
       // Fees paid

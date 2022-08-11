@@ -6,6 +6,7 @@ const defaultSegmentBy = 'created_at';
 
   {
     [by]: <Segment By Attribute String>
+    [end]: <End Date String>
     forwards: [{
       created_at: <Created At ISO 8601 Date String>
       fee: <Fee Tokens Number>
@@ -20,9 +21,9 @@ const defaultSegmentBy = 'created_at';
     fees: [<Fee Earnings In Segment Number>]
   }
 */
-module.exports = ({by, forwards, measure, segments}) => {
+module.exports = ({by, end, forwards, measure, segments}) => {
   const fees = [...Array(segments)].map((_, i) => {
-    const segment = moment().subtract(i, measure);
+    const segment = moment(end).subtract(i, measure);
 
     const segmentForwards = forwards.filter(forward => {
       const forwardDate = moment(forward[by || defaultSegmentBy]);

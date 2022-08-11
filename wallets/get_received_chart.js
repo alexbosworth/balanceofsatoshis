@@ -118,7 +118,7 @@ module.exports = (args, cbk) => {
 
         const days = daysBetween(args.end_date, args.start_date);
 
-        return cbk(null, segmentMeasure({days, start: args.start_date}));
+        return cbk(null, segmentMeasure({days, end: args.end_date, start: args.start_date}));
       }],
 
       // Start date for received payments

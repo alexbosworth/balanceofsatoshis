@@ -351,17 +351,21 @@ prog
   .command('chart-chain-fees', 'Get a chart of chain fee expenses')
   .help('Show chart of mining fee expenditure over time')
   .help('Privacy note: this requests tx data from third parties')
-  .option('--days <days>', 'Chart over the past number of days', INT, 60)
+  .option('--days <days>', 'Chart over the past number of days', INT)
+  .option('--end <end_date>', 'End date for chart as YYYY-MM-DD', STRING)
   .option('--no-color', 'Disable colors')
   .option('--node <node_name>', 'Chain fees from saved node(s)', REPEATABLE)
+  .option('--start <start_date>', 'Start date for chart as YYYY-MM-DD', STRING)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return routing.getChainFeesChart({
           days: options.days,
+          end_date: options.end,
           is_monochrome: !!options.noColor,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
           request: commands.simpleRequest,
+          start_date: options.start,
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
       } catch (err) {
