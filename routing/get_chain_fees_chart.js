@@ -147,7 +147,7 @@ module.exports = (args, cbk) => {
 
       // Segment measure
       measure: ['validate', ({}, cbk) => {
-        const days = args.days || daysBetween(args.end_date, args.start_date);
+        const days = (!!args.days || !!args.start_date) ? (args.days || daysBetween(args.end_date, args.start_date)) : defaultDays;
 
         if (days > maxChartDays) {
           return cbk(null, 'week');
@@ -160,7 +160,7 @@ module.exports = (args, cbk) => {
 
       // Total number of segments
       segments: ['measure', ({measure}, cbk) => {
-        const days = args.days || daysBetween(args.end_date, args.start_date);
+        const days = (!!args.days || !!args.start_date) ? (args.days || daysBetween(args.end_date, args.start_date)) : defaultDays;
         
         switch (measure) {
         case 'hour':
