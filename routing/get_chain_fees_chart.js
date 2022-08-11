@@ -8,7 +8,7 @@ const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
 
-const daysBetween = (a, b) => moment(a).diff(b, 'days');
+const daysBetween = (a, b) => moment(a).diff(b, 'days') || 1;
 const daysPerWeek = 7;
 const defaultDays = 60;
 const isDate = n => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(n);
