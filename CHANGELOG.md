@@ -1,5 +1,9 @@
 # Versions
 
+## 12.20.0
+
+- `chart-chain-fees`: Add `--end` and `--start` options to specify a date range
+
 ## 12.19.0
 
 - `chart-payments-received`: Add `--end` and `--start` options to specify range
