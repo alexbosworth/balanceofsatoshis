@@ -11,22 +11,24 @@ const {returnResult} = require('asyncjs-util');
 const {segmentMeasure} = require('./../display');
 const {sumsForSegment} = require('./../display');
 
+const daysBetween = (a, b) => moment(a).diff(b, 'days') + 1;
 const defaultDays = 60;
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
-const isNumber = n => !isNaN(n);
+const isDate = n => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(n);
 const maxGetPayments = 100;
 const mtokensAsTokens = n => Number(n / BigInt(1e3));
 const notFound = 404;
+const {now} = Date;
 const parseDate = n => Date.parse(n);
 
 /** Get data for received payments chart
 
   {
-    days: <Received Over Days Count Number>
-    [end_date]: <End Date String>
+    [days]: <Received Over Days Count Number>
+    [end_date]: <End Date YYYY-MM-DD String>
     lnds: [<Authenticated LND API Object>]
-    [start_date]: <Start Date String>
+    [start_date]: <Start Date YYYY-MM-DD String>
   }
 
   @returns via cbk or Promise
@@ -49,46 +51,74 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedAnLndToGetFeesChart']);
         }
 
-        if (!!args.start_date || !!args.end_date) {
-          if ((!!args.end_date || !!args.start_date) && !!args.days ) {
-            return cbk([400, 'ExpectedEitherDaysOrDatesToGetFeesChart']);
-          }
-          
-          if (!args.start_date || !args.end_date) {
-            return cbk([400, 'ExpectedStartAndEndDateToGetFeesChart']);
-          }
-          
-          const startDate = parseDate(args.start_date);
-          const endDate =  parseDate(args.end_date);
+        // Exit early when there is no end date and no start date
+        if (!args.end_date && !args.start_date) {
+          return cbk();
+        }
 
-          if (!isNumber(startDate) || !isNumber(endDate)) {
-            return cbk([400, 'FailedToParseStartAndEndDateToGetFeesChart']);
-          }
+        if (!!args.days) {
+          return cbk([400, 'ExpectedEitherDaysOrDatesToGetFeesChart']);
+        }
 
-          if (startDate > Date.now()) {
-            return cbk([400, 'ExpectedPastStartDateToGetFeesChart']);
-          }
+        if (!!args.end_date && !args.start_date) {
+          return cbk([400, 'ExpectedStartDateToRangeToEndDate']);
+        }
 
-          if (endDate > Date.now()) {
-            return cbk([400, 'ExpectedPastEndDateToGetFeesChart']);
-          }
+        if (!moment(args.start_date).isValid()) {
+          return cbk([400, 'ExpectedValidEndDateForReceivedChartEndDate']);
+        }
 
-          if (startDate > endDate) {
-            return cbk([400, 'ExpectedStartDateToBeBeforeEndDateToGetFeesChart']);
-          }
+        if (parseDate(args.start_date) > now()) {
+          return cbk([400, 'ExpectedPastStartDateToGetFeesChart']);
+        }
+
+        // Exit early when there is no end date
+        if (!args.end_date) {
+          return cbk();
+        }
+
+        if (args.start_date >= args.end_date) {
+          return cbk([400, 'ExpectedStartDateBeforeEndDateToGetFeesChart']);
+        }
+
+        if (!isDate(args.end_date)) {
+          return cbk([400, 'ExpectedValidDateFormatToForChartEndDate']);
+        }
+
+        if (!moment(args.end_date).isValid()) {
+          return cbk([400, 'ExpectedValidEndDateForReceivedChartEndDate']);
+        }
+
+        if (parseDate(args.end_date) > now()) {
+          return cbk([400, 'ExpectedPastEndDateToGetFeesChart']);
+        }
+
+        if (!isDate(args.start_date)) {
+          return cbk([400, 'ExpectedValidDateFormatToForChartStartDate']);
         }
 
         return cbk();
       },
 
+      // End date for received payments
+      end: ['validate', ({}, cbk) => {
+        if (!args.end_date) {
+          return cbk();
+        }
+
+        return cbk(null, moment(args.end_date));
+      }],
+
       // Segment measure
       segment: ['validate', ({}, cbk) => {
+        // Exit early when not looking at a date range
         if (!args.start_date && !args.end_date) {
           return cbk(null, segmentMeasure({days: args.days || defaultDays}));
         }
 
-        const days = moment(args.end_date).diff(args.start_date, 'days');
-        return cbk(null, segmentMeasure({days}));
+        const days = daysBetween(args.end_date, args.start_date);
+
+        return cbk(null, segmentMeasure({days, start: args.start_date}));
       }],
 
       // Start date for received payments
@@ -98,15 +128,6 @@ module.exports = (args, cbk) => {
         }
 
         return cbk(null, moment().subtract(args.days || defaultDays, 'days'));
-      }],
-
-      // End date for received payments
-      end: ['validate', ({}, cbk) => {
-        if (!args.end_date) {
-          return cbk();
-        }
-        
-        return cbk(null, moment(args.end_date));
       }],
 
       // Get all the settled invoices using a subscription
@@ -123,11 +144,16 @@ module.exports = (args, cbk) => {
             return cbk(err);
           }
 
-          if (!!end) {
-            return cbk(null, flatten(res.map(n => n.invoices)).filter(n => new Date(n.confirmed_at) <= new Date(end.toISOString())));
-          }
+          const settled = flatten(res.map(n => n.invoices)).filter(invoice => {
+            // Exit early when considering all invoices without an end point
+            if (!args.end_date) {
+              return true;
+            }
 
-          return cbk(null, flatten(res.map(n => n.invoices)));
+            return moment(invoice.confirmed_at).isSameOrBefore(end, 'day');
+          });
+
+          return cbk(null, settled);
         });
       }],
 
@@ -171,6 +197,7 @@ module.exports = (args, cbk) => {
       // Earnings aggregated
       sum: ['getReceived', 'segment', ({getReceived, segment}, cbk) => {
         return cbk(null, sumsForSegment({
+          end: args.end_date,
           measure: segment.measure,
           records: getReceived.map(invoice => {
             return {date: invoice.confirmed_at, tokens: invoice.received};
@@ -191,27 +218,19 @@ module.exports = (args, cbk) => {
       {
         const action = 'Received in';
         const {measure} = segment;
-        const since = `since ${start.calendar().toLowerCase()}`;
-        const to = !!end ? `to ${end.calendar().toLowerCase()}` : undefined;
+        const since = `from ${start.calendar().toLowerCase()}`;
+        const to = !!end ? ` to ${end.calendar().toLowerCase()}` : '';
 
         if (!!args.is_count) {
           const duration = `${action} ${sum.count.length} ${measure}s`;
           const total = `Total: ${getReceived.length} received payments`;
 
-          if (!!to) {
-            return cbk(null, `${duration} ${since} ${to}. ${total}`);
-          }
- 
-          return cbk(null, `${duration} ${since}. ${total}`);
+          return cbk(null, `${duration} ${since}${to}. ${total}`);
         } else {
           const duration = `${action} ${sum.sum.length} ${measure}s`;
-          const total = formatTokens({tokens: totalReceived}).display;
+          const total = formatTokens({tokens: totalReceived}).display || '0';
 
-          if (!!to) {
-            return cbk(null, `${duration} ${since} ${to}. ${total}`);
-          }
-
-          return cbk(null, `${duration} ${since}. Total: ${total}`);
+          return cbk(null, `${duration} ${since}${to}. Total: ${total}`);
         }
       }],
 

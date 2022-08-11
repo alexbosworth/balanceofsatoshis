@@ -441,9 +441,9 @@ prog
   .command('chart-payments-received', 'Get a chart of received payments')
   .help('Show chart for settled invoices from external parties')
   .option('--days <days>', 'Chart over the past number of days', INT)
-  .option('--end <end_date>', 'End date for chart in YYYY-MM-DD format', STRING)
+  .option('--end <end_date>', 'Final date for chart as YYYY-MM-DD', STRING)
   .option('--node <node_name>', 'Get payments from saved node(s)', REPEATABLE)
-  .option('--start <start_date>', 'Start date for chart in YYYY-MM-DD format', STRING)
+  .option('--start <start_date>', 'Start date for chart as YYYY-MM-DD', STRING)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {

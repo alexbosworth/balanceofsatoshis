@@ -3,6 +3,7 @@ const moment = require('moment');
 /** Sums for segment for a chart
 
   {
+    [end_date]: <End Date YYYY-MM-DD String>
     measure: <Measure Time Period String>
     records: [{
       date: <Created At ISO 8601 Date String>
@@ -17,9 +18,9 @@ const moment = require('moment');
     sum: [<Sum In Segment Number>]
   }
 */
-module.exports = ({measure, records, segments}) => {
+module.exports = ({end, measure, records, segments}) => {
   const sums = [...Array(segments)].map((_, i) => {
-    const segment = moment().subtract(i, measure);
+    const segment = moment(end).subtract(i, measure);
 
     const segmentTotals = records.filter(record => {
       const recordDate = moment(record.date);

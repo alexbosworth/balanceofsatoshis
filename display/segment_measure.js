@@ -1,5 +1,8 @@
+const moment = require('moment');
+
 const daysPerWeek = 7;
 const {floor} = Math;
+const hoursBetween = (a, b) => moment(a).diff(b, 'hours') + 1;
 const hoursPerDay = 24;
 const minChartDays = 4;
 const maxChartDays = 90;
@@ -8,6 +11,7 @@ const maxChartDays = 90;
 
   {
     days: <Days Count Number>
+    [start]: <Start Date YYYY-MM-DD String>
   }
 
   @returns
@@ -16,10 +20,15 @@ const maxChartDays = 90;
     segments: <Count of Segments In Window Number>
   }
 */
-module.exports = ({days}) => {
+module.exports = ({days, start}) => {
   // A chart with a lot of days should be seen as weeks
   if (days > maxChartDays) {
     return {measure: 'week', segments: floor(days / daysPerWeek)};
+  }
+
+  // A chart with a near start date should be seen as hours from start
+  if (!!start && !days < minChartDays) {
+    return {measure: 'hour', segments: hoursBetween(moment(), start)};
   }
 
   // A chart with very few days should be seen as hours
@@ -28,5 +37,5 @@ module.exports = ({days}) => {
   }
 
   // The standard chart is just by day
-  return {measure:'day', segments: days};
+  return {measure: 'day', segments: days};
 };
