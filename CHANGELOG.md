@@ -1,5 +1,9 @@
 # Versions
 
+## 12.19.0
+
+- `chart-payments-received`: Add `--end` and `--start` options to specify range
+
 ## 12.18.1
 
 - `trade-secret`: Fix connecting to seller when not already connected
