@@ -26,7 +26,7 @@ const parseDate = n => Date.parse(n);
 /** Get data for fees chart
 
   {
-    days: <Fees Earned Over Days Count Number>
+    [days]: <Fees Earned Over Days Count Number>
     [end_date]: <End Date YYYY-MM-DD String>
     fs: {
       getFile: <Get File Function>
