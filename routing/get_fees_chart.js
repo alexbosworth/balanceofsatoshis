@@ -79,7 +79,7 @@ module.exports = (args, cbk) => {
         }
 
         if (!moment(args.start_date).isValid()) {
-          return cbk([400, 'ExpectedValidEndDateForFeesChartEndDate']);
+          return cbk([400, 'ExpectedValidStartDateForFeesChartEndDate']);
         }
 
         if (parseDate(args.start_date) > now()) {
@@ -116,7 +116,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return cbk(null, moment(args.end_date));
+        return cbk(null, moment(args.end_date).endOf('day'));
       }],
 
       // Calculate the start date
@@ -214,10 +214,10 @@ module.exports = (args, cbk) => {
       getForwards: ['start', 'end', 'via', ({start, end, via}, cbk) => {
         return asyncMap(args.lnds, (lnd, cbk) => {
           return getForwards({
-            lnd, 
-            via, 
+            lnd,
+            via,
             after: asDate(start), 
-            before: asDate(end)
+            before: asDate(end),
           }, 
           cbk);
         },
@@ -264,12 +264,13 @@ module.exports = (args, cbk) => {
 
       // Forwarding activity aggregated
       sum: [
+        'end',
         'forwards',
         'measure',
         'segments',
-        ({forwards, measure, segments}, cbk) =>
+        ({end, forwards, measure, segments}, cbk) =>
       {
-        return cbk(null, feesForSegment({forwards, measure, segments}));
+        return cbk(null, feesForSegment({end, forwards, measure, segments}));
       }],
 
       // Summary description of the fees earned
@@ -283,7 +284,7 @@ module.exports = (args, cbk) => {
         'totalForwarded',
         ({end, forwards, measure, start, totalEarned, totalForwarded, sum}, cbk) =>
       {
-        const since = `since ${start.calendar().toLowerCase()}`;
+        const since = `from ${start.calendar().toLowerCase()}`;
         const to = !!end ? ` to ${end.calendar().toLowerCase()}` : '';
 
         if (!!args.is_count) {

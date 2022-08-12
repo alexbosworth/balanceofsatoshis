@@ -25,11 +25,6 @@ const lnds = [{
 
 const tests = [
   {
-    args: {fs},
-    description: 'Days duration is required to get fees chart',
-    error: [400, 'ExpectedNumberOfDaysToGetFeesOverForChart'],
-  },
-  {
     args: {fs, days: 1},
     description: 'LND is required to get fees chart',
     error: [400, 'ExpectedLndToGetFeesChart'],

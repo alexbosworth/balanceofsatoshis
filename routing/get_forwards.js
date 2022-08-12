@@ -73,7 +73,6 @@ module.exports = ({after, before, lnd, via}, cbk) => {
       // Get forwards
       getForwards: ['validate', ({}, cbk) => {
         const forwards = [];
-        const start = before || new Date().toISOString();
         let token;
 
         return asyncUntil(
@@ -83,7 +82,7 @@ module.exports = ({after, before, lnd, via}, cbk) => {
               after,
               lnd,
               token,
-              before: start,
+              before: before || new Date().toISOString(),
               limit: !token ? pageLimit : undefined,
             },
             (err, res) => {
