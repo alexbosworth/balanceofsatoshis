@@ -379,18 +379,22 @@ prog
   .argument('[via]', 'Routing fees earned via a specified node or tag')
   .help('Show the routing fees earned')
   .option('--count', 'Show count of forwards instead of fees earned')
-  .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
+  .option('--days <days>', 'Chart fees over the past number of days', INT)
+  .option('--end <end_date>', 'End date for chart as YYYY-MM-DD', STRING)
   .option('--forwarded', 'Show amount forwarded instead of fees earned')
   .option('--node <node_name>', 'Get saved node fees earned', REPEATABLE)
+  .option('--start <start_date>', 'Start date for chart as YYYY-MM-DD', STRING)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return routing.getFeesChart({
           days: options.days,
+          end_date: options.end,
           fs: {getFile: readFile},
           is_count: options.count,
           is_forwarded: options.forwarded,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
+          start_date: options.start,
           via: args.via || undefined,
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));

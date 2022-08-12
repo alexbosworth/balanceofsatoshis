@@ -18,6 +18,7 @@ const pageLimit = 1e3;
 
   {
     after: <After Date ISO 8601 String>
+    [before]: <Before Date ISO 8601 String>
     lnd: <Authenticated LND API Object>
     [via]: [<Via Public Key Hex String>]
   }
@@ -35,7 +36,7 @@ const pageLimit = 1e3;
     }]
   }
 */
-module.exports = ({after, lnd, via}, cbk) => {
+module.exports = ({after, before, lnd, via}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -72,7 +73,7 @@ module.exports = ({after, lnd, via}, cbk) => {
       // Get forwards
       getForwards: ['validate', ({}, cbk) => {
         const forwards = [];
-        const start = new Date().toISOString();
+        const start = before || new Date().toISOString();
         let token;
 
         return asyncUntil(

@@ -9,23 +9,31 @@ const feesForSegment = require('./fees_for_segment');
 const {getTags} = require('./../tags');
 const getForwards = require('./get_forwards');
 
-const asDate = n => n.toISOString();
+const asDate = n => !!n ? n.toISOString() : undefined;
+const daysBetween = (a, b) => moment(a).diff(b, 'days') + 1;
 const daysPerWeek = 7;
+const defaultDays = 60;
 const {floor} = Math;
+const hoursCount = (a, b) => moment(a).diff(b, 'hours') + 1;
 const hoursPerDay = 24;
 const {isArray} = Array;
+const isDate = n => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(n);
 const minChartDays = 4;
 const maxChartDays = 90;
+const {now} = Date;
+const parseDate = n => Date.parse(n);
 
 /** Get data for fees chart
 
   {
     days: <Fees Earned Over Days Count Number>
+    [end_date]: <End Date YYYY-MM-DD String>
     fs: {
       getFile: <Get File Function>
     }
     is_count: <Return Only Count of Forwards Bool>
     lnds: [<Authenticated LND API Object>]
+    [start_date]: <Start Date YYYY-MM-DD String>
     [via]: <Via Public Key Hex or Tag Id or Alias String>
   }
 
@@ -41,10 +49,6 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!args.days) {
-          return cbk([400, 'ExpectedNumberOfDaysToGetFeesOverForChart']);
-        }
-
         if (!args.fs) {
           return cbk([400, 'ExpectedFileSystemMethodsToGetFeesChart']);
         }
@@ -57,8 +61,82 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedAnLndToGetFeesChart']);
         }
 
+        // Exit early when there is no end date and no start date
+        if (!args.end_date && !args.start_date) {
+          return cbk();
+        }
+
+        if (!!args.days) {
+          return cbk([400, 'ExpectedEitherDaysOrDatesToGetFeesChart']);
+        }
+
+        if (!!args.end_date && !args.start_date) {
+          return cbk([400, 'ExpectedStartDateToRangeToEndDateForFeesChart']);
+        }
+
+        if (!isDate(args.start_date)) {
+          return cbk([400, 'ExpectedValidDateTypeForFeesChartStartDate']);
+        }
+
+        if (!moment(args.start_date).isValid()) {
+          return cbk([400, 'ExpectedValidEndDateForFeesChartEndDate']);
+        }
+
+        if (parseDate(args.start_date) > now()) {
+          return cbk([400, 'ExpectedPastStartDateToGetFeesChart']);
+        }
+
+        // Exit early when there is no end date
+        if (!args.end_date) {
+          return cbk();
+        }
+
+        if (args.start_date >= args.end_date) {
+          return cbk([400, 'ExpectedStartDateBeforeEndDateForFeesChart']);
+        }
+
+        if (!isDate(args.end_date)) {
+          return cbk([400, 'ExpectedValidDateFormatForFeesChartEndDate']);
+        }
+
+        if (!moment(args.end_date).isValid()) {
+          return cbk([400, 'ExpectedValidEndDateForFeesChartEndDate']);
+        }
+
+        if (parseDate(args.end_date) > now()) {
+          return cbk([400, 'ExpectedPastEndDateToGetFeesChart']);
+        }
+
         return cbk();
       },
+
+      // End date for getting fee earnings
+      end: ['validate', ({}, cbk) => {
+        if (!args.end_date) {
+          return cbk();
+        }
+
+        return cbk(null, moment(args.end_date));
+      }],
+
+      // Calculate the start date
+      start: ['validate', ({}, cbk) => {
+        if (!!args.start_date) {
+          return cbk(null, moment(args.start_date));
+        }
+
+        return cbk(null, moment().subtract(args.days || defaultDays, 'days'));
+      }],
+
+      // Determine how many days to chart over
+      days: ['validate', ({}, cbk) => {
+        // Exit early when not using a date range
+        if (!args.start_date) {
+          return cbk(null, args.days || defaultDays);
+        }
+
+        return cbk(null, daysBetween(args.end_date, args.start_date));
+      }],
 
       // Get the list of tags to look for a via match
       getTags: ['validate', ({}, cbk) => {
@@ -70,19 +148,14 @@ module.exports = (args, cbk) => {
       }],
 
       // Segment measure
-      measure: ['validate', ({}, cbk) => {
-        if (args.days > maxChartDays) {
+      measure: ['days', ({days}, cbk) => {
+        if (days > maxChartDays) {
           return cbk(null, 'week');
-        } else if (args.days < minChartDays) {
+        } else if (days < minChartDays) {
           return cbk(null, 'hour');
         } else {
           return cbk(null, 'day');
         }
-      }],
-
-      // Start date for forwards
-      start: ['validate', ({}, cbk) => {
-        return cbk(null, moment().subtract(args.days, 'days'));
       }],
 
       // Determine via tag
@@ -138,9 +211,15 @@ module.exports = (args, cbk) => {
       }],
 
       // Get forwards
-      getForwards: ['start', 'via', ({start, via}, cbk) => {
+      getForwards: ['start', 'end', 'via', ({start, end, via}, cbk) => {
         return asyncMap(args.lnds, (lnd, cbk) => {
-          return getForwards({lnd, via, after: asDate(start)}, cbk);
+          return getForwards({
+            lnd, 
+            via, 
+            after: asDate(start), 
+            before: asDate(end)
+          }, 
+          cbk);
         },
         cbk);
       }],
@@ -165,16 +244,21 @@ module.exports = (args, cbk) => {
       }],
 
       // Total number of segments
-      segments: ['measure', ({measure}, cbk) => {
+      segments: ['days', 'measure', ({days, measure}, cbk) => {
         switch (measure) {
         case 'hour':
-          return cbk(null, hoursPerDay * args.days);
+          // Exit early when using full days
+          if (!args.start_date) {
+            return cbk(null, hoursPerDay * days);
+          }
+
+          return cbk(null, hoursCount(moment(args.end_date), args.start_date));
 
         case 'week':
-          return cbk(null, floor(args.days / daysPerWeek));
+          return cbk(null, floor(days / daysPerWeek));
 
         default:
-          return cbk(null, args.days);
+          return cbk(null, days);
         }
       }],
 
@@ -190,32 +274,34 @@ module.exports = (args, cbk) => {
 
       // Summary description of the fees earned
       description: [
+        'end',
         'forwards',
         'measure',
         'start',
         'sum',
         'totalEarned',
         'totalForwarded',
-        ({forwards, measure, start, totalEarned, totalForwarded, sum}, cbk) =>
+        ({end, forwards, measure, start, totalEarned, totalForwarded, sum}, cbk) =>
       {
         const since = `since ${start.calendar().toLowerCase()}`;
+        const to = !!end ? ` to ${end.calendar().toLowerCase()}` : '';
 
         if (!!args.is_count) {
           const duration = `Forwarded in ${sum.count.length} ${measure}s`;
           const forwarded = `Total: ${forwards.length} forwards`;
 
-          return cbk(null, `${duration} ${since}. ${forwarded}`);
+          return cbk(null, `${duration} ${since}${to}. ${forwarded}`);
         } else if (!!args.is_forwarded) {
           const duration = `Forwarded in ${sum.count.length} ${measure}s`;
 
           const {display} = formatTokens({tokens: totalForwarded});
 
-          return cbk(null, `${duration} ${since}. Total: ${display}`);
+          return cbk(null, `${duration} ${since}${to}. Total: ${display}`);
         } else {
           const duration = `Earned in ${sum.fees.length} ${measure}s`;
           const earned = (totalEarned / 1e8).toFixed(8);
 
-          return cbk(null, `${duration} ${since}. Total: ${earned}`);
+          return cbk(null, `${duration} ${since}${to}. Total: ${earned}`);
         }
       }],
 
