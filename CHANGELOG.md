@@ -1,5 +1,9 @@
 # Versions
 
+## 12.24.0
+
+- `call`: Add `subscribeToPastPayment` to subscribe to progress on a payment
+
 ## 12.23.0
 
 - Route descriptions now reference directional edges rather than only channels

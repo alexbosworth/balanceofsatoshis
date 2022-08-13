@@ -804,6 +804,15 @@
       "method": "subscribeToInvoices"
     },
     {
+      "arguments": [{
+        "description": "Payment hash id hex-encoded",
+        "named": "id",
+        "type": "hash"
+      }],
+      "events": ["confirmed", "failed", "paying"],
+      "method": "subscribeToPastPayment"
+    },
+    {
       "arguments": [
         {
           "description": "BOLT 11 encoded payment request",
