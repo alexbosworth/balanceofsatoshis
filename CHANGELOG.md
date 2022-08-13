@@ -1,5 +1,11 @@
 # Versions
 
+## 12.23.0
+
+- Route descriptions now reference directional edges rather than only channels
+- `--avoid` flags can now include a reference to a directional edge
+- `--avoid` using edge references will not exit with fail on channel not found
+
 ## 12.22.0
 
 - `reconnect`: Restore active disconnection for inactive channel peers

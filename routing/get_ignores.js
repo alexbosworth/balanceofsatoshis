@@ -13,11 +13,14 @@ const amountVariables = {btc: 1e8, k: 1e3, m: 1e6, mm: 1e6};
 const asFormula = n => ({formula: n.slice(0, n.length-67), key: n.slice(-66)});
 const asOutFilter = n => ({out_filter: n.slice(67), key: n.slice(0, 66)});
 const {assign} = Object;
+const channelFromEdge = edge => edge.slice(0, -2);
 const decodePair = n => n.split('/');
 const flatten = arr => [].concat(...arr);
 const heightFromId = id => Number(id.split('x').shift());
+const indexFromEdge = edge => edge.slice(-1);
 const {isArray} = Array;
 const isChannel = n => /^\d*x\d*x\d*$/.test(n);
+const isEdge = n => /^\d*x\d*x\d*x(0|1)*$/.test(n);
 const isFormula = n => /(.*)\/0[2-3][0-9A-F]{64}$/gim.test(n);
 const isOutFilter = n => /^0[2-3][0-9A-F]{64}\/(.*)/gim.test(n);
 const isPair = n => !!n && /^0[2-3][0-9A-F]{64}\/0[2-3][0-9A-F]{64}$/i.test(n);
@@ -127,6 +130,11 @@ module.exports = (args, cbk) => {
             return {channel: id};
           }
 
+          // Exit early when the id is an edge reference
+          if (isEdge(id)) {
+            return {edge: id};
+          }
+
           const tagByAlias = args.tags.find(n => n.alias === id);
           const tagById = args.tags.find(n => n.id === id);
 
@@ -163,6 +171,39 @@ module.exports = (args, cbk) => {
             ];
 
             return cbk(null, ignore);
+          });
+        },
+        cbk);
+      }],
+
+      // Get edges to ignore
+      getEdgeIgnores: ['sortedAvoids', ({sortedAvoids}, cbk) => {
+        const edges = sortedAvoids.map(n => n.edge).filter(n => !!n);
+
+        return asyncMap(edges, (edge, cbk) => {
+          const id = channelFromEdge(edge);
+          const index = indexFromEdge(edge);
+
+          return getChannel({id, lnd: args.lnd}, (err, res) => {
+            // Exit early with a warning when channel is not found
+            if (!!err && err.slice().shift() === 404) {
+              args.logger.warn([404, 'FailedToFindEdgeChannelToAvoid', {id}]);
+
+              return cbk(null, []);
+            }
+
+            if (!!err) {
+              return cbk([404, 'FailedToFindEdgeChannelToAvoid', {err, id}]);
+            }
+
+            const [node1, node2] = res.policies.map(n => n.public_key);
+
+            const ignores = [
+              {channel: id, from_public_key: node1, to_public_key: node2},
+              {channel: id, from_public_key: node2, to_public_key: node1},
+            ];
+
+            return cbk(null, [ignores[index]]);
           });
         },
         cbk);
@@ -363,12 +404,14 @@ module.exports = (args, cbk) => {
       // Combine ignores together
       combinedIgnores: [
         'getChannelIgnores',
+        'getEdgeIgnores',
         'getFormulaIgnores',
         'getOutFilterIgnores',
         'getQueryIgnores',
         'sortedAvoids',
         ({
           getChannelIgnores,
+          getEdgeIgnores,
           getFormulaIgnores,
           getOutFilterIgnores,
           getQueryIgnores,
@@ -378,6 +421,7 @@ module.exports = (args, cbk) => {
       {
         const ignore = [
           flatten(getChannelIgnores),
+          flatten(getEdgeIgnores),
           flatten(getFormulaIgnores),
           flatten(getOutFilterIgnores),
           getQueryIgnores,
