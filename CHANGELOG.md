@@ -1,5 +1,9 @@
 # Versions
 
+## 12.22.0
+
+- `reconnect`: Restore active disconnection for inactive channel peers
+
 ## 12.21.0
 
 - `chart-fees-earned`:  Add `--end` and `--start` options to specify date range
