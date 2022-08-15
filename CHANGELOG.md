@@ -1,5 +1,11 @@
 # Versions
 
+## 12.25.0
+
+- `chart-fees-earned`, `chart-chain-fees`, `chart-payments-received`: Support
+    `--end` and `--start` on the same day for a single day date range
+- `chart-fees-paid`: Add `--end` and `--start` options for fees over a range
+
 ## 12.24.0
 
 - `call`: Add `subscribeToPastPayment` to subscribe to progress on a payment
