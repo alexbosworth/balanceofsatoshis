@@ -15,19 +15,25 @@ const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
 const by = 'confirmed_at';
+const daysBetween = (a, b) => moment(a).diff(b, 'days') + 1;
 const daysPerWeek = 7;
+const defaultDays = 60;
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
 const heading = [['Node', 'Public Key', 'Fees Paid', 'Forwarded']];
+const hoursCount = (a, b) => moment(a).diff(b, 'hours') + 1;
 const hoursPerDay = 24;
 const isAmbiguous = n => n[1] === 'AmbiguousAliasSpecified';
 const {isArray} = Array;
+const isDate = n => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(n);
 const {keys} = Object;
 const minChartDays = 4;
 const maxChartDays = 90;
 const mtokensAsBigUnit = n => (Number(n / BigInt(1e3)) / 1e8).toFixed(8);
 const mtokensAsTokens = mtokens => Number(mtokens / BigInt(1e3));
 const niceAlias = n => `${(n.alias || n.id).trim()} ${n.id.substring(0, 8)}`;
+const {now} = Date;
+const parseDate = n => Date.parse(n);
 const title = 'Routing fees paid';
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const uniq = arr => Array.from(new Set(arr));
@@ -35,7 +41,8 @@ const uniq = arr => Array.from(new Set(arr));
 /** Get routing fees paid
 
   {
-    days: <Fees Earned Over Days Count Number>
+    [days]: <Fees Earned Over Days Count Number>
+    [end_date]: <End Date YYYY-MM-DD String>
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
@@ -46,6 +53,7 @@ const uniq = arr => Array.from(new Set(arr));
     [is_peer]: <Show Only Peers In Table Bool>
     lnds: [<Authenticated LND API Object>]
     [out]: <Out Node Public Key or Alias String>
+    [start_date]: <Start Date YYYY-MM-DD String>
   }
 
   @returns via cbk or Promise
@@ -60,10 +68,6 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!args.days) {
-          return cbk([400, 'ExpectedNumberOfDaysToGetFeesOverForChart']);
-        }
-
         if (!args.fs) {
           return cbk([400, 'ExpectedFsMethodsToGetRoutingFeesPaid']);
         }
@@ -73,11 +77,85 @@ module.exports = (args, cbk) => {
         }
 
         if (!isArray(args.lnds) || !args.lnds.length) {
-          return cbk([400, 'ExpectedLndToGetFeesChart']);
+          return cbk([400, 'ExpectedLndToGetRoutingFeesPaid']);
+        }
+
+        // Exit early when there is no end date and no start date
+        if (!args.end_date && !args.start_date) {
+          return cbk();
+        }
+
+        if (!!args.days) {
+          return cbk([400, 'ExpectedEitherDaysOrDatesToGetRoutingFeesPaid']);
+        }
+
+        if (!!args.end_date && !args.start_date) {
+          return cbk([400, 'ExpectedStartDateToRangeToEndDateForFeesChart']);
+        }
+
+        if (!isDate(args.start_date)) {
+          return cbk([400, 'ExpectedValidDateTypeForFeesChartStartDate']);
+        }
+
+        if (!moment(args.start_date).isValid()) {
+          return cbk([400, 'ExpectedValidStartDateForFeesChartEndDate']);
+        }
+
+        if (parseDate(args.start_date) > now()) {
+          return cbk([400, 'ExpectedPastStartDateToGetRoutingFeesPaid']);
+        }
+
+        // Exit early when there is no end date
+        if (!args.end_date) {
+          return cbk();
+        }
+
+        if (args.start_date >= args.end_date) {
+          return cbk([400, 'ExpectedStartDateBeforeEndDateForFeesChart']);
+        }
+
+        if (!isDate(args.end_date)) {
+          return cbk([400, 'ExpectedValidDateFormatForFeesChartEndDate']);
+        }
+
+        if (!moment(args.end_date).isValid()) {
+          return cbk([400, 'ExpectedValidEndDateForFeesChartEndDate']);
+        }
+
+        if (parseDate(args.end_date) > now()) {
+          return cbk([400, 'ExpectedPastEndDateToGetRoutingFeesPaid']);
         }
 
         return cbk();
       },
+
+      // End date for getting fee earnings
+      end: ['validate', ({}, cbk) => {
+        if (!args.end_date) {
+          return cbk();
+        }
+
+        return cbk(null, moment(args.end_date).endOf('day'));
+      }],
+
+      // Calculate the start date
+      start: ['validate', ({}, cbk) => {
+        if (!!args.start_date) {
+          return cbk(null, moment(args.start_date));
+        }
+
+        return cbk(null, moment().subtract(args.days || defaultDays, 'days'));
+      }],
+
+      // Determine how many days to chart over
+      days: ['validate', ({}, cbk) => {
+        // Exit early when not using a date range
+        if (!args.start_date) {
+          return cbk(null, args.days || defaultDays);
+        }
+
+        return cbk(null, daysBetween(args.end_date, args.start_date));
+      }],
 
       // Get channels
       getChannels: ['validate', ({}, cbk) => {
@@ -179,19 +257,14 @@ module.exports = (args, cbk) => {
       }],
 
       // Segment measure
-      measure: ['validate', ({}, cbk) => {
-        if (args.days > maxChartDays) {
+      measure: ['days', ({days}, cbk) => {
+        if (days > maxChartDays) {
           return cbk(null, 'week');
-        } else if (args.days < minChartDays) {
+        } else if (days < minChartDays) {
           return cbk(null, 'hour');
         } else {
           return cbk(null, 'day');
         }
-      }],
-
-      // Start date for payments
-      start: ['validate', ({}, cbk) => {
-        return cbk(null, moment().subtract(args.days, 'days'));
       }],
 
       // Get payments
@@ -230,15 +303,17 @@ module.exports = (args, cbk) => {
 
       // Filter the payments
       forwards: [
+        'end',
         'getInKey',
         'getOutKey',
         'getPayments',
         'start',
-        ({getInKey, getOutKey, getPayments, start}, cbk) =>
+        ({end, getInKey, getOutKey, getPayments, start}, cbk) =>
       {
         const payments = getPayments
           .filter(payment => payment.is_confirmed !== false)
           .filter(payment => payment.confirmed_at > start.toISOString())
+          .filter(payment => !!args.end_date ? (payment.confirmed_at <= end.toISOString()) : payment)
           .map(payment => {
             const attempts = payment.attempts.filter(attempt => {
               // Only consider attempts that confirmed
@@ -419,16 +494,21 @@ module.exports = (args, cbk) => {
       }],
 
       // Total number of segments
-      segments: ['measure', ({measure}, cbk) => {
+      segments: ['days', 'measure', ({days, measure}, cbk) => {
         switch (measure) {
         case 'hour':
-          return cbk(null, hoursPerDay * args.days);
+          // Exit early when using full days
+          if (!args.start_date) {
+            return cbk(null, hoursPerDay * days);
+          }
+
+          return cbk(null, hoursCount(moment(args.end_date), args.start_date));
 
         case 'week':
-          return cbk(null, floor(args.days / daysPerWeek));
+          return cbk(null, floor(days / daysPerWeek));
 
         default:
-          return cbk(null, args.days);
+          return cbk(null, days);
         }
       }],
 
@@ -449,23 +529,25 @@ module.exports = (args, cbk) => {
         'segments',
         ({forwards, measure, segments}, cbk) =>
       {
-        return cbk(null, feesForSegment({by, forwards, measure, segments}));
+        return cbk(null, feesForSegment({by, forwards, measure, segments, end: args.end_date}));
       }],
 
       // Summary description of the fees paid
       description: [
+        'end',
         'forwards',
         'measure',
         'start',
         'sum',
         'total',
-        ({forwards, measure, start, sum, total}, cbk) =>
+        ({end, forwards, measure, start, sum, total}, cbk) =>
       {
         const duration = `Fees paid in ${sum.fees.length} ${measure}s`;
         const paid = tokensAsBigUnit(total);
         const since = `since ${start.calendar().toLowerCase()}`;
+        const to = !!end ? ` to ${end.calendar().toLowerCase()}` : '';
 
-        return cbk(null, `${duration} ${since}. Total: ${paid}`);
+        return cbk(null, `${duration} ${since}${to}. Total: ${paid}`);
       }],
 
       // Title for fees paid

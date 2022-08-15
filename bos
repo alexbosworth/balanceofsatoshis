@@ -408,7 +408,8 @@ prog
   .command('chart-fees-paid', 'Get a chart of paid routing fees')
   .help('Show the routing fees paid to forwarding nodes')
   .help('--rebalances can return results much more quickly')
-  .option('--days <days>', 'Chart fees over the past number of days', INT, 60)
+  .option('--days <days>', 'Chart fees over the past number of days', INT)
+  .option('--end <end_date>', 'End date for chart as YYYY-MM-DD', STRING)
   .option('--in <key_or_alias>', 'Fees paid on routes in node with peer')
   .option('--most-fees', 'View table of fees paid per node')
   .option('--most-forwarded', 'View table of forwarded per node')
@@ -417,6 +418,7 @@ prog
   .option('--out <key_or_alias>', 'Fees paid on routes out node with peer')
   .option('--peers', 'Show only peers in table view')
   .option('--rebalances', 'Only consider fees paid in self-to-self transfers')
+  .option('--start <start_date>', 'Start date for chart as YYYY-MM-DD', STRING)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       const data = 'data';
@@ -428,6 +430,7 @@ prog
       try {
         return routing.getFeesPaid({
           days: options.days,
+          end_date: options.end,
           fs: {getFile: readFile},
           in: options.in,
           is_most_fees_table: options.mostFees,
@@ -437,6 +440,7 @@ prog
           is_rebalances_only: options.rebalances,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
           out: options.out,
+          start_date: options.start,
         },
         (options.mostFees || options.mostForwarded) ? asTable : chart);
       } catch (err) {
