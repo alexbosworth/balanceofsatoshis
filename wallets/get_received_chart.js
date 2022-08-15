@@ -81,7 +81,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        if (args.start_date >= args.end_date) {
+        if (args.start_date > args.end_date) {
           return cbk([400, 'ExpectedStartDateBeforeEndDateToGetFeesChart']);
         }
 
@@ -106,21 +106,21 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return cbk(null, moment(args.end_date));
+        return cbk(null, moment(args.end_date).endOf('day'));
       }],
 
       // Segment measure
-      segment: ['validate', ({}, cbk) => {
+      segment: ['end', ({end}, cbk) => {
         // Exit early when not looking at a date range
         if (!args.start_date && !args.end_date) {
           return cbk(null, segmentMeasure({days: args.days || defaultDays}));
         }
 
-        const days = daysBetween(args.end_date, args.start_date);
+        const days = daysBetween(end, args.start_date);
 
         return cbk(null, segmentMeasure({
           days,
-          end: args.end_date,
+          end: !!end ? end.toISOString() : undefined,
           start: args.start_date,
         }));
       }],
@@ -199,9 +199,9 @@ module.exports = (args, cbk) => {
       }],
 
       // Earnings aggregated
-      sum: ['getReceived', 'segment', ({getReceived, segment}, cbk) => {
+      sum: ['end', 'getReceived', 'segment', ({end, getReceived, segment}, cbk) => {
         return cbk(null, sumsForSegment({
-          end: args.end_date,
+          end: !!end ? end.toISOString() : undefined,
           measure: segment.measure,
           records: getReceived.map(invoice => {
             return {date: invoice.confirmed_at, tokens: invoice.received};

@@ -3,7 +3,7 @@ const moment = require('moment');
 /** Sums for segment for a chart
 
   {
-    [end_date]: <End Date YYYY-MM-DD String>
+    [end_date]: <End Date ISO 8601 String>
     measure: <Measure Time Period String>
     records: [{
       date: <Created At ISO 8601 Date String>

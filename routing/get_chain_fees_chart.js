@@ -83,7 +83,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        if (args.start_date >= args.end_date) {
+        if (args.start_date > args.end_date) {
           return cbk([400, 'ExpectedStartDateBeforeEndDateForChainFeesChart']);
         }
 
@@ -108,7 +108,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return cbk(null, moment(args.end_date));
+        return cbk(null, moment(args.end_date).endOf('day'));
       }],
 
       // Calculate the start date
@@ -168,7 +168,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Total number of segments
-      segments: ['days', 'measure', ({days, measure}, cbk) => {
+      segments: ['days', 'end', 'measure', ({days, end, measure}, cbk) => {
         switch (measure) {
         case 'hour':
           // Exit early when using full days
@@ -176,7 +176,7 @@ module.exports = (args, cbk) => {
             return cbk(null, hoursPerDay * days);
           }
 
-          return cbk(null, hoursCount(moment(args.end_date), args.start_date));
+          return cbk(null, hoursCount(end, args.start_date));
 
         case 'week':
           return cbk(null, floor(days / daysPerWeek));
@@ -231,9 +231,9 @@ module.exports = (args, cbk) => {
         ({end, measure, segments, transactions}, cbk) =>
       {
         return cbk(null, feesForSegment({
-          end,
           measure,
           segments,
+          end: !!end ? end.toISOString() : undefined,
           forwards: transactions,
         }));
       }],

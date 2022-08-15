@@ -6,7 +6,7 @@ const defaultSegmentBy = 'created_at';
 
   {
     [by]: <Segment By Attribute String>
-    [end]: <End Date String>
+    [end]: <End ISO 8601 Date String>
     forwards: [{
       created_at: <Created At ISO 8601 Date String>
       fee: <Fee Tokens Number>
