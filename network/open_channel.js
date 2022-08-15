@@ -46,6 +46,8 @@ const slowConf = 144;
     [set_fee_rate]: <Fee Rate String>
     [tokens]: <Tokens for New Channel Number>
   }
+
+  @returns via cbk or Promise
 */
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
@@ -371,6 +373,6 @@ module.exports = (args, cbk) => {
         cbk);
       }],
     },
-    returnResult({reject, resolve, of: 'openChannel'}, cbk));
+    returnResult({reject, resolve}, cbk));
   });
 };
