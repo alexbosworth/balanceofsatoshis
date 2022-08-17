@@ -1,5 +1,9 @@
 # Versions
 
+## 12.26.0
+
+- `call`: Add support for `sendToChainAddress` to send coins on chain
+
 ## 12.25.0
 
 - `chart-fees-earned`, `chart-chain-fees`, `chart-payments-received`: Support
