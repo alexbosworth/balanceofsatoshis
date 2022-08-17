@@ -1,5 +1,9 @@
 # Versions
 
+## 12.26.1
+
+- `open-group-channel`: Fix sufficient balance check for 2 party channel groups
+
 ## 12.26.0
 
 - `call`: Add support for `sendToChainAddress` to send coins on chain
