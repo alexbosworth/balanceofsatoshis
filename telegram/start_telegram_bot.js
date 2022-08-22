@@ -384,6 +384,7 @@ module.exports = (args, cbk) => {
           try {
             await handlePendingCommand({
               from: ctx.message.from.id,
+              id: connectedId,
               nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
               nodes: getNodes,
               reply: (message, options) => ctx.reply(message, options),
