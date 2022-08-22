@@ -9,6 +9,22 @@ const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const {isArray} = Array;
 const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
 
+/** Get Lnds for telegram commands
+
+  {
+    nodes: [<Saved Nodes String>]
+    logger: <Winston Logger Object>
+  }
+
+  @returns via cbk or Promise
+  {
+    lnds: [<LND Object>]
+    alias: [<Node Alias String>]
+    from: [<Node Name String>]
+    public_key: [<Node Public Key Hex String>]
+
+  }
+*/
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({

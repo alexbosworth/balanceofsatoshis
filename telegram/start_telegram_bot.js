@@ -253,8 +253,7 @@ module.exports = (args, cbk) => {
             await handleEarningsCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              // nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
-              nodes: getNodes,
+              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
               reply: n => ctx.reply(n, markdown),
               working: () => ctx.replyWithChatAction('typing'),
             });
