@@ -199,7 +199,7 @@ const makeArgs = overrides => {
               settle_date: '1',
               settle_index: '1',
               settled: true,
-              state: '',
+              state: 'SETTLED',
               value: '1',
               value_msat: '1000',
             });

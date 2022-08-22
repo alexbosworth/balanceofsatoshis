@@ -1,5 +1,9 @@
 # Versions
 
+## 12.26.3
+
+- `open-group-channel`: Fix sufficient balance check coordinating pair group
+
 ## 12.26.2
 
 - `telegram`: Improve reliability of /commands if lnd connection is interrupted

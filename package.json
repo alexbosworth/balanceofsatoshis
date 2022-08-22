@@ -36,11 +36,11 @@
     "ini": "3.0.1",
     "inquirer": "9.1.0",
     "ln-accounting": "5.0.7",
-    "ln-service": "53.19.0",
+    "ln-service": "53.20.0",
     "ln-sync": "3.13.1",
     "ln-telegram": "3.22.3",
     "moment": "2.29.4",
-    "paid-services": "3.20.2",
+    "paid-services": "3.20.3",
     "probing": "2.0.6",
     "psbt": "2.7.1",
     "qrcode-terminal": "0.12.0",
@@ -55,7 +55,7 @@
     "@alexbosworth/tap": "15.0.11",
     "invoices": "2.1.0",
     "ln-docker-daemons": "2.3.4",
-    "mock-lnd": "1.4.2",
+    "mock-lnd": "1.4.4",
     "tiny-secp256k1": "2.2.1"
   },
   "engines": {
@@ -83,5 +83,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "12.26.2"
+  "version": "12.26.3"
 }
