@@ -49,13 +49,14 @@ const {subscribeToPastPayments} = require('ln-service');
 const {subscribeToPendingChannels} = require('ln-sync');
 const {subscribeToTransactions} = require('ln-service');
 
+const getNodeDetails = require('./get_node_details');
 const interaction = require('./interaction');
-const getLnds = require('./get_lnds');
 const named = require('./../package').name;
 const {version} = require('./../package');
 
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
+const getNodes = (logger, nodes) => getNodeDetails({logger, nodes});
 const {isArray} = Array;
 const isHash = n => /^[0-9A-F]{64}$/i.test(n);
 let isBotInit = false;
@@ -156,29 +157,8 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Setup the bot commands
-      setCommands: ['validate', async ({}) => {
-        return await args.bot.api.setMyCommands([
-          {command: 'backup', description: 'Get node backup file'},
-          {command: 'blocknotify', description: 'Get notified on next block'},
-          {command: 'connect', description: 'Get connect code for the bot'},
-          {command: 'costs', description: 'Show costs over the week'},
-          {command: 'earnings', description: 'Show earnings over the week'},
-          {command: 'graph', description: 'Show info about a node'},
-          {command: 'help', description: 'Show the list of commands'},
-          {command: 'info', description: 'Show wallet info'},
-          {command: 'invoice', description: 'Create an invoice [amt] [memo]'},
-          {command: 'liquidity', description: 'Get liquidity [with-peer]'},
-          {command: 'mempool', description: 'Get info about the mempool'},
-          {command: 'pay', description: 'Pay a payment request'},
-          {command: 'pending', description: 'Get pending forwards, channels'},
-          {command: 'stop', description: 'Stop the bot'},
-          {command: 'version', description: 'View current bot version'},
-        ]);
-      }],
-
       // Setup the bot start action
-      initBot: ['getNodes', ({getNodes}, cbk) => {
+      initBot: ['validate', ({}, cbk) => {
         // Exit early when the bot was already setup
         if (!!isBotInit) {
           return cbk();
@@ -203,7 +183,7 @@ module.exports = (args, cbk) => {
             await handleBackupCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
+              nodes: (await getNodes(args.logger, args.nodes)).nodes,
               reply: ctx.reply,
               send: (n, opts) => ctx.replyWithDocument(fileAsDoc(n), opts),
             });
@@ -238,7 +218,7 @@ module.exports = (args, cbk) => {
             await handleCostsCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
+              nodes: (await getNodes(args.logger, args.nodes)).nodes,
               reply: n => ctx.reply(n, markdown),
               request: args.request,
               working: () => ctx.replyWithChatAction('typing'),
@@ -254,7 +234,7 @@ module.exports = (args, cbk) => {
             await handleEarningsCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
+              nodes: (await getNodes(args.logger, args.nodes)).nodes,
               reply: n => ctx.reply(n, markdown),
               working: () => ctx.replyWithChatAction('typing'),
             });
@@ -269,7 +249,7 @@ module.exports = (args, cbk) => {
             await handleGraphCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
+              nodes: (await getNodes(args.logger, args.nodes)).nodes,
               remove: () => ctx.deleteMessage(),
               reply: (message, options) => ctx.reply(message, options),
               text: ctx.message.text,
@@ -286,7 +266,7 @@ module.exports = (args, cbk) => {
             await handleInfoCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
+              nodes: (await getNodes(args.logger, args.nodes)).nodes,
               remove: () => ctx.deleteMessage(),
               reply: (message, options) => ctx.reply(message, options),
             });
@@ -301,7 +281,7 @@ module.exports = (args, cbk) => {
             await handleInvoiceCommand({
               ctx,
               id: connectedId,
-              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
+              nodes: (await getNodes(args.logger, args.nodes)).nodes,
             });
           } catch (err) {
             args.logger.error({err});
@@ -337,7 +317,7 @@ module.exports = (args, cbk) => {
               await handleLiquidityCommand({
                 from: ctx.message.from.id,
                 id: connectedId,
-                nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
+                nodes: (await getNodes(args.logger, args.nodes)).nodes,
                 reply: (n, opt) => ctx.reply(n, opt),
                 text: ctx.message.text,
                 working: () => ctx.replyWithChatAction('typing'),
@@ -366,7 +346,7 @@ module.exports = (args, cbk) => {
               budget,
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
+              nodes: (await getNodes(args.logger, args.nodes)).nodes,
               reply: message => ctx.reply(message, markdown),
               request: args.request,
               text: ctx.message.text,
@@ -385,8 +365,7 @@ module.exports = (args, cbk) => {
             await handlePendingCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
-              nodes: getNodes,
+              nodes: (await getNodes(args.logger, args.nodes)).nodes,
               reply: (message, options) => ctx.reply(message, options),
               working: () => ctx.replyWithChatAction('typing'),
             });
@@ -535,6 +514,27 @@ module.exports = (args, cbk) => {
 
           return cbk();
         });
+      }],
+
+      // Setup the bot commands
+      setCommands: ['validate', async ({}) => {
+        return await args.bot.api.setMyCommands([
+          {command: 'backup', description: 'Get node backup file'},
+          {command: 'blocknotify', description: 'Get notified on next block'},
+          {command: 'connect', description: 'Get connect code for the bot'},
+          {command: 'costs', description: 'Show costs over the week'},
+          {command: 'earnings', description: 'Show earnings over the week'},
+          {command: 'graph', description: 'Show info about a node'},
+          {command: 'help', description: 'Show the list of commands'},
+          {command: 'info', description: 'Show wallet info'},
+          {command: 'invoice', description: 'Create an invoice [amt] [memo]'},
+          {command: 'liquidity', description: 'Get liquidity [with-peer]'},
+          {command: 'mempool', description: 'Get info about the mempool'},
+          {command: 'pay', description: 'Pay a payment request'},
+          {command: 'pending', description: 'Get pending forwards, channels'},
+          {command: 'stop', description: 'Stop the bot'},
+          {command: 'version', description: 'View current bot version'},
+        ]);
       }],
 
       // Subscribe to backups

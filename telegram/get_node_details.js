@@ -9,49 +9,48 @@ const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const {isArray} = Array;
 const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
 
-/** Get Lnds for telegram commands
+/** Get node details for telegram commands
 
   {
-    nodes: [<Saved Nodes String>]
     logger: <Winston Logger Object>
+    nodes: [<Saved Node Name String>]
   }
 
   @returns via cbk or Promise
   {
-    lnds: [<LND Object>]
-    alias: [<Node Alias String>]
-    from: [<Node Name String>]
-    public_key: [<Node Public Key Hex String>]
-
+    nodes: [{
+      lnd: <Authenticated LND API Object>
+      alias: <Node Alias String>
+      from: <Node Name String>
+      public_key: <Node Identity Public Key Hex String>
+    }]
   }
 */
-module.exports = (args, cbk) => {
+module.exports = ({logger, nodes}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!isArray(args.nodes)) {
-          return cbk([400, 'ExpectedArrayOfSavedNodesToRunTelegramBot']);
+        if (!logger) {
+          return cbk([400, 'ExpectedWinstonLoggerGetGetTelegramNodeDetails']);
         }
 
-        if (!args.logger) {
-          return cbk([400, 'ExpectedWinstonLoggerToRunTelegramBot']);
+        if (!isArray(nodes)) {
+          return cbk([400, 'ExpectedArrayOfSavedNodesToGetNodeDetailsFor']);
         }
 
         return cbk();
       },
 
       // Get associated LNDs
-      getLnds: ['validate', ({}, cbk) => {
-        return getLnds({logger: args.logger, nodes: args.nodes}, cbk);
-      }],
+      getLnds: ['validate', ({}, cbk) => getLnds({logger, nodes}, cbk)],
 
-      // Get node info
+      // Get node info for the nodes
       getNodes: ['getLnds', ({getLnds}, cbk) => {
         return asyncMap(getLnds.lnds, (lnd, cbk) => {
           return getWalletInfo({lnd}, (err, res) => {
             if (!!err) {
-              return cbk([503, 'FailedToGetNodeInfo', {err}]);
+              return cbk([503, 'FailedToGetNodeInfoForTelegramNode', {err}]);
             }
 
             const named = fromName({
@@ -69,7 +68,10 @@ module.exports = (args, cbk) => {
         },
         cbk);
       }],
+
+      // List of nodes with details
+      nodes: ['getNodes', ({getNodes}, cbk) => cbk(null, {nodes: getNodes})],
     },
-    returnResult({reject, resolve, of: 'getNodes'}, cbk));
+    returnResult({reject, resolve, of: 'nodes'}, cbk));
   });
-}
+};
