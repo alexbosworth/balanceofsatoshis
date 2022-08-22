@@ -1,5 +1,9 @@
 # Versions
 
+## 12.26.2
+
+- `telegram`: Improve reliability of /commands if lnd connection is interrupted
+
 ## 12.26.1
 
 - `open-group-channel`: Fix sufficient balance check for 2 party channel groups
