@@ -98,6 +98,7 @@ module.exports = (args, cbk) => {
           min_forward_tokens: args.min_forward_tokens,
           lnds: getLnds.lnds,
           logger: args.logger,
+          nodes: args.nodes,
           payments_limit: args.payments_limit,
           proxy: args.proxy,
           request: args.request,

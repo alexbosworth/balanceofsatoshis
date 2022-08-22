@@ -50,6 +50,7 @@ const {subscribeToPendingChannels} = require('ln-sync');
 const {subscribeToTransactions} = require('ln-service');
 
 const interaction = require('./interaction');
+const getLnds = require('./get_lnds');
 const named = require('./../package').name;
 const {version} = require('./../package');
 
@@ -113,6 +114,10 @@ module.exports = (args, cbk) => {
 
         if (!args.logger) {
           return cbk([400, 'ExpectedLoggerToStartTelegramBot']);
+        }
+
+        if (!isArray(args.nodes)) {
+          return cbk([400, 'ExpectedArrayOfSavedNodesToStartTelegramBot']);
         }
 
         if (!isNumber(args.payments_limit)) {
@@ -197,7 +202,7 @@ module.exports = (args, cbk) => {
             await handleBackupCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: getNodes,
+              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
               reply: ctx.reply,
               send: (n, opts) => ctx.replyWithDocument(fileAsDoc(n), opts),
             });
@@ -232,7 +237,7 @@ module.exports = (args, cbk) => {
             await handleCostsCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: getNodes,
+              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
               reply: n => ctx.reply(n, markdown),
               request: args.request,
               working: () => ctx.replyWithChatAction('typing'),
@@ -248,6 +253,7 @@ module.exports = (args, cbk) => {
             await handleEarningsCommand({
               from: ctx.message.from.id,
               id: connectedId,
+              // nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
               nodes: getNodes,
               reply: n => ctx.reply(n, markdown),
               working: () => ctx.replyWithChatAction('typing'),
@@ -263,7 +269,7 @@ module.exports = (args, cbk) => {
             await handleGraphCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: getNodes,
+              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
               remove: () => ctx.deleteMessage(),
               reply: (message, options) => ctx.reply(message, options),
               text: ctx.message.text,
@@ -280,7 +286,7 @@ module.exports = (args, cbk) => {
             await handleInfoCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: getNodes,
+              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
               remove: () => ctx.deleteMessage(),
               reply: (message, options) => ctx.reply(message, options),
             });
@@ -295,7 +301,7 @@ module.exports = (args, cbk) => {
             await handleInvoiceCommand({
               ctx,
               id: connectedId,
-              nodes: getNodes,
+              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
             });
           } catch (err) {
             args.logger.error({err});
@@ -331,7 +337,7 @@ module.exports = (args, cbk) => {
               await handleLiquidityCommand({
                 from: ctx.message.from.id,
                 id: connectedId,
-                nodes: getNodes,
+                nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
                 reply: (n, opt) => ctx.reply(n, opt),
                 text: ctx.message.text,
                 working: () => ctx.replyWithChatAction('typing'),
@@ -360,7 +366,7 @@ module.exports = (args, cbk) => {
               budget,
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: getNodes,
+              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
               reply: message => ctx.reply(message, markdown),
               request: args.request,
               text: ctx.message.text,
@@ -378,7 +384,7 @@ module.exports = (args, cbk) => {
           try {
             await handlePendingCommand({
               from: ctx.message.from.id,
-              id: connectedId,
+              nodes: await getLnds({logger: args.logger, nodes: args.nodes}),
               nodes: getNodes,
               reply: (message, options) => ctx.reply(message, options),
               working: () => ctx.replyWithChatAction('typing'),
