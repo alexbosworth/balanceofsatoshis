@@ -75,6 +75,7 @@ const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
     key: <Telegram API Key String>
     [min_forward_tokens]: <Minimum Forward Tokens To Notify Number>
     lnds: [<Authenticated LND API Object>]
+    nodes: [<Saved Nodes String>]
     logger: <Winston Logger Object>
     payments_limit: <Total Spendable Budget Tokens Limit Number>
     request: <Request Function>
