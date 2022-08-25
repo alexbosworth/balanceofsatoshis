@@ -1,5 +1,9 @@
 # Versions
 
+## 12.26.4
+
+- `telegram`: Fix button push handling and responding to button push queries
+
 ## 12.26.3
 
 - `open-group-channel`: Fix sufficient balance check coordinating pair group
