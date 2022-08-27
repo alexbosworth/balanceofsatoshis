@@ -1,5 +1,9 @@
 # Versions
 
+## 12.26.5
+
+- `telegram`: Optimize /command speed by reducing duplicate wallet info calls
+
 ## 12.26.4
 
 - `telegram`: Fix button push handling and responding to button push queries

@@ -56,7 +56,7 @@ const {version} = require('./../package');
 
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
-const getDetails = (logger, nodes) => getNodeDetails({logger, nodes});
+const getLnds = (x, y, z) => getNodeDetails({logger: x, names: y, nodes: z});
 const {isArray} = Array;
 const isHash = n => /^[0-9A-F]{64}$/i.test(n);
 let isBotInit = false;
@@ -164,6 +164,12 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
+        const names = getNodes.map(node => ({
+          alias: node.alias,
+          from: node.from,
+          public_key: node.public_key,
+        }));
+
         args.bot.catch(err => args.logger.error({telegram_error: err}));
 
         // Catch message editing
@@ -183,7 +189,7 @@ module.exports = (args, cbk) => {
             await handleBackupCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: (await getDetails(args.logger, args.nodes)).nodes,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
               reply: ctx.reply,
               send: (n, opts) => ctx.replyWithDocument(fileAsDoc(n), opts),
             });
@@ -218,7 +224,7 @@ module.exports = (args, cbk) => {
             await handleCostsCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: (await getDetails(args.logger, args.nodes)).nodes,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
               reply: n => ctx.reply(n, markdown),
               request: args.request,
               working: () => ctx.replyWithChatAction('typing'),
@@ -234,7 +240,7 @@ module.exports = (args, cbk) => {
             await handleEarningsCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: (await getDetails(args.logger, args.nodes)).nodes,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
               reply: n => ctx.reply(n, markdown),
               working: () => ctx.replyWithChatAction('typing'),
             });
@@ -249,7 +255,7 @@ module.exports = (args, cbk) => {
             await handleGraphCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: (await getDetails(args.logger, args.nodes)).nodes,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
               remove: () => ctx.deleteMessage(),
               reply: (message, options) => ctx.reply(message, options),
               text: ctx.message.text,
@@ -266,7 +272,7 @@ module.exports = (args, cbk) => {
             await handleInfoCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: (await getDetails(args.logger, args.nodes)).nodes,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
               remove: () => ctx.deleteMessage(),
               reply: (message, options) => ctx.reply(message, options),
             });
@@ -281,7 +287,7 @@ module.exports = (args, cbk) => {
             await handleInvoiceCommand({
               ctx,
               id: connectedId,
-              nodes: (await getDetails(args.logger, args.nodes)).nodes,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
             });
           } catch (err) {
             args.logger.error({err});
@@ -317,7 +323,7 @@ module.exports = (args, cbk) => {
               await handleLiquidityCommand({
                 from: ctx.message.from.id,
                 id: connectedId,
-                nodes: (await getDetails(args.logger, args.nodes)).nodes,
+                nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
                 reply: (n, opt) => ctx.reply(n, opt),
                 text: ctx.message.text,
                 working: () => ctx.replyWithChatAction('typing'),
@@ -346,7 +352,7 @@ module.exports = (args, cbk) => {
               budget,
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: (await getDetails(args.logger, args.nodes)).nodes,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
               reply: message => ctx.reply(message, markdown),
               request: args.request,
               text: ctx.message.text,
@@ -365,7 +371,7 @@ module.exports = (args, cbk) => {
             await handlePendingCommand({
               from: ctx.message.from.id,
               id: connectedId,
-              nodes: (await getDetails(args.logger, args.nodes)).nodes,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
               reply: (message, options) => ctx.reply(message, options),
               working: () => ctx.replyWithChatAction('typing'),
             });
@@ -444,7 +450,7 @@ module.exports = (args, cbk) => {
               ctx,
               bot: args.bot,
               id: connectedId,
-              nodes: (await getDetails(args.logger, args.nodes)).nodes,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
             });
           } catch (err) {
             args.logger.error({err});
@@ -460,7 +466,7 @@ module.exports = (args, cbk) => {
                 ctx,
                 api: args.bot.api,
                 id: connectedId,
-                nodes: (await getDetails(args.logger, args.nodes)).nodes,
+                nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
               });
             } catch (err) {
               args.logger.error({err});
