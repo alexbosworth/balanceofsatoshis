@@ -627,6 +627,7 @@ And for `--in-filter` and `--out-filter`:
 
 - `capacity`: The total capacity with the peer
 - `heights`: The set of heights of the channels with the peer
+- `inbound_fee_rate`: The fee rate the peer is charging
 - `inbound_liquidity`: The inbound liquidity with the peer
 - `outbound_liquidity`: The outbound liquidity with the peer
 - `pending_payments`: The number of pending payments

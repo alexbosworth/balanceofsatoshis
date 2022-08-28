@@ -1,5 +1,10 @@
 # Versions
 
+## 12.27.0
+
+- `rebalance`: `--in-filter`, `--out-filter`: add `INBOUND_FEE_RATE` variable
+- `rebalance`: Ignore inbound-disabled peers when specifying `--in-filter`
+
 ## 12.26.5
 
 - `telegram`: Optimize /command speed by reducing duplicate wallet info calls

@@ -1395,6 +1395,7 @@ prog
   .help('--in decreases the inbound liquidity with a specific peer/tag')
   .help('--in-filter/--out-filter vars: CAPACITY/HEIGHTS/INBOUND_LIQUIDITY')
   .help('--in-filter/--out-filter vars: OUTBOUND_LIQUIDITY/PENDING_PAYMENTS')
+  .help('--in-filter/--out-filter vars: INBOUND_FEE_RATE')
   .help('--out increases the inbound liquidity with a specific peer/tag')
   .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey_or_chanid>', 'Avoid forwarding through', REPEATABLE)

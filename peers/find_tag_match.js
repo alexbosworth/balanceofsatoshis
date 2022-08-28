@@ -1,8 +1,10 @@
 const {decodeChanId} = require('bolt07');
 
+const flatten = arr => [].concat(...arr);
 const {shuffle} = require('./../arrays');
 const {isMatchingFilters} = require('./../display');
 
+const {max} = Math;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 
 /** Find a node for a tag query
@@ -15,6 +17,11 @@ const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
       remote_balance: <Channel Local Balance Tokens Number>
     }]
     [filters]: [<Filter Expression String>]
+    policies: {
+      [fee_rate]: <Remote Fees Charged in Millitokens Per Million Number>
+      [is_disabled]: <Remote Channel Forwarding Is Disabled Bool>
+      public_key: <Remote Public Key Hex String>
+    }
     query: <Query String>
     tags: [{
       [alias]: <Tag Alias String>
@@ -37,8 +44,12 @@ const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
     }]
   }
 */
-module.exports = ({channels, filters, tags, query}) => {
-  const peerKeys = channels.map(n => n.partner_public_key);
+module.exports = ({channels, filters, policies, tags, query}) => {
+  const disabled = policies.filter(n => n.is_disabled).map(n => n.public_key);
+
+  const peerKeys = channels
+    .map(n => n.partner_public_key)
+    .filter(n => !disabled.includes(n));
 
   // Find tags that match on id or on alias, and also have relevant nodes
   const matches = tags.filter(tag => {
@@ -78,8 +89,10 @@ module.exports = ({channels, filters, tags, query}) => {
         return {match: key};
       }
 
+      const peerPolicies = policies.filter(n => n.public_key === key);
       const withPeer = channels.filter(n => n.partner_public_key === key);
 
+      const feeRates = peerPolicies.filter(n => n.fee_rate !== undefined);
       const pendingPayments = withPeer.map(n => n.pending_payments.length);
 
       const matching = isMatchingFilters({
@@ -89,6 +102,7 @@ module.exports = ({channels, filters, tags, query}) => {
           heights: withPeer.map(n => {
             return decodeChanId({channel: n.id}).block_height;
           }),
+          inbound_fee_rate: max(...feeRates.map(n => n.fee_rate)),
           inbound_liquidity: sumOf(withPeer.map(n => n.remote_balance)),
           outbound_liquidity: sumOf(withPeer.map(n => n.local_balance)),
           pending_payments: sumOf(pendingPayments),

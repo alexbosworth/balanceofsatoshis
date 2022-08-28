@@ -212,13 +212,26 @@ module.exports = (args, cbk) => {
 
       // Find inbound tag public key
       findInTag: [
+        'getFees',
         'getInitialLiquidity',
+        'getPublicKey',
         'getTags',
-        ({getInitialLiquidity, getTags}, cbk) =>
+        ({getFees, getInitialLiquidity, getPublicKey, getTags}, cbk) =>
       {
+        const id = getPublicKey.public_key;
+
         const {failure, match, matches} = findTagMatch({
           channels: getInitialLiquidity.channels.filter(n => n.is_active),
           filters: args.in_filters,
+          policies: getFees.channels.map(channel => {
+            const policy = channel.policies.find(n => n.public_key !== id);
+
+            return {
+              fee_rate: policy.fee_rate,
+              is_disabled: policy.is_disabled,
+              public_key: policy.public_key,
+            };
+          }),
           tags: getTags.tags,
           query: args.in_through,
         });
@@ -267,14 +280,31 @@ module.exports = (args, cbk) => {
       // Find outbound peer key if a name is specified
       findOutKey: [
         'findInTag',
+        'getFees',
         'getInitialLiquidity',
+        'getPublicKey',
         'getTags',
         'lnd',
-        ({findInTag, getInitialLiquidity, getTags, lnd}, cbk) =>
+        ({
+          findInTag,
+          getFees,
+          getInitialLiquidity,
+          getPublicKey,
+          getTags,
+          lnd,
+        },
+        cbk) =>
       {
+        const id = getPublicKey.public_key;
+
         const {failure, match, matches} = findTagMatch({
           channels: getInitialLiquidity.channels.filter(n => n.is_active),
           filters: args.out_filters,
+          policies: getFees.channels.map(channel => {
+            const policy = channel.policies.find(n => n.public_key !== id);
+
+            return {fee_rate: policy.fee_rate, public_key: policy.public_key};
+          }),
           tags: getTags.tags,
           query: args.out_through,
         });

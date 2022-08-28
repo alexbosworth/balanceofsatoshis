@@ -11,6 +11,7 @@ const makeArgs = overrides => {
       pending_payments: [],
       remote_balance: 2,
     }],
+    policies: [],
     query: '0000',
     tags: [{
       id: Buffer.alloc(32).toString('hex'),
