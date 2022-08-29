@@ -452,8 +452,10 @@ prog
   // Chart earnings from payments received
   .command('chart-payments-received', 'Get a chart of received payments')
   .help('Show chart for settled invoices from external parties')
+  .option('--count', 'Show count of settled instead of amount received')
   .option('--days <days>', 'Chart over the past number of days', INT)
   .option('--end <end_date>', 'Final date for chart as YYYY-MM-DD', STRING)
+  .option('--for <query>', 'Only consider payments including a specific query')
   .option('--node <node_name>', 'Get payments from saved node(s)', REPEATABLE)
   .option('--start <start_date>', 'Start date for chart as YYYY-MM-DD', STRING)
   .action((args, options, logger) => {
@@ -462,7 +464,9 @@ prog
         return wallets.getReceivedChart({
           days: options.days,
           end_date: options.end,
+          is_count: options.count,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
+          query: options.for,
           start_date: options.start,
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));

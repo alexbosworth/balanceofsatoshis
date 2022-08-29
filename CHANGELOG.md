@@ -1,5 +1,11 @@
 # Versions
 
+## 12.28.0
+
+- `chart-payments-received`: Optimize reporting speed for short times
+- `chart-payments-received`: Add `--count` to report on count of payments
+- `chart-payments-received`: Add `--for` to filter for a matching description
+
 ## 12.27.0
 
 - `rebalance`: `--in-filter`, `--out-filter`: add `INBOUND_FEE_RATE` variable

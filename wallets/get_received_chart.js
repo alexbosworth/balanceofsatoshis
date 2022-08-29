@@ -28,6 +28,7 @@ const parseDate = n => Date.parse(n);
     [days]: <Received Over Days Count Number>
     [end_date]: <End Date YYYY-MM-DD String>
     lnds: [<Authenticated LND API Object>]
+    [query]: <Match Description String>
     [start_date]: <Start Date YYYY-MM-DD String>
   }
 
@@ -140,6 +141,7 @@ module.exports = (args, cbk) => {
           return getAllInvoices({
             lnd,
             confirmed_after: start.toISOString(),
+            created_after: start.toISOString(),
           },
           cbk);
         },
@@ -149,6 +151,10 @@ module.exports = (args, cbk) => {
           }
 
           const settled = flatten(res.map(n => n.invoices)).filter(invoice => {
+            if (!!args.query && !invoice.description.includes(args.query)) {
+              return false;
+            }
+
             // Exit early when considering all invoices without an end point
             if (!args.end_date) {
               return true;
@@ -240,10 +246,16 @@ module.exports = (args, cbk) => {
 
       // Total activity
       data: ['description', 'sum', ({description, sum}, cbk) => {
+        const title = [
+          !!args.is_count ? 'Received' : 'Payments',
+          !!args.query ? `for “${args.query}”` : '',
+          !!args.is_count ? 'count' : 'received',
+        ];
+
         return cbk(null, {
           description,
           data: !args.is_count ? sum.sum : sum.count,
-          title: !args.is_count ? 'Payments received' : 'Received count',
+          title: title.filter(n => !!n).join(' '),
         });
       }],
     },
