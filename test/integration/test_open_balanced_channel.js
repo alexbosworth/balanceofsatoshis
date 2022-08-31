@@ -32,7 +32,7 @@ const maturityBlocks = 100;
 const rate = 1;
 const size = 2;
 const slow = 100;
-const times = 1000;
+const times = 2000;
 const tokens = 500095;
 
 // Opening a balanced channel with a peer should open a balanced channel
@@ -61,7 +61,7 @@ test(`Open balanced channel`, async ({end, equal, strictSame}) => {
 
     // Make sure the channel is open and the wallet is sync'ed to chain
     await asyncEach([lnd, target.lnd], async lnd => {
-      await asyncRetry(({times}), async () => {
+      await asyncRetry(({interval, times}), async () => {
         await generate({});
         await target.generate({});
 
@@ -86,7 +86,7 @@ test(`Open balanced channel`, async ({end, equal, strictSame}) => {
     });
 
     // Make sure that the nodes see each other in the graph to see TLV support
-    await asyncRetry(({times}), async () => {
+    await asyncRetry(({interval, times}), async () => {
       const graph = await getNetworkGraph({lnd});
 
       // Force graph resync in case it gets stuck
@@ -110,10 +110,12 @@ test(`Open balanced channel`, async ({end, equal, strictSame}) => {
         throw new Error('ExpectedSyncChain');
       }
 
+      await addPeer({lnd, public_key: target.id, socket: target.socket});
+
       const [channel] = (await getChannels({lnd: target.lnd})).channels;
 
       if (!channel.is_active) {
-        throw new Error('ExpectedActiveChannel');
+        throw new Error('ExpectedActiveChannelForSetup');
       }
     });
 

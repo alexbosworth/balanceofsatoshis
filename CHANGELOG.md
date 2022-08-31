@@ -1,6 +1,6 @@
 # Versions
 
-## 12.28.0
+## 12.28.1
 
 - `chart-payments-received`: Optimize reporting speed for short times
 - `chart-payments-received`: Add `--count` to report on count of payments
