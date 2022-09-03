@@ -1,5 +1,9 @@
 # Versions
 
+## 12.28.2
+
+- `remove-peer`: Set high tolerance for peer max fee when coop closing channel
+
 ## 12.28.1
 
 - `chart-payments-received`: Optimize reporting speed for short times

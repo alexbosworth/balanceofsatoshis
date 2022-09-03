@@ -21,6 +21,7 @@ const iconDisabled = channel => !channel.is_active ? '💀 ' : '';
 const iconPending = channel => channel.pending_payments.length ? '💸 ' : ''
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
+const maxFeeRate = (chan, rate) => !!chan.is_active ? rate * 100 : undefined;
 const maxMempoolSize = 2e6;
 const regularConf = 72;
 const slowConf = 144;
@@ -435,6 +436,7 @@ module.exports = (args, cbk) => {
             address: !isLocked && !!address ? address : undefined,
             is_force_close: !channel.is_active,
             lnd: args.lnd,
+            max_tokens_per_vbyte: maxFeeRate(channel, feeRate),
             tokens_per_vbyte: !!channel.is_active ? feeRate : undefined,
             transaction_id: channel.transaction_id,
             transaction_vout: channel.transaction_vout,
