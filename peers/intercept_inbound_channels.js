@@ -52,6 +52,7 @@ module.exports = ({address, lnd, logger, reason, rules}, cbk) => {
               capacity: 2,
               channel_ages: [],
               fee_rates: [3],
+              is_trusted_funding: true,
               local_balance: 4,
               public_key: Buffer.alloc(33, 2).toString('hex'),
             });
@@ -112,6 +113,7 @@ module.exports = ({address, lnd, logger, reason, rules}, cbk) => {
             lnd,
             rules,
             capacity: request.capacity,
+            is_trusted_funding: request.is_trusted_funding,
             local_balance: request.local_balance,
             partner_public_key: request.partner_public_key,
           },
@@ -135,7 +137,7 @@ module.exports = ({address, lnd, logger, reason, rules}, cbk) => {
             }
 
             // Accept the channel open request
-            return request.accept({cooperative_close_address: address});
+            return request.accept({cooperative_close_address: address, is_trusted_funding: request.is_trusted_funding});
           });
 
           return;

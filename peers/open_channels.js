@@ -16,6 +16,7 @@ const {broadcastChainTransaction} = require('ln-service');
 const {cancelPendingChannel} = require('ln-service');
 const {fundPendingChannels} = require('ln-service');
 const {getFundedTransaction} = require('ln-sync');
+const {getChannels} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
@@ -44,6 +45,7 @@ const interval = 1000;
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const knownTypes = ['private', 'public'];
+const knownFundingTypes = ['false', 'true'];
 const lineBreak = '\n';
 const noInternalFundingVersions = ['0.11.0-beta', '0.11.1-beta'];
 const notFound = -1;
@@ -66,6 +68,7 @@ const utxoPollingTimes = 20;
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
+    funding_types: [<Funding Type String>]
     gives: [<New Channel Give Tokens Number>]
     [is_external]: <Use External Funds to Open Channels Bool>
     lnd: <Authenticated LND API Object>
@@ -99,6 +102,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedCooperativeCloseAddressesArray']);
         }
 
+        if (!isArray(args.funding_types)) {
+          return cbk([400, 'ExpectedArrayOfFundingTypesToOpenChannels']);
+        }
+
         if (!isArray(args.gives)) {
           return cbk([400, 'ExpectedArrayOfGivesToOpenChannels']);
         }
@@ -127,6 +134,7 @@ module.exports = (args, cbk) => {
         const hasCapacities = !!args.capacities.length;
         const hasGives = !!args.gives.length;
         const hasFeeRates = !!args.set_fee_rates.length;
+        const hasFundingTypes = !!args.funding_types.length;
         const hasNodes = !!args.opening_nodes.length;
         const publicKeysLength = args.public_keys.length;
 
@@ -146,6 +154,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MustSetFeeRateForEveryPublicKey']);
         }
 
+        if (!!hasFundingTypes && publicKeysLength !== args.funding_types.length) {
+          return cbk([400, 'MustSetTrustedForEveryPublicKey']);
+        }
+
         if (!!hasNodes && publicKeysLength !== args.opening_nodes.length) {
           return cbk([400, 'MustSetOpeningNodeForEveryPublicKey']);
         }
@@ -160,6 +172,10 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.types)) {
           return cbk([400, 'ExpectedArrayOfTypesToOpenChannels']);
+        }
+
+        if (args.funding_types.findIndex(n => !knownFundingTypes.includes(n)) !== notFound) {
+          return cbk([400, 'UnknownFundingType']);
         }
 
         if (args.types.findIndex(n => !knownTypes.includes(n)) !== notFound) {
@@ -186,8 +202,42 @@ module.exports = (args, cbk) => {
         return cbk(null, capacities);
       }],
 
+      // Get the wallet version to make sure the node supports internal funding
+      getWalletVersion: ['validate', ({}, cbk) => {
+        return getWalletVersion({lnd: args.lnd}, cbk);
+      }],
+
+      // Deny known unsupported versions
+      checkWalletVersion: ['getWalletVersion', ({getWalletVersion}, cbk) => {
+        // Exit early when funding type is not set
+        if (!args.funding_types.length) {
+          return cbk();
+        }
+
+        switch (getWalletVersion.version) {
+        case '0.11.0-beta':
+        case '0.11.1-beta':
+        case '0.12.0-beta':
+        case '0.12.1-beta':
+        case '0.13.0-beta':
+        case '0.13.1-beta':
+        case '0.13.2-beta':
+        case '0.13.3-beta':
+        case '0.13.4-beta':
+        case '0.14.0-beta':
+        case '0.14.1-beta':
+        case '0.14.2-beta':
+        case '0.14.3-beta':
+        case '0.15.0-beta':
+          return cbk([501, 'TrustedFundingUnsupportedOnThisLndVersion']);
+
+        default:
+          return cbk();
+        }
+      }],
+
       // Get LNDs associated with nodes specified for opening
-      getLnds: ['validate', ({}, cbk) => {
+      getLnds: ['validate', 'checkWalletVersion', ({}, cbk) => {
         // Exit early when there are no opening nodes specified
         if (!args.opening_nodes.length) {
           return cbk(null, [{lnd: args.lnd}]);
@@ -209,7 +259,7 @@ module.exports = (args, cbk) => {
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
       // Get sockets in case we need to connect
-      getNodes: ['validate', ({}, cbk) => {
+      getNodes: ['validate', 'checkWalletVersion', ({}, cbk) => {
         return asyncMap(uniq(args.public_keys), (key, cbk) => {
           return getNode({lnd: args.lnd, public_key: key}, (err, res) => {
             // Ignore errors when a node is unknown in the graph
@@ -236,11 +286,6 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Get the wallet version to make sure the node supports internal funding
-      getWalletVersion: ['validate', ({}, cbk) => {
-        return getWalletVersion({lnd: args.lnd}, cbk);
-      }],
-
       // Get the networks of the opening nodes
       getOpeningNetworks: ['getLnds', ({getLnds}, cbk) => {
         if (!getLnds) {
@@ -255,6 +300,7 @@ module.exports = (args, cbk) => {
         const {opens} = channelsFromArguments({
           capacities,
           addresses: args.cooperative_close_addresses,
+          funding_types: args.funding_types,
           gives: args.gives,
           nodes: args.public_keys,
           rates: args.set_fee_rates,
@@ -410,6 +456,7 @@ module.exports = (args, cbk) => {
             cooperative_close_address: channel.cooperative_close_address,
             give_tokens: channel.give_tokens,
             is_private: channel.is_private,
+            is_trusted_funding: channel.is_trusted_funding,
             lnd: getLnds.find(n => n.node === node).lnd,
             partner_public_key: channel.partner_public_key,
           }));
@@ -421,6 +468,7 @@ module.exports = (args, cbk) => {
             cooperative_close_address: test.cooperative_close_address,
             give_tokens: test.give_tokens,
             is_private: test.is_private,
+            is_trusted_funding: test.is_trusted_funding,
             lnd: test.lnd,
             partner_public_key: test.partner_public_key,
           },
@@ -715,13 +763,51 @@ module.exports = (args, cbk) => {
         cbk);
       })],
 
+      // Get list of trusted channels
+      getTrustedChannels: [
+        'fundChannels',
+        'fundingPsbt',
+        'getFunding',
+        'openChannels',
+        'outputs',
+        ({getFunding, openChannels}, cbk) => {
+          // Exit early if no trusted channels are being opened
+          const trustedChannelsLength = (args.funding_types.filter(n => n === 'true')).length;
+          if (!trustedChannelsLength) {
+            return cbk(null, []);
+          }
+          
+          return asyncRetry({interval, times: pendingCheckTimes}, cbk => {
+            return asyncMap(openChannels, ({lnd, node, pending}, cbk) => {
+              return getChannels({lnd}, cbk);
+            },
+            (err, res) => {
+              if (!!err) {
+                return cbk([400, 'FailedToGetTrustedChannels']);
+              }
+
+              const txId = fromHex(getFunding.value.transaction).getId();
+              const trustedChannels = res[0].channels.filter(n => !!n.is_trusted_funding && n.transaction_id === txId);
+
+              if (!trustedChannels.length || trustedChannels.length !== trustedChannelsLength) {
+                return cbk([400, 'FailedToFindTrustedChannelsList']);
+              }
+            
+              return cbk(null, trustedChannels);
+            },
+            cbk)
+          },
+          cbk);
+        }],
+
       // Broadcast the funding transaction when opening on multiple nodes
       broadcastChainTransaction: [
         'fundChannels',
         'fundingPsbt',
         'getFunding',
+        'getTrustedChannels',
         'openChannels',
-        ({fundChannels, fundingPsbt, getFunding, openChannels}, cbk) =>
+        ({fundChannels, fundingPsbt, getFunding, getTrustedChannels, openChannels}, cbk) =>
       {
         const fundingError = getFunding.error || fundingPsbt.error;
         const error = fundChannels.error || fundingError;
@@ -745,7 +831,6 @@ module.exports = (args, cbk) => {
             if (!!err) {
               return cbk(err);
             }
-
             // Consolidate all pending channels from all nodes
             const pending = flatten(res.map(n => n.pending_channels));
 
@@ -753,7 +838,7 @@ module.exports = (args, cbk) => {
             const opening = pending.filter(n => n.transaction_id === txId);
 
             // Every channel to open should be reflected in a pending channel
-            if (opening.length !== toOpen.length) {
+            if ((opening.length + getTrustedChannels.length) !== toOpen.length) {
               return cbk([503, 'FailedToFindPendingChannelOpen']);
             }
 

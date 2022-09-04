@@ -6,6 +6,7 @@ const uniq = arr => Array.from(new Set(arr));
   {
     addresses: [<Address String>]
     capacities: [<Channel Capacity Tokens Number>]
+    funding_types: [<Channel Funding Types String>]
     gives: [<Give Tokens String>]
     nodes: [<Channel Partner Node Identity Public Key Hex String>]
     rates: [<Set Fee Rate String>]
@@ -35,6 +36,7 @@ module.exports = args => {
       cooperative_close_address: args.addresses[i] || undefined,
       give_tokens: !!args.gives[i] ? Number(args.gives[i]) : undefined,
       is_private: !!args.types[i] && args.types[i] === 'private',
+      is_trusted_funding: !!args.funding_types[i] && args.funding_types[i] === 'true',
       node: args.saved[i] || undefined,
       partner_public_key: key,
       rate: args.rates[i] || undefined,
