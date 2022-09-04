@@ -835,10 +835,13 @@ prog
   .command('inbound-channel-rules', 'Enforce rules for inbound channels')
   .help('Rules should be written evaluating to TRUE to accept a channel')
   .help('Example rule: --rule "CAPACITY > 100000"')
+  .help('Example rule: --rule EXACT(PUBLIC_KEY, "$key"')
+  .help('Example rule: --rule IS_TRUSTED_FUNDING')
   .help('For formulas: CAPACITIES are the sizes of the peer public channels')
   .help('For formulas: CAPACITY is the size of the requested channel open')
   .help('For formulas: CHANNEL_AGES are the block ages of public channels')
   .help('For formulas: FEE_RATES are the outbound fee rates for the peer')
+  .help('For formulas: IS_TRUSTED_FUNDING is allowing acceptance of trusted funding channel')
   .help('For formulas: LOCAL_BALANCE is the gifted amount from the peer')
   .help('For formulas: PUBLIC_KEY is the public key of the requesting peer')
   .option('--coop-close-address', 'Request using a cooperative close address')
@@ -1131,6 +1134,7 @@ prog
   .option('--node <node_name>', 'Saved node to open channels')
   .option('--opening-node <node_name>', 'Open with saved node', REPEATABLE)
   .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
+  .option('--trusted <is_trusted_funding>', 'Open a trusted channel (true/false)', REPEATABLE)
   .option('--type <type>', 'Type of channel (private/public)', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -1141,6 +1145,7 @@ prog
           capacities: collect(options.amount),
           cooperative_close_addresses: collect(options.coopCloseAddress),
           fs: {getFile: readFile},
+          funding_types: collect(options.trusted),
           gives: collect(options.give),
           internal_fund_fee_rate: options.internalFundAtFeeRate || undefined,
           is_external: options.externalFunding,

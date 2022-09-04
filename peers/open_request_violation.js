@@ -10,6 +10,7 @@ const {keys} = Object;
     capacity: <Open Channel Capacity Tokens Number>
     channel_ages: [<Blocks Since Channel Open Number>]
     fee_rates: [<Outgoing Parts Per Million Fee Rate Number>]
+    is_trusted_funding: <Allow Trusted Funding Bool>
     local_balance: <Open Channel Gifted Tokens Number>
     public_key: <Open Channel Gifted Tokens Number>
     rules: [<Open Channel Request Rule String>]
@@ -40,6 +41,10 @@ module.exports = args => {
     throw new Error('ExpectedArrayOfFeeRatesToCheckForOpenRequestViolation');
   }
 
+  if (args.is_trusted_funding === undefined) {
+    throw new Error('ExpectedTrustedFundingToCheckForOpenRequestViolation')
+  }
+
   if (args.local_balance === undefined) {
     throw new Error('ExpectedLocalBalanceToCheckForOpenRequestViolation');
   }
@@ -58,6 +63,7 @@ module.exports = args => {
     capacity: args.capacity,
     channel_ages: args.channel_ages,
     fee_rates: args.fee_rates,
+    is_trusted_funding: args.is_trusted_funding,
     k: 1e3,
     local_balance: args.local_balance,
     m: 1e6,
