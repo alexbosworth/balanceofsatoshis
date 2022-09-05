@@ -1,5 +1,10 @@
 # Versions
 
+## 12.29.0
+
+- `open`: Add support for `--avoid-broadcast` to allow control over publishing
+- `open`: Add support for `private-trusted` and `public-trusted` channel types
+
 ## 12.28.2
 
 - `remove-peer`: Set high tolerance for peer max fee when coop closing channel
