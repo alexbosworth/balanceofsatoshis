@@ -44,8 +44,7 @@ const {fromHex} = Transaction;
 const interval = 1000;
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
-const knownTypes = ['private', 'public'];
-const knownFundingTypes = ['false', 'true'];
+const knownTypes = ['private', 'private-trusted', 'public', 'public-trusted'];
 const lineBreak = '\n';
 const noInternalFundingVersions = ['0.11.0-beta', '0.11.1-beta'];
 const notFound = -1;
@@ -55,6 +54,7 @@ const per = (a, b) => (a / b).toFixed(2);
 const relockIntervalMs = 1000 * 20;
 const times = 10;
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
+const trustedFundingTypes = ['private-trusted', 'public-trusted'];
 const uniq = arr => Array.from(new Set(arr));
 const utxoPollingIntervalMs = 1000 * 30;
 const utxoPollingTimes = 20;
@@ -63,12 +63,12 @@ const utxoPollingTimes = 20;
 
   {
     ask: <Ask For Input Function>
+    [avoid_broadcast]: <Avoid Broadcast Bool>
     capacities: [<New Channel Capacity Tokens String>]
     cooperative_close_addresses: [<Cooperative Close Address>]
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
-    funding_types: [<Funding Type String>]
     gives: [<New Channel Give Tokens Number>]
     [is_external]: <Use External Funds to Open Channels Bool>
     lnd: <Authenticated LND API Object>
@@ -102,10 +102,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedCooperativeCloseAddressesArray']);
         }
 
-        if (!isArray(args.funding_types)) {
-          return cbk([400, 'ExpectedArrayOfFundingTypesToOpenChannels']);
-        }
-
         if (!isArray(args.gives)) {
           return cbk([400, 'ExpectedArrayOfGivesToOpenChannels']);
         }
@@ -134,7 +130,6 @@ module.exports = (args, cbk) => {
         const hasCapacities = !!args.capacities.length;
         const hasGives = !!args.gives.length;
         const hasFeeRates = !!args.set_fee_rates.length;
-        const hasFundingTypes = !!args.funding_types.length;
         const hasNodes = !!args.opening_nodes.length;
         const publicKeysLength = args.public_keys.length;
 
@@ -154,10 +149,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MustSetFeeRateForEveryPublicKey']);
         }
 
-        if (!!hasFundingTypes && publicKeysLength !== args.funding_types.length) {
-          return cbk([400, 'MustSetTrustedForEveryPublicKey']);
-        }
-
         if (!!hasNodes && publicKeysLength !== args.opening_nodes.length) {
           return cbk([400, 'MustSetOpeningNodeForEveryPublicKey']);
         }
@@ -174,16 +165,22 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedArrayOfTypesToOpenChannels']);
         }
 
-        if (args.funding_types.findIndex(n => !knownFundingTypes.includes(n)) !== notFound) {
-          return cbk([400, 'UnknownFundingType']);
-        }
-
         if (args.types.findIndex(n => !knownTypes.includes(n)) !== notFound) {
           return cbk([400, 'UnknownChannelType']);
         }
 
         if (!!args.types.length && args.types.length !== publicKeysLength) {
           return cbk([400, 'ChannelTypesMustBeSpecifiedForEveryPublicKey']);
+        }
+
+        if (!!args.avoid_broadcast) {
+          if (!args.types.length) {
+            return cbk([400, 'ExpectedTypesToAvoidBroadcast']);
+          }
+
+          if ((args.types.filter(n => !!trustedFundingTypes.includes(n))).length !== args.types.length) {
+            return cbk([400, 'AllTypesMustBeTrustedFundingToAvoidBroadcast'])
+          }
         }
 
         return cbk();
@@ -207,37 +204,8 @@ module.exports = (args, cbk) => {
         return getWalletVersion({lnd: args.lnd}, cbk);
       }],
 
-      // Deny known unsupported versions
-      checkWalletVersion: ['getWalletVersion', ({getWalletVersion}, cbk) => {
-        // Exit early when funding type is not set
-        if (!args.funding_types.length) {
-          return cbk();
-        }
-
-        switch (getWalletVersion.version) {
-        case '0.11.0-beta':
-        case '0.11.1-beta':
-        case '0.12.0-beta':
-        case '0.12.1-beta':
-        case '0.13.0-beta':
-        case '0.13.1-beta':
-        case '0.13.2-beta':
-        case '0.13.3-beta':
-        case '0.13.4-beta':
-        case '0.14.0-beta':
-        case '0.14.1-beta':
-        case '0.14.2-beta':
-        case '0.14.3-beta':
-        case '0.15.0-beta':
-          return cbk([501, 'TrustedFundingUnsupportedOnThisLndVersion']);
-
-        default:
-          return cbk();
-        }
-      }],
-
       // Get LNDs associated with nodes specified for opening
-      getLnds: ['validate', 'checkWalletVersion', ({}, cbk) => {
+      getLnds: ['validate', ({}, cbk) => {
         // Exit early when there are no opening nodes specified
         if (!args.opening_nodes.length) {
           return cbk(null, [{lnd: args.lnd}]);
@@ -259,7 +227,7 @@ module.exports = (args, cbk) => {
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
       // Get sockets in case we need to connect
-      getNodes: ['validate', 'checkWalletVersion', ({}, cbk) => {
+      getNodes: ['validate', ({}, cbk) => {
         return asyncMap(uniq(args.public_keys), (key, cbk) => {
           return getNode({lnd: args.lnd, public_key: key}, (err, res) => {
             // Ignore errors when a node is unknown in the graph
@@ -300,7 +268,6 @@ module.exports = (args, cbk) => {
         const {opens} = channelsFromArguments({
           capacities,
           addresses: args.cooperative_close_addresses,
-          funding_types: args.funding_types,
           gives: args.gives,
           nodes: args.public_keys,
           rates: args.set_fee_rates,
@@ -772,7 +739,7 @@ module.exports = (args, cbk) => {
         'outputs',
         ({getFunding, openChannels}, cbk) => {
           // Exit early if no trusted channels are being opened
-          const trustedChannelsLength = (args.funding_types.filter(n => n === 'true')).length;
+          const trustedChannelsLength = (args.types.filter(n => (n === 'public-trusted' || n === 'private-trusted'))).length;
           if (!trustedChannelsLength) {
             return cbk(null, []);
           }
@@ -817,6 +784,16 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
+        // Exit early if avoiding broadcast
+        if (!!args.avoid_broadcast) {
+          args.logger.info({
+            raw_transaction: getFunding.value.transaction,
+            is_avoiding_broadcast: true,
+          });
+          
+          return cbk();
+        }
+        
         const toOpen = flatten(openChannels.map(n => n.pending));
         const txId = fromHex(getFunding.value.transaction).getId();
 
@@ -980,6 +957,10 @@ module.exports = (args, cbk) => {
         'setFeeRates',
         ({getFunding, fundingPsbt}, cbk) =>
       {
+        if (!!args.avoid_broadcast) {
+          return cbk();
+        }
+        
         return cbk(null, {transaction_id: getFunding.value.id});
       }],
     },

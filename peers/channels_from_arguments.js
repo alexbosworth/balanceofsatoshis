@@ -1,12 +1,13 @@
 const defaultChannelCapacity = 5e6;
 const uniq = arr => Array.from(new Set(arr));
+const privateTypes = ['private', 'private-trusted'];
+const trustedFundingTypes = ['private-trusted', 'public-trusted'];
 
 /** Derive channel to open details from channel argument list
 
   {
     addresses: [<Address String>]
     capacities: [<Channel Capacity Tokens Number>]
-    funding_types: [<Channel Funding Types String>]
     gives: [<Give Tokens String>]
     nodes: [<Channel Partner Node Identity Public Key Hex String>]
     rates: [<Set Fee Rate String>]
@@ -35,8 +36,8 @@ module.exports = args => {
       capacity: args.capacities[i] || defaultChannelCapacity,
       cooperative_close_address: args.addresses[i] || undefined,
       give_tokens: !!args.gives[i] ? Number(args.gives[i]) : undefined,
-      is_private: !!args.types[i] && args.types[i] === 'private',
-      is_trusted_funding: !!args.funding_types[i] && args.funding_types[i] === 'true',
+      is_private: !!args.types[i] && privateTypes.includes(args.types[i]),
+      is_trusted_funding: !!args.types[i] && trustedFundingTypes.includes(args.types[i]),
       node: args.saved[i] || undefined,
       partner_public_key: key,
       rate: args.rates[i] || undefined,
