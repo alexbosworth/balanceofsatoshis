@@ -9,6 +9,7 @@ const detectOpenRuleViolation = require('./detect_open_rule_violation');
 const openRequestViolation = require('./open_request_violation');
 
 const {isArray} = Array;
+const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const isTooLongReason = n => Buffer.byteLength(n, 'utf8') > 500;
 const {toOutputScript} = address;
 
@@ -22,7 +23,7 @@ const {toOutputScript} = address;
     rules: [<Rule for Inbound Channel String>]
   }
 */
-module.exports = ({address, lnd, logger, reason, rules}, cbk) => {
+module.exports = ({address, keys, lnd, logger, reason, rules}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -43,6 +44,14 @@ module.exports = ({address, lnd, logger, reason, rules}, cbk) => {
           return cbk([400, 'ExpectedArrayOfRejectRulesToRejectChannels']);
         }
 
+        if (!isArray(keys)) {
+          return cbk([400, 'ExpectedArrayOfPublicKeysToInterceptChannels']);
+        }
+
+        if (!!keys.filter(n => !isPublicKey(n)).length) {
+          return cbk([400, 'ExpectedValidPublicKeysToInterceptChannels']);
+        }
+
         if (!!rules.length) {
           // Check if a test request would cause any rules parsing errors
           try {
@@ -52,7 +61,6 @@ module.exports = ({address, lnd, logger, reason, rules}, cbk) => {
               capacity: 2,
               channel_ages: [],
               fee_rates: [3],
-              is_trusted_funding: true,
               local_balance: 4,
               public_key: Buffer.alloc(33, 2).toString('hex'),
             });
@@ -106,6 +114,7 @@ module.exports = ({address, lnd, logger, reason, rules}, cbk) => {
         logger.info({
           enforcing_inbound_channel_rules: rules,
           requesting_cooperative_close_address: address,
+          trusted_funding_pubkeys: !!keys.length ? keys.filter(n => !!n) : undefined,
         });
 
         sub.on('channel_request', request => {
@@ -113,7 +122,6 @@ module.exports = ({address, lnd, logger, reason, rules}, cbk) => {
             lnd,
             rules,
             capacity: request.capacity,
-            is_trusted_funding: request.is_trusted_funding,
             local_balance: request.local_balance,
             partner_public_key: request.partner_public_key,
           },
@@ -134,6 +142,30 @@ module.exports = ({address, lnd, logger, reason, rules}, cbk) => {
               });
 
               return request.reject({reason});
+            }
+
+            // Exit early if no allow list is specified and trusted funding is true
+            if (!keys.length && !!request.is_trusted_funding) {
+              logger.info({
+                rejected: request.partner_public_key,
+                reason: {
+                  is_trusted_funding: true
+                }
+              });
+
+              return request.reject({reason: 'PublicKeyNotWhitelistedForTrustedFunding'});
+            }
+
+            // Exit early if requester pubkey is not allowed for trusted funding
+            if (!!keys.length && !!request.is_trusted_funding && !keys.includes(request.partner_public_key)) {
+              logger.info({
+                rejected: request.partner_public_key,
+                reason: {
+                  is_trusted_funding: true
+                }
+              });
+
+              return request.reject({reason: 'PublicKeyNotWhitelistedForTrustedFunding'});
             }
 
             // Accept the channel open request
