@@ -835,28 +835,28 @@ prog
   .command('inbound-channel-rules', 'Enforce rules for inbound channels')
   .help('Rules should be written evaluating to TRUE to accept a channel')
   .help('Example rule: --rule "CAPACITY > 100000"')
+  .help('Avoid requiring Blockchain confirmations using --trust-funding-from')
   .help('For formulas: CAPACITIES are the sizes of the peer public channels')
   .help('For formulas: CAPACITY is the size of the requested channel open')
   .help('For formulas: CHANNEL_AGES are the block ages of public channels')
   .help('For formulas: FEE_RATES are the outbound fee rates for the peer')
-  .help('For formulas: IS_TRUSTED_FUNDING is allowing acceptance of trusted funding channel')
   .help('For formulas: LOCAL_BALANCE is the gifted amount from the peer')
   .help('For formulas: PUBLIC_KEY is the public key of the requesting peer')
   .option('--coop-close-address', 'Request using a cooperative close address')
   .option('--node <node_name>', 'Saved node to reject inbound channels on')
   .option('--reason <message>', 'Message to return when rejecting a request')
   .option('--rule <formula>', 'Freeform rule for inbound channel', REPEATABLE)
-  .option('--trust-funding-from <trust_funding_from_pubkey>', 'Allow trusted funding from pubkey', REPEATABLE)
+  .option('--trust-funding-from <key>', 'Trust channel funds from', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return await peers.interceptInboundChannels({
           logger,
           address: options.coopCloseAddress || undefined,
-          keys: collect(options.trustFundingFrom),
           lnd: (await lndForNode(logger, options.node)).lnd,
           reason: options.reason,
           rules: flatten([options.rule].filter(n => !!n)),
+          trust: collect(options.trustFundingFrom),
         });
       } catch (err) {
         return logger.error({err}) && reject();
@@ -1125,9 +1125,11 @@ prog
   .command('open', 'Open channels, optionally using an external wallet')
   .help('When creating channels from an external wallet do not self-broadcast')
   .help('Skip external option by specifying --internal-fund-at-fee-rate')
+  .help('For trusted funding specify --type as private-trusted/public-trusted')
+  .help('Trusted channel funding is not supported in LND 0.15.0 and below')
   .argument('<peer_public_keys...>', 'With nodes with public keys')
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
-  .option('--avoid-broadcast <avoid_trusted_funding_broadcast>', 'Avoid broadcasting trusted funding channels')
+  .option('--avoid-broadcast', 'Avoid broadcasting channel open transaction')
   .option('--coop-close-address <addr>', 'Coop-close address', REPEATABLE)
   .option('--external-funding', 'Use external funds for the channel open')
   .option('--give <give_amount>', 'Amount to gift to peer', REPEATABLE)
@@ -1135,19 +1137,19 @@ prog
   .option('--node <node_name>', 'Saved node to open channels')
   .option('--opening-node <node_name>', 'Open with saved node', REPEATABLE)
   .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
-  .option('--type <type>', 'Type of channel (private/private-trusted/public/public-trusted)', REPEATABLE)
+  .option('--type <type>', 'Type of channel (private/public)', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return peers.openChannels({
           logger,
           ask: await commands.interrogate({}),
-          avoid_broadcast: options.avoidBroadcast || undefined,
           capacities: collect(options.amount),
           cooperative_close_addresses: collect(options.coopCloseAddress),
           fs: {getFile: readFile},
           gives: collect(options.give),
           internal_fund_fee_rate: options.internalFundAtFeeRate || undefined,
+          is_avoiding_broadcast: options.avoidBroadcast || undefined,
           is_external: options.externalFunding,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           opening_nodes: collect(options.openingNode),

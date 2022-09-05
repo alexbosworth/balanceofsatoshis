@@ -55,6 +55,11 @@ module.exports = (args, cbk) => {
 
       // Get the capacities fees for the node to use in rule parsing
       getNodeFees: ['validate', ({}, cbk) => {
+        // Exit early when there are no rules to evaluate
+        if (!args.rules.length) {
+          return cbk(null, {});
+        }
+
         return getNode({
           lnd: args.lnd,
           public_key: args.partner_public_key,

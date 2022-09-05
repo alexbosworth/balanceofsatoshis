@@ -1,7 +1,8 @@
 const defaultChannelCapacity = 5e6;
-const uniq = arr => Array.from(new Set(arr));
+const isTrusted = type => ['private-trusted', 'public-trusted'].includes(type);
 const privateTypes = ['private', 'private-trusted'];
 const trustedFundingTypes = ['private-trusted', 'public-trusted'];
+const uniq = arr => Array.from(new Set(arr));
 
 /** Derive channel to open details from channel argument list
 
@@ -37,7 +38,7 @@ module.exports = args => {
       cooperative_close_address: args.addresses[i] || undefined,
       give_tokens: !!args.gives[i] ? Number(args.gives[i]) : undefined,
       is_private: !!args.types[i] && privateTypes.includes(args.types[i]),
-      is_trusted_funding: !!args.types[i] && trustedFundingTypes.includes(args.types[i]),
+      is_trusted_funding: !!args.types[i] && isTrusted(args.types[i]),
       node: args.saved[i] || undefined,
       partner_public_key: key,
       rate: args.rates[i] || undefined,

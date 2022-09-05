@@ -15,12 +15,11 @@ const asyncRetry = require('async/retry');
 const {broadcastChainTransaction} = require('ln-service');
 const {cancelPendingChannel} = require('ln-service');
 const {fundPendingChannels} = require('ln-service');
-const {getFundedTransaction} = require('ln-sync');
 const {getChannels} = require('ln-service');
+const {getFundedTransaction} = require('ln-sync');
 const {getNetwork} = require('ln-sync');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
-const {getPendingChannels} = require('ln-service');
 const {getPsbtFromTransaction} = require('goldengate');
 const {getWalletVersion} = require('ln-service');
 const {openChannels} = require('ln-service');
@@ -34,6 +33,7 @@ const adjustFees = require('./../routing/adjust_fees');
 const {authenticatedLnd} = require('./../lnd');
 const channelsFromArguments = require('./channels_from_arguments');
 const {getAddressUtxo} = require('./../chain');
+const getChannelOutpoints = require('./get_channel_outpoints');
 const {parseAmount} = require('./../display');
 
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
@@ -54,7 +54,6 @@ const per = (a, b) => (a / b).toFixed(2);
 const relockIntervalMs = 1000 * 20;
 const times = 10;
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
-const trustedFundingTypes = ['private-trusted', 'public-trusted'];
 const uniq = arr => Array.from(new Set(arr));
 const utxoPollingIntervalMs = 1000 * 30;
 const utxoPollingTimes = 20;
@@ -63,13 +62,13 @@ const utxoPollingTimes = 20;
 
   {
     ask: <Ask For Input Function>
-    [avoid_broadcast]: <Avoid Broadcast Bool>
     capacities: [<New Channel Capacity Tokens String>]
     cooperative_close_addresses: [<Cooperative Close Address>]
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     gives: [<New Channel Give Tokens Number>]
+    [is_avoiding_broadcast]: <Avoid Funding Transaction Broadcast Bool>
     [is_external]: <Use External Funds to Open Channels Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
@@ -166,7 +165,7 @@ module.exports = (args, cbk) => {
         }
 
         if (args.types.findIndex(n => !knownTypes.includes(n)) !== notFound) {
-          return cbk([400, 'UnknownChannelType']);
+          return cbk([400, 'UnknownChannelType', {channel_types: knownTypes}]);
         }
 
         if (!!args.types.length && args.types.length !== publicKeysLength) {
@@ -187,11 +186,6 @@ module.exports = (args, cbk) => {
         });
 
         return cbk(null, capacities);
-      }],
-
-      // Get the wallet version to make sure the node supports internal funding
-      getWalletVersion: ['validate', ({}, cbk) => {
-        return getWalletVersion({lnd: args.lnd}, cbk);
       }],
 
       // Get LNDs associated with nodes specified for opening
@@ -242,6 +236,11 @@ module.exports = (args, cbk) => {
           });
         },
         cbk);
+      }],
+
+      // Get the wallet version to make sure the node supports internal funding
+      getWalletVersion: ['validate', ({}, cbk) => {
+        return getWalletVersion({lnd: args.lnd}, cbk);
       }],
 
       // Get the networks of the opening nodes
@@ -720,51 +719,13 @@ module.exports = (args, cbk) => {
         cbk);
       })],
 
-      // Get list of trusted channels
-      getTrustedChannels: [
-        'fundChannels',
-        'fundingPsbt',
-        'getFunding',
-        'openChannels',
-        'outputs',
-        ({getFunding, openChannels}, cbk) => {
-          // Exit early if no trusted channels are being opened
-          const trustedChannelsLength = (args.types.filter(n => (n === 'public-trusted' || n === 'private-trusted'))).length;
-          if (!trustedChannelsLength) {
-            return cbk(null, []);
-          }
-          
-          return asyncRetry({interval, times: pendingCheckTimes}, cbk => {
-            return asyncMap(openChannels, ({lnd, node, pending}, cbk) => {
-              return getChannels({lnd}, cbk);
-            },
-            (err, res) => {
-              if (!!err) {
-                return cbk([400, 'FailedToGetTrustedChannels']);
-              }
-
-              const txId = fromHex(getFunding.value.transaction).getId();
-              const trustedChannels = res[0].channels.filter(n => !!n.is_trusted_funding && n.transaction_id === txId);
-
-              if (!trustedChannels.length || trustedChannels.length !== trustedChannelsLength) {
-                return cbk([400, 'FailedToFindTrustedChannelsList']);
-              }
-            
-              return cbk(null, trustedChannels);
-            },
-            cbk)
-          },
-          cbk);
-        }],
-
       // Broadcast the funding transaction when opening on multiple nodes
       broadcastChainTransaction: [
         'fundChannels',
         'fundingPsbt',
         'getFunding',
-        'getTrustedChannels',
         'openChannels',
-        ({fundChannels, fundingPsbt, getFunding, getTrustedChannels, openChannels}, cbk) =>
+        ({fundChannels, fundingPsbt, getFunding, openChannels}, cbk) =>
       {
         const fundingError = getFunding.error || fundingPsbt.error;
         const error = fundChannels.error || fundingError;
@@ -773,7 +734,7 @@ module.exports = (args, cbk) => {
         if (!!error || !!fundingError) {
           return cbk();
         }
-        
+
         const toOpen = flatten(openChannels.map(n => n.pending));
         const txId = fromHex(getFunding.value.transaction).getId();
 
@@ -782,34 +743,36 @@ module.exports = (args, cbk) => {
         // Make sure that pending channels are showing up: got commitment tx
         return asyncRetry({interval, times: pendingCheckTimes}, cbk => {
           return asyncMap(openChannels, ({lnd, node, pending}, cbk) => {
-            return getPendingChannels({lnd}, cbk);
+            return getChannelOutpoints({lnd}, cbk);
           },
           (err, res) => {
             if (!!err) {
               return cbk(err);
             }
-            // Consolidate all pending channels from all nodes
-            const pending = flatten(res.map(n => n.pending_channels));
 
-            // Only consider pending channels related to this funding tx
+            // Consolidate all channels from all nodes
+            const pending = flatten(res.map(n => n.channels));
+
+            // Only consider channels related to this funding tx
             const opening = pending.filter(n => n.transaction_id === txId);
 
-            // Every channel to open should be reflected in a pending channel
-            if ((opening.length + getTrustedChannels.length) !== toOpen.length) {
+            // Every channel to open should be reflected in a channel
+            if (opening.length !== toOpen.length) {
               return cbk([503, 'FailedToFindPendingChannelOpen']);
             }
 
-            // Exit early if avoiding broadcast
-            if (!!args.avoid_broadcast) {
-              args.logger.info({
+            args.logger.info({
               raw_transaction_to_broadcast: getFunding.value.transaction,
-              is_avoiding_broadcast: true,
             });
-                      
+
+            // Exit early when avoiding broadcast
+            if (!!args.is_avoiding_broadcast) {
+              args.logger.info({is_avoiding_broadcast: true});
+
               return cbk();
             }
 
-            args.logger.info({broadcasting: getFunding.value.transaction});
+            args.logger.info({broadcasting: getFunding.value.id});
 
             return broadcastChainTransaction({
               lnd: args.lnd,
@@ -947,11 +910,10 @@ module.exports = (args, cbk) => {
         'setFeeRates',
         ({getFunding, fundingPsbt}, cbk) =>
       {
-        if (!!args.avoid_broadcast) {
-          return cbk();
-        }
-        
-        return cbk(null, {transaction_id: getFunding.value.id});
+        return cbk(null, {
+          transaction: getFunding.value.transaction,
+          transaction_id: getFunding.value.id,
+        });
       }],
     },
     returnResult({reject, resolve, of: 'completed'}, cbk));

@@ -21,9 +21,10 @@ const {toOutputScript} = address;
     logger: <Winston Logger Object>
     [reason]: <Reason Error Message String>
     rules: [<Rule for Inbound Channel String>]
+    trust: [<Trust Funding From Node With Identity Public Key Hex String>]
   }
 */
-module.exports = ({address, keys, lnd, logger, reason, rules}, cbk) => {
+module.exports = ({address, lnd, logger, reason, rules, trust}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -44,12 +45,8 @@ module.exports = ({address, keys, lnd, logger, reason, rules}, cbk) => {
           return cbk([400, 'ExpectedArrayOfRejectRulesToRejectChannels']);
         }
 
-        if (!isArray(keys)) {
-          return cbk([400, 'ExpectedArrayOfPublicKeysToInterceptChannels']);
-        }
-
-        if (!!keys.filter(n => !isPublicKey(n)).length) {
-          return cbk([400, 'ExpectedValidPublicKeysToInterceptChannels']);
+        if (!!trust.filter(n => !isPublicKey(n)).length) {
+          return cbk([400, 'ExpectedValidTrustPublicKeysToInterceptChannels']);
         }
 
         if (!!rules.length) {
@@ -67,6 +64,10 @@ module.exports = ({address, keys, lnd, logger, reason, rules}, cbk) => {
           } catch (err) {
             return cbk([400, 'InvalidInboundChannelRequestOpenRule', {err}]);
           }
+        }
+
+        if (!isArray(trust)) {
+          return cbk([400, 'ExpectedArrayOfTrustedKeysToInterceptChannels']);
         }
 
         return cbk();
@@ -114,16 +115,28 @@ module.exports = ({address, keys, lnd, logger, reason, rules}, cbk) => {
         logger.info({
           enforcing_inbound_channel_rules: rules,
           requesting_cooperative_close_address: address,
-          trusted_funding_pubkeys: !!keys.length ? keys.filter(n => !!n) : undefined,
+          do_not_require_conf_funds_from: !!trust.length ? trust : undefined,
         });
 
         sub.on('channel_request', request => {
+          const peerId = request.partner_public_key;
+
+          // Exit early when requester is not trusted for trusted funding
+          if (!!request.is_trusted_funding && !trust.includes(peerId)) {
+            logger.info({
+              rejected: peerId,
+              reason: {trusted_funding_not_configured_for_peer: true},
+            });
+
+            return request.reject({reason: 'TrustedFundingAccessDenied'});
+          }
+
           return detectOpenRuleViolation({
             lnd,
             rules,
             capacity: request.capacity,
             local_balance: request.local_balance,
-            partner_public_key: request.partner_public_key,
+            partner_public_key: peerId,
           },
           (err, res) => {
             if (!!err) {
@@ -136,7 +149,7 @@ module.exports = ({address, keys, lnd, logger, reason, rules}, cbk) => {
             // Exit early when a channel open rule violation rejects a channel
             if (!!res.rule) {
               logger.info({
-                rejected: request.partner_public_key,
+                rejected: peerId,
                 capacity: request.capacity,
                 rule: res.rule,
               });
@@ -144,32 +157,11 @@ module.exports = ({address, keys, lnd, logger, reason, rules}, cbk) => {
               return request.reject({reason});
             }
 
-            // Exit early if no allow list is specified and trusted funding is true
-            if (!keys.length && !!request.is_trusted_funding) {
-              logger.info({
-                rejected: request.partner_public_key,
-                reason: {
-                  is_trusted_funding: true
-                }
-              });
-
-              return request.reject({reason: 'PublicKeyNotWhitelistedForTrustedFunding'});
-            }
-
-            // Exit early if requester pubkey is not allowed for trusted funding
-            if (!!keys.length && !!request.is_trusted_funding && !keys.includes(request.partner_public_key)) {
-              logger.info({
-                rejected: request.partner_public_key,
-                reason: {
-                  is_trusted_funding: true
-                }
-              });
-
-              return request.reject({reason: 'PublicKeyNotWhitelistedForTrustedFunding'});
-            }
-
             // Accept the channel open request
-            return request.accept({cooperative_close_address: address, is_trusted_funding: request.is_trusted_funding});
+            return request.accept({
+              cooperative_close_address: address,
+              is_trusted_funding: request.is_trusted_funding,
+            });
           });
 
           return;
