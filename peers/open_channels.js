@@ -173,16 +173,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ChannelTypesMustBeSpecifiedForEveryPublicKey']);
         }
 
-        if (!!args.avoid_broadcast) {
-          if (!args.types.length) {
-            return cbk([400, 'ExpectedTypesToAvoidBroadcast']);
-          }
-
-          if ((args.types.filter(n => !!trustedFundingTypes.includes(n))).length !== args.types.length) {
-            return cbk([400, 'AllTypesMustBeTrustedFundingToAvoidBroadcast'])
-          }
-        }
-
         return cbk();
       },
 
@@ -783,16 +773,6 @@ module.exports = (args, cbk) => {
         if (!!error || !!fundingError) {
           return cbk();
         }
-
-        // Exit early if avoiding broadcast
-        if (!!args.avoid_broadcast) {
-          args.logger.info({
-            raw_transaction: getFunding.value.transaction,
-            is_avoiding_broadcast: true,
-          });
-          
-          return cbk();
-        }
         
         const toOpen = flatten(openChannels.map(n => n.pending));
         const txId = fromHex(getFunding.value.transaction).getId();
@@ -817,6 +797,16 @@ module.exports = (args, cbk) => {
             // Every channel to open should be reflected in a pending channel
             if ((opening.length + getTrustedChannels.length) !== toOpen.length) {
               return cbk([503, 'FailedToFindPendingChannelOpen']);
+            }
+
+            // Exit early if avoiding broadcast
+            if (!!args.avoid_broadcast) {
+              args.logger.info({
+              raw_transaction_to_broadcast: getFunding.value.transaction,
+              is_avoiding_broadcast: true,
+            });
+                      
+              return cbk();
             }
 
             args.logger.info({broadcasting: getFunding.value.transaction});
