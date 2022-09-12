@@ -1,5 +1,10 @@
 # Versions
 
+## 12.30.0
+
+- `swap`: Add support for Lightning Loop MuSig2 experimental swaps
+- `swap`: Provide method to restart a swap request using a recovery code
+
 ## 12.29.0
 
 - `open`: Add support for `--avoid-broadcast` to allow control over publishing
