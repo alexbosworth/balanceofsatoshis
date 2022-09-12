@@ -66,6 +66,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedRequestFunctionToOpenNewChannel']);
         }
 
+        if (args.tokens === 0) {
+          return cbk([400, 'ExpectedTokensValueToOpenNewChannel']);
+        }
+
         return cbk();
       },
 
