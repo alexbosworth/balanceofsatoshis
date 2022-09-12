@@ -3,6 +3,7 @@
 Commands for working with LND balances.
 
 [![npm version](https://badge.fury.io/js/balanceofsatoshis.svg)](https://badge.fury.io/js/balanceofsatoshis)
+[![docker pulls](https://img.shields.io/docker/pulls/alexbosworth/balanceofsatoshis?style=flat-round)](https://hub.docker.com/repository/docker/alexbosworth/balanceofsatoshis)
 
 Supported LND versions:
 
