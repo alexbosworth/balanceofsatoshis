@@ -61,7 +61,7 @@ module.exports = ({channels, filters, policies, tags, query}) => {
 
     const alias = tag.alias || String();
 
-    const isAliasMatch = alias.toLowerCase().includes(query);
+    const isAliasMatch = alias.toLowerCase() === query.toLowerCase();
     const isIdMatch = tag.id.startsWith(query);
 
     return isAliasMatch || isIdMatch;

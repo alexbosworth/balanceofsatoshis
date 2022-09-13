@@ -108,21 +108,8 @@ const tests = [
         },
       ],
     }),
-    description: 'Multiple tags are found',
-    expected: {
-      matches: [
-        {
-          alias: 'alias1',
-          id: Buffer.alloc(32).toString('hex'),
-          nodes: [Buffer.alloc(33, 2).toString('hex')],
-        },
-        {
-          alias: 'alias2',
-          id: Buffer.alloc(32, 1).toString('hex'),
-          nodes: [Buffer.alloc(33, 3).toString('hex')],
-        },
-      ],
-    },
+    description: 'An exact alias is required',
+    expected: {},
   },
 ];
 
