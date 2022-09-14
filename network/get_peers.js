@@ -30,7 +30,7 @@ const {sortBy} = require('./../arrays');
 const closedSorts = ['fee_earnings', 'first_connected'];
 const defaultInvoicesLimit = 200;
 const defaultSort = 'first_connected';
-const estimateDiskFootprint = n => Math.round(n * 500 / 1e6 * 10) / 10;
+const estimateDiskFootprint = n => Math.round(n * 55 / 1e6 * 10) / 10;
 const fromNow = epoch => !epoch ? undefined : moment(epoch * 1e3).fromNow();
 const hasDiskFilter = filter => /disk_usage_mb/gim.test(filter);
 const {isArray} = Array;

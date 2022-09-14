@@ -19,7 +19,7 @@ const {findKey} = require('ln-sync');
 const asBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const balance = ({display}) => display.trim() || gray('0.00000000');
 const blocksTime = (n, p) => moment.duration(n * 10, 'minutes').humanize(p);
-const estimateDiskFootprint = n => `${(n.past_states*500/1e6).toFixed(2)}mb`;
+const estimateDiskFootprint = n => `${(n.past_states*55/1e6).toFixed(2)}mb`;
 const {isArray} = Array;
 const isHash = n => !!n && /^[0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
