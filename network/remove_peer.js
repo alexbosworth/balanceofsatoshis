@@ -1,30 +1,38 @@
 const asyncAuto = require('async/auto');
-const asyncEachSeries = require('async/eachSeries');
+const asyncMapSeries = require('async/mapSeries');
 const {closeChannel} = require('ln-service');
 const {decodeChanId} = require('bolt07');
 const {getChainFeeRate} = require('ln-service');
+const {getChainTransactions} = require('ln-service');
 const {getChannels} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getNetwork} = require('ln-sync');
+const {getPendingChannels} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
+const {Transaction} = require('bitcoinjs-lib');
 
 const {getMempoolSize} = require('./../chain');
 const getPeers = require('./get_peers');
 
 const arrayWithEntries = arr => !!arr.length ? arr : undefined;
 const asOutpoint = n => `${n.transaction_id}:${n.transaction_vout}`;
+const asRate = n => n.toFixed(2);
+const defaultDays = 365 * 2;
 const estimateDisk = n => Math.round(n * 500 / 1e6 * 10) / 10;
 const fastConf = 6;
 const {floor} = Math;
-const defaultDays = 365 * 2;
+const {fromHex} = Transaction;
 const getMempoolRetries = 10;
 const iconDisabled = channel => !channel.is_active ? '💀 ' : '';
 const iconPending = channel => channel.pending_payments.length ? '💸 ' : ''
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const maxFeeRate = (chan, rate) => !!chan.is_active ? rate * 100 : undefined;
+const maxInputs = 1;
 const maxMempoolSize = 2e6;
 const regularConf = 72;
 const slowConf = 144;
+const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 
 /** Close out channels with a peer and disconnect them
@@ -115,6 +123,9 @@ module.exports = (args, cbk) => {
         },
         cbk);
       }],
+
+      // Get the chain height to optimize chain txs lookups for chain fees
+      getHeight: ['validate', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
 
       // Get network
       getNetwork: ['validate', ({}, cbk) => {
@@ -420,15 +431,16 @@ module.exports = (args, cbk) => {
           fee_rate: !args.is_forced ? feeRate : undefined,
         });
 
+        // Exit early when not closing any channels
         if (!!args.is_dry_run) {
           args.logger.info({is_dry_run: true});
 
-          return cbk();
+          return cbk(null, []);
         }
 
         const [defaultAddress] = args.addresses;
 
-        return asyncEachSeries(toClose, ({channel, index}, cbk) => {
+        return asyncMapSeries(toClose, ({channel, index}, cbk) => {
           const address = args.addresses[index] || defaultAddress;
           const isLocked = !!channel.cooperative_close_address;
 
@@ -451,12 +463,79 @@ module.exports = (args, cbk) => {
               close_transaction_vout: res.transaction_vout,
             });
 
-            return cbk();
+            return cbk(null, {
+              funding_outpoint: asOutpoint(channel),
+              closing_outpoint: asOutpoint(res),
+              closing_tx_id: res.transaction_id,
+            });
           });
         },
         cbk);
       }],
+
+      // Get pending chain transactions to relate funding outpoints
+      getPending: ['channelsToClose', ({}, cbk) => {
+        return getPendingChannels({lnd: args.lnd}, cbk);
+      }],
+
+      // Get unconfirmed chain transactions to derive final transaction fees
+      getTransactions: ['channelsToClose', 'getHeight', ({getHeight}, cbk) => {
+        return getChainTransactions({
+          after: getHeight.current_block_height,
+          lnd: args.lnd,
+        },
+        cbk);
+      }],
+
+      // Derive the chain transaction fees
+      fees: [
+        'channelsToClose',
+        'getPending',
+        'getTransactions',
+        ({channelsToClose, getPending, getTransactions}, cbk) =>
+      {
+        // Map pending channels to chain transaction fees being paid
+        const pending = getPending.pending_channels.map(channel => {
+          const outpoint = channelsToClose.find(outpoints => {
+            return outpoints.funding_outpoint === asOutpoint(channel);
+          });
+
+          // Exit early when this pending channel isn't part of the close set
+          if (!outpoint) {
+            return;
+          }
+
+          const matching = getTransactions.transactions.find(tx => {
+            return tx.id === outpoint.closing_tx_id;
+          });
+
+          // Exit early when there is no matching tx for the close tx
+          if (!matching || matching.inputs > maxInputs) {
+            return;
+          }
+
+          // Exit early when there is no raw transaction
+          if (!matching.transaction) {
+            return;
+          }
+
+          const tx = fromHex(matching.transaction);
+
+          const fee = channel.capacity - sumOf(tx.outs.map(n => n.value));
+
+          return {
+            close_transaction_id: matching.id,
+            transaction_fee: tokensAsBigUnit(fee),
+            transaction_fee_rate: asRate(fee / tx.virtualSize()),
+          };
+        });
+
+        // Log out the pending channel fees
+        pending.filter(n => !!n).forEach(n => args.logger.info(n));
+
+        return cbk();
+      }],
     },
-    returnResult({reject, resolve, of: 'remove'}, cbk));
+    returnResult({reject, resolve}, cbk));
   });
 };

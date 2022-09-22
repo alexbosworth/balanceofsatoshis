@@ -1,5 +1,12 @@
 # Versions
 
+## 12.31.0
+
+- Eliminate partial matching support from tag lookups by alias
+
+- `find`, `peers`: Adjust estimated disk footprint to assume 0.15.0 update size
+- `remove-peer`: Log the closing fee and closing fee rate for closing channels
+
 ## 12.30.0
 
 - `swap`: Add support for Lightning Loop MuSig2 experimental swaps
