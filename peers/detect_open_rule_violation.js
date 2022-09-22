@@ -11,6 +11,7 @@ const openRequestViolation = require('./open_request_violation');
 
   {
     capacity: <Channel Capacity Tokens Number>
+    [is_private]: <Channel Request Is For Private Channel Bool>
     lnd: <Authenticated LND API Object>
     local_balance: <Local Channel Balance Tokens Number>
     partner_public_key: <Open Request From Public Key Hex String>
@@ -96,6 +97,7 @@ module.exports = (args, cbk) => {
               .filter(n => !!n && n.fee_rate !== undefined)
               .map(n => n.fee_rate),
             local_balance: args.local_balance,
+            is_private: !!args.is_private,
             public_key: args.partner_public_key,
             rules: args.rules,
           });

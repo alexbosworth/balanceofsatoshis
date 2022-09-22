@@ -8,6 +8,7 @@ const makeArgs = overrides => {
     capacity: 4,
     channel_ages: [10],
     fee_rates: [5, 6],
+    is_private: true,
     local_balance: 7,
     public_key: Buffer.alloc(33, 3).toString('hex'),
     rules: ['capacity > 5'],

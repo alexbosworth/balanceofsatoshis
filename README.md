@@ -704,13 +704,17 @@ Formula variables:
 - `channel_ages`: block ages of the peer's public channels
 - `fee_rates`: outbound fee rates for the peer
 - `local_balance`: gifted amount on the incoming channel
+- `private`: request is to open an unannounced channel
 - `public_key`: key of the incoming peer
 
 Example:
 
 ```shell
 // Reject channels that are smaller than 2,000,000 capacity
-bos inbound-channel-rules "capacity < 2*m"
+bos inbound-channel-rules --rule "capacity < 2*m"
+
+// Set separate capacity limits depending on private status
+bos inbound-channel rules --rule "if(private,capacity >= 9*m,capacity >= 5*m)"
 ```
 
 [docker-install-guide]: https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-18-04

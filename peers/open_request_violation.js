@@ -10,6 +10,7 @@ const {keys} = Object;
     capacity: <Open Channel Capacity Tokens Number>
     channel_ages: [<Blocks Since Channel Open Number>]
     fee_rates: [<Outgoing Parts Per Million Fee Rate Number>]
+    is_private: <Requesting Not Announced Channel Bool>
     local_balance: <Open Channel Gifted Tokens Number>
     public_key: <Open Channel Gifted Tokens Number>
     rules: [<Open Channel Request Rule String>]
@@ -40,6 +41,10 @@ module.exports = args => {
     throw new Error('ExpectedArrayOfFeeRatesToCheckForOpenRequestViolation');
   }
 
+  if (args.is_private === undefined) {
+    throw new Error('ExpectedChannelPrivateStatusToCheckOpenRequestRules');
+  }
+
   if (args.local_balance === undefined) {
     throw new Error('ExpectedLocalBalanceToCheckForOpenRequestViolation');
   }
@@ -62,6 +67,7 @@ module.exports = args => {
     local_balance: args.local_balance,
     m: 1e6,
     mm: 1e6,
+    private: args.is_private,
     public_key: args.public_key,
   };
 

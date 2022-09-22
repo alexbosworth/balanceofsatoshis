@@ -58,6 +58,7 @@ module.exports = ({address, lnd, logger, reason, rules, trust}, cbk) => {
               capacity: 2,
               channel_ages: [],
               fee_rates: [3],
+              is_private: false,
               local_balance: 4,
               public_key: Buffer.alloc(33, 2).toString('hex'),
             });
@@ -135,6 +136,7 @@ module.exports = ({address, lnd, logger, reason, rules, trust}, cbk) => {
             lnd,
             rules,
             capacity: request.capacity,
+            is_private: request.is_private,
             local_balance: request.local_balance,
             partner_public_key: peerId,
           },

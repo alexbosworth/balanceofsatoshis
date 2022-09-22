@@ -1,5 +1,9 @@
 # Versions
 
+## 12.32.0
+
+- `inbound-channel-rules`: Add support for `PRIVATE` variable in rule formulas
+
 ## 12.31.0
 
 - Eliminate partial matching support from tag lookups by alias
