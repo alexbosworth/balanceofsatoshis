@@ -18,6 +18,7 @@ const initiateBalancedChannel = require('./initiate_balanced_channel');
 const recoverTransitFunds = require('./recover_transit_funds');
 
 const bufferAsHex = buffer => buffer.toString('hex');
+const description = 'bos open-balanced-channel';
 const familyMultiSig = 0;
 const interval = 1000 * 15;
 const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
@@ -239,7 +240,12 @@ module.exports = ({address, after, ask, lnd, logger, recover}, cbk) => {
 
         return asyncEachSeries(ready.transactions, (transaction, cbk) => {
           return asyncRetry({interval, times}, cbk => {
-            return broadcastChainTransaction({lnd, transaction}, (err, r) => {
+            return broadcastChainTransaction({
+              description,
+              lnd,
+              transaction,
+            },
+            (err, r) => {
               if (!!err) {
                 broadcastErrors.push(err);
               }

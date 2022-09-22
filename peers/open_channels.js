@@ -37,6 +37,7 @@ const getChannelOutpoints = require('./get_channel_outpoints');
 const {parseAmount} = require('./../display');
 
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
+const description = 'bos open';
 const detectNetworks = ['btc', 'btctestnet'];
 const flatten = arr => [].concat(...arr);
 const format = 'p2wpkh';
@@ -775,6 +776,7 @@ module.exports = (args, cbk) => {
             args.logger.info({broadcasting: getFunding.value.id});
 
             return broadcastChainTransaction({
+              description,
               lnd: args.lnd,
               transaction: getFunding.value.transaction,
             },
