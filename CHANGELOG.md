@@ -1,5 +1,9 @@
 # Versions
 
+## 12.33.0
+
+- `forwards`: Add support for `tag` filters to show forwards from alias'd peers
+
 ## 12.32.0
 
 - `inbound-channel-rules`: Add support for `PRIVATE` variable in rule formulas

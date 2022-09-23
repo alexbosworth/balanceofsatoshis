@@ -18,6 +18,7 @@ const isRelevantForward = require('./is_relevant_forward');
 const isRelevantSource = require('./is_relevant_source');
 const {lndCredentials} = require('./../lnd');
 
+const {isArray} = Array;
 const lastTime = times => !times.length ? null : new Date(max(...times));
 const limit = 99999;
 const {max} = Math;
@@ -45,6 +46,7 @@ const wideSizeCols = 155;
     [is_table]: <Return Results As Table Bool>
     lnd: <Authenticated LND API Object>
     [sort]: <Sort By Field String>
+    [tags]: [<Tag Identifier String>]
   }
 
   @returns via cbk or Promise
@@ -78,6 +80,10 @@ module.exports = (args, cbk) => {
 
         if (!!args.sort && !sorts.includes(args.sort)) {
           return cbk([400, 'ExpectedKnownSortToSortForwards', {sorts}]);
+        }
+
+        if (!isArray(args.tags)) {
+          return cbk([400, 'ExpectedArrayOfTagsToGetForwardingRecords']);
         }
 
         return cbk();
@@ -313,6 +319,23 @@ module.exports = (args, cbk) => {
           })
           .filter(peer => {
             return peer.earned_inbound_fees || peer.earned_outbound_fees;
+          })
+          .filter(peer => {
+            // Exit early when there is no tag filter
+            if (!args.tags.length) {
+              return true;
+            }
+
+            const {nodes} = getIcons;
+
+            const node = nodes.find(n => n.public_key === peer.public_key);
+
+            // Exit early when there is no matching tagged node
+            if (!node) {
+              return false;
+            }
+
+            return !!args.tags.find(tag => node.aliases.includes(tag));
           });
 
         return cbk(null, {peers: sorted});

@@ -694,6 +694,7 @@ prog
   .option('--node <node_name>', 'Node to get forwards for')
   .option('--out <to>', 'Forwards that sent out to a specified peer')
   .option('--sort <type>', 'Sort forward-active peers by earnings/liquidity')
+  .option('--tag <tag_name>', 'Only show peers in a tag', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -708,6 +709,7 @@ prog
           is_monochrome: !!options.noColor,
           is_table: !options.complete,
           sort: options.sort || undefined,
+          tags: collect(options.tag),
           to: (await lnSync.findKey({lnd, query: options.out})).public_key,
         },
         responses.returnObject({logger, reject, resolve, table}));
