@@ -25,7 +25,7 @@ const hoursCount = (a, b) => moment(a).diff(b, 'hours') + 1;
 const hoursPerDay = 24;
 const isAmbiguous = n => n[1] === 'AmbiguousAliasSpecified';
 const {isArray} = Array;
-const isDate = n => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(n);
+const isDate = n => /^\d{4}(-(0[1-9]|1[0-2]))?(-(0[1-9]|[12][0-9]|3[01]))?$/.test(n);
 const {keys} = Object;
 const minChartDays = 4;
 const maxChartDays = 90;

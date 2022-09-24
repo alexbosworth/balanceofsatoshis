@@ -17,7 +17,7 @@ const {floor} = Math;
 const hoursCount = (a, b) => moment(a).diff(b, 'hours') + 1;
 const hoursPerDay = 24;
 const {isArray} = Array;
-const isDate = n => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(n);
+const isDate = n => /^\d{4}(-(0[1-9]|1[0-2]))?(-(0[1-9]|[12][0-9]|3[01]))?$/.test(n);
 const minChartDays = 4;
 const maxChartDays = 90;
 const {now} = Date;

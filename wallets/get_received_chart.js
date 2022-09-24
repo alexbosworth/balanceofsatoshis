@@ -15,7 +15,7 @@ const daysBetween = (a, b) => moment(a).diff(b, 'days') + 1;
 const defaultDays = 60;
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
-const isDate = n => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(n);
+const isDate = n => /^\d{4}(-(0[1-9]|1[0-2]))?(-(0[1-9]|[12][0-9]|3[01]))?$/.test(n);
 const maxGetPayments = 100;
 const mtokensAsTokens = n => Number(n / BigInt(1e3));
 const notFound = 404;

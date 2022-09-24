@@ -1,5 +1,10 @@
 # Versions
 
+## 12.34.0
+
+- `chart-fees-earned`, `chart-chain-fees`, `chart-fees-paid`,
+    `chart-payments-received`: `--end`, `--start`: support leaving out MM or DD
+
 ## 12.33.0
 
 - `forwards`: Add support for `tag` filters to show forwards from alias'd peers
