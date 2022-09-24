@@ -1,5 +1,9 @@
 # Versions
 
+## 12.35.0
+
+- `peers`: Add `BLOCKS_SINCE_LAST_CHANNEL` variable to `--filter`
+
 ## 12.34.0
 
 - `chart-fees-earned`, `chart-chain-fees`, `chart-fees-paid`,

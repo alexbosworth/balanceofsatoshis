@@ -504,6 +504,7 @@ module.exports = (args, cbk) => {
             variables: {
               age: blocks,
               capacity: totalCapacity,
+              blocks_since_last_channel: newBlocks,
               disk_usage_mb: estimateDiskFootprint(pastStates),
               fee_earnings: mtokensAsTokens(feeMtokens),
               inbound_fee_rate: feeRate,

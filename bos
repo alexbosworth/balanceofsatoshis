@@ -1289,6 +1289,7 @@ prog
   .help('Icons: 🦐 limited max htlc')
   .help('Filters can take formula expressions to limit results')
   .help('Filter variable AGE: "age > 144 * 7" for peers older than a week')
+  .help('Filter variable BLOCKS_SINCE_LAST_CHANNEL: blocks since recent open')
   .help('Filter variable CAPACITY: "capacity > 8*m"')
   .help('Filter variable DISK_USAGE_MB: "disk_usage_mb > 9" for disk estimate')
   .help('Filter variable INBOUND_LIQUIDITY: "inbound_liquidity > 1*m"')
