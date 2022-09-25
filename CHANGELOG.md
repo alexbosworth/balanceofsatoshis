@@ -1,5 +1,9 @@
 # Versions
 
+## 12.35.2
+
+- `telegram`: Gracefully recover when cannot delete invoking /invoice command
+
 ## 12.35.1
 
 - `telegram`: Omit fail responses in telegram when not using CLI connect code
