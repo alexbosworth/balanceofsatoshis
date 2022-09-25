@@ -1,5 +1,9 @@
 # Versions
 
+## 12.35.1
+
+- `telegram`: Omit fail responses in telegram when not using CLI connect code
+
 ## 12.35.0
 
 - `peers`: Add `BLOCKS_SINCE_LAST_CHANNEL` variable to `--filter`
