@@ -70,7 +70,7 @@ module.exports = ({fs, node, request, style}, cbk) => {
 
     // Get forwards
     getForwards: ['getLnd', ({getLnd}, cbk) => {
-      return getForwards({fs, lnd: getLnd.lnd}, cbk);
+      return getForwards({fs, lnd: getLnd.lnd, tags: []}, cbk);
     }],
 
     // Get autopilot status

@@ -1,5 +1,13 @@
 # Versions
 
+## 13.0.0
+
+- `report`: Fix error when running command
+
+### Breaking Changes
+
+- Node.js 12 is no longer supported, Node.js 14 or higher is required
+
 ## 12.35.2
 
 - `telegram`: Gracefully recover when cannot delete invoking /invoice command

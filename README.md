@@ -11,7 +11,7 @@ Supported LND versions:
 
 ## Install
 
-- Requires an [installation of Node v12.20+][nodejs-install-guide]
+- Requires an [installation of Node v14+][nodejs-install-guide]
 
 ```shell
 npm install -g balanceofsatoshis
