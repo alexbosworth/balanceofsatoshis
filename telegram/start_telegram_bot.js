@@ -746,6 +746,8 @@ module.exports = (args, cbk) => {
           });
 
           sub.on('error', err => {
+            const from = node.from;
+
             sub.removeAllListeners();
 
             args.logger.error({invoices_err: err});

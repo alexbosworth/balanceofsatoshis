@@ -1,5 +1,9 @@
 # Versions
 
+## 13.0.2
+
+- `telegram`: Fix termination when the invoices subscription fails
+
 ## 13.0.1
 
 - `report`: Fix error when running command
