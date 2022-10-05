@@ -1,5 +1,9 @@
 # Versions
 
+## 13.0.3
+
+- `accounting`: Improve reliability
+
 ## 13.0.2
 
 - `telegram`: Fix termination when the invoices subscription fails

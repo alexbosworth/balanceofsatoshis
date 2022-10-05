@@ -71,7 +71,11 @@ module.exports = (args, cbk) => {
   });
 
   req.on('error', err => error = err);
-  req.on('timeout', () => req.abort());
+  req.on('timeout', () => {
+    req.abort();
+
+    return cbk([503, 'RequestTimedOut']);
+  });
 
   req.end();
 
