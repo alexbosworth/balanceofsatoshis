@@ -1050,7 +1050,7 @@ prog
   .help('Remote nodes must be prepared to participate in this type of channel')
   .help('The initiator node should run create-group-channel to create the group')
   .option('--invite-code <invite_code>', 'Invite code to join a group', STRING)
-  .option('--max-fee-rate <per_vbyte>', 'Maximum allowed rate for open (Default 5/vByte)', INT, 5)
+  .option('--max-fee-rate <per_vbyte>', 'Maximum chain rate/vbyte for open', INT, 5)
   .option('--node <node_name>', 'Use saved node details instead of local node')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
