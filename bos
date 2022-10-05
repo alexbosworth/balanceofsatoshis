@@ -1055,7 +1055,7 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        return paidServices.joinGroupChannel({
+        return await paidServices.joinGroupChannel({
           logger,
           code: options.inviteCode,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
