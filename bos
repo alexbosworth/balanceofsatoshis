@@ -1205,7 +1205,7 @@ prog
   .option('--fee-rate <per_vbyte>', 'Fee rate for open (Max 10 sats/vByte)', INT)
   .option('--invite-code <group_invite_code>', 'Invite code to join a group', STRING)
   .option('--node <node_name>', 'Use saved node details instead of local node')
-  .option('--size <group_size', 'Group size', INT)
+  .option('--size <group_size', 'Create new group with number of members', INT)
   .option('--type <group_open_type>', '(create/join) a group', STRING)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
