@@ -1143,7 +1143,7 @@ prog
   .option('--node <node_name>', 'Saved node to open channels')
   .option('--opening-node <node_name>', 'Open with saved node', REPEATABLE)
   .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
-  .option('--type <type>', 'Type of channel (private/private-trusted/public/public-trusted)', REPEATABLE)
+  .option('--type <type>', 'Type of channel (private/public)', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
