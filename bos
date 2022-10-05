@@ -1202,7 +1202,7 @@ prog
   .help('Remote nodes must be prepared to participate in this type of channel')
   .help('The remote node should also run this same command to join the group')
   .option('--capacity <channel_capacity>', 'Total capacity of the channels', INT)
-  .option('--fee-rate <per_vbyte>', 'Fee rate for open', INT)
+  .option('--fee-rate <per_vbyte>', 'Fee rate for open (Max 10 sats/vByte)', INT)
   .option('--invite-code <group_invite_code>', 'Invite code to join a group', STRING)
   .option('--node <node_name>', 'Use saved node details instead of local node')
   .option('--size <group_size', 'Group size', INT)
