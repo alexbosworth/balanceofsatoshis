@@ -530,7 +530,7 @@ prog
     .action((args, options, logger) => {
       return new Promise(async (resolve, reject) => {
         try {
-          return paidServices.createGroupChannel({
+          return await paidServices.createGroupChannel({
             logger,
             capacity: options.capacity,
             count: options.size,
