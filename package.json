@@ -40,7 +40,7 @@
     "ln-sync": "3.14.0",
     "ln-telegram": "3.22.5",
     "moment": "2.29.4",
-    "paid-services": "3.21.0",
+    "paid-services": "4.0.0",
     "probing": "2.0.6",
     "psbt": "2.7.1",
     "qrcode-terminal": "0.12.0",

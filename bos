@@ -50,6 +50,7 @@ const collect = arr => [].concat(...[arr]).filter(n => !!n);
 const {exit} = process;
 const flatten = arr => [].concat(...arr);
 const {FLOAT} = prog;
+const {floor} = Math;
 const hexMatch = /^[0-9a-f]+$/i;
 const {INT} = prog;
 const {keys} = Object;
@@ -518,31 +519,34 @@ prog
     });
   })
 
-    // Open a group channel with multiple peers
-    .command('create-group-channel', 'Create group to open balanced channels with multiple peers')
-    .visible(false)
-    .help('Remote nodes must be prepared to participate in this type of channel')
-    .help('The remote node should run join-group-channel to join the group')
-    .option('--capacity <channel_capacity>', 'Channel capacity', INT, 5e6)
-    .option('--fee-rate <per_vbyte>', 'Chain fee rate for open', INT, 5)
-    .option('--node <node_name>', 'Use saved node details instead of local node')
-    .option('--size <group_size>', 'Create new group with number of members', INT)
-    .action((args, options, logger) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          return await paidServices.createGroupChannel({
-            logger,
-            capacity: options.capacity,
-            count: options.size,
-            lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-            rate: options.feeRate,
-          },
-          responses.returnObject({exit, logger, reject, resolve}));
-        } catch (err) {
-          return logger.error({err}) && reject();
-        }
-      });
-    })
+  // Coordinate a new group channel
+  .command('create-group-channel', 'Coordinate balanced channels group')
+  .visible(false)
+  .help('Other nodes can join the group using join-group-channel')
+  .option('--capacity <channel_capacity>', 'Channel capacity', INT, 5e6)
+  .option('--fee-rate <per_vbyte>', 'Chain fee rate for open', INT)
+  .option('--node <node_name>', 'Use saved node to create channels group')
+  .option('--size <count>', 'Number of group members', INT, 3)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const {lnd} = await lndForNode(logger, options.node);
+
+        const defaultRate = await lnService.getChainFeeRate({lnd});
+
+        return await paidServices.createGroupChannel({
+          lnd,
+          logger,
+          capacity: options.capacity,
+          count: options.size,
+          rate: options.feeRate || floor(defaultRate.tokens_per_vbyte),
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
 
   // Export LND credentials
   .command('credentials', 'Export local credentials')
@@ -1044,22 +1048,28 @@ prog
     });
   })
 
-  // Open a group channel with multiple peers
-  .command('join-group-channel', 'Join a group to open balanced channels with multiple peers')
+  // Join a group channel open
+  .command('join-group-channel', 'Join a balanced channels group')
   .visible(false)
-  .help('Remote nodes must be prepared to participate in this type of channel')
-  .help('The initiator node should run create-group-channel to create the group')
-  .option('--invite-code <invite_code>', 'Invite code to join a group', STRING)
-  .option('--max-fee-rate <per_vbyte>', 'Maximum chain rate/vbyte for open', INT, 5)
-  .option('--node <node_name>', 'Use saved node details instead of local node')
+  .help('Another node should have run create-group-channel to create group')
+  .argument('<code>', 'Invite code to join group', STRING)
+  .option('--max-fee-rate <per_vbyte>', 'Maximum fee/vbyte for open', INT)
+  .option('--node <node_name>', 'Use saved node to join group')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const {lnd} = await lndForNode(logger, options.node);
+
+        const defaultRate = await lnService.getChainFeeRate({
+          confirmation_target: 2,
+          lnd,
+        });
+
         return await paidServices.joinGroupChannel({
+          lnd,
           logger,
-          code: options.inviteCode,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          max_rate: options.maxFeeRate,
+          code: args.code,
+          max_rate: options.maxFeeRate || defaultRate.tokens_per_vbyte,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
