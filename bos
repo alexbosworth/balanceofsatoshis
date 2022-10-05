@@ -1143,7 +1143,7 @@ prog
   .option('--node <node_name>', 'Saved node to open channels')
   .option('--opening-node <node_name>', 'Open with saved node', REPEATABLE)
   .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
-  .option('--type <type>', 'Type of channel (private/public)', REPEATABLE)
+  .option('--type <type>', 'Type of channel (private/private-trusted/public/public-trusted)', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1201,14 +1201,24 @@ prog
   .command('open-group-channel', 'Open balanced channels with multiple peers')
   .help('Remote nodes must be prepared to participate in this type of channel')
   .help('The remote node should also run this same command to join the group')
+  .option('--capacity <channel_capacity>', 'Total capacity of the channels', INT)
+  .option('--fee-rate <per_vbyte>', 'Fee rate for open', INT)
+  .option('--invite-code <group_invite_code>', 'Invite code to join a group', STRING)
   .option('--node <node_name>', 'Use saved node details instead of local node')
+  .option('--size <group_size', 'Group size', INT)
+  .option('--type <group_open_type>', '(create/join) a group', STRING)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return paidServices.manageGroupJoin({
           logger,
           ask: await commands.interrogate({}),
+          capacity: options.capacity,
+          count: options.size,
+          invite_code: options.inviteCode,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          rate: options.feeRate,
+          type: options.type,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
