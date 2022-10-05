@@ -518,6 +518,32 @@ prog
     });
   })
 
+    // Open a group channel with multiple peers
+    .command('create-group-channel', 'Create group to open balanced channels with multiple peers')
+    .visible(false)
+    .help('Remote nodes must be prepared to participate in this type of channel')
+    .help('The remote node should run join-group-channel to join the group')
+    .option('--capacity <channel_capacity>', 'Total capacity of the channels', INT, 5e6)
+    .option('--fee-rate <per_vbyte>', 'Fee rate for open (Default 5/vByte)', INT, 5)
+    .option('--node <node_name>', 'Use saved node details instead of local node')
+    .option('--size <group_size', 'Create new group with number of members', INT)
+    .action((args, options, logger) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          return paidServices.createGroupChannel({
+            logger,
+            capacity: options.capacity,
+            count: options.size,
+            lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+            rate: options.feeRate,
+          },
+          responses.returnObject({exit, logger, reject, resolve}));
+        } catch (err) {
+          return logger.error({err}) && reject();
+        }
+      });
+    })
+
   // Export LND credentials
   .command('credentials', 'Export local credentials')
   .help('Output encrypted remote access credentials. Use with "nodes --add"')
@@ -1018,6 +1044,30 @@ prog
     });
   })
 
+  // Open a group channel with multiple peers
+  .command('join-group-channel', 'Join a group to open balanced channels with multiple peers')
+  .visible(false)
+  .help('Remote nodes must be prepared to participate in this type of channel')
+  .help('The initiator node should run create-group-channel to create the group')
+  .option('--invite-code <invite_code>', 'Invite code to join a group', STRING)
+  .option('--max-fee-rate <per_vbyte>', 'Maximum allowed rate for open (Default 5 sats/vByte)', INT, 5)
+  .option('--node <node_name>', 'Use saved node details instead of local node')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return paidServices.joinGroupChannel({
+          logger,
+          code: options.inviteCode,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          max_rate: options.maxFeeRate,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
   // Get the price for liquidity
   .command('liquidity-cost', 'Get the price of liquidity')
   .visible(false)
@@ -1201,24 +1251,14 @@ prog
   .command('open-group-channel', 'Open balanced channels with multiple peers')
   .help('Remote nodes must be prepared to participate in this type of channel')
   .help('The remote node should also run this same command to join the group')
-  .option('--capacity <channel_capacity>', 'Total capacity of the channels', INT)
-  .option('--fee-rate <per_vbyte>', 'Fee rate for open (Max 10 sats/vByte)', INT)
-  .option('--invite-code <group_invite_code>', 'Invite code to join a group', STRING)
   .option('--node <node_name>', 'Use saved node details instead of local node')
-  .option('--size <group_size', 'Create new group with number of members', INT)
-  .option('--type <group_open_type>', '(create/join) a group', STRING)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return paidServices.manageGroupJoin({
           logger,
           ask: await commands.interrogate({}),
-          capacity: options.capacity,
-          count: options.size,
-          invite_code: options.inviteCode,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          rate: options.feeRate,
-          type: options.type,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
