@@ -1,5 +1,10 @@
 # Versions
 
+## 13.1.0
+
+- `create-group-channel`: Add method to non-interactively create channel group
+- `join-group-channel`: Add method to non-interactively join channel group
+
 ## 13.0.3
 
 - `accounting`: Improve reliability
