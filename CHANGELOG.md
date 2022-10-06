@@ -2,7 +2,7 @@
 
 ## 13.1.1
 
-- `increase-outbound-liquidity, ``open`: Apply `--set-fee-rate` on open when
+- `increase-outbound-liquidity`, `open`: Apply `--set-fee-rate` on open when
     supported
 
 ## 13.1.0
