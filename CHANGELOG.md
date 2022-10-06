@@ -1,5 +1,10 @@
 # Versions
 
+## 13.1.1
+
+- `increase-outbound-liquidity, ``open`: Apply `--set-fee-rate` on open when
+    supported
+
 ## 13.1.0
 
 - `create-group-channel`: Add method to non-interactively create channel group

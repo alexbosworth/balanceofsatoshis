@@ -1,5 +1,6 @@
 const defaultChannelCapacity = 5e6;
 const isTrusted = type => ['private-trusted', 'public-trusted'].includes(type);
+const numericFeeRate = n => !!n && /^\d+$/.test(n) ? Number(n) : undefined;
 const privateTypes = ['private', 'private-trusted'];
 const trustedFundingTypes = ['private-trusted', 'public-trusted'];
 const uniq = arr => Array.from(new Set(arr));
@@ -36,6 +37,7 @@ module.exports = args => {
     return {
       capacity: args.capacities[i] || defaultChannelCapacity,
       cooperative_close_address: args.addresses[i] || undefined,
+      fee_rate: numericFeeRate(args.rates[i]),
       give_tokens: !!args.gives[i] ? Number(args.gives[i]) : undefined,
       is_private: !!args.types[i] && privateTypes.includes(args.types[i]),
       is_trusted_funding: !!args.types[i] && isTrusted(args.types[i]),

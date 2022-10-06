@@ -30,6 +30,7 @@ const getMempoolRetries = 10;
 const maxMempoolSize = 2e6;
 const minOutbound = 4294967;
 const minForwarded = 1e5;
+const numericFeeRate = n => !!n && /^\d+$/.test(n) ? Number(n) : undefined;
 const regularConf = 72;
 const slowConf = 144;
 
@@ -308,6 +309,7 @@ module.exports = (args, cbk) => {
 
                 return openChannel({
                   chain_fee_tokens_per_vbyte: feeRate,
+                  fee_rate: numericFeeRate(args.set_fee_rate),
                   is_private: args.is_private,
                   lnd: args.lnd,
                   local_tokens: args.tokens || channelTokens,
