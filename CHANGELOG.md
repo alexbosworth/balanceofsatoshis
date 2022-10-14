@@ -1,6 +1,6 @@
 # Versions
 
-## 13.1.2
+## 13.1.3
 
 - `increase-outbound-liquidity`, `open`: Apply `--set-fee-rate` on open when
     supported
