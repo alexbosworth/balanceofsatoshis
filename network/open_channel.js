@@ -265,12 +265,11 @@ module.exports = (args, cbk) => {
               public_key: candidate.public_key,
             },
             (err, res) => {
-              if (!!err) {
-                return cbk(null, false);
-              }
+              // Ignore errors when node is unknown
+              const sockets = !!res ? res.sockets : [];
 
               // Exit early when there is no socket to connect to
-              if (!res.sockets.length && !hasPeer) {
+              if (!sockets.length && !hasPeer) {
                 return cbk(null, false);
               }
 
@@ -289,7 +288,7 @@ module.exports = (args, cbk) => {
               return connectToPeer({
                 id: node.public_key,
                 lnd: args.lnd,
-                sockets: res.sockets.map(n => n.socket),
+                sockets: sockets.map(n => n.socket),
               },
               err => {
                 if (!!err && !hasPeer) {
