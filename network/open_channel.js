@@ -1,6 +1,7 @@
 const {addPeer} = require('ln-service');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
+const asyncReflect = require('async/reflect');
 const asyncTimeout = require('async/timeout');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -15,6 +16,7 @@ const {openChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const adjustFees = require('./../routing/adjust_fees');
+const connectToPeer = require('./../peers/connect_to_peer');
 const {getMempoolSize} = require('./../chain');
 const {getPastForwards} = require('./../routing');
 const peersWithActivity = require('./peers_with_activity');
@@ -143,7 +145,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Get seed nodes
-      getSeed: ['getNetwork', ({getNetwork}, cbk) => {
+      getSeed: ['getNetwork', asyncReflect(({getNetwork}, cbk) => {
         // Exit early when a peer is specified
         if (!!args.peer) {
           return cbk(null, {nodes: []});
@@ -154,7 +156,7 @@ module.exports = (args, cbk) => {
           request: args.request,
         },
         cbk);
-      }],
+      })],
 
       // Candidate peers
       candidates: [
@@ -185,8 +187,10 @@ module.exports = (args, cbk) => {
           .filter(n => n.outbound < minOutbound) // Depleted
           .filter(n => n.forwarded > minForwarded); // Previous forwards
 
+        const seeded = !!getSeed.value ? getSeed.value.nodes : [];
+
         const scorePeers = peersWithActivity({
-          additions: getSeed.nodes.map(n => n.public_key),
+          additions: seeded.map(n => n.public_key),
           channels: allChannels,
           forwards: getForwards.forwards,
           terminated: getClosed.channels,
@@ -261,10 +265,12 @@ module.exports = (args, cbk) => {
               public_key: candidate.public_key,
             },
             (err, res) => {
-              const [socket] = !!res && res.sockets ? res.sockets : [];
+              if (!!err) {
+                return cbk(null, false);
+              }
 
               // Exit early when there is no socket to connect to
-              if (!socket && !hasPeer) {
+              if (!res.sockets.length && !hasPeer) {
                 return cbk(null, false);
               }
 
@@ -274,17 +280,16 @@ module.exports = (args, cbk) => {
                 current_inbound: asBigTok(candidate.inbound),
                 current_outbound: asBigTok(candidate.outbound),
                 public_key: candidate.public_key,
-                socket: !!socket ? socket.socket : undefined,
               };
 
               args.logger.info({
                 evaluating: `${node.alias || String()} ${node.public_key}`,
               });
 
-              return asyncTimeout(addPeer, connectTimeout)({
+              return connectToPeer({
+                id: node.public_key,
                 lnd: args.lnd,
-                public_key: node.public_key,
-                socket: node.socket,
+                sockets: res.sockets.map(n => n.socket),
               },
               err => {
                 if (!!err && !hasPeer) {
@@ -314,7 +319,6 @@ module.exports = (args, cbk) => {
                   lnd: args.lnd,
                   local_tokens: args.tokens || channelTokens,
                   partner_public_key: node.public_key,
-                  partner_socket: node.socket,
                 },
                 (err, res) => {
                   const [, code] = err || [];
