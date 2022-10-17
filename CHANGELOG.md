@@ -1,5 +1,9 @@
 # Versions
 
+## 13.1.5
+
+- `telegram`: Fix crash when unrecognized/unknown button press is received
+
 ## 13.1.4
 
 - `increase-outbound-liquidity`, `open`: Apply `--set-fee-rate` on open when
