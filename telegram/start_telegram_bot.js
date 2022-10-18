@@ -288,6 +288,7 @@ module.exports = (args, cbk) => {
               ctx,
               id: connectedId,
               nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
+              request: args.request,
             });
           } catch (err) {
             args.logger.error({err});
@@ -467,6 +468,7 @@ module.exports = (args, cbk) => {
                 api: args.bot.api,
                 id: connectedId,
                 nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
+                request: args.request,
               });
             } catch (err) {
               args.logger.error({err});
