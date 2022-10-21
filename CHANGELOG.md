@@ -1,6 +1,6 @@
 # Versions
 
-## 13.1.5
+## 13.1.6
 
 - `telegram`: Fix crash when unrecognized/unknown button press is received
 
