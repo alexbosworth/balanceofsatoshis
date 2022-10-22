@@ -1,5 +1,9 @@
 # Versions
 
+## 13.1.7
+
+- `open-group-channel`: Fix support for LND 0.15.3 when using P2TR inputs
+
 ## 13.1.6
 
 - `telegram`: Fix crash when unrecognized/unknown button press is received
