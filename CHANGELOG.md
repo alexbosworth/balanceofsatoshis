@@ -1,5 +1,9 @@
 # Versions
 
+## 13.3.0
+
+- `telegram`: Support multiple word queries in /graph and /liquidity
+
 ## 13.2.0
 
 - `telegram`: Support formulas in /invoice command, including *USD and *EUR
