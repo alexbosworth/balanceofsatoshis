@@ -25,6 +25,7 @@ const {getWalletVersion} = require('ln-service');
 const {openChannels} = require('ln-service');
 const {maintainUtxoLocks} = require('ln-sync');
 const moment = require('moment');
+const {parseAmount} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
 const {Transaction} = require('bitcoinjs-lib');
 const {unlockUtxo} = require('ln-service');
@@ -34,7 +35,6 @@ const {authenticatedLnd} = require('./../lnd');
 const channelsFromArguments = require('./channels_from_arguments');
 const {getAddressUtxo} = require('./../chain');
 const getChannelOutpoints = require('./get_channel_outpoints');
-const {parseAmount} = require('./../display');
 
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const description = 'bos open';

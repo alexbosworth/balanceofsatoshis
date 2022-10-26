@@ -1,5 +1,9 @@
 # Versions
 
+## 13.2.0
+
+- `telegram`: Support formulas in /invoice command, including *USD and *EUR
+
 ## 13.1.7
 
 - `open-group-channel`: Fix support for LND 0.15.3 when using P2TR inputs

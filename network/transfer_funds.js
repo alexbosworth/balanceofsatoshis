@@ -5,9 +5,9 @@ const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getPeerLiquidity} = require('ln-sync');
+const {parseAmount} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
 
-const {parseAmount} = require('./../display');
 const probeDestination = require('./probe_destination');
 
 const defaultDescription = 'bos transfer between saved nodes';

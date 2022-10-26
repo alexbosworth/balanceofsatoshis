@@ -9,6 +9,7 @@ const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getSyntheticOutIgnores} = require('probing');
 const {getWalletVersion} = require('ln-service');
+const {parseAmount} = require('ln-accounting');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToMultiPathProbe} = require('probing');
@@ -17,7 +18,6 @@ const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
 const {getIgnores} = require('./../routing');
 const {getTags} = require('./../tags');
-const {parseAmount} = require('./../display');
 const probeDestination = require('./probe_destination');
 
 const defaultFinalCltvDelta = 144;

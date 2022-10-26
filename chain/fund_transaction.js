@@ -10,12 +10,11 @@ const {getMaxFundAmount} = require('ln-sync');
 const {getNetwork} = require('ln-sync');
 const {getUtxos} = require('ln-service');
 const {networks} = require('bitcoinjs-lib');
+const {parseAmount} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
 const {signPsbt} = require('ln-service');
 const {Transaction} = require('bitcoinjs-lib');
 const {unlockUtxo} = require('ln-service');
-
-const {parseAmount} = require('./../display');
 
 const asBigUnit = n => (n / 1e8).toFixed(8);
 const asOutpoint = utxo => `${utxo.transaction_id}:${utxo.transaction_vout}`;

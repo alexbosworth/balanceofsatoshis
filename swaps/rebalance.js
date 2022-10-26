@@ -12,6 +12,7 @@ const {getNode} = require('ln-service');
 const {getPeerLiquidity} = require('ln-sync');
 const {getRouteThroughHops} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
+const {parseAmount} = require('ln-accounting');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
@@ -20,7 +21,6 @@ const {findTagMatch} = require('./../peers');
 const {formatFeeRate} = require('./../display');
 const {getIgnores} = require('./../routing');
 const {homePath} = require('../storage');
-const {parseAmount} = require('./../display');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');
 

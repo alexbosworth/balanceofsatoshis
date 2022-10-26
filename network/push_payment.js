@@ -6,13 +6,13 @@ const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getPeerLiquidity} = require('ln-sync');
 const {getPrices} = require('@alexbosworth/fiat');
+const {parseAmount} = require('ln-accounting');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {getIgnores} = require('./../routing');
 const getLnurlRequest = require('./../lnurl/get_lnurl_request');
 const {getTags} = require('./../tags');
-const {parseAmount} = require('./../display');
 const parseUrl = require('./../lnurl/parse_url');
 const probeDestination = require('./probe_destination');
 

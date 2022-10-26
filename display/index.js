@@ -6,7 +6,6 @@ const describeRoutingFailure = require('./describe_routing_failure');
 const formatFeeRate = require('./format_fee_rate');
 const getIcons = require('./get_icons');
 const isMatchingFilters = require('./is_matching_filters');
-const parseAmount = require('./parse_amount');
 const segmentMeasure = require('./segment_measure');
 const sumsForSegment = require('./sums_for_segment');
 
@@ -19,7 +18,6 @@ module.exports = {
   formatFeeRate,
   getIcons,
   isMatchingFilters,
-  parseAmount,
   segmentMeasure,
   sumsForSegment,
 };
