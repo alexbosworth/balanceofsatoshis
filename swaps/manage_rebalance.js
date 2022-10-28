@@ -25,6 +25,7 @@ const {isArray} = Array;
     [out_filters]: [<Outbound Filter Formula String>]
     [out_inbound]: <Outbound Target Inbound Liquidity Tokens Number>
     [out_through]: <Pay Out Through Peer String>
+    [strict_max_fee]: < Strict Maximum Fee Tokens Number>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
   }
 
@@ -53,6 +54,10 @@ module.exports = (args, cbk) => {
 
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToManageRebalance']);
+        }
+
+        if (isArray(args.strict_max_fee)) {
+          return cbk([400, 'ExpectedSingleStrictMaxFeeValue']);
         }
 
         return cbk();
@@ -99,6 +104,7 @@ module.exports = (args, cbk) => {
             out_filters: args.out_filters,
             out_inbound: args.out_inbound,
             out_through: args.out_through,
+            strict_max_fee: Number(args.strict_max_fee) || undefined,
             timeout_minutes: args.timeout_minutes,
           },
           cbk);

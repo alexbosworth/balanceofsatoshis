@@ -49,6 +49,7 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
       icons: [<Icon String>]
       public_key: <Public Key Hex String>
     }]
+    [strict_max_fee]: < Strict Maximum Fee Tokens Number>
     [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
     tokens: <Tokens To Probe Number>
     [total_mtokens]: <Total Millitokens String>
@@ -121,6 +122,7 @@ module.exports = (args, cbk) => {
         const start = now();
 
         const timeoutMinutes = minutesAsMs((args.timeout_minutes || Number()));
+        const maxFee = args.strict_max_fee || (!args.is_strict_max_fee ? undefined : args.max_fee);
 
         const sub = subscribeToProbeForRoute({
           mtokens,
@@ -130,7 +132,7 @@ module.exports = (args, cbk) => {
           ignore: args.ignore,
           incoming_peer: args.in_through,
           lnd: args.lnd,
-          max_fee: !args.is_strict_max_fee ? undefined : args.max_fee,
+          max_fee: maxFee,
           max_timeout_height: args.max_timeout_height,
           messages: args.messages,
           outgoing_channel: args.outgoing_channel,

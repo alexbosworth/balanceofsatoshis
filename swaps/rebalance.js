@@ -81,6 +81,7 @@ const uniq = arr => Array.from(new Set(arr));
     [out_filters]: [<Outbound Filter Formula String>]
     [out_inbound]: <Outbound Target Inbound Liquidity Tokens Number>
     [out_through]: <Pay Out Through Peer String>
+    [strict_max_fee]: < Strict Maximum Fee Tokens Number>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
   }
 
@@ -614,6 +615,7 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           max_fee: defaultMaxFeeTotal,
           out_through: getOutbound.public_key,
+          strict_max_fee: args.strict_max_fee,
           timeout_minutes: args.timeout_minutes,
         },
         cbk);

@@ -1489,6 +1489,7 @@ prog
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
   .option('--out-filter <out_filter>', 'Filter outbound tag nodes', REPEATABLE)
   .option('--out-target-inbound <amount>', 'Balance up to inbound amount')
+  .option('--strict-max-fee <strict_max_fee>', 'Strict maximum fee to pay')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1506,6 +1507,7 @@ prog
           out_filters: flatten([options.outFilter].filter(n => !!n)),
           out_inbound: options.outTargetInbound,
           out_through: options.out || undefined,
+          strict_max_fee: options.strictMaxFee,
           timeout_minutes: options.minutes || undefined,
         },
         responses.returnObject({exit, logger, reject, resolve}));
