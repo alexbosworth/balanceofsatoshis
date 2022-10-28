@@ -1,5 +1,9 @@
 # Versions
 
+## 13.3.1
+
+- `trade-secret`: Fix issue where connecting to seller failed
+
 ## 13.3.0
 
 - `telegram`: Support multiple word queries in /graph and /liquidity
