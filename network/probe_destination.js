@@ -67,7 +67,6 @@ const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
     }]
     [out_through]: <Out Through Peer With Public Key Hex String>
     [request]: <Payment Request String>
-    [strict_max_fee]: < Strict Maximum Fee Tokens Number>
     [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
     [tokens]: <Tokens Number>
   }
@@ -371,7 +370,6 @@ module.exports = (args, cbk) => {
           payment: to.payment,
           routes: to.routes,
           tagged: !!getIcons ? getIcons.nodes : undefined,
-          strict_max_fee: args.strict_max_fee,
           timeout_minutes: args.timeout_minutes || undefined,
           total_mtokens: !!to.payment ? to.mtokens : undefined,
         },

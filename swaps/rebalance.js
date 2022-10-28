@@ -72,6 +72,7 @@ const uniq = arr => Array.from(new Set(arr));
     [in_filters]: [<Inbound Filter Formula String>]
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
+    [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
@@ -81,7 +82,6 @@ const uniq = arr => Array.from(new Set(arr));
     [out_filters]: [<Outbound Filter Formula String>]
     [out_inbound]: <Outbound Target Inbound Liquidity Tokens Number>
     [out_through]: <Pay Out Through Peer String>
-    [strict_max_fee]: < Strict Maximum Fee Tokens Number>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
   }
 
@@ -611,11 +611,11 @@ module.exports = (args, cbk) => {
             return ![findInKey, findOutKey].includes(n.from_public_key);
           }),
           in_through: getInbound.public_key,
+          is_strict_max_fee: args.is_strict_max_fee,
           logger: args.logger,
           lnd: args.lnd,
-          max_fee: defaultMaxFeeTotal,
+          max_fee: args.max_fee || defaultMaxFee,
           out_through: getOutbound.public_key,
-          strict_max_fee: args.strict_max_fee,
           timeout_minutes: args.timeout_minutes,
         },
         cbk);
