@@ -56,10 +56,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLndToManageRebalance']);
         }
 
-        if (isArray(args.strict_max_fee)) {
-          return cbk([400, 'ExpectedSingleStrictMaxFeeValue']);
-        }
-
         return cbk();
       },
 
