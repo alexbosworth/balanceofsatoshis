@@ -1478,6 +1478,7 @@ prog
   .help('--out increases the inbound liquidity with a specific peer/tag')
   .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey_or_chanid>', 'Avoid forwarding through', REPEATABLE)
+  .option('--avoid-high-fee-routes', 'Avoid routes above max-fee')
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
   .option('--in-filter <in_filter>', 'Filter inbound tag nodes', REPEATABLE)
   .option('--in-target-outbound <amt>', 'Balance up to outbound amount')
@@ -1489,7 +1490,6 @@ prog
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
   .option('--out-filter <out_filter>', 'Filter outbound tag nodes', REPEATABLE)
   .option('--out-target-inbound <amount>', 'Balance up to inbound amount')
-  .option('--strict-max-fee <strict_max_fee>', 'Strict maximum fee to pay')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1500,6 +1500,7 @@ prog
           in_filters: flatten([options.inFilter].filter(n => !!n)),
           in_outbound: options.inTargetOutbound || undefined,
           in_through: options.in || undefined,
+          is_strict_max_fee: options.avoidHighFeeRoutes || undefined,
           lnd: (await lndForNode(logger, options.node)).lnd,
           max_fee: options.maxFee,
           max_fee_rate: options.maxFeeRate,
@@ -1507,7 +1508,6 @@ prog
           out_filters: flatten([options.outFilter].filter(n => !!n)),
           out_inbound: options.outTargetInbound,
           out_through: options.out || undefined,
-          strict_max_fee: options.strictMaxFee,
           timeout_minutes: options.minutes || undefined,
         },
         responses.returnObject({exit, logger, reject, resolve}));
