@@ -1,5 +1,9 @@
 # Versions
 
+## 13.3.2
+
+- `telegram`: Improve compatibility with future LND versions
+
 ## 13.3.1
 
 - `trade-secret`: Fix issue where connecting to seller failed
