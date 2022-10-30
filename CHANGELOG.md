@@ -1,6 +1,6 @@
 # Versions
 
-## 13.3.2
+## 13.3.3
 
 - `telegram`: Improve compatibility with future LND versions
 
