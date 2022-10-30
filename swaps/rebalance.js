@@ -54,6 +54,7 @@ const probeSizeMinimal = 1e2;
 const probeSizeRegular = 2e5
 const pubKeyHexLength = 66;
 const rateDivisor = 1e6;
+const {round} = Math;
 const sample = a => !!a.length ? a[Math.floor(Math.random()*a.length)] : null;
 const sumOf = arr => arr.reduce((sum, n) => sum + n);
 const tagFilePath = () => homePath({file: 'tags.json'}).path;
@@ -597,6 +598,8 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedDifferentPeersForInboundAndOutbound']);
         }
 
+        const maxFee = !!args.max_fee_rate ? round((args.max_fee_rate * max) / 1e6) : round((defaultMaxFeeRate * max) / 1e6);
+
         return probeDestination({
           tokens,
           destination: getPublicKey.public_key,
@@ -614,7 +617,7 @@ module.exports = (args, cbk) => {
           is_strict_max_fee: args.is_strict_max_fee,
           logger: args.logger,
           lnd: args.lnd,
-          max_fee: args.max_fee || defaultMaxFee,
+          max_fee: maxFee,
           out_through: getOutbound.public_key,
           timeout_minutes: args.timeout_minutes,
         },
