@@ -130,7 +130,7 @@ module.exports = (args, cbk) => {
           ignore: args.ignore,
           incoming_peer: args.in_through,
           lnd: args.lnd,
-          max_fee: !args.is_strict_max_fee ? undefined : args.max_fee,
+          max_fee_mtokens: !args.is_strict_max_fee ? undefined : tokensAsMillitokens(args.max_fee),
           max_timeout_height: args.max_timeout_height,
           messages: args.messages,
           outgoing_channel: args.outgoing_channel,
