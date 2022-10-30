@@ -598,7 +598,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedDifferentPeersForInboundAndOutbound']);
         }
 
-        const maxFee = !!args.max_fee_rate ? round((args.max_fee_rate * max) / 1e6) : round((defaultMaxFeeRate * max) / 1e6);
+        const maxFee = !!args.max_fee_rate ? round((args.max_fee_rate * tokens) / 1e6) : round((defaultMaxFeeRate * tokens) / 1e6);
 
         return probeDestination({
           tokens,
