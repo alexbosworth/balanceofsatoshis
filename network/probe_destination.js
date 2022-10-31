@@ -60,6 +60,7 @@ const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
+    [max_fee_mtokens]: <Maximum Fee Millitokens Number>
     [message]: <Message String>
     [messages]: [{
       type: <Additional Message To Final Destination Type Number String>
@@ -94,6 +95,10 @@ module.exports = (args, cbk) => {
 
         if (!args.logger) {
           return cbk([400, "ExpectedLoggerToProbeDestination"]);
+        }
+
+        if (!!args.max_fee && !!args.max_fee_mtokens) {
+          return cbk([400, 'ExpectedEitherMaxFeeOrMaxFeeMtokensToProbeDestination']);
         }
 
         return cbk();
@@ -365,6 +370,7 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           logger: args.logger,
           max_fee: args.max_fee,
+          max_fee_mtokens: args.max_fee_mtokens,
           mtokens: !BigInt(to.mtokens) ? tokAsMtok(defaultTokens) : to.mtokens,
           outgoing_channel: outgoingChannelId,
           payment: to.payment,
