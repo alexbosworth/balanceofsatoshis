@@ -99,10 +99,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToExecuteProbe']);
         }
 
-        if (!!args.max_fee && !!args.max_fee_mtokens) {
-          return cbk([400, 'ExpectedEitherMaxFeeOrMaxFeeMtokensToExecuteProbe']);
-        }
-
         if (!args.mtokens && !args.tokens) {
           return cbk([400, 'ExpectedTokensToExecuteProbe']);
         }
