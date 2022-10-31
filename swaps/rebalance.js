@@ -60,6 +60,7 @@ const sumOf = arr => arr.reduce((sum, n) => sum + n);
 const tagFilePath = () => homePath({file: 'tags.json'}).path;
 const times = 6;
 const tokAsBigTok = tokens => !tokens ? undefined : (tokens / 1e8).toFixed(8);
+const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
 const topOf = arr => arr.slice(0, Math.ceil(arr.length / 2));
 const uniq = arr => Array.from(new Set(arr));
 
@@ -598,7 +599,8 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedDifferentPeersForInboundAndOutbound']);
         }
 
-        const maxFee = !!args.max_fee_rate ? round((args.max_fee_rate * tokens) / 1e6) : round((defaultMaxFeeRate * tokens) / 1e6);
+        const mtokens = tokensAsMillitokens(tokens);
+        const maxFee = !!args.max_fee_rate ? round((args.max_fee_rate * mtokens) / 1e6) : round((defaultMaxFeeRate * mtokens) / 1e6);
 
         return probeDestination({
           tokens,
@@ -617,7 +619,7 @@ module.exports = (args, cbk) => {
           is_strict_max_fee: args.is_strict_max_fee,
           logger: args.logger,
           lnd: args.lnd,
-          max_fee: maxFee,
+          max_fee_mtokens: maxFee,
           out_through: getOutbound.public_key,
           timeout_minutes: args.timeout_minutes,
         },

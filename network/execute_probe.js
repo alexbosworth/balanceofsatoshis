@@ -30,6 +30,7 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
+    [max_fee_mtokens]: <Maximum Fee Millitokens Number>
     [max_timeout_height]: <Maximum Timeout Height Number>
     [messages]: [{
       type: <Message To Final Destination Type Number String>
@@ -98,6 +99,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerToExecuteProbe']);
         }
 
+        if (!!args.max_fee && !!args.max_fee_mtokens) {
+          return cbk([400, 'ExpectedEitherMaxFeeOrMaxFeeMtokensToExecuteProbe']);
+        }
+
         if (!args.mtokens && !args.tokens) {
           return cbk([400, 'ExpectedTokensToExecuteProbe']);
         }
@@ -121,6 +126,7 @@ module.exports = (args, cbk) => {
         const start = now();
 
         const timeoutMinutes = minutesAsMs((args.timeout_minutes || Number()));
+        const maxFee = !args.is_strict_max_fee ? undefined : (args.max_fee_mtokens || tokensAsMillitokens(args.max_fee));
 
         const sub = subscribeToProbeForRoute({
           mtokens,
@@ -130,7 +136,7 @@ module.exports = (args, cbk) => {
           ignore: args.ignore,
           incoming_peer: args.in_through,
           lnd: args.lnd,
-          max_fee_mtokens: !args.is_strict_max_fee ? undefined : tokensAsMillitokens(args.max_fee),
+          max_fee_mtokens: maxFee,
           max_timeout_height: args.max_timeout_height,
           messages: args.messages,
           outgoing_channel: args.outgoing_channel,
