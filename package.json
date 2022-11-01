@@ -36,7 +36,7 @@
     "ini": "3.0.1",
     "inquirer": "9.1.4",
     "ln-accounting": "6.1.0",
-    "ln-service": "54.2.4",
+    "ln-service": "54.2.5",
     "ln-sync": "4.0.4",
     "ln-telegram": "4.2.0",
     "moment": "2.29.4",
@@ -54,7 +54,7 @@
   "devDependencies": {
     "@alexbosworth/tap": "15.0.11",
     "invoices": "2.2.0",
-    "ln-docker-daemons": "3.1.3",
+    "ln-docker-daemons": "3.1.4",
     "mock-lnd": "1.4.4",
     "tiny-secp256k1": "2.2.1"
   },

@@ -1,5 +1,9 @@
 # Versions
 
+## 13.3.4
+
+- Add support for LND 0.15.4
+
 ## 13.3.3
 
 - `telegram`: Improve compatibility with future LND versions

@@ -7,7 +7,7 @@ Commands for working with LND balances.
 
 Supported LND versions:
 
-- v0.15.2-beta to v0.15.3-beta
+- v0.15.2-beta to v0.15.4-beta
 - v0.14.4-beta
 
 ## Install
