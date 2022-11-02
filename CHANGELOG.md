@@ -1,6 +1,6 @@
 # Versions
 
-## 13.3.5
+## 13.3.6
 
 - Add support for LND 0.15.4
 
