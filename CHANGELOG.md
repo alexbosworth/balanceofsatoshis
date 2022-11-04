@@ -1,5 +1,9 @@
 # Versions
 
+## 13.3.7
+
+- `fund`: Fix failure using the MAX amount to fund an address to the max
+
 ## 13.3.6
 
 - Add support for LND 0.15.4
