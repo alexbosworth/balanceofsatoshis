@@ -1,5 +1,9 @@
 # Versions
 
+## 13.4.0
+
+- `rebalance`: Add `--avoid-high-fee-routes` to ignore routes over max fee rate
+
 ## 13.3.7
 
 - `fund`: Fix failure using the MAX amount to fund an address to the max
