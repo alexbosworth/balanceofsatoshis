@@ -32,6 +32,7 @@ const defaultCltvDelta = 40;
 const defaultMaxFee = 1337;
 const defaultMaxFeeRate = 250;
 const defaultMaxFeeTotal = Math.floor(5e6 * 0.0025);
+const feeFromRate = (mtok, rate) => BigInt(mtok) * BigInt(rate) / BigInt(1e6);
 const flatten = arr => [].concat(...arr);
 const highInbound = 4500000;
 const initialProbeTokens = size => Math.round((Math.random() * size) + size);
@@ -74,7 +75,7 @@ const uniq = arr => Array.from(new Set(arr));
     [in_filters]: [<Inbound Filter Formula String>]
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
-    [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
+    [is_strict_max_fee_rate]: <Avoid Probing Too-High Fee Rate Routes Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
@@ -562,6 +563,24 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Calculate a max fee to use in the intial probe
+      maxFeeMtokens: ['tokens', ({tokens}, cbk) => {
+        // Exit early when there is no strict max fee
+        if (!args.is_strict_max_fee_rate) {
+          return cbk(null, tokensAsMillitokens(defaultMaxFeeTotal));
+        }
+
+        // Exit early with error when there is no fee rate to use
+        if (args.max_fee_rate === undefined) {
+          return cbk([400, 'ExpectedMaxFeeRateToUseStrictly']);
+        }
+
+        // Convert the initial amount to probe to mtokens
+        const mtokens = tokensAsMillitokens(tokens);
+
+        return cbk(null, feeFromRate(mtokens, args.max_fee_rate).toString());
+      }],
+
       // Find a route to the destination
       findRoute: [
         'findInKey',
@@ -571,6 +590,7 @@ module.exports = (args, cbk) => {
         'getPublicKey',
         'ignore',
         'max',
+        'maxFeeMtokens',
         'tokens',
         ({
           findInKey,
@@ -580,6 +600,7 @@ module.exports = (args, cbk) => {
           getPublicKey,
           ignore,
           max,
+          maxFeeMtokens,
           tokens,
         },
         cbk) =>
@@ -599,9 +620,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedDifferentPeersForInboundAndOutbound']);
         }
 
-        const mtokens = tokensAsMillitokens(tokens);
-        const maxFee = !!args.max_fee_rate ? round((args.max_fee_rate * mtokens) / 1e6) : round((defaultMaxFeeRate * mtokens) / 1e6);
-
         return probeDestination({
           tokens,
           destination: getPublicKey.public_key,
@@ -616,10 +634,10 @@ module.exports = (args, cbk) => {
             return ![findInKey, findOutKey].includes(n.from_public_key);
           }),
           in_through: getInbound.public_key,
-          is_strict_max_fee: args.is_strict_max_fee,
+          is_strict_max_fee: args.is_strict_max_fee_rate || undefined,
           logger: args.logger,
           lnd: args.lnd,
-          max_fee_mtokens: maxFee,
+          max_fee_mtokens: maxFeeMtokens,
           out_through: getOutbound.public_key,
           timeout_minutes: args.timeout_minutes,
         },

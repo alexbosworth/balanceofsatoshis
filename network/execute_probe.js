@@ -30,7 +30,7 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
-    [max_fee_mtokens]: <Maximum Fee Millitokens Number>
+    [max_fee_mtokens]: <Maximum Fee Millitokens Number String>
     [max_timeout_height]: <Maximum Timeout Height Number>
     [messages]: [{
       type: <Message To Final Destination Type Number String>
@@ -115,14 +115,33 @@ module.exports = (args, cbk) => {
         return cbk(null, tokensAsMillitokens(args.tokens));
       }],
 
+      // Determine the strict maximum fee to use
+      strictMaxFee: ['validate', ({}, cbk) => {
+        // Exit early when there is no strict max fee to enforce in pathfinding
+        if (!args.is_strict_max_fee) {
+          return cbk();
+        }
+
+        // Exit early with error when there is no fee to use
+        if (args.max_fee === undefined && !args.max_fee_mtokens) {
+          return cbk([400, 'ExpectedMaxFeeValueToUseStrictly']);
+        }
+
+        // Exit early when there is a max fee in tokens set
+        if (args.max_fee !== undefined) {
+          return cbk(null, tokensAsMillitokens(args.max_fee));
+        }
+
+        return cbk(null, args.max_fee_mtokens);
+      }],
+
       // Probe
-      probe: ['mtokens', ({mtokens}, cbk) => {
+      probe: ['mtokens', 'strictMaxFee', ({mtokens, strictMaxFee}, cbk) => {
         const attemptedPaths = [];
         const {features} = args;
         const start = now();
 
         const timeoutMinutes = minutesAsMs((args.timeout_minutes || Number()));
-        const maxFee = !args.is_strict_max_fee ? undefined : (args.max_fee_mtokens || tokensAsMillitokens(args.max_fee));
 
         const sub = subscribeToProbeForRoute({
           mtokens,
@@ -132,7 +151,7 @@ module.exports = (args, cbk) => {
           ignore: args.ignore,
           incoming_peer: args.in_through,
           lnd: args.lnd,
-          max_fee_mtokens: maxFee,
+          max_fee_mtokens: strictMaxFee || undefined,
           max_timeout_height: args.max_timeout_height,
           messages: args.messages,
           outgoing_channel: args.outgoing_channel,

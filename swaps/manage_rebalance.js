@@ -16,7 +16,7 @@ const {isArray} = Array;
     [in_filters]: [<Inbound Filter Formula String>]
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
     [in_through]: <Pay In Through Peer String>
-    [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
+    [is_strict_max_fee_rate]: <Avoid Probing Too-High Fee Rate Routes Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
@@ -92,7 +92,7 @@ module.exports = (args, cbk) => {
             in_filters: args.in_filters,
             in_outbound: args.in_outbound,
             in_through: args.in_through,
-            is_strict_max_fee: args.is_strict_max_fee,
+            is_strict_max_fee_rate: args.is_strict_max_fee_rate,
             lnd: args.lnd,
             logger: args.logger,
             max_fee: Number(args.max_fee) || undefined,
