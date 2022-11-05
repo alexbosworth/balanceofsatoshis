@@ -125,8 +125,7 @@ const uniq = arr => Array.from(new Set(arr));
     tokens: <Tokens Number>
   }
 
-  @returns via cbk
-  {}
+  @returns via cbk or Promise
 */
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
@@ -1689,7 +1688,7 @@ module.exports = (args, cbk) => {
 
         args.logger.info(resolution);
 
-        return cbk(null, {});
+        return cbk();
       }],
     },
     returnResult({reject, resolve, of: 'summary'}, cbk));
