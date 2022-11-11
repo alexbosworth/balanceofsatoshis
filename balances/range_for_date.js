@@ -7,6 +7,7 @@ const {notFoundIndex} = require('./constants');
 /** Get a before and after range 
 
   {
+    [date]: <Day of Month String>
     [month]: <Month String>
     [year]: <Year String>
   }
@@ -20,8 +21,8 @@ const {notFoundIndex} = require('./constants');
     [before]: <Before ISO 8601 Date String>
   }
 */
-module.exports = ({month, year}) => {
-  if (!year && !month) {
+module.exports = ({date, month, year}) => {
+  if (!date && !year && !month) {
     return {};
   }
 
@@ -45,7 +46,13 @@ module.exports = ({month, year}) => {
     [after, end].forEach(n => n.month(month));
   }
 
-  if (!!month) {
+  if (!!date) {
+    [after, end].forEach(n => n.date(date));
+  }
+
+  if (!!date) {
+    end.add([date].length, 'day');
+  } else if (!!month) {
     end.add([month].length, 'months');
   } else {
     end.add([after].length, 'years');

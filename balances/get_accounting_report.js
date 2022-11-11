@@ -24,6 +24,7 @@ const summaryHeadings = ['Total', 'Asset', 'Report Date', 'Total Fiat'];
   {
     category: <Accounting Category Type String>
     [currency]: <Currency Label String>
+    [date]: <Day of Month String>
     [fiat]: <Fiat Type String>
     [is_csv]: <Return CSV Output Bool>
     [is_fiat_disabled]: <Omit Fiat Conversion Bool>
@@ -50,6 +51,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedKnownAccountingRecordsCategory']);
         }
 
+        if (!!args.date && !args.month) {
+          return cbk([400, 'ExpectedMonthForDateToGetAccountingReport']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToGetAccountingReport']);
         }
@@ -64,7 +69,11 @@ module.exports = (args, cbk) => {
       // Get date range
       dateRange: ['validate', ({}, cbk) => {
         try {
-          return cbk(null, rangeForDate({month: args.month, year: args.year}));
+          return cbk(null, rangeForDate({
+            date: args.date,
+            month: args.month,
+            year: args.year,
+          }));
         } catch (err) {
           return cbk([400, err.message]);
         }

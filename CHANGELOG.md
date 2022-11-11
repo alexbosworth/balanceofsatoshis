@@ -1,5 +1,9 @@
 # Versions
 
+## 13.5.0
+
+- `accounting`: Add `--date` to allow for precision of accounting within month
+
 ## 13.4.0
 
 - `rebalance`: Add `--avoid-high-fee-routes` to ignore routes over max fee rate

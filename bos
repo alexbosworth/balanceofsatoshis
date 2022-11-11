@@ -70,6 +70,7 @@ prog
   .help(`Rate providers: ${rateProviders.join(', ')}`)
   .help('Privacy note: this requests tx related data from third parties')
   .option('--csv', 'Output a CSV')
+  .option('--date <day>', 'Show only records for specific date')
   .option('--disable-fiat', 'Avoid looking up fiat conversions for records')
   .option('--month <month>', 'Show only records for specific month', months)
   .option('--node <node_name>', 'Get details from named node')
@@ -82,6 +83,7 @@ prog
       try {
         return balances.getAccountingReport({
           category: args.category,
+          date: options.date,
           is_csv: !!options.csv,
           is_fiat_disabled: options.disableFiat,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
