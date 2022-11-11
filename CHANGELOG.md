@@ -1,5 +1,9 @@
 # Versions
 
+## 13.5.1
+
+- `accounting`: Optimize invoices report to use less memory
+
 ## 13.5.0
 
 - `accounting`: Add `--date` to allow for precision of accounting within month
