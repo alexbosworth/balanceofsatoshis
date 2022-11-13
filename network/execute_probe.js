@@ -7,6 +7,7 @@ const {subscribeToProbeForRoute} = require('ln-service');
 
 const {describeConfidence} = require('./../display');
 const {describeRoute} = require('./../display');
+const {describeRoutingFailure} = require('./../display');
 
 const {now} = Date;
 const minutesAsMs = minutes => 1000 * 60 * minutes;
@@ -178,25 +179,16 @@ module.exports = (args, cbk) => {
         sub.on('error', err => finished(err));
 
         // Log failures encountered while trying to find a route
-        sub.on('routing_failure', async fail => {
-          const at = `at ${fail.channel || fail.public_key}`;
-          const source = fail.route.hops[fail.index - 1];
+        sub.on('routing_failure', async failure => {
+          const {description} = await describeRoutingFailure({
+            index: failure.index,
+            lnd: args.lnd,
+            reason: failure.reason,
+            route: failure.route,
+            tagged: args.tagged,
+          });
 
-          let fromName = !source ? null : source.public_key;
-
-          try {
-            const node = await getNode({
-              is_omitting_channels: true,
-              lnd: args.lnd,
-              public_key: source.public_key,
-            });
-
-            fromName = node.alias;
-          } catch (err) {}
-
-          const from = !source ? '' : `from ${fromName}`;
-
-          return args.logger.info({failure: `${fail.reason} ${at} ${from}`});
+          return args.logger.info({failure: description});
         });
 
         // Finish with successful probe

@@ -1,6 +1,10 @@
 const asyncAuto = require('async/auto');
-const {getNode} = require('ln-service');
+const {getNodeAlias} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
+
+const chartAliasForPeer = require('./chart_alias_for_peer');
+
+const {isArray} = Array;
 
 /** Get a description for a routing failure
 
@@ -14,6 +18,10 @@ const {returnResult} = require('asyncjs-util');
         public_key: <Public Key Hex String>
       }]
     }
+    [tagged]: [{
+      icons: [<Icon String>]
+      public_key: <Public Key Hex String>
+    }]
   }
 
   @returns via cbk or Promise
@@ -21,7 +29,7 @@ const {returnResult} = require('asyncjs-util');
     description: <Failure Description String>
   }
 */
-module.exports = ({index, lnd, reason, route}, cbk) => {
+module.exports = ({index, lnd, reason, route, tagged}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -42,37 +50,81 @@ module.exports = ({index, lnd, reason, route}, cbk) => {
           return cbk([400, 'ExpectedFailedRouteToDescribeRoutingFailure']);
         }
 
+        if (!!tagged && !isArray(tagged)) {
+          return cbk([400, 'ExpectedArrayOfTaggedNodesForFailureDescription']);
+        }
+
         return cbk();
       },
 
-      // Get node alias
-      getAlias: ['validate', ({}, cbk) => {
+      // Get source node alias
+      getFrom: ['validate', ({}, cbk) => {
         const source = route.hops[index - [index].length];
 
         if (!source || !source.public_key) {
           return cbk();
         }
 
-        return getNode({
-          lnd,
-          is_omitting_channels: true,
-          public_key: source.public_key,
-        },
-        (err, res) => {
-          if (!!err) {
-            return cbk(null, source.public_key);
-          }
+        return getNodeAlias({lnd, id: source.public_key}, cbk);
+      }],
 
-          return cbk(null, res.alias || source.public_key);
+      // Get the destination node alias
+      getTo: ['validate', ({}, cbk) => {
+        const nextHop = route.hops[index];
+
+        if (!nextHop || !nextHop.public_key) {
+          return cbk();
+        }
+
+        return getNodeAlias({lnd, id: nextHop.public_key}, cbk);
+      }],
+
+      // Determine the from name
+      fromName: ['getFrom', ({getFrom}, cbk) => {
+        // Exit early when there is no known source
+        if (!getFrom) {
+          return cbk();
+        }
+
+        const tag = (tagged || []).find(n => n.public_key === getFrom.id);
+
+        const {display} = chartAliasForPeer({
+          alias: getFrom.alias,
+          icons: !!tag ? tag.icons : undefined,
+          public_key: getFrom.id,
         });
+
+        return cbk(null, display);
+      }],
+
+      // Determine the to name
+      toName: ['getTo', ({getTo}, cbk) => {
+        // Exit early when there is no known destination
+        if (!getTo) {
+          return cbk();
+        }
+
+        const tag = (tagged || []).find(n => n.public_key === getTo.id);
+
+        const {display} = chartAliasForPeer({
+          alias: getTo.alias,
+          public_key: getTo.id,
+        });
+
+        return cbk(null, display);
       }],
 
       // Describe the routing failure
-      description: ['getAlias', ({getAlias}, cbk) => {
-        const at = `at ${route.hops[index].channel}`;
-        const from = !getAlias ? '' : `from ${getAlias}`;
+      description: [
+        'fromName',
+        'toName',
+        ({fromName, toName}, cbk) =>
+      {
+        const at = `on ${route.hops[index].channel}`;
+        const from = !fromName ? '' : `from ${fromName}`;
+        const to = !toName ? '' : ` forwarding to ${toName}`;
 
-        return cbk(null, {description: `${reason} ${at} ${from}`});
+        return cbk(null, {description: `${reason} ${from} ${at}${to}`});
       }],
     },
     returnResult({reject, resolve, of: 'description'}, cbk));

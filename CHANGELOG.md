@@ -1,5 +1,9 @@
 # Versions
 
+## 13.6.0
+
+- `tags`: Support tag icons in routing failure source descriptions
+
 ## 13.5.1
 
 - `accounting`: Optimize invoices report to use less memory
