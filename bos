@@ -1053,26 +1053,27 @@ prog
   })
 
   // Create an invoice
-  .command('invoice', 'Create a BOLT 11 invoice')
-  .help('Create a BOLT 11 invoice')
+  .command('invoice', 'Create an invoice and get a BOLT 11 payment request')
   .help('Amount can take m/k variables: 5*m for 5 million, 250*k = 0.0025')
-  .help('Fiat is supported in amount, N*USD or N*EUR')
-  .argument('<amount>', 'Amount for invoice', STRING, '0')
-  .option('--description <invoice_description>', 'Include a description for invoice')
-  .option('--include-private-channels', 'Include private channels as hop hints')
+  .help('Fiat conversion is supported in amount, N*USD or N*EUR')
+  .help(`Fiat rate providers: ${priceProviders.join(', ')}`)
+  .argument('[amount]', 'Amount for invoice', STRING, '0')
+  .option('--for <description>', 'What is the invoice requesting payment for')
+  .option('--include-hints', 'Include the default set of hop hint channels')
   .option('--node <node_name>', 'Use saved node to create invoice')
-  .option('--select-hops', 'Select hop hints to be added to the invoice')
+  .option('--rate-provider <rate_provider>', 'Rate provider', priceProviders)
+  .option('--select-hints', 'Select hop hints to be added to the request')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return await offchain.createInvoice({
-          logger,
           amount: args.amount,
           ask: await commands.interrogate({}),
-          description: options.description,
-          is_including_private_channels: options.includePrivateChannels || undefined,
-          is_selecting_hops: options.selectHops || undefined,
+          description: options.for,
+          is_hinting: options.includeHints || undefined,
+          is_selecting_hops: options.selectHints || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          rate_provider: options.rateProvider || undefined,
           request: commands.simpleRequest,
         },
         responses.returnObject({exit, logger, reject, resolve}));
