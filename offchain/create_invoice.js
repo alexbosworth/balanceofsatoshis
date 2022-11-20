@@ -3,7 +3,6 @@ const asyncMap = require('async/map');
 const {returnResult} = require('asyncjs-util');
 
 const {decode} = require('bip66');
-const {randomBytes} = require('crypto');
 
 const {getPrices} = require('@alexbosworth/fiat');
 const {parseAmount} = require('ln-accounting');
@@ -25,7 +24,6 @@ const hasFiat = n => /(eur|usd)/gim.test(n);
 const {isArray} = Array;
 const networks = {btc: 'BTC', btctestnet: 'BTC', ltc: 'LTC'};
 const rateAsTokens = rate => 1e8 / rate;
-const secret = randomBytes(32);
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 
 /** Create an BOLT 11 payment request
