@@ -32,6 +32,7 @@ const lnurl = importLazy('./lnurl');
 const {lnurlFunctions} = commandConstants;
 const network = importLazy('./network');
 const nodes = importLazy('./nodes');
+const offchain = importLazy('./offchain');
 const {peerSortOptions} = commandConstants;
 const peers = importLazy('./peers');
 const {priceProviders} = commandConstants;
@@ -1045,6 +1046,36 @@ prog
           tokens: options.amount,
         },
         responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
+  // Create an invoice
+  .command('invoice', 'Create a BOLT 11 invoice')
+  .help('Create a BOLT 11 invoice')
+  .help('Amount can take m/k variables: 5*m for 5 million, 250*k = 0.0025')
+  .help('Fiat is supported in amount, N*USD or N*EUR')
+  .argument('<amount>', 'Amount for invoice', STRING, '0')
+  .option('--description <invoice_description>', 'Include a description for invoice')
+  .option('--include-private-channels', 'Include private channels as hop hints')
+  .option('--node <node_name>', 'Use saved node to create invoice')
+  .option('--select-hops', 'Select hop hints to be added to the invoice')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return await offchain.createInvoice({
+          logger,
+          amount: args.amount,
+          ask: await commands.interrogate({}),
+          description: options.description,
+          is_including_private_channels: options.includePrivateChannels || undefined,
+          is_selecting_hops: options.selectHops || undefined,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          request: commands.simpleRequest,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
         return logger.error({err}) && reject();
       }
