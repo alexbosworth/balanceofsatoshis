@@ -35,6 +35,7 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
     lnd: <Authenticated LND API Object>
     request: <Request Function>
   }
+
   @returns via cbk or Promise
   {
     request: <BOLT 11 Payment Request String>
