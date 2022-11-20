@@ -196,10 +196,10 @@ module.exports = (args, cbk) => {
         'parseAmount',
         ({parseAmount}, cbk) => {
           return createInvoice({
-            lnd: args.lnd,
-            tokens: parseAmount.tokens,
             description: args.description || defaultInvoiceDescription,
             is_including_private_channels: !!args.is_including_private_channels ? true : undefined,
+            lnd: args.lnd,
+            tokens: parseAmount.tokens,
           },
           cbk);
         }
