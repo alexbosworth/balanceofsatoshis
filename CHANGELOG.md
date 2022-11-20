@@ -1,5 +1,9 @@
 # Versions
 
+## 13.7.0
+
+- `invoice`: Add command to create a new invoice
+
 ## 13.6.0
 
 - `tags`: Support tag icons in routing failure source descriptions
