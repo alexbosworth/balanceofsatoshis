@@ -198,7 +198,7 @@ module.exports = (args, cbk) => {
           return createInvoice({
             lnd: args.lnd,
             tokens: parseAmount.tokens,
-            description: defaultInvoiceDescription,
+            description: args.description || defaultInvoiceDescription,
             is_including_private_channels: !!args.is_including_private_channels ? true : undefined,
           },
           cbk);
@@ -250,7 +250,7 @@ module.exports = (args, cbk) => {
           const unsigned = createUnsignedRequest({
             tokens,
             cltv_delta: defaultCltvDelta,
-            description: defaultInvoiceDescription,
+            description: args.description || defaultInvoiceDescription,
             destination: getIdentity.public_key,
             id: addInvoice.id,
             network: getNetwork.bitcoinjs,
