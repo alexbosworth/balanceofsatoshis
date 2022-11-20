@@ -11,7 +11,7 @@ const {createUnsignedRequest} = require('invoices');
 const {createInvoice} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getChannel} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
+const {getIdentity} = require('ln-service');
 const {signBytes} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 
@@ -22,7 +22,7 @@ const defaultInvoiceDescription = 'payrequest';
 const fiats = ['EUR', 'USD'];
 const hasFiat = n => /(eur|usd)/gim.test(n);
 const {isArray} = Array;
-const networks = {btc: 'BTC', btctestnet: 'BTC', ltc: 'LTC'};
+const networks = {btc: 'BTC', btctestnet: 'BTC', btcregtest: 'BTC', ltc: 'LTC'};
 const rateAsTokens = rate => 1e8 / rate;
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 
@@ -35,9 +35,9 @@ const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
     lnd: <Authenticated LND API Object>
     request: <Request Function>
   }
-  @Returns via cbk or Promise
+  @returns via cbk or Promise
   {
-    request: <Bolt 11 Payment Request String>
+    request: <BOLT 11 Payment Request String>
     tokens: <Invoice Amount Number>
   }
  */
@@ -87,7 +87,7 @@ module.exports = (args, cbk) => {
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
       // Get wallet info
-      getWalletInfo: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
+      getIdentity: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
 
       // Fiat rates
       fiatRates: [
@@ -207,12 +207,12 @@ module.exports = (args, cbk) => {
       // Register custom invoice
       registerInvoice: [
         'addInvoice',
+        'getIdentity',
         'getNetwork',
         'getPolicies',
-        'getWalletInfo',
         'parseAmount',
         'selectChannels',
-        async ({addInvoice, getNetwork, getPolicies, getWalletInfo, parseAmount}) => {
+        async ({addInvoice, getIdentity, getNetwork, getPolicies, parseAmount}) => {
           // Exit early if not selecting hops
           if (!args.is_selecting_hops) {
             return {
@@ -226,7 +226,7 @@ module.exports = (args, cbk) => {
           const policies = getPolicies.filter(n => !!n);
 
           policies.forEach(n => {
-            const peerPolicy = n.policies.find(n => n.public_key !== getWalletInfo.public_key);
+            const peerPolicy = n.policies.find(n => n.public_key !== getIdentity.public_key);
 
             if (!!peerPolicy) {
               routes.push([
@@ -238,7 +238,7 @@ module.exports = (args, cbk) => {
                 channel: n.id,
                 cltv_delta: peerPolicy.cltv_delta,
                 fee_rate: peerPolicy.fee_rate,
-                public_key: getWalletInfo.public_key,
+                public_key: getIdentity.public_key,
               }
             ]);
             }
@@ -250,7 +250,7 @@ module.exports = (args, cbk) => {
             tokens,
             cltv_delta: defaultCltvDelta,
             description: defaultInvoiceDescription,
-            destination: getWalletInfo.public_key,
+            destination: getIdentity.public_key,
             id: addInvoice.id,
             network: getNetwork.bitcoinjs,
             payment: addInvoice.payment,
@@ -269,7 +269,7 @@ module.exports = (args, cbk) => {
           const rValue = r.length === 33 ? r.slice(1) : r;
 
           const {request} = createSignedRequest({
-            destination: getWalletInfo.public_key,
+            destination: getIdentity.public_key,
             hrp: unsigned.hrp,
             signature: Buffer.concat([rValue, s]).toString('hex'),
             tags: unsigned.tags,
