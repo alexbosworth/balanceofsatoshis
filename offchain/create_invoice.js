@@ -276,6 +276,7 @@ module.exports = (args, cbk) => {
           cltv_delta: parseRequest(addInvoice.request).cltv_delta,
           description: args.description || defaultInvoiceDescription,
           destination: getIdentity.public_key,
+          features: parseRequest(addInvoice.request).features,
           id: addInvoice.id,
           lnd: args.lnd,
           network: getNetwork.bitcoinjs,

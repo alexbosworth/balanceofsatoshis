@@ -31,6 +31,9 @@ const rValue = r => r.length === 33 ? r.slice(1) : r;
     cltv_delta: <Invoice Final CLTV Delta Number>
     description: <Invoice Description String>
     destination: <Destination Public Key Hex String>
+    features: [{
+      bit: <BOLT 09 Feature Bit Number>
+    }]
     id: <Payment Hash Hex String>
     lnd: <Authenticated LND API Object>
     network: <BitcoinJs Network Name String>
@@ -63,6 +66,10 @@ module.exports = (args, cbk) => {
 
         if (!args.destination) {
           return cbk([400, 'ExpectedDestinationNodeIdToSignPaymentRequest']);
+        }
+
+        if (!isArray(args.features)) {
+          return cbk([400, 'ExpectedFeatureBitsToSignPaymentRequest']);
         }
 
         if (!args.id) {
@@ -119,6 +126,7 @@ module.exports = (args, cbk) => {
             cltv_delta: args.cltv_delta,
             description: args.description,
             destination: args.destination,
+            features: args.features,
             id: args.id,
             network: args.network,
             payment: args.payment,

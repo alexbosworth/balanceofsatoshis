@@ -1,5 +1,9 @@
 # Versions
 
+## 13.7.2
+
+- `invoice`: Fix payment encoding to include invoice feature bits
+
 ## 13.7.1
 
 - `invoice`: Fix `--select-hints` with an empty description request encoding
