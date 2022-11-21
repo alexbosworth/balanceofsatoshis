@@ -1,5 +1,9 @@
 # Versions
 
+## 13.7.1
+
+- `invoice`: Fix `--select-hints` with an empty description request encoding
+
 ## 13.7.0
 
 - `invoice`: Add command to create a new invoice
