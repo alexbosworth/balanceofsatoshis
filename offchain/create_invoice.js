@@ -12,10 +12,11 @@ const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const signPaymentRequest = require('./sign_payment_request');
+const signGhostPaymentRequest = require('./sign_ghost_payment_request');
 
 const coins = ['BTC'];
 const defaultFiatRateProvider = 'coinbase';
-const defaultInvoiceDescription = '';
+const defaultInvoiceDescription = 'RequestForPayment';
 const fiats = ['EUR', 'USD'];
 const hasFiat = n => /(eur|usd)/gim.test(n);
 const {isArray} = Array;
@@ -34,6 +35,7 @@ const uniq = arr => Array.from(new Set(arr));
     ask: <Inquirer Function>
     [description]: <Invoice Description String>
     [is_hinting]: <Include Private Channels Bool>
+    [is_ghost_invoice]: <Is Ghost Invoice Bool>
     [is_selecting_hops]: <Is Selecting Hops Bool>
     lnd: <Authenticated LND API Object>
     [rate_provider]: <Fiat Rate Provider String>
@@ -67,8 +69,16 @@ module.exports = (args, cbk) => {
           return cbk([400, 'CannotUseDefaultHintsAndAlsoSelectHints']);
         }
 
+        if (!!args.is_ghost_invoice && (!!args.is_hinting || !!args.is_selecting_hops)) {
+          return cbk([400, 'CannotSelectHopsOrAddHintsForGhostInvoices']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToCreateNewInvoice']);
+        }
+
+        if (!args.logger) {
+          return cbk([400, 'ExpectedWinstonLoggerObjectToCreateNewInvoice']);
         }
 
         if (!args.request) {
@@ -263,6 +273,24 @@ module.exports = (args, cbk) => {
         },
         cbk) =>
       {
+        if (!!args.is_ghost_invoice) {
+          return signGhostPaymentRequest({
+            channels: getPolicies,
+            cltv_delta: parseRequest(addInvoice.request).cltv_delta,
+            description: args.description || defaultInvoiceDescription,
+            destination: getIdentity.public_key,
+            features: parseRequest(addInvoice.request).features,
+            id: addInvoice.id,
+            lnd: args.lnd,
+            logger: args.logger,
+            network: getNetwork.bitcoinjs,
+            payment: addInvoice.payment,
+            secret: addInvoice.secret,
+            tokens: parseAmount.tokens,
+          },
+          cbk);
+        }
+
         // Exit early if not selecting custom hop hints
         if (!args.is_selecting_hops) {
           return cbk(null, {
