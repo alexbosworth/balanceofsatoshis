@@ -1059,6 +1059,7 @@ prog
   .help(`Fiat rate providers: ${priceProviders.join(', ')}`)
   .argument('[amount]', 'Amount for invoice', STRING, '0')
   .option('--for <description>', 'What is the invoice requesting payment for')
+  .option('--ghost-invoice', 'Include a fake pubkey as the final destination')
   .option('--include-hints', 'Include the default set of hop hint channels')
   .option('--node <node_name>', 'Use saved node to create invoice')
   .option('--rate-provider <rate_provider>', 'Rate provider', priceProviders)
@@ -1067,9 +1068,11 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return await offchain.createInvoice({
+          logger,
           amount: args.amount,
           ask: await commands.interrogate({}),
           description: options.for,
+          is_ghost_invoice: options.ghostInvoice,
           is_hinting: options.includeHints || undefined,
           is_selecting_hops: options.selectHints || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
