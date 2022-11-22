@@ -9,7 +9,7 @@ const tinysecp256k1 = require('tiny-secp256k1');
 
 const defaultBaseFee = '0';
 const defaultCltvDelta = 144;
-const defaultFeeRate = '0';
+const defaultFeeRate = 0;
 const fakeChannelId = '150x1x0';
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const {isArray} = Array;
