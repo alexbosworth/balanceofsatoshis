@@ -215,7 +215,7 @@ module.exports = (args, cbk) => {
           });
 
           sub.on('error', err => {
-            console.log(err)
+            args.logger.error({err});
             finished(err);
           });
         }
