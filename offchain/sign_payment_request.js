@@ -1,9 +1,13 @@
+const {randomBytes} = require('crypto');
+
 const asyncAuto = require('async/auto');
 const {createSignedRequest} = require('ln-service');
 const {createUnsignedRequest} = require('ln-service');
 const {decode} = require('bip66');
 const {returnResult} = require('asyncjs-util');
+const secp256k1 = require('secp256k1');
 const {signBytes} = require('ln-service');
+const tinysecp256k1 = require('tiny-secp256k1');
 
 const bufferAsHex = buffer => buffer.toString('hex');
 const {concat} = Buffer;
@@ -14,7 +18,11 @@ const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const {isArray} = Array;
 const keyFamilyIdentity = 6;
 const keyIndexIdentity = 0;
+const makePrivateKey = () => randomBytes(32);
+const minimalCltvDelta = 18;
 const rValue = r => r.length === 33 ? r.slice(1) : r;
+const unit8AsHex = n => Buffer.from(n).toString('hex');
+const virtualChannelId = '805x805x805';
 
 /** Create a signed BOLT 11 payment request
 
@@ -95,8 +103,38 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Create a key pair for a virtual channel invoice
+      getKeyPair: ['validate', ({}, cbk) => {
+        // Exit early when not using a virtual channel
+        if (!args.is_virtual) {
+          return cbk();
+        }
+
+        const privateKey = makePrivateKey();
+
+        const publicKey = unit8AsHex(secp256k1.publicKeyCreate(privateKey));
+
+        return cbk(null, {private_key: privateKey, public_key: publicKey});
+      }],
+
       // Assemble the hop hints from the chosen hint channels
-      hints: ['validate', ({}, cbk) => {
+      hints: ['getKeyPair', ({getKeyPair}, cbk) => {
+        // Exit early when using a virtual channel
+        if (!!args.is_virtual) {
+          return cbk(null, [[
+            {
+              public_key: args.destination,
+            },
+            {
+              base_fee_mtokens: Number().toString(),
+              channel: virtualChannelId,
+              cltv_delta: minimalCltvDelta,
+              fee_rate: args.virtual_fee_rate || Number(),
+              public_key: getKeyPair.public_key,
+            },
+          ]]);
+        }
+
         const routes = args.channels.map(({id, policies}) => {
           const peerPolicy = policies.find(policy => {
             return policy.public_key !== args.destination;
@@ -121,11 +159,13 @@ module.exports = (args, cbk) => {
 
       // Create the unsigned payment request
       unsigned: ['hints', ({hints}, cbk) => {
+        const [destination] = hints.slice().reverse();
+
         try {
           const unsigned = createUnsignedRequest({
             cltv_delta: args.cltv_delta,
             description: args.description,
-            destination: args.destination,
+            destination: destination.public_key,
             features: args.features,
             id: args.id,
             network: args.network,
@@ -141,28 +181,52 @@ module.exports = (args, cbk) => {
       }],
 
       // Sign the unsigned payment request
-      sign: ['unsigned', ({unsigned}, cbk) => {
+      sign: ['getKeyPair', 'unsigned', ({getKeyPair, unsigned}, cbk) => {
+        // Exit early when signing using the virtual key
+        if (!!args.is_virtual) {
+          const signature = tinysecp256k1.sign(
+            hexAsBuffer(unsigned.hash),
+            getKeyPair.private_key
+          );
+
+          return cbk(null, {
+            destination: getKeyPair.public_key,
+            signature: unit8AsHex(signature),
+          });
+        }
+
+        // Sign the modified payment request using the identity public key
         return signBytes({
           key_family: keyFamilyIdentity,
           key_index: keyIndexIdentity,
           lnd: args.lnd,
           preimage: unsigned.preimage,
         },
-        cbk);
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          // Convert the signature format
+          const {r, s} = decode(hexAsBuffer(res.signature));
+
+          return cbk(null, {
+            destination: args.destination,
+            signature: bufferAsHex(concat([rValue(r), s])),
+          });
+        });
       }],
 
-      // Assemble the signed request
+      // Assemble the full signed request
       request: ['sign', 'unsigned', ({sign, unsigned}, cbk) => {
         try {
-          const {r, s} = decode(hexAsBuffer(sign.signature));
-
           const {request} = createSignedRequest({
-            destination: args.destination,
+            destination: sign.destination,
             hrp: unsigned.hrp,
-            signature: bufferAsHex(concat([rValue(r), s])),
+            signature: sign.signature,
             tags: unsigned.tags,
           });
-      
+
           return cbk(null, {request, tokens: args.tokens});
         } catch (err) {
           return cbk([503, 'UnexpectedErrorSigningRequest', {err}]);

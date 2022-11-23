@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const asyncRetry = require('async/retry');
 const {createInvoice} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getChannel} = require('ln-service');
@@ -10,21 +11,24 @@ const {getPrices} = require('@alexbosworth/fiat');
 const {parseAmount} = require('ln-accounting');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
+const {subscribeToForwardRequests} = require('ln-service');
 
 const signPaymentRequest = require('./sign_payment_request');
-const signGhostPaymentRequest = require('./sign_ghost_payment_request');
 
 const coins = ['BTC'];
 const defaultFiatRateProvider = 'coinbase';
-const defaultInvoiceDescription = 'RequestForPayment';
+const defaultInvoiceDescription = '';
 const fiats = ['EUR', 'USD'];
 const hasFiat = n => /(eur|usd)/gim.test(n);
+const interval = 3000;
 const {isArray} = Array;
 const {isInteger} = Number;
 const isNumber = n => !isNaN(n);
+const mtokensAsBigUnit = n => (Number(n / BigInt(1000)) / 1e8).toFixed(8);
 const networks = {btc: 'BTC', btctestnet: 'BTC', btcregtest: 'BTC'};
 const parseRequest = request => parsePaymentRequest({request});
 const rateAsTokens = rate => 1e10 / rate;
+const times = 20 * 60 * 24;
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const uniq = arr => Array.from(new Set(arr));
 
@@ -35,8 +39,8 @@ const uniq = arr => Array.from(new Set(arr));
     ask: <Inquirer Function>
     [description]: <Invoice Description String>
     [is_hinting]: <Include Private Channels Bool>
-    [is_ghost_invoice]: <Is Ghost Invoice Bool>
     [is_selecting_hops]: <Is Selecting Hops Bool>
+    [is_virtual]: <Is Using Virtual Channel for Invoice Bool>
     lnd: <Authenticated LND API Object>
     [rate_provider]: <Fiat Rate Provider String>
     request: <Request Function>
@@ -44,8 +48,8 @@ const uniq = arr => Array.from(new Set(arr));
 
   @returns via cbk or Promise
   {
-    request: <BOLT 11 Payment Request String>
-    tokens: <Invoice Amount Number>
+    [request]: <BOLT 11 Payment Request String>
+    [tokens]: <Invoice Amount Number>
   }
  */
 module.exports = (args, cbk) => {
@@ -69,8 +73,12 @@ module.exports = (args, cbk) => {
           return cbk([400, 'CannotUseDefaultHintsAndAlsoSelectHints']);
         }
 
-        if (!!args.is_ghost_invoice && (!!args.is_hinting || !!args.is_selecting_hops)) {
-          return cbk([400, 'CannotSelectHopsOrAddHintsForGhostInvoices']);
+        if (!!args.is_virtual && !!args.is_hinting) {
+          return cbk([400, 'UsingHopHintsIsUnsupportedWithVirtualChannels']);
+        }
+
+        if (!!args.is_virtual && !!args.is_selecting_hops) {
+          return cbk([400, 'ChoosingHopHintsUnsupportedWithVirtualChannels']);
         }
 
         if (!args.lnd) {
@@ -137,7 +145,7 @@ module.exports = (args, cbk) => {
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
       // Get wallet info
-      getIdentity: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
+      getId: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
 
       // Fiat rates
       rates: [
@@ -195,6 +203,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
+        // Make sure there are some channels to select
         if (!getChannels.channels.length) {
           return cbk([400, 'NoRelevantChannelsToSelectAsHints']);
         }
@@ -227,6 +236,7 @@ module.exports = (args, cbk) => {
       getPolicies: ['selectChannels', ({selectChannels}, cbk) => {
         return asyncMap(selectChannels, (channel, cbk) => {
           return getChannel({id: channel, lnd: args.lnd}, (err, res) => {
+            // Exit early when the channel isn't found
             if (isArray(err) && err.slice().shift() === 404) {
               return cbk();
             }
@@ -257,42 +267,100 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Intercept virtual invoice forwards
+      interceptVirtualInvoice: ['addInvoice', ({addInvoice}, cbk) => {
+        // Exit early when not intercepting the virtual forward
+        if (!args.is_virtual) {
+          return cbk();
+        }
+
+        args.logger.info({listening_for_virtual_channel_payment: true});
+
+        const sub = subscribeToForwardRequests({lnd: args.lnd});
+
+        // Stop listening for the HTLC when the invoice expires
+        const timeout = setTimeout(() => {
+          sub.removeAllListeners();
+
+          return cbk([408, 'TimedOutWaitingForPayment']);
+        },
+        new Date(parseRequest(addInvoice.request).expires_at) - new Date());
+
+        const finished = (err, res) => {
+          clearTimeout(timeout);
+
+          sub.removeAllListeners();
+
+          return cbk(err, res);
+        };
+
+        // Listen for a payment to the virtual channel invoice
+        sub.on('forward_request', async forward => {
+          // Exit early and accept requests that are not for this invoice
+          if (forward.hash !== addInvoice.id) {
+            return forward.accept({});
+          }
+
+          args.logger.info({accepting_payment: true});
+
+          forward.settle({secret: addInvoice.secret});
+
+          // Listen for an error on the requests subscription
+          sub.on('error', err => {
+            args.logger.error({err});
+
+            return finished(err);
+          });
+
+          // Wait until the payment is no longer pending
+          await asyncRetry({interval, times}, async () => {
+            const {channels} = await getChannels({lnd: args.lnd});
+
+            const channel = channels.find(n => n.id === forward.in_channel);
+
+            if (!channel) {
+              throw new Error('FailedToFindForwardChannel');
+            }
+
+            const pending = channel.pending_payments.find(({payment}) => {
+              return payment === forward.in_channel;
+            });
+
+            if (!!pending) {
+              throw new Error('PaymentIsStillPending');
+            }
+
+            return;
+          });
+
+          const got = BigInt(forward.mtokens) + BigInt(forward.fee_mtokens);
+
+          args.logger.info({received: mtokensAsBigUnit(got)});
+
+          return finished();
+        });
+
+        return;
+      }],
+
       // Create the final signed public payment request
       publicRequest: [
         'addInvoice',
-        'getIdentity',
+        'getId',
         'getNetwork',
         'getPolicies',
         'parseAmount',
         ({
           addInvoice,
-          getIdentity,
+          getId,
           getNetwork,
           getPolicies,
           parseAmount,
         },
         cbk) =>
       {
-        if (!!args.is_ghost_invoice) {
-          return signGhostPaymentRequest({
-            channels: getPolicies,
-            cltv_delta: parseRequest(addInvoice.request).cltv_delta,
-            description: args.description || defaultInvoiceDescription,
-            destination: getIdentity.public_key,
-            features: parseRequest(addInvoice.request).features,
-            id: addInvoice.id,
-            lnd: args.lnd,
-            logger: args.logger,
-            network: getNetwork.bitcoinjs,
-            payment: addInvoice.payment,
-            secret: addInvoice.secret,
-            tokens: parseAmount.tokens,
-          },
-          cbk);
-        }
-
-        // Exit early if not selecting custom hop hints
-        if (!args.is_selecting_hops) {
+        // Exit early if not using custom hop hints
+        if (!args.is_selecting_hops && !args.is_virtual) {
           return cbk(null, {
             request: addInvoice.request,
             tokens: addInvoice.tokens,
@@ -303,17 +371,35 @@ module.exports = (args, cbk) => {
           channels: getPolicies,
           cltv_delta: parseRequest(addInvoice.request).cltv_delta,
           description: args.description || defaultInvoiceDescription,
-          destination: getIdentity.public_key,
+          destination: getId.public_key,
           features: parseRequest(addInvoice.request).features,
           id: addInvoice.id,
+          is_virtual: args.is_virtual,
           lnd: args.lnd,
           network: getNetwork.bitcoinjs,
           payment: addInvoice.payment,
           tokens: parseAmount.tokens,
+          virtual_fee_rate: args.virtual_fee_rate,
         },
         cbk);
       }],
+
+      // Log the virtual channel payment request
+      logRequest: ['publicRequest', ({publicRequest}, cbk) => {
+        // Exit early when not using a virtual channel
+        if (!args.is_virtual) {
+          return cbk(null, publicRequest);
+        }
+
+        args.logger.info({
+          request: publicRequest.request,
+          tokens: parseRequest(publicRequest.request).tokens,
+          virtual_fee_rate: args.virtual_fee_rate || undefined,
+        });
+
+        return cbk(null, {});
+      }],
     },
-    returnResult({reject, resolve, of: 'publicRequest'}, cbk));
+    returnResult({reject, resolve, of: 'logRequest'}, cbk));
   });
 };
