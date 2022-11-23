@@ -48,6 +48,7 @@ const uniq = arr => Array.from(new Set(arr));
 
   @returns via cbk or Promise
   {
+    [is_settled]: <Invoice Was Paid Bool>
     [request]: <BOLT 11 Payment Request String>
     [tokens]: <Invoice Amount Number>
   }
@@ -397,7 +398,7 @@ module.exports = (args, cbk) => {
           virtual_fee_rate: args.virtual_fee_rate || undefined,
         });
 
-        return cbk(null, {});
+        return cbk(null, {is_settled: true});
       }],
     },
     returnResult({reject, resolve, of: 'logRequest'}, cbk));
