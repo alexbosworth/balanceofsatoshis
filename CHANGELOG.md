@@ -1,5 +1,9 @@
 # Versions
 
+## 13.8.0
+
+- `invoice`: Add `--virtual` and `--virtual-fee-rate` to use virtual channel
+
 ## 13.7.2
 
 - `invoice`: Fix payment encoding to include invoice feature bits
