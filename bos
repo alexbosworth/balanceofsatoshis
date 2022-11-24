@@ -524,9 +524,11 @@ prog
   })
 
   // Coordinate a new group channel
-  .command('create-group-channel', 'Coordinate balanced channels group')
-  .visible(false)
-  .help('Other nodes can join the group using join-group-channel')
+  .command('create-channel-group', 'Coordinate balanced channels group')
+  .help('Other nodes can join the group using join-channel-group')
+  .help('When using --allow, all joining nodes must be identified')
+  .help('To specify order of group pairings, order using --allow ordering')
+  .option('--allow <public_key>', 'Only allow these nodes to join', REPEATABLE)
   .option('--capacity <channel_capacity>', 'Channel capacity', INT, 5e6)
   .option('--fee-rate <per_vbyte>', 'Chain fee rate for open', INT)
   .option('--node <node_name>', 'Use saved node to create channels group')
@@ -543,6 +545,7 @@ prog
           logger,
           capacity: options.capacity,
           count: options.size,
+          members: flatten([options.allow].filter(n => !!n)),
           rate: options.feeRate || floor(defaultRate.tokens_per_vbyte),
         },
         responses.returnObject({exit, logger, reject, resolve}));
@@ -1091,9 +1094,8 @@ prog
   })
 
   // Join a group channel open
-  .command('join-group-channel', 'Join a balanced channels group')
-  .visible(false)
-  .help('Another node should have run create-group-channel to create group')
+  .command('join-channel-group', 'Join a balanced channels group')
+  .help('Another node should have run create-channel-group to create group')
   .argument('<code>', 'Invite code to join group', STRING)
   .option('--max-fee-rate <per_vbyte>', 'Maximum fee/vbyte for open', INT)
   .option('--node <node_name>', 'Use saved node to join group')

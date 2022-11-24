@@ -1,5 +1,9 @@
 # Versions
 
+## 13.9.0
+
+- `create-channel-group`: Add `--allow` to order and allow only specific nodes
+
 ## 13.8.0
 
 - `invoice`: Add `--virtual` and `--virtual-fee-rate` to use virtual channel
