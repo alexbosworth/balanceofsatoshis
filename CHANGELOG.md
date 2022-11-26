@@ -1,5 +1,9 @@
 # Versions
 
+## 13.10.0
+
+- `telegram`: On received payments, reveal the peers that forwarded the funds
+
 ## 13.9.0
 
 - `create-channel-group`: Add `--allow` to order and allow only specific nodes
