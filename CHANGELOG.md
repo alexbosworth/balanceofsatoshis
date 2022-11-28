@@ -1,6 +1,6 @@
 # Versions
 
-## 13.10.0
+## 13.10.1
 
 - `telegram`: On received payments, reveal the peers that forwarded the funds
 

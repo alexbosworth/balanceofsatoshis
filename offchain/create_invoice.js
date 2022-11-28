@@ -259,6 +259,11 @@ module.exports = (args, cbk) => {
 
       // Create the invoice in the LND database
       addInvoice: ['getPolicies', 'parseAmount', ({parseAmount}, cbk) => {
+        // Exit with error when no amount is given
+        if (!!args.is_virtual && !parseAmount.tokens) {
+          return cbk([400, 'ExpectedNonZeroInvoiceForVirtualChannel']);
+        }
+
         return createInvoice({
           description: args.description || defaultInvoiceDescription,
           is_including_private_channels: args.is_hinting || undefined,
@@ -300,6 +305,11 @@ module.exports = (args, cbk) => {
           // Exit early and accept requests that are not for this invoice
           if (forward.hash !== addInvoice.id) {
             return forward.accept({});
+          }
+
+          // Reject too small amounts
+          if (BigInt(forward.mtokens) < BigInt(addInvoice.mtokens)) {
+            return forward.reject({});
           }
 
           args.logger.info({accepting_payment: true});
