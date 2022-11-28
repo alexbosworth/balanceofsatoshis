@@ -1,5 +1,9 @@
 # Versions
 
+## 13.10.2
+
+- `invoice`: Fix termination on HTLC subscription error
+
 ## 13.10.1
 
 - `telegram`: On received payments, reveal the peers that forwarded the funds

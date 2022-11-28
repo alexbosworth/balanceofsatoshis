@@ -300,6 +300,13 @@ module.exports = (args, cbk) => {
           return cbk(err, res);
         };
 
+        // Listen for an error on the requests subscription
+        sub.on('error', err => {
+          args.logger.error({err});
+
+          return finished(err);
+        });
+
         // Listen for a payment to the virtual channel invoice
         sub.on('forward_request', async forward => {
           // Exit early and accept requests that are not for this invoice
@@ -315,13 +322,6 @@ module.exports = (args, cbk) => {
           args.logger.info({accepting_payment: true});
 
           forward.settle({secret: addInvoice.secret});
-
-          // Listen for an error on the requests subscription
-          sub.on('error', err => {
-            args.logger.error({err});
-
-            return finished(err);
-          });
 
           // Wait until the payment is no longer pending
           await asyncRetry({interval, times}, async () => {
