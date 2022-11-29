@@ -1,5 +1,9 @@
 # Versions
 
+## 13.10.3
+
+- `probe`: Fix probing to nodes that advertise trusted funding support
+
 ## 13.10.2
 
 - `invoice`: Fix termination on HTLC subscription error

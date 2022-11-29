@@ -26,6 +26,7 @@ const defaultCltvDelta = 144;
 const defaultMaxFee = 1337;
 const defaultTokens = 1;
 const featureTypeChannelType = 45;
+const featureTypeTrustedFunding = 51;
 const {floor} = Math;
 const fromKeyType = '34349339';
 const keySendPreimageType = '5482373484';
@@ -233,6 +234,7 @@ module.exports = (args, cbk) => {
         const features = (getDestinationNode.features || [])
           .filter(n => !!n.is_known)
           .filter(n => n.bit !== featureTypeChannelType)
+          .filter(n => n.bit !== featureTypeTrustedFunding)
           .filter(n => !!n.type);
 
         return cbk(null, {features});
