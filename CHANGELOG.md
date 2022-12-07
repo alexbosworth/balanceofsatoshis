@@ -1,5 +1,9 @@
 # Versions
 
+## 13.10.5
+
+- `invoice`: Fix issue creating `--virtual` invoices
+
 ## 13.10.4
 
 - `probe`: Fix probing to nodes that advertise trusted funding support

@@ -5,7 +5,6 @@ const {createSignedRequest} = require('ln-service');
 const {createUnsignedRequest} = require('ln-service');
 const {decode} = require('bip66');
 const {returnResult} = require('asyncjs-util');
-const secp256k1 = require('secp256k1');
 const {signBytes} = require('ln-service');
 const tinysecp256k1 = require('tiny-secp256k1');
 
@@ -104,17 +103,19 @@ module.exports = (args, cbk) => {
       },
 
       // Create a key pair for a virtual channel invoice
-      getKeyPair: ['validate', ({}, cbk) => {
+      getKeyPair: ['validate', async ({}, cbk) => {
         // Exit early when not using a virtual channel
         if (!args.is_virtual) {
-          return cbk();
+          return;
         }
 
-        const privateKey = makePrivateKey();
+        const ecp = (await import('ecpair')).ECPairFactory(tinysecp256k1);
 
-        const publicKey = unit8AsHex(secp256k1.publicKeyCreate(privateKey));
+        const key = ecp.fromPrivateKey(makePrivateKey());
 
-        return cbk(null, {private_key: privateKey, public_key: publicKey});
+        const publicKey = unit8AsHex(key.publicKey);
+
+        return {private_key: key.privateKey, public_key: publicKey};
       }],
 
       // Assemble the hop hints from the chosen hint channels
