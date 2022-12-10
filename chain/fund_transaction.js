@@ -1,15 +1,12 @@
-const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const {createPsbt} = require('psbt');
 const {formatTokens} = require('ln-sync');
-const {fromBech32} = address;
 const {fundPsbt} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
 const {getMaxFundAmount} = require('ln-sync');
 const {getNetwork} = require('ln-sync');
 const {getUtxos} = require('ln-service');
-const {networks} = require('bitcoinjs-lib');
 const {parseAmount} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
 const {signPsbt} = require('ln-service');
@@ -31,7 +28,6 @@ const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const minConfs = 1;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const taprootAddressVersion = 1;
-const {toOutputScript} = address;
 const txHashAsTxId = hash => hash.reverse().toString('hex');
 
 /** Fund and sign a transaction
@@ -269,50 +265,11 @@ module.exports = (args, cbk) => {
           requested_fee_rate: feeRate,
         });
 
-        const hasTaprootOutput = !!finalOutputs.find(n => {
-          try {
-            return fromBech32(n.address).version === taprootAddressVersion;
-          } catch (err) {
-            return false;
-          }
-        });
-
-        // Exit early when there is no taproot output
-        if (!hasTaprootOutput) {
-          return fundPsbt({
-            fee_tokens_per_vbyte: feeRate,
-            inputs: !!inputs.length ? inputs : undefined,
-            lnd: args.lnd,
-            outputs: finalOutputs,
-          },
-          cbk);
-        }
-
-        const network = networks[getNetwork.bitcoinjs];
-
-        if (!network) {
-          return cbk([400, 'UnsupportedNetworkForFundingOutputs']);
-        }
-
-        const warn = console.warn;
-
-        console.warn = () => {};
-
-        const {psbt} = createPsbt({
-          outputs: finalOutputs.map(({address, tokens}) => ({
-            tokens,
-            script: bufferAsHex(toOutputScript(address, network)),
-          })),
-          utxos: inputs.map(input => ({
-            id: input.transaction_id,
-            vout: input.transaction_vout,
-          })),
-        });
-
         return fundPsbt({
-          psbt,
           fee_tokens_per_vbyte: feeRate,
+          inputs: !!inputs.length ? inputs : undefined,
           lnd: args.lnd,
+          outputs: finalOutputs,
         },
         cbk);
       }],

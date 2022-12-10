@@ -1,6 +1,6 @@
 # Versions
 
-## 13.10.5
+## 13.10.6
 
 - `invoice`: Fix issue creating `--virtual` invoices
 

@@ -1,4 +1,5 @@
 const {address} = require('bitcoinjs-lib');
+const {createChainAddress} = require('ln-service');
 const {crypto} = require('bitcoinjs-lib');
 const {networks} = require('bitcoinjs-lib');
 const {script} = require('bitcoinjs-lib');
@@ -24,23 +25,9 @@ test(`Fund transaction`, async ({end, equal, strictSame}) => {
 
   const [{generate, lnd}] = nodes;
 
+  const {address} = await createChainAddress({lnd, format: 'p2tr'});
+
   await generate({count});
-
-  const keyPair = ecp.makeRandom({network: networks.regtest});
-
-  const outputKey = makeTaprootKey(shortKey(keyPair), tapHash(keyPair));
-  const tweakHash = tapHash(keyPair);
-
-  const outputScript = compile([OP_1, Buffer.from(outputKey)]);
-
-  // Suppress fromOutputScript warning on Taproot address
-  const warn = console.warn;
-  console.warn = () => {};
-
-  const address = fromOutputScript(outputScript, networks.regtest);
-
-  // Restore warnings
-  console.warn = warn;
 
   try {
     await fundTransaction({
