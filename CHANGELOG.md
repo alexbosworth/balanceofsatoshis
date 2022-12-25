@@ -1,5 +1,10 @@
 # Versions
 
+## 13.11.0
+
+- `balance`: Add support for multiple nodes when using --detailed balance
+- `telegram`: Add support for showing balance information with /balance command
+
 ## 13.10.7
 
 - `invoice`: Fix issue creating `--virtual` invoices

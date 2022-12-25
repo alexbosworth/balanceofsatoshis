@@ -9,6 +9,7 @@ const {getNetwork} = require('ln-service');
 const {getTransactionRecord} = require('ln-sync');
 const {getWalletInfo} = require('ln-service');
 const {handleBackupCommand} = require('ln-telegram');
+const {handleBalanceCommand} = require('ln-telegram');
 const {handleBlocknotifyCommand} = require('ln-telegram');
 const {handleButtonPush} = require('ln-telegram');
 const {handleConnectCommand} = require('ln-telegram');
@@ -192,6 +193,21 @@ module.exports = (args, cbk) => {
               nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
               reply: ctx.reply,
               send: (n, opts) => ctx.replyWithDocument(fileAsDoc(n), opts),
+            });
+          } catch (err) {
+            args.logger.error({err});
+          }
+        });
+
+        // Handle lookup of total funds
+        args.bot.command('balance', async ctx => {
+          try {
+            await handleBalanceCommand({
+              from: ctx.message.from.id,
+              id: connectedId,
+              nodes: (await getLnds(args.logger, names, args.nodes)).nodes,
+              reply: (n, opt) => ctx.reply(n, opt),
+              working: () => ctx.replyWithChatAction('typing'),
             });
           } catch (err) {
             args.logger.error({err});
@@ -528,6 +544,7 @@ module.exports = (args, cbk) => {
       setCommands: ['validate', async ({}) => {
         return await args.bot.api.setMyCommands([
           {command: 'backup', description: 'Get node backup file'},
+          {command: 'balance', description: 'Show funds on the node'},
           {command: 'blocknotify', description: 'Get notified on next block'},
           {command: 'connect', description: 'Get connect code for the bot'},
           {command: 'costs', description: 'Show costs over the week'},
