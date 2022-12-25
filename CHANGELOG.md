@@ -1,5 +1,9 @@
 # Versions
 
+## 13.12.0
+
+- `swap`: Add support for P2TR addresses
+
 ## 13.11.0
 
 - `balance`: Add support for multiple nodes when using --detailed balance
