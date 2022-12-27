@@ -1893,6 +1893,7 @@ prog
   .option('--budget <amount>', 'Spending amount to allow', INT, Number())
   .option('--connect <connect_code>', 'Connection code from /connect')
   .option('--ignore-forwards-below <amount>', 'Ignore forwards of value', INT)
+  .option('--ignore-rebalances-below <amount>', 'Ignore rebalances of value', INT)
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .option('--reset-api-key', 'Reset the Telegram API key')
   .option('--use-proxy <path>', 'Proxy agent to connect to Telegram')
@@ -1913,6 +1914,7 @@ prog
           id: options.connect,
           is_small_units: options.useSmallUnits || undefined,
           min_forward_tokens: options.ignoreForwardsBelow || undefined,
+          min_rebalance_tokens: options.ignoreRebalancesBelow || undefined,
           nodes: flatten([options.node].filter(n => !!n)),
           payments: {limit: options.budget},
           proxy: options.useProxy || undefined,

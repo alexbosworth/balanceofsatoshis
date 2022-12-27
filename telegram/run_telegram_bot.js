@@ -24,6 +24,7 @@ const {isArray} = Array;
     [id]: <Authorized User Id Number>
     key: <Telegram Bot API Key String>
     [min_forward_tokens]: <Minimum Forward Tokens To Notify Number>
+    [min_rebalance_tokens]: <Minimum Rebalance Tokens To Notify Number>
     logger: <Winston Logger Object>
     nodes: [<Node Name String>]
     payments_limit: <Total Spendable Budget Tokens Limit Number>
@@ -96,6 +97,7 @@ module.exports = (args, cbk) => {
           id: args.id,
           key: args.key,
           min_forward_tokens: args.min_forward_tokens,
+          min_rebalance_tokens: args.min_rebalance_tokens,
           lnds: getLnds.lnds,
           logger: args.logger,
           nodes: args.nodes,

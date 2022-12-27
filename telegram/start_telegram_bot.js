@@ -76,6 +76,7 @@ const sanitize = n => (n || '').replace(/_/g, '\\_').replace(/[*~`]/g, '');
     [id]: <Authorized User Id Number>
     key: <Telegram API Key String>
     [min_forward_tokens]: <Minimum Forward Tokens To Notify Number>
+    [min_rebalance_tokens]: <Minimum Rebalance Tokens To Notify Number>
     lnds: [<Authenticated LND API Object>]
     nodes: [<Saved Nodes String>]
     logger: <Winston Logger Object>
@@ -750,6 +751,7 @@ module.exports = (args, cbk) => {
               },
               key: node.public_key,
               lnd: node.lnd,
+              min_rebalance_tokens: args.min_rebalance_tokens,
               nodes: getNodes,
               quiz: ({answers, correct, question}) => {
                 return args.bot.api.sendQuiz(

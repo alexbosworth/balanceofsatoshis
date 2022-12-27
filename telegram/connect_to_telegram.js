@@ -28,6 +28,7 @@ const smallUnitsType = 'full';
     is_small_units: <Formatting Should Use Small Units Bool>
     logger: <Winston Logger Object>
     [min_forward_tokens]: <Minimum Forward Tokens Number>
+    [min_rebalance_tokens]: <Minimum Rebalance Tokens Number>
     [nodes]: [<Node Name String>]
     payments: {
       [limit]: <Total Spendable Budget Tokens Limit Number>
@@ -125,6 +126,7 @@ module.exports = (args, cbk) => {
             id: Number(args.id),
             key: getBot.key,
             min_forward_tokens: args.min_forward_tokens,
+            min_rebalance_tokens: args.min_rebalance_tokens,
             logger: args.logger,
             nodes: args.nodes,
             payments_limit: limit || defaultPaymentsBudget,
