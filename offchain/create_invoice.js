@@ -12,7 +12,6 @@ const {parseAmount} = require('ln-accounting');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToForwardRequests} = require('ln-service');
-const moment = require('moment');
 
 const signPaymentRequest = require('./sign_payment_request');
 
