@@ -1062,7 +1062,7 @@ prog
   .help('--virtual invoices cannot be used with payers who probe before pay')
   .help('Only one --virtual invoice can be active at a time')
   .argument('[amount]', 'Amount for invoice', STRING, '0')
-  .option('--expiry <expires_in>', 'Hours the invoices expires in', INT)
+  .option('--hours <expires_in>', 'Hours the invoices expires in', INT)
   .option('--for <description>', 'What is the invoice requesting payment for')
   .option('--include-hints', 'Include the default set of hop hint channels')
   .option('--node <node_name>', 'Use saved node to create invoice')
@@ -1078,7 +1078,7 @@ prog
           amount: args.amount,
           ask: await commands.interrogate({}),
           description: options.for,
-          expires_in: options.expiry,
+          expires_in: options.hours,
           is_hinting: options.includeHints || undefined,
           is_selecting_hops: options.selectHints || undefined,
           is_virtual: options.virtual || undefined,

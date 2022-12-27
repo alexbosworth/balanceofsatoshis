@@ -21,6 +21,7 @@ const defaultFiatRateProvider = 'coinbase';
 const defaultInvoiceDescription = '';
 const fiats = ['EUR', 'USD'];
 const hasFiat = n => /(eur|usd)/gim.test(n);
+const hoursAsMs = n => 36 * 10e4 * n
 const interval = 3000;
 const {isArray} = Array;
 const {isInteger} = Number;
@@ -121,7 +122,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return cbk(null, moment().add(args.expires_in, 'hour').toISOString());
+        return cbk(null, new Date(Date.now() + hoursAsMs(args.expires_in)).toISOString())
       }],
 
       // Get channels to allow for selecting individual hop hints
