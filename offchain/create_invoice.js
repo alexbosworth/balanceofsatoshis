@@ -12,6 +12,7 @@ const {parseAmount} = require('ln-accounting');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToForwardRequests} = require('ln-service');
+const moment = require('moment');
 
 const signPaymentRequest = require('./sign_payment_request');
 
@@ -38,6 +39,7 @@ const uniq = arr => Array.from(new Set(arr));
     amount: <Invoice Amount String>
     ask: <Inquirer Function>
     [description]: <Invoice Description String>
+    [expires_in]: <Invoice Expires In Hours Number>
     [is_hinting]: <Include Private Channels Bool>
     [is_selecting_hops]: <Is Selecting Hops Bool>
     [is_virtual]: <Is Using Virtual Channel for Invoice Bool>
@@ -110,6 +112,16 @@ module.exports = (args, cbk) => {
           symbols: [].concat(fiats),
         },
         cbk);
+      }],
+
+      // Calculate invoice expiry
+      expiresAt: ['validate', ({}, cbk) => {
+        // Exit early if expiry is not defined
+        if (!args.expires_in) {
+          return cbk();
+        }
+
+        return cbk(null, moment().add(args.expires_in, 'hour').toISOString());
       }],
 
       // Get channels to allow for selecting individual hop hints
@@ -258,7 +270,11 @@ module.exports = (args, cbk) => {
       }],
 
       // Create the invoice in the LND database
-      addInvoice: ['getPolicies', 'parseAmount', ({parseAmount}, cbk) => {
+      addInvoice: [
+        'expiresAt', 
+        'getPolicies', 
+        'parseAmount', 
+        ({expiresAt, parseAmount}, cbk) => {
         // Exit with error when no amount is given
         if (!!args.is_virtual && !parseAmount.tokens) {
           return cbk([400, 'ExpectedNonZeroInvoiceForVirtualChannel']);
@@ -266,6 +282,7 @@ module.exports = (args, cbk) => {
 
         return createInvoice({
           description: args.description || defaultInvoiceDescription,
+          expires_at: expiresAt,
           is_including_private_channels: args.is_hinting || undefined,
           lnd: args.lnd,
           tokens: parseAmount.tokens,
@@ -357,12 +374,14 @@ module.exports = (args, cbk) => {
       // Create the final signed public payment request
       publicRequest: [
         'addInvoice',
+        'expiresAt',
         'getId',
         'getNetwork',
         'getPolicies',
         'parseAmount',
         ({
           addInvoice,
+          expiresAt,
           getId,
           getNetwork,
           getPolicies,
@@ -383,6 +402,7 @@ module.exports = (args, cbk) => {
           cltv_delta: parseRequest(addInvoice.request).cltv_delta,
           description: args.description || defaultInvoiceDescription,
           destination: getId.public_key,
+          expires_at: expiresAt,
           features: parseRequest(addInvoice.request).features,
           id: addInvoice.id,
           is_virtual: args.is_virtual,

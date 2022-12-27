@@ -38,6 +38,7 @@ const virtualChannelId = '805x805x805';
     cltv_delta: <Invoice Final CLTV Delta Number>
     description: <Invoice Description String>
     destination: <Destination Public Key Hex String>
+    [expires_at]: <Invoice Expires At String>
     features: [{
       bit: <BOLT 09 Feature Bit Number>
     }]
@@ -167,6 +168,7 @@ module.exports = (args, cbk) => {
             cltv_delta: args.cltv_delta,
             description: args.description,
             destination: destination.public_key,
+            expires_at: args.expires_at,
             features: args.features,
             id: args.id,
             network: args.network,
