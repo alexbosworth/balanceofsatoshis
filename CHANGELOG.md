@@ -1,5 +1,10 @@
 # Versions
 
+## 13.13.0
+
+- `invoice`: Add `--hours` to control the expiration date of a created invoice
+- `telegram`: Add `--ignore-rebalances-below` to ignore low value rebalances
+
 ## 13.12.0
 
 - `swap`: Add support for P2TR addresses
