@@ -1895,7 +1895,7 @@ prog
   .option('--budget <amount>', 'Spending amount to allow', INT, Number())
   .option('--connect <connect_code>', 'Connection code from /connect')
   .option('--ignore-forwards-below <amount>', 'Ignore forwards of value', INT)
-  .option('--ignore-rebalances-below <amount>', 'Ignore rebalances of value', INT)
+  .option('--ignore-rebalances-below <amt>', 'Ignore rebalances of value', INT)
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .option('--reset-api-key', 'Reset the Telegram API key')
   .option('--use-proxy <path>', 'Proxy agent to connect to Telegram')
