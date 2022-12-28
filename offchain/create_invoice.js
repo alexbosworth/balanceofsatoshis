@@ -20,7 +20,7 @@ const defaultFiatRateProvider = 'coinbase';
 const defaultInvoiceDescription = '';
 const fiats = ['EUR', 'USD'];
 const hasFiat = n => /(eur|usd)/gim.test(n);
-const hoursAsMs = n => 36 * 10e4 * n
+const hoursFromNow = h => new Date(Date.now() + (h * 3600000)).toISOString();
 const interval = 3000;
 const {isArray} = Array;
 const {isInteger} = Number;
@@ -72,6 +72,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedAskFunctionToCreateNewInvoice']);
         }
 
+        if (args.expires_in !== undefined && !args.expires_in) {
+          return cbk([400, 'ExpectedNonZeroExpirationTimeForNewInvoice']);
+        }
+
         if (!!args.is_hinting && !!args.is_selecting_hops) {
           return cbk([400, 'CannotUseDefaultHintsAndAlsoSelectHints']);
         }
@@ -99,6 +103,16 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Calculate invoice expiry date
+      expiresAt: ['validate', ({}, cbk) => {
+        // Exit early if expiry is not defined
+        if (!args.expires_in) {
+          return cbk();
+        }
+
+        return cbk(null, hoursFromNow(args.expires_in));
+      }],
+
       // Get the current price of BTC in USD/EUR
       getFiatPrice: ['validate', ({}, cbk) => {
         // Exit early when no fiat is referenced
@@ -112,16 +126,6 @@ module.exports = (args, cbk) => {
           symbols: [].concat(fiats),
         },
         cbk);
-      }],
-
-      // Calculate invoice expiry
-      expiresAt: ['validate', ({}, cbk) => {
-        // Exit early if expiry is not defined
-        if (!args.expires_in) {
-          return cbk();
-        }
-
-        return cbk(null, new Date(Date.now() + hoursAsMs(args.expires_in)).toISOString())
       }],
 
       // Get channels to allow for selecting individual hop hints
@@ -271,9 +275,9 @@ module.exports = (args, cbk) => {
 
       // Create the invoice in the LND database
       addInvoice: [
-        'expiresAt', 
-        'getPolicies', 
-        'parseAmount', 
+        'expiresAt',
+        'getPolicies',
+        'parseAmount',
         ({expiresAt, parseAmount}, cbk) => {
         // Exit with error when no amount is given
         if (!!args.is_virtual && !parseAmount.tokens) {
