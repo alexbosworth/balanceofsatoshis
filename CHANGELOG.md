@@ -1,5 +1,9 @@
 # Versions
 
+## 13.14.0
+
+- `remove-peer`: Indicate if the peer is paying the closing transaction fee
+
 ## 13.13.0
 
 - `invoice`: Add `--hours` to control the expiration date of a created invoice

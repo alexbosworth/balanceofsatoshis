@@ -525,6 +525,7 @@ module.exports = (args, cbk) => {
 
           return {
             close_transaction_id: matching.id,
+            peer_pays_closing_fee: channel.is_partner_initiated === true,
             transaction_fee: tokensAsBigUnit(fee),
             transaction_fee_rate: asRate(fee / tx.virtualSize()),
           };
