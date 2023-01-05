@@ -1,6 +1,6 @@
 # Versions
 
-## 13.14.0
+## 13.14.1
 
 - `remove-peer`: Indicate if the peer is paying the closing transaction fee
 
