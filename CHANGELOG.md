@@ -1,5 +1,9 @@
 # Versions
 
+## 13.15.0
+
+- `telegram`: Indicate outgoing peer alias on sent payment notifications
+
 ## 13.14.2
 
 - `remove-peer`: Indicate if the peer is paying the closing transaction fee

@@ -801,6 +801,7 @@ module.exports = (args, cbk) => {
                 payment: {
                   destination: payment.destination,
                   id: payment.id,
+                  paths: payment.paths,
                   safe_fee: payment.safe_fee,
                   safe_tokens: payment.safe_tokens,
                 },
