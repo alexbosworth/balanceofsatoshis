@@ -1,5 +1,9 @@
 # Versions
 
+## 13.16.0
+
+- `balance`: Add support for Taproot UTXOs
+
 ## 13.15.0
 
 - `telegram`: Indicate outgoing peer alias on sent payment notifications

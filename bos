@@ -527,6 +527,7 @@ prog
   .help('Other nodes can join the group using join-channel-group')
   .help('When using --allow, all joining nodes must be identified')
   .help('To specify order of group pairings, order using --allow ordering')
+  .help('For 2 person channels the joining node is the channel initiator')
   .option('--allow <public_key>', 'Only allow these nodes to join', REPEATABLE)
   .option('--capacity <channel_capacity>', 'Channel capacity', INT, 5e6)
   .option('--fee-rate <per_vbyte>', 'Chain fee rate for open', INT)
@@ -1306,6 +1307,7 @@ prog
   .command('open-group-channel', 'Open balanced channels with multiple peers')
   .help('Remote nodes must be prepared to participate in this type of channel')
   .help('The remote node should also run this same command to join the group')
+  .help('For 2 person channels the joining node is the channel initiator')
   .option('--node <node_name>', 'Use saved node details instead of local node')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
