@@ -1,6 +1,6 @@
 # Versions
 
-## 13.17.0
+## 13.17.1
 
 - `inbound-channel-rules`: Add support for Taproot `--coop-close-address`
 
