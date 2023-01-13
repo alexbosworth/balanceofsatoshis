@@ -1,5 +1,9 @@
 # Versions
 
+## 13.17.0
+
+- `inbound-channel-rules`: Add support for Taproot `--coop-close-address`
+
 ## 13.16.0
 
 - `balance`: Add support for Taproot UTXOs

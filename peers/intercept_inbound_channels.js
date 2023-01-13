@@ -1,17 +1,15 @@
-const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const {getNetwork} = require('ln-sync');
-const {networks} = require('bitcoinjs-lib');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToOpenRequests} = require('ln-service');
 
 const detectOpenRuleViolation = require('./detect_open_rule_violation');
 const openRequestViolation = require('./open_request_violation');
+const {outputScriptForAddress} = require('./../chain');
 
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const isTooLongReason = n => Buffer.byteLength(n, 'utf8') > 500;
-const {toOutputScript} = address;
 
 /** Reject inbound channels
 
@@ -93,7 +91,7 @@ module.exports = ({address, lnd, logger, reason, rules, trust}, cbk) => {
           }
 
           try {
-            toOutputScript(address, networks[res.bitcoinjs]);
+            outputScriptForAddress({address, network: res.network});
           } catch (err) {
             return cbk([400, 'FailedToParseCooperativeCloseAddress', {err}]);
           }
