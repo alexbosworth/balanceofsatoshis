@@ -1,5 +1,9 @@
 # Versions
 
+## 13.18.0
+
+- `open-balanced-channel`: Add support for Taproot to `--coop-close-address`
+
 ## 13.17.2
 
 - `inbound-channel-rules`: Add support for Taproot `--coop-close-address`

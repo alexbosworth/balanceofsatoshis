@@ -1,4 +1,3 @@
-const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
 const asyncEachSeries = require('async/eachSeries');
@@ -15,6 +14,7 @@ const {returnResult} = require('asyncjs-util');
 const acceptBalancedChannel = require('./accept_balanced_channel');
 const getBalancedOpens = require('./get_balanced_opens');
 const initiateBalancedChannel = require('./initiate_balanced_channel');
+const {outputScriptForAddress} = require('./../chain');
 const recoverTransitFunds = require('./recover_transit_funds');
 
 const bufferAsHex = buffer => buffer.toString('hex');
@@ -24,7 +24,6 @@ const interval = 1000 * 15;
 const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
 const minErrorCount = 4;
 const times = 60;
-const {toOutputScript} = address;
 
 /** Open a balanced channel
 
@@ -176,7 +175,7 @@ module.exports = ({address, after, ask, lnd, logger, recover}, cbk) => {
         // Make sure that a cooperative close address is valid
         if (!!address) {
           try {
-            toOutputScript(address, networks[getNetwork.bitcoinjs]);
+            outputScriptForAddress({address, network: getNetwork.network});
           } catch (err) {
             return cbk([400, 'FailedToParseCooperativeCloseAddress']);
           }
