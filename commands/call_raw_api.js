@@ -3,7 +3,7 @@ const {parse} = require('querystring');
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
 const lnService = require('ln-service');
-const lnsync = require('ln-sync');
+const lnSync = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const {calls} = require('./api');
@@ -209,7 +209,7 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
         }
 
         if (methodDetails(calls, getMethod.method).from === fromLnSync) {
-          return lnsync[getMethod.method](arguments, cbk);
+          return lnSync[getMethod.method](arguments, cbk);
         }
 
         return lnService[getMethod.method](arguments, cbk);

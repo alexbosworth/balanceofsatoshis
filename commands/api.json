@@ -319,6 +319,16 @@
     {
       "arguments": [
         {
+          "description": "Alias of peer you are looking for",
+          "named": "query"
+        }
+      ],
+      "from": "ln-sync",
+      "method": "findKey"
+    },
+    {
+      "arguments": [
+        {
           "description": "Base PSBT to fund",
           "named": "psbt"
         },
