@@ -1,5 +1,9 @@
 # Versions
 
+## 13.20.0
+
+- `create-channel-group`: Add logging to indicate that members are present
+
 ## 13.19.0
 
 - `call`: Add `acceptsChannelOpen`, `connectPeer`, `findKey`, `getNetwork`
