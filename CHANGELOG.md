@@ -1,5 +1,11 @@
 # Versions
 
+## 13.19.0
+
+- `call`: Add `acceptsChannelOpen`, `connectPeer`, `findKey`, `getNetwork`
+    methods to check for open acceptance, connect to a peer without specifying
+    a socket, find a public key identity for a peer alias, get the network name
+
 ## 13.18.0
 
 - `open-balanced-channel`: Add support for Taproot to `--coop-close-address`
