@@ -3,11 +3,13 @@ const {parse} = require('querystring');
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
 const lnService = require('ln-service');
+const lnsync = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const {calls} = require('./api');
 
 const {assign} = Object;
+const fromLnSync = 'ln-sync';
 const isChannel = n => !!n && /^\d*x\d*x\d*$/.test(n);
 const isHash = n => !!n && /^[0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
@@ -204,6 +206,10 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
         // Exit early when this is an event-based API
         if (!!methodDetails(calls, getMethod.method).events) {
           return cbk();
+        }
+
+        if (methodDetails(calls, getMethod.method).from === fromLnSync) {
+          return lnsync[getMethod.method](arguments, cbk);
         }
 
         return lnService[getMethod.method](arguments, cbk);
