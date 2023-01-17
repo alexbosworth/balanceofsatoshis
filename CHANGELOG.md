@@ -1,5 +1,9 @@
 # Versions
 
+## 13.21.0
+
+- `inbound-channel-rules`: Add support for multiple `--coop-close-address`
+
 ## 13.20.0
 
 - `create-channel-group`: Add logging to indicate that members are present
