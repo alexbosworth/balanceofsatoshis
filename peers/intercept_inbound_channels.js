@@ -172,7 +172,7 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
 
             // Pop off the first address that's used.
             addresses.shift();
-            
+
             return;
           });
         });
