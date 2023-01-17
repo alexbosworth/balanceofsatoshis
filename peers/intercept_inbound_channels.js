@@ -7,15 +7,15 @@ const detectOpenRuleViolation = require('./detect_open_rule_violation');
 const openRequestViolation = require('./open_request_violation');
 const {outputScriptForAddress} = require('./../chain');
 
-const addressToUse = n => !!n.length ? n[0] : undefined;
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const isTooLongReason = n => Buffer.byteLength(n, 'utf8') > 500;
+const notEmpty = n => !!n.length ? n : undefined;
 
 /** Reject inbound channels
 
   {
-    [addresses]: [<Cooperative Close Address String>]
+    addresses: [<Cooperative Close Address String>]
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [reason]: <Reason Error Message String>
@@ -29,7 +29,7 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
       // Check arguments
       validate: cbk => {
         if (!isArray(addresses)) {
-          return cbk([400, 'ExpectedArrayOfCoopCloseAddressesToInterceptChannels']);
+          return cbk([400, 'ExpectedArrayOfCloseAddressesToInterceptChans']);
         }
 
         if (!lnd) {
@@ -95,13 +95,14 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
             return cbk();
           }
 
-          addresses.forEach(address => {
-            try {
+          // Make sure that the addresses look ok
+          try {
+            addresses.forEach(address => {
               outputScriptForAddress({address, network: res.network});
-            } catch (err) {
-              return cbk([400, 'FailedToParseCooperativeCloseAddress', {err}]);
-            }
-          });
+            });
+          } catch (err) {
+            return cbk([400, 'FailedToParseCooperativeCloseAddress', {err}]);
+          }
 
           return cbk();
         });
@@ -110,6 +111,9 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
       // Subscribe to open requests
       subscribe: ['checkAddress', ({}, cbk) => {
         const sub = subscribeToOpenRequests({lnd});
+
+        // Copy the addresses into a pool
+        const cooperativeCloseAddresses = addresses.slice();
 
         // Exit with error when there is an error
         sub.once('error', err => {
@@ -120,8 +124,8 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
 
         logger.info({
           enforcing_inbound_channel_rules: rules,
-          requesting_cooperative_close_address: addresses,
-          do_not_require_conf_funds_from: !!trust.length ? trust : undefined,
+          requesting_cooperative_close_address: notEmpty(addresses),
+          do_not_require_conf_funds_from: notEmpty(trust),
         });
 
         sub.on('channel_request', request => {
@@ -164,17 +168,22 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
               return request.reject({reason});
             }
 
+            // Restock cooperative addresses when depleted
+            if (!!addresses.length && !cooperativeCloseAddresses.length) {
+              addresses.forEach(n => cooperativeCloseAddresses.push(n));
+            }
+
+            // Cycle through cooperative close addresses
+            const address = cooperativeCloseAddresses.shift();
+
             // Accept the channel open request
-            request.accept({
-              cooperative_close_address: addressToUse(addresses),
+            return request.accept({
+              cooperative_close_address: address,
               is_trusted_funding: request.is_trusted_funding,
             });
-
-            // Pop off the first address that's used.
-            addresses.shift();
-
-            return;
           });
+
+          return;
         });
       }],
     },

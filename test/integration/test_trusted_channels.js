@@ -61,6 +61,7 @@ test(`Open channels`, async ({end, equal, strictSame}) => {
       intercept: async () => {
         try {
           return await interceptInboundChannels({
+            addresses: [],
             lnd: target.lnd,
             logger: {error: () => {}, info: () => {}},
             rules: [],
