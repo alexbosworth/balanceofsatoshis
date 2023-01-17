@@ -7,6 +7,7 @@ const detectOpenRuleViolation = require('./detect_open_rule_violation');
 const openRequestViolation = require('./open_request_violation');
 const {outputScriptForAddress} = require('./../chain');
 
+const addressToUse = n => !!n.length ? n[0] : undefined;
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const isTooLongReason = n => Buffer.byteLength(n, 'utf8') > 500;
@@ -14,7 +15,7 @@ const isTooLongReason = n => Buffer.byteLength(n, 'utf8') > 500;
 /** Reject inbound channels
 
   {
-    [address]: <Cooperative Close Address String>
+    [addresses]: [<Cooperative Close Address String>]
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     [reason]: <Reason Error Message String>
@@ -22,11 +23,15 @@ const isTooLongReason = n => Buffer.byteLength(n, 'utf8') > 500;
     trust: [<Trust Funding From Node With Identity Public Key Hex String>]
   }
 */
-module.exports = ({address, lnd, logger, reason, rules, trust}, cbk) => {
+module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!isArray(addresses)) {
+          return cbk([400, 'ExpectedArrayOfCoopCloseAddressesToInterceptChannels']);
+        }
+
         if (!lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToRejectInboundChannels']);
         }
@@ -75,7 +80,7 @@ module.exports = ({address, lnd, logger, reason, rules, trust}, cbk) => {
       // Check the cooperative close address
       checkAddress: ['validate', ({}, cbk) => {
         // Exit early when there is no address to check
-        if (!address) {
+        if (!addresses.length) {
           return cbk();
         }
 
@@ -90,11 +95,13 @@ module.exports = ({address, lnd, logger, reason, rules, trust}, cbk) => {
             return cbk();
           }
 
-          try {
-            outputScriptForAddress({address, network: res.network});
-          } catch (err) {
-            return cbk([400, 'FailedToParseCooperativeCloseAddress', {err}]);
-          }
+          addresses.forEach(address => {
+            try {
+              outputScriptForAddress({address, network: res.network});
+            } catch (err) {
+              return cbk([400, 'FailedToParseCooperativeCloseAddress', {err}]);
+            }
+          });
 
           return cbk();
         });
@@ -113,7 +120,7 @@ module.exports = ({address, lnd, logger, reason, rules, trust}, cbk) => {
 
         logger.info({
           enforcing_inbound_channel_rules: rules,
-          requesting_cooperative_close_address: address,
+          requesting_cooperative_close_address: addresses,
           do_not_require_conf_funds_from: !!trust.length ? trust : undefined,
         });
 
@@ -158,13 +165,16 @@ module.exports = ({address, lnd, logger, reason, rules, trust}, cbk) => {
             }
 
             // Accept the channel open request
-            return request.accept({
-              cooperative_close_address: address,
+            request.accept({
+              cooperative_close_address: addressToUse(addresses),
               is_trusted_funding: request.is_trusted_funding,
             });
-          });
 
-          return;
+            // Pop off the first address that's used.
+            addresses.shift();
+            
+            return;
+          });
         });
       }],
     },

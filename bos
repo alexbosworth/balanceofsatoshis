@@ -885,7 +885,7 @@ prog
   .help('For formulas: PRIVATE is when request is for private channel')
   .help('For formulas: Use IF(X, Y, Z) to make branching condition rules')
   .help('Try formulas on the sandbox: https://formulajs.info/functions/')
-  .option('--coop-close-address', 'Request using a cooperative close address')
+  .option('--coop-close-address', 'Request using a cooperative close address', REPEATABLE)
   .option('--node <node_name>', 'Saved node to reject inbound channels on')
   .option('--reason <message>', 'Message to return when rejecting a request')
   .option('--rule <formula>', 'Freeform rule for inbound channel', REPEATABLE)
@@ -895,7 +895,7 @@ prog
       try {
         return await peers.interceptInboundChannels({
           logger,
-          address: options.coopCloseAddress || undefined,
+          addresses: collect(options.coopCloseAddress),
           lnd: (await lndForNode(logger, options.node)).lnd,
           reason: options.reason,
           rules: flatten([options.rule].filter(n => !!n)),
