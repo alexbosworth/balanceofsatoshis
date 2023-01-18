@@ -18,6 +18,7 @@ const splitEdge = n => n.split('/');
     [max_new_pending_per_hour]: <Maximum Outstanding New HTLCs Per Hour Number>
     [min_channel_confirmations]: <Minimum Required Channel Confs Number>
     only_allow: [<In Public Key / Out Public Key String>]
+    only_disallow: [<In Public Key/ Out Public Key String>]
   }
 
   @returns via cbk or Promise
@@ -31,8 +32,20 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedOnlyAllowArrayToLimitForwarding']);
         }
 
+        if (!isArray(args.only_disallow)) {
+          return cbk([400, 'ExpectedOnlyDisallowArrayToLimitForwarding']);
+        }
+
+        if (!!args.only_allow.length && !!args.only_disallow.length) {
+          return cbk([400, 'ExpectedEitherAllowOrDisallowPublicKeyPairs']);
+        }
+        
         if (!!args.only_allow.filter(n => !isEdge(n)).length) {
           return cbk([400, 'ExpectedOnlyAllowAsPublicKeyPairs']);
+        }
+
+        if (!!args.only_disallow.filter(n => !isEdge(n)).length) {
+          return cbk([400, 'ExpectedOnlyDisallowAsPublicKeyPairs']);
         }
 
         if (!args.logger) {
@@ -81,12 +94,26 @@ module.exports = (args, cbk) => {
         return cbk(null, allow);
       }],
 
+      // Only disallow pairs
+      onlyDisallow: ['validate', ({}, cbk) => {
+        if (!args.only_disallow.length) {
+          return cbk();
+        }
+
+        const disallow = args.only_disallow.map(splitEdge).map(([inKey, outKey]) => {
+          return {inbound_peer: inKey, outbound_peer: outKey};
+        });
+
+        return cbk(null, disallow);
+      }],
+
       // Limit forward requests
       limit: [
         'maxPendingPerHour',
         'maxSecondsSinceLastBlock',
         'onlyAllow',
-        ({maxPendingPerHour, maxSecondsSinceLastBlock, onlyAllow}, cbk) =>
+        'onlyDisallow',
+        ({maxPendingPerHour, maxSecondsSinceLastBlock, onlyAllow, onlyDisallow}, cbk) =>
       {
         args.logger.info({limiting_forwards: true});
 
@@ -96,6 +123,7 @@ module.exports = (args, cbk) => {
           max_seconds_since_last_block: maxSecondsSinceLastBlock,
           min_activation_age: args.min_channel_confirmations || undefined,
           only_allow: onlyAllow,
+          only_disallow: onlyDisallow,
         });
 
         sub.on('error', err => {
