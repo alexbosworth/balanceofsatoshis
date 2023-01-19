@@ -1,5 +1,9 @@
 # Versions
 
+## 13.22.0
+
+- `limit-forwarding`: Add `--deny` to specify directional forwarding denials
+
 ## 13.21.0
 
 - `inbound-channel-rules`: Add support for multiple `--coop-close-address`
