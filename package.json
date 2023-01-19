@@ -37,7 +37,7 @@
     "inquirer": "9.1.4",
     "ln-accounting": "6.1.2",
     "ln-service": "54.9.0",
-    "ln-sync": "4.2.0",
+    "ln-sync": "4.3.0",
     "ln-telegram": "4.6.0",
     "moment": "2.29.4",
     "paid-services": "4.3.0",

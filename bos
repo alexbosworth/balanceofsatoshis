@@ -910,15 +910,16 @@ prog
 
   // Intercept forwarding requests, enforce requirements on acceptance
   .command('limit-forwarding', 'Enforce rules for routing payments')
+  .help(`--deny option can be repeated for multiple denied from/to paths`)
   .help('Setting --only-allow will disable all forwards except only allowed')
   .help('--only-allow option can be repeated for multiple forwards')
-  .option('--node <node_name>', 'Saved node to enforce rules on')
+  .option('--deny <pair>', 'disable all forwards fromKey/toKey', REPEATABLE)
   .option('--disable-forwards', 'Disable all forwards')
   .option('--max-hours-since-last-block <h>', 'Require fresh blocks', INT, 5)
   .option('--max-new-pending-per-hour <h>', 'Limit held HTLCs', INT)
   .option('--min-channel-confirmations <confs>', 'Minimum channel confs', INT)
+  .option('--node <node_name>', 'Saved node to enforce rules on')
   .option('--only-allow <pair>', 'only forward fromKey/toKey', REPEATABLE)
-  .option('--only-disallow <pair>', 'only disable forwards fromKey/toKey', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -930,7 +931,7 @@ prog
           max_new_pending_per_hour: options.maxNewPendingPerHour,
           min_channel_confirmations: options.minChannelConfirmations,
           only_allow: flatten([options.onlyAllow].filter(n => !!n)),
-          only_disallow: flatten([options.onlyDisallow].filter(n => !!n))
+          only_disallow: flatten([options.deny].filter(n => !!n))
         });
       } catch (err) {
         return logger.error({err}) && reject();

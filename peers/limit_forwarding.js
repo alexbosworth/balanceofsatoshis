@@ -18,7 +18,7 @@ const splitEdge = n => n.split('/');
     [max_new_pending_per_hour]: <Maximum Outstanding New HTLCs Per Hour Number>
     [min_channel_confirmations]: <Minimum Required Channel Confs Number>
     only_allow: [<In Public Key / Out Public Key String>]
-    only_disallow: [<In Public Key/ Out Public Key String>]
+    only_disallow: [<In Public Key / Out Public Key String>]
   }
 
   @returns via cbk or Promise
@@ -39,7 +39,7 @@ module.exports = (args, cbk) => {
         if (!!args.only_allow.length && !!args.only_disallow.length) {
           return cbk([400, 'ExpectedEitherAllowOrDisallowPublicKeyPairs']);
         }
-        
+
         if (!!args.only_allow.filter(n => !isEdge(n)).length) {
           return cbk([400, 'ExpectedOnlyAllowAsPublicKeyPairs']);
         }
@@ -96,11 +96,14 @@ module.exports = (args, cbk) => {
 
       // Only disallow pairs
       onlyDisallow: ['validate', ({}, cbk) => {
+        // Exit early when there is no deny list
         if (!args.only_disallow.length) {
           return cbk();
         }
 
-        const disallow = args.only_disallow.map(splitEdge).map(([inKey, outKey]) => {
+        const edges = args.only_disallow.map(splitEdge);
+
+        const disallow = edges.map(([inKey, outKey]) => {
           return {inbound_peer: inKey, outbound_peer: outKey};
         });
 
@@ -113,7 +116,13 @@ module.exports = (args, cbk) => {
         'maxSecondsSinceLastBlock',
         'onlyAllow',
         'onlyDisallow',
-        ({maxPendingPerHour, maxSecondsSinceLastBlock, onlyAllow, onlyDisallow}, cbk) =>
+        ({
+          maxPendingPerHour,
+          maxSecondsSinceLastBlock,
+          onlyAllow,
+          onlyDisallow,
+        },
+        cbk) =>
       {
         args.logger.info({limiting_forwards: true});
 
