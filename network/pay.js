@@ -30,6 +30,7 @@ const singlePath = 1;
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     [in_through]: <Pay In Through Node With Public Key Hex String>
+    [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     max_fee: <Max Fee Tokens Number>
@@ -56,7 +57,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedWinstonLoggerToPayPaymentRequest']);
         }
 
-        if (!args.max_fee) {
+        if (args.max_fee === undefined) {
           return cbk([400, 'ExpectedMaxFeeToleranceToPayPaymentRequest']);
         }
 
@@ -196,6 +197,7 @@ module.exports = (args, cbk) => {
           ignore: getBaseIgnores.ignore,
           in_through: args.in_through,
           is_real_payment: true,
+          is_strict_max_fee: args.is_strict_max_fee,
           logger: args.logger,
           lnd: args.lnd,
           max_fee: args.max_fee,
@@ -211,6 +213,10 @@ module.exports = (args, cbk) => {
         // Exit early when doing a single path
         if (args.max_paths === singlePath) {
           return cbk();
+        }
+
+        if (!!args.is_strict_max_fee) {
+          return cbk([501, 'StrictMaxFeeNotSupportedWithMultiPathPayments']);
         }
 
         if (!!args.message) {

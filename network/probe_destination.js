@@ -444,7 +444,10 @@ module.exports = (args, cbk) => {
       // Outcome of probes and payment
       outcome: ['getMax', 'pay', 'probe', ({getMax, pay, probe}, cbk) => {
         if (!probe.route) {
-          return cbk(null, {attempted_paths: probe.attempted_paths});
+          return cbk(null, {
+            attempted_paths: probe.attempted_paths,
+            is_failed: true,
+          });
         }
 
         const {route} = probe;

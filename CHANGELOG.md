@@ -1,5 +1,10 @@
 # Versions
 
+## 13.23.0
+
+- `pay`: Add option `--avoid-high-fee-routes` to ignore out of range fee paths
+- `pay`: Add support for specifying 0 for `--max-fee` in payments
+
 ## 13.22.0
 
 - `limit-forwarding`: Add `--deny` to specify directional forwarding denials

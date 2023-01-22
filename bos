@@ -1358,6 +1358,7 @@ prog
   .command('pay', 'Pay a payment request, probing first')
   .argument('<request>', 'Payment Request')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
+  .option('--avoid-high-fee-routes', 'Avoid evaluating too-high fee routes')
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Maximum fee to pay', INT, 1337)
   .option('--max-paths <paths>', 'Maximum paths to use', INT, 1)
@@ -1378,7 +1379,7 @@ prog
           avoid: flatten([options.avoid].filter(n => !!n)),
           fs: {getFile: readFile},
           in_through: inThrough.public_key,
-          is_real_payment: true,
+          is_strict_max_fee: !!options.avoidHighFeeRoutes,
           max_fee: options.maxFee,
           max_paths: options.maxPaths,
           message: options.message,
