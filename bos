@@ -1689,6 +1689,7 @@ prog
   .argument('<to>', 'Send to public key, zero pay request, lnurl, ln.address')
   .option('--amount <amount>', 'Amount to send to destination', STRING, '1')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
+  .option('--avoid-high-fee-routes', 'Avoid evaluating too-high fee routes')
   .option('--dryrun', 'Avoid actually sending funds')
   .option('--in <pubkey_or_alias>', 'Route in through a specific node')
   .option('--max-fee <fee>', 'Maximum fee tokens', INT, 1337)
@@ -1711,6 +1712,7 @@ prog
           in_through: options.in,
           is_dry_run: options.dryrun,
           is_omitting_message_from: options.messageOmitFromKey,
+          is_strict_max_fee: !!options.avoidHighFeeRoutes,
           lnd: (await lndForNode(logger, options.node)).lnd,
           max_fee: options.maxFee,
           max_fee_rate: options.maxFeeRate,

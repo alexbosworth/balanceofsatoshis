@@ -46,6 +46,7 @@ const utf8AsHex = n => Buffer.from(n, 'utf8').toString('hex');
     [in_through]: <Pay In Through Peer String>
     [is_dry_run]: <Do Not Push Payment Bool>
     [is_omitting_message_from]: <Do Not Include From Key In Message Bool>
+    [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     max_fee: <Maximum Fee Tokens Number>
@@ -450,6 +451,7 @@ module.exports = (args, cbk) => {
           is_omitting_message_from: args.is_omitting_message_from,
           is_push: send.is_push,
           is_real_payment: true,
+          is_strict_max_fee: args.is_strict_max_fee,
           max_fee: send.max_fee,
           message: args.message,
           messages: args.quiz_answers.map((answer, i) => ({
@@ -466,6 +468,11 @@ module.exports = (args, cbk) => {
 
       // Get adjusted outbound liquidity after push
       getAdjustedOutbound: ['push', ({push}, cbk) => {
+        // Exit early when there was no path
+        if (!push.attempted_paths && !!push.is_failed) {
+          return cbk([503, 'NoRouteToDestination']);
+        }
+
         // Exit early when the payment failed
         if (!push.preimage) {
           return cbk([503, 'UnexpectedSendPaymentFailure']);
