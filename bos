@@ -1478,8 +1478,10 @@ prog
   .argument('<to>', 'Payment request or node public key')
   .argument('[amount]', 'Amount to probe, default: request amount')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
+  .option('--avoid-high-fee-routes', 'Avoid evaluating too-high fee routes')
   .option('--find-max', 'Find the maximum routeable amount on success route')
   .option('--in <public_key>', 'Route through specific peer of destination')
+  .option('--max-fee <max_fee>', 'Max expected fee for route', INT, 1337)
   .option('--max-paths <max>', 'Maximum paths to use for find-max', INT, 1)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for payment request check')
@@ -1499,6 +1501,8 @@ prog
           find_max: !!options.findMax ? 16777215 : undefined,
           fs: {getFile: readFile},
           in_through: inThrough.public_key,
+          is_strict_max_fee: !!options.avoidHighFeeRoutes,
+          max_fee: options.maxFee,
           max_paths: options.maxPaths,
           out: flatten([options.out].filter(n => !!n)),
           request: args.to.length !== 66 ? args.to : undefined,

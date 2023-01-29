@@ -39,8 +39,10 @@ const unsupported = 501;
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     [in_through]: <Pay In Through Public Key Hex String>
+    [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
+    max_fee: <Max Fee Tokens Number>
     [max_paths]: <Maximum Probe Paths Number>
     out: [<Out Through Peer With Public Key Hex String>]
     [request]: <BOLT 11 Encoded Payment Request String>
@@ -71,6 +73,10 @@ module.exports = (args, cbk) => {
 
         if (!args.logger) {
           return cbk([400, 'ExpectedLoggerObjectToStartProbe']);
+        }
+
+        if (args.max_fee === undefined) {
+          return cbk([400, 'ExpectedMaxFeeToleranceToProbeDestination']);
         }
 
         if (!isArray(args.out)) {
@@ -287,6 +293,10 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
+        if (!!args.is_strict_max_fee) {
+          return cbk([501, 'StrictMaxFeeNotSupportedWithMultiPathProbes']);
+        }
+
         // Exit with error when the backing LND is below 0.10.0
         if (!!isLegacy) {
           return cbk([501, 'BackingLndDoesNotSupportMultiPathPayments']);
@@ -303,6 +313,7 @@ module.exports = (args, cbk) => {
           ignore: getIgnores.ignore,
           incoming_peer: args.in_through,
           lnd: args.lnd,
+          max_fee: args.max_fee,
           max_paths: args.max_paths,
           path_timeout_ms: pathTimeoutMs,
           routes: decodeRequest.routes,
@@ -375,6 +386,22 @@ module.exports = (args, cbk) => {
         ({multiProbe, singleProbe}, cbk) =>
       {
         return cbk(null, multiProbe || singleProbe);
+      }],
+
+      // Check the fee
+      checkFee: ['probe', ({probe}, cbk) => {
+        if (!probe || probe.fee === undefined) {
+          return cbk();
+        }
+
+        if (probe.fee > args.max_fee) {
+          return cbk([503, 'FailedToFindPathUnderMaxFee', {
+            max_fee: args.max_fee,
+            needed_fee: probe.fee,
+          }]);
+        }
+
+        return cbk();
       }],
     },
     returnResult({reject, resolve, of: 'probe'}, cbk));
