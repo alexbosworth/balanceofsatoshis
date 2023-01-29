@@ -1,6 +1,6 @@
 # Versions
 
-## 13.24.0
+## 13.24.1
 
 - `send`: Add option `--avoid-high-fee-routes` to ignore out of range fee paths
 
