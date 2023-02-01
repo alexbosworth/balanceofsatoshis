@@ -1,6 +1,6 @@
 # Versions
 
-## 13.25.1
+## 13.25.2
 
 - `probe`: Add option `--avoid-high-fee-routes` to ignore too high paths
 - `probe`: Add option `--max-fee` to specify a maximum fee to look for
