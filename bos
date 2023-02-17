@@ -763,6 +763,7 @@ prog
   .help('Amounts support formulas, use MAX to reference selected UTXOs total')
   .help('--utxo can be specified multiple times to spend multiple UTXOs')
   .argument('<address_amount...>', 'Address and amount to send')
+  .option('--broadcast', 'Broadcast the signed transaction')
   .option('--dryrun', 'Avoid locking up UTXOs')
   .option('--fee-rate <fee>', 'Per vbyte fee rate for on-chain tx fee', INT)
   .option('--node <node_name>', 'Node to spend coins')
@@ -777,6 +778,7 @@ prog
           amounts: args.addressAmount.filter((n, i) => i % 2),
           ask: await commands.interrogate({}),
           fee_tokens_per_vbyte: options.feeRate,
+          is_broadcast: options.broadcast,
           is_dry_run: !!options.dryrun,
           is_selecting_utxos: options.selectUtxos,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,

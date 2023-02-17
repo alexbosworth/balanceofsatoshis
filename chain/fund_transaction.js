@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
+const {broadcastTransaction} = require('ln-sync');
 const {createPsbt} = require('psbt');
 const {formatTokens} = require('ln-sync');
 const {fundPsbt} = require('ln-service');
@@ -38,6 +39,7 @@ const txHashAsTxId = hash => hash.reverse().toString('hex');
     ask: <Ask Function>
     spend: [<Coin Outpoint String>]
     [fee_tokens_per_vbyte]: <Fee Tokens Per Virtual Byte Number>
+    [is_broadcast]: <Broadcast Signed Transaction Bool>
     is_dry_run: <Release Locks on Transaction Bool>
     [is_selecting_utxos]: <Interactively Select UTXOs to Spend Bool>
     lnd: <Authenticated LND API Object>
@@ -339,7 +341,29 @@ module.exports = (args, cbk) => {
           signed_transaction: sign.transaction,
         });
       }],
+
+      // Broadcast the signed transaction
+      broadcast: ['funded', ({funded}, cbk) => {
+        if (!args.is_broadcast) {
+          return cbk(null, {
+            fee_tokens_per_vbyte: funded.fee_tokens_per_vbyte,
+            signed_transaction: funded.signed_transaction,
+          });
+        }
+
+        args.logger.info({
+          fee_tokens_per_vbyte: funded.fee_tokens_per_vbyte,
+          signed_transaction: funded.signed_transaction,
+        });
+
+        return broadcastTransaction({
+          lnd: args.lnd,
+          logger: args.logger,
+          transaction: funded.signed_transaction,
+        },
+        cbk);
+      }]
     },
-    returnResult({reject, resolve, of: 'funded'}, cbk));
+    returnResult({reject, resolve, of: 'broadcast'}, cbk));
   });
 };
