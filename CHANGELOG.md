@@ -1,5 +1,9 @@
 # Versions
 
+## 13.26.0
+
+- `fund`: Add `broadcast` flag to allow for broadcasting the signed transaction
+
 ## 13.25.2
 
 - `probe`: Add option `--avoid-high-fee-routes` to ignore too high paths

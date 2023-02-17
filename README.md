@@ -246,14 +246,14 @@ Use any shorthand you'd like when choosing this profile node name
 **Note:** `cert` and (admin) `macaroon` should have base64-encoded, and newline-stripped content of the files. To get the strings in appropriate format you can run, ex:
 
 ```bash
-# For `cert` 
+# For `cert`
 base64 -w0 ~/.lnd/tls.cert
 
 # For `macaroon`
 base64 -w0 ~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 ```
 
-**Note_2:** `socket` should contain `host:port` pointing to `lnd`'s gRPC interface, `localhost:10009` by convention.  
+**Note_2:** `socket` should contain `host:port` pointing to `lnd`'s gRPC interface, `localhost:10009` by convention.
  
 You can also set `cert_path` and `macaroon_path` to the path of the relevant
 files instead.
