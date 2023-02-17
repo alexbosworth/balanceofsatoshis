@@ -344,6 +344,7 @@ module.exports = (args, cbk) => {
 
       // Broadcast the signed transaction
       broadcast: ['funded', ({funded}, cbk) => {
+        // Exit early when not broadcasting the transaction
         if (!args.is_broadcast) {
           return cbk(null, {
             fee_tokens_per_vbyte: funded.fee_tokens_per_vbyte,
