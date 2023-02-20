@@ -2,9 +2,12 @@ const asyncAuto = require('async/auto');
 const {decodeChanId} = require('bolt07');
 const {getHeight} = require('ln-service');
 const {getNode} = require('ln-service');
+const {isIP} = require('net');
 const {returnResult} = require('asyncjs-util');
 
 const {isArray} = Array;
+const isClear = sockets => !!sockets.find(n => !!isIP(n.socket.split(':')[0]));
+const isOnion = sockets => !!sockets.find(n => /onion/.test(n.socket));
 const openRequestViolation = require('./open_request_violation');
 
 /** Detect an open request rule violation
@@ -68,11 +71,29 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Check if peer supports clearnet
+      isClearnet: ['validate', 'getNodeFees', ({getNodeFees}, cbk) => {
+        const {sockets} = getNodeFees;
+
+        // Exit early if there are no sockets present
+        if (!sockets.length) {
+          return cbk(null, true);
+        }
+
+        // Exit if there are only Tor sockets
+        if (!isClear(sockets) && !!isOnion(sockets)) {
+          return cbk(null, false);
+        }
+
+        return cbk(null, true);
+      }],
+
       // Evaluate rules to find a violation
       evaluate: [
         'getHeight',
         'getNodeFees',
-        ({getHeight, getNodeFees}, cbk) =>
+        'isClearnet',
+        ({getHeight, getNodeFees, isClearnet}, cbk) =>
       {
         // Exit early when there are no rules to evaluate
         if (!args.rules.length) {
@@ -93,10 +114,11 @@ module.exports = (args, cbk) => {
             capacity: args.capacity,
             channel_ages: channelAges,
             fee_rates: getNodeFees.channels
-              .map(({policies}) => policies.find(n => n.public_key === key))
-              .filter(n => !!n && n.fee_rate !== undefined)
-              .map(n => n.fee_rate),
+            .map(({policies}) => policies.find(n => n.public_key === key))
+            .filter(n => !!n && n.fee_rate !== undefined)
+            .map(n => n.fee_rate),
             local_balance: args.local_balance,
+            is_clearnet_only: isClearnet,
             is_private: !!args.is_private,
             public_key: args.partner_public_key,
             rules: args.rules,

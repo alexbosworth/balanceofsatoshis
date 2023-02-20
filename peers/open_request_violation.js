@@ -10,6 +10,7 @@ const {keys} = Object;
     capacity: <Open Channel Capacity Tokens Number>
     channel_ages: [<Blocks Since Channel Open Number>]
     fee_rates: [<Outgoing Parts Per Million Fee Rate Number>]
+    is_clearnet_only: <Requesting Clearnet Only peers>
     is_private: <Requesting Not Announced Channel Bool>
     local_balance: <Open Channel Gifted Tokens Number>
     public_key: <Open Channel Gifted Tokens Number>
@@ -41,6 +42,10 @@ module.exports = args => {
     throw new Error('ExpectedArrayOfFeeRatesToCheckForOpenRequestViolation');
   }
 
+  if (args.is_clearnet_only === undefined) {
+    throw new Error('ExpectedClearnetOnlyStatusToCheckOpenRequestRules');
+  }
+
   if (args.is_private === undefined) {
     throw new Error('ExpectedChannelPrivateStatusToCheckOpenRequestRules');
   }
@@ -62,6 +67,7 @@ module.exports = args => {
     capacities: args.capacities,
     capacity: args.capacity,
     channel_ages: args.channel_ages,
+    clearnet: args.is_clearnet_only,
     fee_rates: args.fee_rates,
     k: 1e3,
     local_balance: args.local_balance,

@@ -62,6 +62,7 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
               channel_ages: [],
               fee_rates: [3],
               is_private: false,
+              is_clearnet_only: false,
               local_balance: 4,
               public_key: Buffer.alloc(33, 2).toString('hex'),
             });
