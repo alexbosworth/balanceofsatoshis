@@ -71,38 +71,22 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Check if peer supports clearnet
+      // Determine if peer advertises clearnet
       hasClearnet: ['validate', 'getNodeFees', ({getNodeFees}, cbk) => {
         const {sockets} = getNodeFees;
 
-        // Exit early if there are no sockets present
-        if (!sockets.length) {
-          return cbk(null, true);
-        }
+        const isAdvertisingClearnet = !!sockets.length && !!isClear(sockets);
 
-        // Exit if there is a clearnet socket
-        if (!!isClear(sockets)) {
-          return cbk(null, true);
-        }
-
-        return cbk(null, false);
+        return cbk(null, isAdvertisingClearnet);
       }],
 
-      // Check if peer supports clearnet
+      // Determine if peer advertises Tor
       hasTor: ['validate', 'getNodeFees', ({getNodeFees}, cbk) => {
         const {sockets} = getNodeFees;
 
-        // Exit early if there are no sockets present
-        if (!sockets.length) {
-          return cbk(null, true);
-        }
+        const isAdvertisingTor = !!sockets.length && !!isOnion(sockets);
 
-        // Exit is there is a Tor socket
-        if (!!isOnion(sockets)) {
-          return cbk(null, true);
-        }
-
-        return cbk(null, false);
+        return cbk(null, isAdvertisingTor);
       }],
 
       // Evaluate rules to find a violation
@@ -132,9 +116,9 @@ module.exports = (args, cbk) => {
             capacity: args.capacity,
             channel_ages: channelAges,
             fee_rates: getNodeFees.channels
-            .map(({policies}) => policies.find(n => n.public_key === key))
-            .filter(n => !!n && n.fee_rate !== undefined)
-            .map(n => n.fee_rate),
+              .map(({policies}) => policies.find(n => n.public_key === key))
+              .filter(n => !!n && n.fee_rate !== undefined)
+              .map(n => n.fee_rate),
             local_balance: args.local_balance,
             is_clearnet: hasClearnet,
             is_private: !!args.is_private,

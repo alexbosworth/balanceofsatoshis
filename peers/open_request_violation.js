@@ -10,9 +10,9 @@ const {keys} = Object;
     capacity: <Open Channel Capacity Tokens Number>
     channel_ages: [<Blocks Since Channel Open Number>]
     fee_rates: [<Outgoing Parts Per Million Fee Rate Number>]
-    is_clearnet: <Requesting Clearnet peers>
+    is_clearnet: <Peer Advertises Clearnet Address Bool>
     is_private: <Requesting Not Announced Channel Bool>
-    is_tor: <Requesting Tor peers>
+    is_tor: <Peer Advertises Tor Address Bool>>
     local_balance: <Open Channel Gifted Tokens Number>
     public_key: <Open Channel Gifted Tokens Number>
     rules: [<Open Channel Request Rule String>]
@@ -51,10 +51,6 @@ module.exports = args => {
     throw new Error('ExpectedChannelPrivateStatusToCheckOpenRequestRules');
   }
 
-  if (args.is_tor === undefined) {
-    throw new Error('ExpectedTorStatusToCheckOpenRequestRules');
-  }
-
   if (args.local_balance === undefined) {
     throw new Error('ExpectedLocalBalanceToCheckForOpenRequestViolation');
   }
@@ -65,6 +61,10 @@ module.exports = args => {
 
   if (!isArray(args.rules)) {
     throw new Error('ExpectedArrayOfRulesToCheckForOpenRequestViolation');
+  }
+
+  if (args.is_tor === undefined) {
+    throw new Error('ExpectedTorStatusToCheckOpenRequestRules');
   }
 
   const variables = {
