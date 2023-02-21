@@ -10,8 +10,9 @@ const {keys} = Object;
     capacity: <Open Channel Capacity Tokens Number>
     channel_ages: [<Blocks Since Channel Open Number>]
     fee_rates: [<Outgoing Parts Per Million Fee Rate Number>]
-    is_clearnet_only: <Requesting Clearnet Only peers>
+    is_clearnet: <Requesting Clearnet peers>
     is_private: <Requesting Not Announced Channel Bool>
+    is_tor: <Requesting Tor peers>
     local_balance: <Open Channel Gifted Tokens Number>
     public_key: <Open Channel Gifted Tokens Number>
     rules: [<Open Channel Request Rule String>]
@@ -42,12 +43,16 @@ module.exports = args => {
     throw new Error('ExpectedArrayOfFeeRatesToCheckForOpenRequestViolation');
   }
 
-  if (args.is_clearnet_only === undefined) {
-    throw new Error('ExpectedClearnetOnlyStatusToCheckOpenRequestRules');
+  if (args.is_clearnet === undefined) {
+    throw new Error('ExpectedClearnetStatusToCheckOpenRequestRules');
   }
 
   if (args.is_private === undefined) {
     throw new Error('ExpectedChannelPrivateStatusToCheckOpenRequestRules');
+  }
+
+  if (args.is_tor === undefined) {
+    throw new Error('ExpectedTorStatusToCheckOpenRequestRules');
   }
 
   if (args.local_balance === undefined) {
@@ -67,7 +72,7 @@ module.exports = args => {
     capacities: args.capacities,
     capacity: args.capacity,
     channel_ages: args.channel_ages,
-    clearnet: args.is_clearnet_only,
+    clearnet: args.is_clearnet,
     fee_rates: args.fee_rates,
     k: 1e3,
     local_balance: args.local_balance,
@@ -75,6 +80,7 @@ module.exports = args => {
     mm: 1e6,
     private: args.is_private,
     public_key: args.public_key,
+    tor: args.is_tor,
   };
 
   const parser = new Parser();

@@ -72,7 +72,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Check if peer supports clearnet
-      isClearnet: ['validate', 'getNodeFees', ({getNodeFees}, cbk) => {
+      hasClearnet: ['validate', 'getNodeFees', ({getNodeFees}, cbk) => {
         const {sockets} = getNodeFees;
 
         // Exit early if there are no sockets present
@@ -80,20 +80,38 @@ module.exports = (args, cbk) => {
           return cbk(null, true);
         }
 
-        // Exit if there are only Tor sockets
-        if (!isClear(sockets) && !!isOnion(sockets)) {
-          return cbk(null, false);
+        // Exit if there is a clearnet socket
+        if (!!isClear(sockets)) {
+          return cbk(null, true);
         }
 
-        return cbk(null, true);
+        return cbk(null, false);
+      }],
+
+      // Check if peer supports clearnet
+      hasTor: ['validate', 'getNodeFees', ({getNodeFees}, cbk) => {
+        const {sockets} = getNodeFees;
+
+        // Exit early if there are no sockets present
+        if (!sockets.length) {
+          return cbk(null, true);
+        }
+
+        // Exit is there is a Tor socket
+        if (!!isOnion(sockets)) {
+          return cbk(null, true);
+        }
+
+        return cbk(null, false);
       }],
 
       // Evaluate rules to find a violation
       evaluate: [
         'getHeight',
         'getNodeFees',
-        'isClearnet',
-        ({getHeight, getNodeFees, isClearnet}, cbk) =>
+        'hasClearnet',
+        'hasTor',
+        ({getHeight, getNodeFees, hasClearnet, hasTor}, cbk) =>
       {
         // Exit early when there are no rules to evaluate
         if (!args.rules.length) {
@@ -118,8 +136,9 @@ module.exports = (args, cbk) => {
             .filter(n => !!n && n.fee_rate !== undefined)
             .map(n => n.fee_rate),
             local_balance: args.local_balance,
-            is_clearnet_only: isClearnet,
+            is_clearnet: hasClearnet,
             is_private: !!args.is_private,
+            is_tor: hasTor,
             public_key: args.partner_public_key,
             rules: args.rules,
           });
