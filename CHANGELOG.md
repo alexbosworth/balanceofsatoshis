@@ -1,5 +1,9 @@
 # Versions
 
+## 13.27.0
+
+- `inbound-channel-rules`: Add support for CLEARNET and TOR in rule formulas
+
 ## 13.26.0
 
 - `fund`: Add `broadcast` flag to allow for broadcasting the signed transaction

@@ -73,7 +73,7 @@ module.exports = (args, cbk) => {
 
       // Determine if peer advertises clearnet
       hasClearnet: ['validate', 'getNodeFees', ({getNodeFees}, cbk) => {
-        const {sockets} = getNodeFees;
+        const sockets = getNodeFees.sockets || []
 
         const isAdvertisingClearnet = !!sockets.length && !!isClear(sockets);
 
@@ -82,7 +82,7 @@ module.exports = (args, cbk) => {
 
       // Determine if peer advertises Tor
       hasTor: ['validate', 'getNodeFees', ({getNodeFees}, cbk) => {
-        const {sockets} = getNodeFees;
+        const sockets = getNodeFees.sockets || [];
 
         const isAdvertisingTor = !!sockets.length && !!isOnion(sockets);
 
