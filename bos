@@ -528,6 +528,7 @@ prog
   .help('When using --allow, all joining nodes must be identified')
   .help('To specify order of group pairings, order using --allow ordering')
   .help('For 2 person channels the joining node is the channel initiator')
+  .help('Do not use a chain fee that will not confirm within two weeks')
   .option('--allow <public_key>', 'Only allow these nodes to join', REPEATABLE)
   .option('--capacity <channel_capacity>', 'Channel capacity', INT, 5e6)
   .option('--fee-rate <per_vbyte>', 'Chain fee rate for open', INT)
@@ -1106,6 +1107,7 @@ prog
   // Join a group channel open
   .command('join-channel-group', 'Join a balanced channels group')
   .help('Another node should have run create-channel-group to create group')
+  .help('Do not use a chain fee that will not confirm within two weeks')
   .argument('<code>', 'Invite code to join group', STRING)
   .option('--max-fee-rate <per_vbyte>', 'Maximum fee/vbyte for open', INT)
   .option('--node <node_name>', 'Use saved node to join group')
@@ -1290,6 +1292,7 @@ prog
   .help('Remote node must be prepared to receive this type of channel')
   .help('The remote node should also run this same command after you propose')
   .help('Channel details are negotiated with keysend so that is also required')
+  .help('Do not use a chain fee that will not confirm within two weeks')
   .option('--coop-close-address <addr>', 'Close address (for proposing open)')
   .option('--node <node_name>', 'Use saved node details instead of local node')
   .option('--recover <addr>', 'Recover if funds sent to an address by mistake')
@@ -1316,6 +1319,7 @@ prog
   .help('Remote nodes must be prepared to participate in this type of channel')
   .help('The remote node should also run this same command to join the group')
   .help('For 2 person channels the joining node is the channel initiator')
+  .help('Do not use a chain fee that will not confirm within two weeks')
   .option('--node <node_name>', 'Use saved node details instead of local node')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
