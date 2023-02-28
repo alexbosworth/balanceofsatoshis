@@ -1,5 +1,9 @@
 # Versions
 
+## 13.28.0
+
+- `call`: Add support for `subscribeToPayments` to see outgoing payment actions
+
 ## 13.27.0
 
 - `inbound-channel-rules`: Add support for CLEARNET and TOR in rule formulas

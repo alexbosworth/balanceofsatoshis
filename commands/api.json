@@ -949,6 +949,10 @@
       "method": "subscribeToPayViaRequest"
     },
     {
+      "events": ["confirmed", "failed", "paying"],
+      "method": "subscribeToPayments"
+    },
+    {
       "events": ["message"],
       "method": "subscribeToPeerMessages"
     },
