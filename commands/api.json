@@ -365,6 +365,9 @@
       "method": "getBackups"
     },
     {
+      "method": "getChainAddresses"
+    },
+    {
       "method": "getChainBalance"
     },
     {

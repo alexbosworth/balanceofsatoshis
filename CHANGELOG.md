@@ -1,5 +1,9 @@
 # Versions
 
+## 13.29.0
+
+- `call`: Add support for `getChainAddresses` to see created chain addresses
+
 ## 13.28.0
 
 - `call`: Add support for `subscribeToPayments` to see outgoing payment actions
