@@ -862,6 +862,19 @@
       "method": "settleHodlInvoice"
     },
     {
+      "arguments": [
+        {
+          "description": "Address to use for signing",
+          "named": "address"
+        },
+        {
+          "description": "Message to sign",
+          "named": "message"
+        }
+      ],
+      "method": "signChainAddressMessage"
+    },
+    {
       "arguments": [{
         "description": "Message to sign",
         "named": "message"
@@ -1124,6 +1137,23 @@
         }
       ],
       "method": "updateRoutingFees"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Address to verify against",
+          "named": "address"
+        },
+        {
+          "description": "Message that was signed",
+          "named": "message"
+        },
+        {
+          "description": "Hex encoded message signature",
+          "named": "signature"
+        }
+      ],
+      "method": "verifyChainAddressMessage"
     },
     {
       "arguments": [
