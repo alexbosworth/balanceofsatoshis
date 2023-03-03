@@ -1,5 +1,9 @@
 # Versions
 
+## 13.30.0
+
+- `call`: Add support for `getBlock` to get a block from the Blockchain
+
 ## 13.29.0
 
 - `call`: Add support for `getChainAddresses` to see created chain addresses

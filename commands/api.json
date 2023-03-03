@@ -365,6 +365,23 @@
       "method": "getBackups"
     },
     {
+      "arguments": [
+        {
+          "description": "Get block at a specific height",
+          "named": "height",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Get block with a specific hash",
+          "named": "id",
+          "optional": true,
+          "type": "hash"
+        }
+      ],
+      "method": "getBlock"
+    },
+    {
       "method": "getChainAddresses"
     },
     {
