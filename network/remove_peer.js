@@ -71,6 +71,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedArrayOfAddressesToRemovePeer']);
         }
 
+        if (!!args.addresses.filter(isPublicKey).length) {
+          return cbk([400, 'UnexpectedPublicKeyInCooperativeCloseAddresses']);
+        }
+
         if (!args.ask) {
           return cbk([400, 'ExpectedAskFunctionToRemovePeer']);
         }
