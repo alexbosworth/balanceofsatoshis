@@ -22,6 +22,7 @@ const description = 'bos open-balanced-channel';
 const familyMultiSig = 0;
 const interval = 1000 * 15;
 const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
+const keyFrom = n => n.substring(0, 66);
 const minErrorCount = 4;
 const times = 60;
 
@@ -141,7 +142,7 @@ module.exports = ({address, after, ask, lnd, logger, recover}, cbk) => {
           name: 'key',
         };
 
-        return ask(initiateChannel, ({key}) => cbk(null, key));
+        return ask(initiateChannel, ({key}) => cbk(null, keyFrom(key)));
       }],
 
       // Generate the funding output multi-sig key that will receive all funds

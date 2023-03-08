@@ -1,6 +1,6 @@
 # Versions
 
-## 13.31.1
+## 13.31.2
 
 - `call`: Add support for `signChainAddressMessage` for a chain addr signature
 - `call`: Add support for `verifyChainAddressMessage` to verify a address sig
