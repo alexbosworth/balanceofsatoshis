@@ -1249,7 +1249,7 @@ prog
   .help('--relay flag saves a relay to publish data to')
   .option('--add-relay <relay_uri>', 'Saves a relay to broadcast events to', REPEATABLE)
   .help('--broadcast-event broadcasts an event to relays')
-  .option('--broadcast-group-open <broadcast_event>', 'Broadcast an event to relays')
+  .option('--broadcast-message <broadcast_event>', 'Broadcast an event to relays')
   .option('--node <node_name>', 'Saved node to encrypt nostr key to')
   .option('--nostr-key <nostr_private_key>', 'Saves nostr private key')
   .option('--remove-relay <relay_uri>', 'Removes a saved relay', REPEATABLE)
@@ -1263,8 +1263,8 @@ prog
           getFile: readFile,
           makeDirectory: mkdir,
         },
-        group_open_event: options.broadcastGroupOpen || undefined,
         lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+        message: options.broadcastMessage || undefined,
         node: options.node,
         nostr_key: options.nostrKey || undefined,
         remove: flatten([options.removeRelay].filter(n => !!n)),
