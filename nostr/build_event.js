@@ -1,31 +1,37 @@
 const asyncAuto = require('async/auto');
-const asyncEachSeries = require('async/eachSeries');
-const asyncEach = require('async/each');
 const {returnResult} = require('asyncjs-util');
 const {createHash} = require('crypto');
 
 const tinysecp256k1 = require('tiny-secp256k1');
-const util = require('util');
-const WebSocket = require('ws');
 
-const {homePath} = require('../storage');
 const {decryptWithNode} = require('../encryption');
+const {homePath} = require('../storage');
+const publishToRelays = require('./publish_to_relays');
 
-const bufferAsString = buffer => buffer.toString();
 const createdAt = () => Math.round(Date.now() / 1000);
-const encoder = new util.TextEncoder('utf-8');
 const eventKind = 1;
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const nostrKeyFilePath = () => homePath({file: 'nostr_private_key'}).path;
 const {parse} = JSON;
-const recommendedRelayUrl = "wss://nostr.foundrydigital.com"
 const relayFilePath = () => homePath({file: 'nostr_relays.json'}).path;
 const sha256 = n => createHash('sha256').update(n).digest();
 const stringAsUtf8 = n => Buffer.from(n, 'utf-8');
+const {stringify} = JSON;
 const unit8AsHex = n => Buffer.from(n).toString('hex');
 
+/** Build nostr event to publish
 
+  {
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
+    lnd: <Authenticated LND API Object>
+    logger: <Winston Logger Object>
+    message: <Message For Event String>
+  }
 
+  @returns via cbk or Promise
+*/
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
@@ -35,19 +41,19 @@ module.exports = (args, cbk) => {
       // Check arguments
       validate: cbk => {
         if (!args.fs) {
-          return cbk([400, 'ExpectedFilesystemMethodsToBroadcastMessage']);
+          return cbk([400, 'ExpectedFilesystemMethodsToBuildEvent']);
         }
 
-        if (!args.group_open_event) {
-          return cbk([400, 'ExpectedGroupOpenEventToBroadcastMessage']);
+        if (!args.message) {
+          return cbk([400, 'ExpectedMessageEventToBuildEvent']);
         }
 
         if (!args.lnd) {
-          return cbk([400, 'ExpectedLndToBroadcastMessage']);
+          return cbk([400, 'ExpectedLndToBuildEvent']);
         }
 
         if (!args.logger) {
-          return cbk([400, 'ExpectedLoggerToBroadcastMessage']);
+          return cbk([400, 'ExpectedLoggerToBuildEvent']);
         }
 
         return cbk();
@@ -57,7 +63,7 @@ module.exports = (args, cbk) => {
       getNostrKey: ['validate', ({}, cbk)  => {
         return args.fs.getFile(nostrKeyFilePath(), (err, res) => {
           if (!!err || !res) {
-            return cbk([400, 'FailedToReadNostrKeyFileToBroadcastMessage']);
+            return cbk([400, 'FailedToReadNostrKeyFileToBuildEvent']);
           }
 
             return cbk(null, res.toString());
@@ -68,17 +74,17 @@ module.exports = (args, cbk) => {
       getRelays: ['validate', ({}, cbk) => {
         return args.fs.getFile(relayFilePath(), (err, res) => {
           if (!!err || !res) {
-            return cbk([400, 'FailedToReadRelaysJsonFileToBroadcastMessage']);
+            return cbk([400, 'FailedToReadRelaysJsonFileToBuildEvent']);
           }
 
           try {
             const result = parse(res);
 
             if (!result.relays || !result.relays.length) {
-              return cbk([400, 'ExpectedAtleastOneRelayToBroadcastMessage']);
+              return cbk([400, 'ExpectedAtleastOneRelayToBuildEvent']);
             }
           } catch (err) {
-            return cbk([400, 'FailedToParseRelaysJsonFileToBroadcastMessage']);
+            return cbk([400, 'FailedToParseRelaysJsonFileToBuildEvent']);
           }
 
             return cbk(null, {relays: parse(res).relays});
@@ -94,6 +100,7 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Build the nostr event
       buildEvent: [
         'decrypt', 
         'ecp', 
@@ -102,9 +109,9 @@ module.exports = (args, cbk) => {
           const key = ecp.fromPrivateKey(hexAsBuffer(decrypt.message));
           const publicKey = unit8AsHex(key.publicKey.slice(1));
           const created = createdAt();
-          const content = `This is a test from BalanceOfSatoshis: \n Group Open Invite Code: ${args.group_open_event}`;
+          const content = `This is a test from BalanceOfSatoshis: \n Group Open Invite Code: ${args.message}`;
 
-          const commit = JSON.stringify([0, publicKey, created, eventKind, [], content]);
+          const commit = stringify([0, publicKey, created, eventKind, [], content]);
           const buf = stringAsUtf8(commit);
           const hash = sha256(buf);
 
@@ -128,29 +135,13 @@ module.exports = (args, cbk) => {
         }
       }],
 
+      // Publish event to relays
       publish: ['buildEvent', 'getRelays', ({buildEvent, getRelays}, cbk) => {
-        return asyncEach(getRelays.relays, (relay, cbk) => {
-          const ws = new WebSocket(relay);
-
-          ws.on('error', err => {
-            args.logger.info({relay, error: err});
-            ws.close();
-            return cbk();
-          });
-  
-          ws.on('open', () => {
-            ws.send(JSON.stringify(['EVENT', buildEvent.event]));
-          });
-  
-          ws.on('message', function message(data) {
-            args.logger.info({relay, is_ok: bufferAsString(data)});
-            ws.close();
-            return cbk();
-          });
-        },
-        cbk);
-      }]
-
+        return publishToRelays({
+          event: stringify(['EVENT', buildEvent.event]),
+          logger: args.logger,
+          relays: getRelays.relays}, cbk);
+      }],
     },
     returnResult({reject, resolve}, cbk));
   });

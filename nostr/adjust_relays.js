@@ -10,7 +10,21 @@ const {parse} = JSON;
 const relayFilePath = () => homePath({file: 'nostr_relays.json'}).path;
 const stringify = obj => JSON.stringify(obj, null, 2);
 
+/** Adjust relays
 
+  {
+    [add]: [<Relay Uri To Add String>]
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+      makeDirectory: <Make Directory Function> (path, cbk) => {}
+      writeFile: <Write File Contents Function> (path, contents, cbk) => {}
+    }
+    logger: <Winston Logger Object>
+    [remove]: [<Relay Uri To String>]
+  }
+
+  @returns via cbk or Promise
+*/
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({

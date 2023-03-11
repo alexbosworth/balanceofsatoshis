@@ -2,11 +2,27 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
 const adjustRelays = require('./adjust_relays');
-const broadcastMessage = require('./broadcast_message');
+const buildEvent = require('./build_event');
 const saveNostrKey = require('./save_nostr_key');
 
 const {isArray} = Array;
 
+/** Manage nostr functions
+
+  {
+    [add]: [<Relay Uri To Add String>]
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+      makeDirectory: <Make Directory Function> (path, cbk) => {}
+      writeFile: <Write File Contents Function> (path, contents, cbk) => {}
+    }
+    lnd: <Authenticated LND API Object>
+    logger: <Winston Logger Object>
+    [remove]: [<Relay Uri To String>]
+  }
+
+  @returns via cbk or Promise
+*/
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
@@ -20,12 +36,12 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedFilesystemMethodsToManageNostr']);
         }
 
-        if (!args.lnd) {
-          return cbk([400, 'ExpectedLndToManageNostr']);
-        }
-
         if (!args.logger) {
           return cbk([400, 'ExpectedLoggerToManageNostr']);
+        }
+
+        if (!args.lnd) {
+          return cbk([400, 'ExpectedLndToManageNostr']);
         }
 
         if (!isArray(args.remove)) {
@@ -67,25 +83,26 @@ module.exports = (args, cbk) => {
         cbk)
       }],
 
-      broadcast: [
+      // Build the nostr event
+      buildNostrEvent: [
         'manageRelays', 
         'saveNostrKey', 
         'validate', 
         ({}, cbk) => 
       {
         // Exit early if there is no event to broadcast
-        if (!args.group_open_event) {
+        if (!args.message) {
           return cbk();
         }
 
-        return broadcastMessage({
+        return buildEvent({
           fs: args.fs,
-          group_open_event: args.group_open_event,
+          message: args.message,
           lnd: args.lnd,
           logger: args.logger,
         },
         cbk);
-      }]
+      }],
     },
     returnResult({reject, resolve}, cbk));
   });

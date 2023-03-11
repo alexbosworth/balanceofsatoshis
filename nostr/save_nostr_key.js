@@ -6,7 +6,21 @@ const {homePath} = require('../storage');
 
 const nostrKeyFile = 'nostr_private_key';
 
+/** Save encrypted nostr private key
 
+  {
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+      makeDirectory: <Make Directory Function> (path, cbk) => {}
+      writeFile: <Write File Contents Function> (path, contents, cbk) => {}
+    }
+    key: <Nostr Private Key String>
+    lnd: <Authenticated LND API Object>
+    logger: <Winston Logger Object>
+  }
+
+  @returns via cbk or Promise
+*/
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
