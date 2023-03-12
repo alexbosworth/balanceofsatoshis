@@ -1266,7 +1266,7 @@ prog
         },
         lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
         message: options.broadcastMessage || undefined,
-        node: options.node,
+        node: options.node || undefined,
         nostr_key: options.nostrKey || undefined,
         remove: flatten([options.removeRelay].filter(n => !!n)),
       },

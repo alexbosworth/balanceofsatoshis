@@ -4,7 +4,11 @@ const {returnResult} = require('asyncjs-util');
 const {encryptToNode} = require('../encryption');
 const {homePath} = require('../storage');
 
-const nostrKeyFile = 'nostr_private_key';
+const defaultRelaysFile = {nostr: []};
+const nostrKeyFilePath = () => homePath({file: 'nostr.json'}).path;
+const {parse} = JSON;
+const stringify = obj => JSON.stringify(obj, null, 2);
+
 
 /** Save encrypted nostr private key
 
@@ -17,6 +21,7 @@ const nostrKeyFile = 'nostr_private_key';
     key: <Nostr Private Key String>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
+    node: <Saved Node Name String>
   }
 
   @returns via cbk or Promise
@@ -62,11 +67,56 @@ module.exports = (args, cbk) => {
         cbk)
       }],
 
-      // Save the encrypted nostr private key
-      saveKey: ['encryptKey', 'registerHomeDir', ({encryptKey}, cbk) => {
-        const {path} = homePath({file: nostrKeyFile});
+      readFile: ['encryptKey', 'validate', ({encryptKey}, cbk) => {
+        const node = args.node || "";
+        
+        return args.fs.getFile(nostrKeyFilePath(), (err, res) => {
+          // Ignore errors, the file may not exist
+          if (!!err || !res) {
+            defaultRelaysFile.nostr.push({key: encryptKey.encrypted, node, relays: []});
 
-        return args.fs.writeFile(path, encryptKey.encrypted, err => {
+            return cbk(null, {file: defaultRelaysFile});
+          }
+
+          try {
+            const file = parse(res.toString());
+            
+            if (!file.nostr) {
+              return cbk([503, 'ExpectedNostrKeyInNostrKeyFile']);
+            }
+
+            if (!file.nostr.length) {
+              file.nostr.push({key: encryptKey.encrypted, node, relays: []});
+
+              return cbk(null, {file: file});
+            }
+
+            const existing = file.nostr.find(n => n.node === node);
+
+            if (!existing) {
+              file.nostr.push({key: encryptKey.encrypted, node, relays: []});
+
+              return cbk(null, {file: file});
+            }
+
+            existing.key = encryptKey.encrypted;
+
+            return cbk(null, {file: file});
+          } catch(err) {
+            return cbk([503, 'FailedToParseNostrKeyFile', {err}]);
+          }
+        });
+      }],
+
+      // Save the encrypted nostr private key
+      saveKey: [
+        'encryptKey', 
+        'readFile',
+        'registerHomeDir', 
+        ({readFile}, cbk) => {
+          const {file} = readFile;
+
+        return args.fs.writeFile(nostrKeyFilePath(), stringify(file), err => {
           if (!!err) {
             return cbk([503, 'FailedToSaveNostrKey', {err}]);
           }
