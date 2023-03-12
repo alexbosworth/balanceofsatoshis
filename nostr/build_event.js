@@ -11,9 +11,9 @@ const publishToRelays = require('./publish_to_relays');
 const createdAt = () => Math.round(Date.now() / 1000);
 const eventKind = 1;
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
-const nostrKeyFilePath = () => homePath({file: 'nostr_private_key'}).path;
+const {isArray} = Array;
+const nostrFilePath = () => homePath({file: 'nostr.json'}).path;
 const {parse} = JSON;
-const relayFilePath = () => homePath({file: 'nostr_relays.json'}).path;
 const sha256 = n => createHash('sha256').update(n).digest();
 const stringAsUtf8 = n => Buffer.from(n, 'utf-8');
 const {stringify} = JSON;
@@ -28,6 +28,7 @@ const unit8AsHex = n => Buffer.from(n).toString('hex');
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     message: <Message For Event String>
+    node: <Saved Node Name String>
   }
 
   @returns via cbk or Promise
@@ -59,42 +60,47 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get nostr private key from file
-      getNostrKey: ['validate', ({}, cbk)  => {
-        return args.fs.getFile(nostrKeyFilePath(), (err, res) => {
-          if (!!err || !res) {
-            return cbk([400, 'FailedToReadNostrKeyFileToBuildEvent']);
-          }
+      // Get relays and nostr key
+      readFile: ['validate', ({}, cbk) => {
+        const node = args.node || '';
 
-            return cbk(null, res.toString());
-        });
-      }],
-
-      // Get relays from file
-      getRelays: ['validate', ({}, cbk) => {
-        return args.fs.getFile(relayFilePath(), (err, res) => {
+        return args.fs.getFile(nostrFilePath(), (err, res) => {
           if (!!err || !res) {
             return cbk([400, 'FailedToReadRelaysJsonFileToBuildEvent']);
           }
 
           try {
-            const result = parse(res);
+            const result = parse(res.toString());
 
-            if (!result.relays || !result.relays.length) {
-              return cbk([400, 'ExpectedAtleastOneRelayToBuildEvent']);
+            if (!result.nostr || !isArray(result.nostr) || !result.nostr.length) {
+              return cbk([400, 'ExpectedNostrKeyAndRelaysToBuildEvent']);
             }
+
+            const findNode = result.nostr.find(n => n.node === node);
+
+            if (!findNode) {
+              return cbk([400, 'ExpectedNostrKeyAndRelaysForSavedNode']);
+            }
+
+            if (!findNode.key) {
+              return cbk([400, 'ExpectedNostrKeyToBuildEvent']);
+            }
+
+            if (!findNode.relays.length) {
+              return cbk([400, 'ExpectedAtLeastOneRelayToBuildEvent']);
+            }
+
+            return cbk(null, {key: findNode.key, relays: findNode.relays})
           } catch (err) {
             return cbk([400, 'FailedToParseRelaysJsonFileToBuildEvent']);
           }
-
-            return cbk(null, {relays: parse(res).relays});
         });
       }],
 
       // Decrypt nostr private key
-      decrypt: ['getNostrKey', ({getNostrKey}, cbk) => {
+      decrypt: ['readFile', ({readFile}, cbk) => {
         return decryptWithNode({
-          encrypted: getNostrKey,
+          encrypted: readFile.key,
           lnd: args.lnd,
         },
         cbk);
@@ -104,7 +110,7 @@ module.exports = (args, cbk) => {
       buildEvent: [
         'decrypt', 
         'ecp', 
-        'getRelays', ({decrypt, ecp}, cbk) => {
+        'readFile', ({decrypt, ecp}, cbk) => {
         try {          
           const key = ecp.fromPrivateKey(hexAsBuffer(decrypt.message));
           const publicKey = unit8AsHex(key.publicKey.slice(1));
@@ -136,11 +142,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Publish event to relays
-      publish: ['buildEvent', 'getRelays', ({buildEvent, getRelays}, cbk) => {
+      publish: ['buildEvent', 'readFile', ({buildEvent, readFile}, cbk) => {
         return publishToRelays({
           event: stringify(['EVENT', buildEvent.event]),
           logger: args.logger,
-          relays: getRelays.relays}, cbk);
+          relays: readFile.relays
+        }, cbk);
       }],
     },
     returnResult({reject, resolve}, cbk));

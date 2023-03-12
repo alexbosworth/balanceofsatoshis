@@ -18,6 +18,7 @@ const {isArray} = Array;
     }
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
+    node: <Saved Node Name String>
     [remove]: [<Relay Uri To String>]
   }
 
@@ -63,12 +64,13 @@ module.exports = (args, cbk) => {
           key: args.nostr_key,
           lnd: args.lnd,
           logger: args.logger,
+          node: args.node,
         },
         cbk);
       }],
 
       // Add or remove relays
-      manageRelays: ['validate', ({}, cbk) => {
+      manageRelays: ['saveNostrKey', 'validate', ({}, cbk) => {
         // Exit early if not adjusting relays
         if (!args.add.length && !args.remove.length) {
           return cbk();
@@ -78,6 +80,7 @@ module.exports = (args, cbk) => {
           add: args.add,
           fs: args.fs,
           logger: args.logger,
+          node: args.node,
           remove: args.remove,
         },
         cbk)
@@ -100,6 +103,7 @@ module.exports = (args, cbk) => {
           message: args.message,
           lnd: args.lnd,
           logger: args.logger,
+          node: args.node,
         },
         cbk);
       }],

@@ -7,7 +7,7 @@ const defaultRelaysFile = {relays: []};
 const {isArray} = Array;
 const isWebsocket = (n) => /^wss?:\/\/(([^:]+)(:(\d+))?)/.test(n);
 const {parse} = JSON;
-const relayFilePath = () => homePath({file: 'nostr_relays.json'}).path;
+const relayFilePath = () => homePath({file: 'nostr.json'}).path;
 const stringify = obj => JSON.stringify(obj, null, 2);
 
 /** Adjust relays
@@ -20,6 +20,7 @@ const stringify = obj => JSON.stringify(obj, null, 2);
       writeFile: <Write File Contents Function> (path, contents, cbk) => {}
     }
     logger: <Winston Logger Object>
+    node: <Saved Node Name String>
     [remove]: [<Relay Uri To String>]
   }
 
@@ -69,56 +70,61 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Get the current relays from the relay file
-      getRelays: ['registerHomeDir', ({}, cbk) => {
+      // Read file and adjust
+      adjustRelays: ['registerHomeDir', ({}, cbk) => {
+        const node = args.node || '';
+
         return args.fs.getFile(relayFilePath(), (err, res) => {
-          // Potentially there's no relays file yet
+          // Exit if there is no relays file
           if (!!err || !res) {
-            return cbk(null, Buffer.from(stringify(defaultRelaysFile)));
+            return cbk([400, 'ExpectedValidJsonNostrFileToAdjustRelays']);
           }
 
           try {
-            parse(res.toString());
+            const file = parse(res.toString());
+
+            if (!file.nostr || !isArray(file.nostr) || !file.nostr.length) {
+              return cbk([400, 'ExpectedAtLeastOneNostrKeyInNostrFileToAdjustRelays']);
+            }
+
+            const findNode = file.nostr.find(n => n.node === node);
+
+            if (!findNode) {
+              return cbk([400, 'ExpectedSavedNostrKeyInNostrFileToAdjustRelays']);
+            }
+
+            // Adjust the relays file
+            args.add.forEach(n => {
+              const findRelay = findNode.relays.find(relay => relay === n);
+
+              if (!findRelay) {
+                findNode.relays.push(n);
+              }
+            });
+
+            args.remove.forEach(n => {
+              const findRelay = findNode.relays.find(relay => relay === n);
+
+              if (!!findRelay) {
+                findNode.relays = findNode.relays.filter(relay => relay !== n)
+              }
+            });
+
+            return cbk(null, {file, relays: findNode.relays});
           } catch (err) {
             return cbk([400, 'ExpectedValidJsonRelaysFileToAdjustRelays', {err}]);
           }
-
-          const file = parse(res.toString());
-
-          if (!isArray(file.relays)) {
-            return cbk([400, 'ExpectedRelaysArrayInTagsFileToAdjustrelays']);
-          }
-
-          return cbk(null, res.toString());
         });
       }],
 
       // Adjust relays
-      adjustRelays: ['getRelays', ({getRelays}, cbk) => {
-        const file = parse(getRelays);
-
-        args.add.forEach(n => {
-          const findRelay = file.relays.find(relay => relay === n);
-
-          if (!findRelay) {
-            file.relays.push(n);
-          }
-        });
-
-        args.remove.forEach(n => {
-          const findRelay = file.relays.find(relay => relay === n);
-
-          if (!!findRelay) {
-            file.relays = file.relays.filter(relay => relay !== n)
-          }
-        });
-
-        return args.fs.writeFile(relayFilePath(), stringify(file), err => {
+      writeFile: ['adjustRelays', ({adjustRelays}, cbk) => {
+        return args.fs.writeFile(relayFilePath(), stringify(adjustRelays.file), err => {
           if (!!err) {
             return cbk([503, 'UnexpectedErrorSavingRelayFileUpdate', {err}]);
           }
 
-          args.logger.info({relays: file.relays});
+          args.logger.info({relays_adjusted: adjustRelays.relays});
 
           return cbk();
         });
