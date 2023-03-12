@@ -134,6 +134,7 @@ const makeArgs = overrides => {
           key_loc: {key_index: 0},
           raw_key_bytes: Buffer.alloc(33, 2),
         }),
+        estimateFee: ({}, cbk) => cbk(null, {sat_per_kw: '250'}),
       },
     },
     logger: {info: () => {}},
