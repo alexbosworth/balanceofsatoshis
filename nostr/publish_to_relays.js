@@ -49,7 +49,7 @@ module.exports = ({event, logger, relays}, cbk) => {
           const ws = new WebSocket(relay);
 
           ws.on('error', err => {
-            logger.info({relay, error: err});
+            logger.error({relay, error: err});
             ws.close();
 
             return cbk();
