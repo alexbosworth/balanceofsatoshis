@@ -114,9 +114,8 @@ module.exports = (args, cbk) => {
           const key = ecp.fromPrivateKey(hexAsBuffer(decrypt.message));
           const publicKey = unit8AsHex(key.publicKey.slice(1));
           const created = createdAt();
-          const content = `This is a test from BalanceOfSatoshis: \n Group Open Invite Code: ${args.message}`;
 
-          const commit = stringify([0, publicKey, created, eventKind, [], content]);
+          const commit = stringify([0, publicKey, created, eventKind, [], args.message]);
           const buf = stringAsUtf8(commit);
           const hash = sha256(buf);
 
@@ -125,13 +124,13 @@ module.exports = (args, cbk) => {
           const signature = unit8AsHex(tinysecp256k1.signSchnorr(hash, hexAsBuffer(decrypt.message)));
 
           const event = {
-            content,
-            id: eventId,
-            pubkey: publicKey,
+            content: args.message,
             created_at: created,
+            id: eventId,
             kind: eventKind,
-            tags: [],
+            pubkey: publicKey,
             sig: signature,
+            tags: [],
           }
 
           return cbk(null, {event});
