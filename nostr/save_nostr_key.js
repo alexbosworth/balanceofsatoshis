@@ -1,10 +1,13 @@
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
-
+const {bech32} = require('bech32');
 const {encryptToNode} = require('../encryption');
 const {homePath} = require('../storage');
 
+const bufferAsHex = buffer => Buffer.from(buffer).toString('hex');
+const {decode} = bech32;
 const defaultRelaysFile = {nostr: []};
+const {fromWords} = bech32;
 const nostrKeyFilePath = () => homePath({file: 'nostr.json'}).path;
 const {parse} = JSON;
 const stringify = obj => JSON.stringify(obj, null, 2);
@@ -58,18 +61,29 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Decode the private key
+      decodeKey: ['validate', ({}, cbk) => {
+        try {
+          const key = fromWords(decode(args.key).words);
+
+          return cbk(null, {key: bufferAsHex(key)});
+        } catch (err) {
+          return cbk(null, {key: args.key});
+        }
+      }],
+
       // Encrypt the private key
-      encryptKey: ['validate', ({}, cbk) => {
+      encryptKey: ['decodeKey', 'validate', ({decodeKey}, cbk) => {
         return encryptToNode({
           lnd: args.lnd,
-          message: args.key,
+          message: decodeKey.key,
         },
         cbk)
       }],
 
       readFile: ['encryptKey', 'validate', ({encryptKey}, cbk) => {
         const node = args.node || "";
-        
+
         return args.fs.getFile(nostrKeyFilePath(), (err, res) => {
           // Ignore errors, the file may not exist
           if (!!err || !res) {
