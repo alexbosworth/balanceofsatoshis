@@ -110,8 +110,7 @@ module.exports = (args, cbk) => {
       buildEvent: [
         'decrypt', 
         'ecp', 
-        'readFile', ({decrypt, ecp}, cbk) => {
-        try {          
+        'readFile', ({decrypt, ecp}, cbk) => {      
           const key = ecp.fromPrivateKey(hexAsBuffer(decrypt.message));
           const publicKey = unit8AsHex(key.publicKey.slice(1));
           const created = createdAt();
@@ -136,9 +135,6 @@ module.exports = (args, cbk) => {
           }
 
           return cbk(null, {event});
-        } catch (err) {
-          return cbk([400, 'UnexpectedErrorBuildingEvent', {err}]);
-        }
       }],
 
       // Publish event to relays
