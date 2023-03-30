@@ -1,6 +1,6 @@
 # Versions
 
-## 13.31.3
+## 13.31.4
 
 - `open-balanced-channel`: Make refund transaction use a chain target fee
 
