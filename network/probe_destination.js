@@ -2,10 +2,11 @@ const {createHash} = require('crypto');
 const {randomBytes} = require('crypto');
 
 const asyncAuto = require('async/auto');
-const {decodePaymentRequest, getPeers} = require('ln-service');
+const {decodePaymentRequest} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
+const {getPeers} = require('ln-service');
 const moment = require('moment');
 const {parsePaymentRequest} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
