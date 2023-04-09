@@ -2,7 +2,7 @@ const {createHash} = require('crypto');
 const {randomBytes} = require('crypto');
 
 const asyncAuto = require('async/auto');
-const {decodePaymentRequest} = require('ln-service');
+const {decodePaymentRequest, getPeers} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
@@ -219,15 +219,53 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // If the destination is a peer, get features
+      getPeerFeatures: ['to', ({to}, cbk) => {
+        return getPeers({lnd: args.lnd}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const findPeer = res.peers.find(n => n.public_key === to.destination);
+
+          if (!findPeer) {
+            return cbk(null, {features: []});
+          }
+
+          return cbk(null, {features: findPeer.features});
+        });
+      }],
+
       // Get the features of the node to probe
       getFeatures: [
         'getDestinationNode',
         'getIdentity',
+        'getPeerFeatures',
         'to',
-        ({getDestinationNode, getIdentity, to}, cbk) =>
+        ({getDestinationNode, getIdentity, getPeerFeatures, to}, cbk) =>
       {
         if (!!to.features) {
           return cbk(null, {features: to.features});
+        }
+
+        // If the destination is a peer, use the peer features
+        if (!!getPeerFeatures.features.length) {
+          const features = getPeerFeatures.features
+            .map(n => {
+              return {
+                bit: Number(n.bit),
+                is_known: n.is_known,
+                is_required: n.is_required,
+                type: n.type,
+              }
+            })
+            .filter(n => !!n.is_known)
+            .filter(n => n.bit !== featureTypeChannelType)
+            .filter(n => n.bit !== featureTypeTrustedFunding)
+            .filter(n => !!n.type)
+
+
+          return cbk(null, {features});
         }
 
         // Only requires features are important to finding routes
@@ -356,7 +394,7 @@ module.exports = (args, cbk) => {
         'outgoingChannelId',
         'to',
         ({getFeatures, getIcons, messages, outgoingChannelId, to}, cbk) =>
-      {
+      {        
         return executeProbe({
           messages,
           cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
