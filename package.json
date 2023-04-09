@@ -54,7 +54,7 @@
   "devDependencies": {
     "@alexbosworth/tap": "15.0.12",
     "invoices": "2.2.3",
-    "ln-docker-daemons": "4.1.2",
+    "ln-docker-daemons": "4.1.3",
     "mock-lnd": "1.4.4",
     "tiny-secp256k1": "2.2.1"
   },

@@ -220,20 +220,30 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // If the destination is a peer, get features
-      getPeerFeatures: ['to', ({to}, cbk) => {
+      // For destinations that are peers, get features directly
+      getPeerFeatures: [
+        'getDestinationNode',
+        'to',
+        ({getDestinationNode, to}, cbk) =>
+      {
+        // Exit early when features are specified or known already
+        if (!!to.features || !!(getDestinationNode.features || []).length) {
+          return cbk();
+        }
+
         return getPeers({lnd: args.lnd}, (err, res) => {
           if (!!err) {
             return cbk(err);
           }
 
-          const findPeer = res.peers.find(n => n.public_key === to.destination);
+          const peer = res.peers.find(n => n.public_key === to.destination);
 
-          if (!findPeer) {
-            return cbk(null, {features: []});
+          // Exit early when there are no peer features
+          if (!peer || !peers.features.length) {
+            return cbk();
           }
 
-          return cbk(null, {features: findPeer.features});
+          return cbk(null, peer.features);
         });
       }],
 
@@ -245,23 +255,16 @@ module.exports = (args, cbk) => {
         'to',
         ({getDestinationNode, getIdentity, getPeerFeatures, to}, cbk) =>
       {
+        // Exit early when features are directly known
         if (!!to.features) {
           return cbk(null, {features: to.features});
         }
 
-        // If the destination is a peer, use the peer features
-        if (!!getPeerFeatures.features.length) {
-          const features = getPeerFeatures.features
-            .filter(n => !!n.is_known)
-            .filter(n => n.bit !== featureTypeChannelType)
-            .filter(n => n.bit !== featureTypeTrustedFunding)
-            .filter(n => !!n.type)
+        // Use found features from getting the destination node or the peer
+        const nodeFeatures = getDestinationNode.features || getPeerFeatures;
 
-          return cbk(null, {features});
-        }
-
-        // Only requires features are important to finding routes
-        const features = (getDestinationNode.features || [])
+        // Only incorporate features that are important to finding routes
+        const features = (nodeFeatures || [])
           .filter(n => !!n.is_known)
           .filter(n => n.bit !== featureTypeChannelType)
           .filter(n => n.bit !== featureTypeTrustedFunding)
