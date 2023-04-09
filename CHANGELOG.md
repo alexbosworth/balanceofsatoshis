@@ -1,5 +1,9 @@
 # Versions
 
+## 13.31.6
+
+- `send`: Fix sending to direct peers when node graph sync cannot find peer
+
 ## 13.31.5
 
 - `open-balanced-channel`: Make refund transaction use a chain target fee
