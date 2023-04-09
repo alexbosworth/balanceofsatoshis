@@ -257,7 +257,6 @@ module.exports = (args, cbk) => {
             .filter(n => n.bit !== featureTypeTrustedFunding)
             .filter(n => !!n.type)
 
-
           return cbk(null, {features});
         }
 
