@@ -252,14 +252,6 @@ module.exports = (args, cbk) => {
         // If the destination is a peer, use the peer features
         if (!!getPeerFeatures.features.length) {
           const features = getPeerFeatures.features
-            .map(n => {
-              return {
-                bit: Number(n.bit),
-                is_known: n.is_known,
-                is_required: n.is_required,
-                type: n.type,
-              }
-            })
             .filter(n => !!n.is_known)
             .filter(n => n.bit !== featureTypeChannelType)
             .filter(n => n.bit !== featureTypeTrustedFunding)
@@ -395,7 +387,7 @@ module.exports = (args, cbk) => {
         'outgoingChannelId',
         'to',
         ({getFeatures, getIcons, messages, outgoingChannelId, to}, cbk) =>
-      {        
+      {
         return executeProbe({
           messages,
           cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
