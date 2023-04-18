@@ -1676,7 +1676,12 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const bools = ['active', 'dryrun', 'force', 'offline', 'private'];
         const {lnd} = await lndForNode(logger, options.node);
+
+        if (!!bools.find(n => typeof options[n] !== 'boolean')) {
+          throw new Error('UnexpectedArgumentForBooleanFlag');
+        }
 
         return network.removePeer({
           lnd,

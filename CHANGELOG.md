@@ -1,5 +1,13 @@
 # Versions
 
+## 14.0.0
+
+- `remove-peer`: Increase validation to deny passing arguments for binary flags
+
+### Breaking Changes
+
+- Support for nodejs 14 is ended due to its security end of life date
+
 ## 13.31.3
 
 - `open-balanced-channel`: Make refund transaction use a chain target fee
