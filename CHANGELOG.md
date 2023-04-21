@@ -1,5 +1,14 @@
 # Versions
 
+## 15.0.0
+
+- `remove-peer`: Deny passing values for boolean flags
+
+### Breaking Changes
+
+- Remove experimental nostr that was accidentally merged
+- Support for nodejs 14 is ended due to its security end of life date
+
 ## 13.31.6
 
 - `send`: Fix sending to direct peers when node graph sync cannot find peer

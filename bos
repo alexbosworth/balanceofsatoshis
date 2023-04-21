@@ -1647,6 +1647,12 @@ prog
       try {
         const {lnd} = await lndForNode(logger, options.node);
 
+        const bools = ['active', 'dryrun', 'force', 'offline', 'private'];
+
+        if (!!bools.find(n => typeof options[n] !== 'boolean')) {
+          throw new Error('UnexpectedNonBooleanValueForBooleanFlag');
+        }
+
         return network.removePeer({
           lnd,
           logger,
