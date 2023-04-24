@@ -16,7 +16,7 @@
           "description": "Gift tokens to peer on open",
           "named": "give_tokens",
           "optional": true,
-          "type": "boolean"
+          "type": "number"
         },
         {
           "description": "Is private channel?",

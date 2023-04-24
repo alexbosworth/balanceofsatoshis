@@ -1,5 +1,10 @@
 # Versions
 
+## 15.0.1
+
+- `call`: `acceptsChannelOpen`: Fix `give_tokens` to use an amount, not a bool
+- `inbound-channel-rules`: Allow rules that target channels not in the graph
+
 ## 15.0.0
 
 - `remove-peer`: Deny passing values for boolean flags

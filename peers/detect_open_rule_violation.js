@@ -68,7 +68,20 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           public_key: args.partner_public_key,
         },
-        cbk);
+        (err, res) => {
+          const [code] = err || [];
+
+          // Exit early when node has no graph details
+          if (code === 404) {
+            return cbk(null, {channels: [], sockets: []});
+          }
+
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, {channels: res.channels, sockets: res.sockets});
+        });
       }],
 
       // Determine if peer advertises clearnet
