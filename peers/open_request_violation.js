@@ -11,6 +11,7 @@ const {keys} = Object;
     channel_ages: [<Blocks Since Channel Open Number>]
     fee_rates: [<Outgoing Parts Per Million Fee Rate Number>]
     is_clearnet: <Peer Advertises Clearnet Address Bool>
+    is_obsolete: <Requests Obsolete Channel Type Bool>
     is_private: <Requesting Not Announced Channel Bool>
     is_tor: <Peer Advertises Tor Address Bool>>
     local_balance: <Open Channel Gifted Tokens Number>
@@ -78,6 +79,7 @@ module.exports = args => {
     local_balance: args.local_balance,
     m: 1e6,
     mm: 1e6,
+    obsolete: args.is_obsolete,
     private: args.is_private,
     public_key: args.public_key,
     tor: args.is_tor,

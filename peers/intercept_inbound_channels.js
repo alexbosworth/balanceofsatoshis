@@ -62,6 +62,7 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
               channel_ages: [],
               fee_rates: [3],
               is_clearnet: false,
+              is_obsolete: false,
               is_private: false,
               is_tor: false,
               local_balance: 4,
@@ -150,6 +151,7 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
             is_private: request.is_private,
             local_balance: request.local_balance,
             partner_public_key: peerId,
+            type: request.type,
           },
           (err, res) => {
             if (!!err) {

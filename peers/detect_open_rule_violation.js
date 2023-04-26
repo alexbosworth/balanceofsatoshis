@@ -7,6 +7,7 @@ const {returnResult} = require('asyncjs-util');
 
 const {isArray} = Array;
 const isClear = sockets => !!sockets.find(n => !!isIP(n.socket.split(':')[0]));
+const isObsolete = n => !!n && n.startsWith('original');
 const isOnion = sockets => !!sockets.find(n => /onion/.test(n.socket));
 const openRequestViolation = require('./open_request_violation');
 
@@ -19,6 +20,7 @@ const openRequestViolation = require('./open_request_violation');
     local_balance: <Local Channel Balance Tokens Number>
     partner_public_key: <Open Request From Public Key Hex String>
     rules: [<Channel Open Request Rule String>]
+    [type]: <Channel Type String>
   }
 
   @returns via cbk or Promise
@@ -134,6 +136,7 @@ module.exports = (args, cbk) => {
               .map(n => n.fee_rate),
             local_balance: args.local_balance,
             is_clearnet: hasClearnet,
+            is_obsolete: isObsolete(args.type),
             is_private: !!args.is_private,
             is_tor: hasTor,
             public_key: args.partner_public_key,

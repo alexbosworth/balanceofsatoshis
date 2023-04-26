@@ -1,5 +1,9 @@
 # Versions
 
+## 15.1.0
+
+- `inbound-channel-rules`: Add `OBSOLETE` to make rules for obsolete chan types
+
 ## 15.0.1
 
 - `call`: `acceptsChannelOpen`: Fix `give_tokens` to use an amount, not a bool

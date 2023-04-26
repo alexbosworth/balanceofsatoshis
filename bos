@@ -886,6 +886,7 @@ prog
   .help('For formulas: FEE_RATES are the outbound fee rates for the peer')
   .help('For formulas: LOCAL_BALANCE is the gifted amount from the peer')
   .help('For formulas: M is 1,000,000 - use like CAPACITY > 10*M')
+  .help('For formulas: OBSOLETE is chan type, like NOT(OBSOLETE)')
   .help('For formulas: PUBLIC_KEY is the public key of the requesting peer')
   .help('For formulas: PRIVATE is when request is for private channel')
   .help('For formulas: TOR is when peer advertises a Tor address')
