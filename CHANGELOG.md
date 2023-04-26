@@ -1,5 +1,9 @@
 # Versions
 
+## 15.1.1
+
+- `fund`: Allow using unconfirmed UTXOs when `--utxo` is directly specified
+
 ## 15.1.0
 
 - `inbound-channel-rules`: Add `OBSOLETE` to make rules for obsolete chan types

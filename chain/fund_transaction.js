@@ -14,6 +14,7 @@ const {signPsbt} = require('ln-service');
 const {Transaction} = require('bitcoinjs-lib');
 const {unlockUtxo} = require('ln-service');
 
+const allowUnconfirmed = 0;
 const asBigUnit = n => (n / 1e8).toFixed(8);
 const asOutpoint = utxo => `${utxo.transaction_id}:${utxo.transaction_vout}`;
 const asInput = n => ({transaction_id: n.id, transaction_vout: n.vout});
@@ -271,6 +272,7 @@ module.exports = (args, cbk) => {
           fee_tokens_per_vbyte: feeRate,
           inputs: !!inputs.length ? inputs : undefined,
           lnd: args.lnd,
+          min_confirmations: !!inputs.length ? allowUnconfirmed : undefined,
           outputs: finalOutputs,
         },
         cbk);
