@@ -1,5 +1,9 @@
 # Versions
 
+## 15.2.1
+
+- `create-channel-group`, `open-group-channel`: Rebroadcast open transaction
+
 ## 15.2.0
 
 - `reconnect`: Force reconnection on pending close peers to prevent stuck close
