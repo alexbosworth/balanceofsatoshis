@@ -6,6 +6,7 @@ const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
+const {getPendingChannels} = require('ln-service');
 const {removePeer} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
@@ -57,6 +58,28 @@ module.exports = ({lnd, retries}, cbk) => {
       // Get connected peers
       getPeers: ['validate', ({}, cbk) => getPeers({lnd}, cbk)],
 
+      // Get pending channels
+      getPending: ['validate', ({}, cbk) => getPendingChannels({lnd}, cbk)],
+
+      // Filter for closing peers where there is no closing transaction id
+      closingPeers: [
+        'getChannels',
+        'getPending',
+        ({getChannels, getPending}, cbk) =>
+      {
+        const connected = getChannels.channels.map(n => n.partner_public_key);
+
+        const pending = getPending.pending_channels
+          .filter(channel => channel.is_closing)
+          .filter(channel => !channel.is_timelocked)
+          .filter(channel => !!channel.pending_balance)
+          .filter(channel => channel.close_transaction_id === undefined)
+          .map(n => n.partner_public_key)
+          .filter(key => !connected.includes(key));
+
+        return cbk(null, pending);
+      }],
+
       // Get disabled but active channels
       getDisabled: ['getChannels', ({getChannels}, cbk) => {
         // Look for channels that are marked as active but have disabled policy
@@ -102,15 +125,22 @@ module.exports = ({lnd, retries}, cbk) => {
       }],
 
       // Remove inactive channel peers
-      remove: ['getChannels', 'getPeers', ({getChannels, getPeers}, cbk) => {
+      remove: [
+        'closingPeers',
+        'getChannels',
+        'getPeers',
+        ({closingPeers, getChannels, getPeers}, cbk) =>
+      {
         const connected = getPeers.peers.map(n => n.public_key);
 
-        const inactive = uniq(getChannels.channels
+        const inactive = getChannels.channels
           .filter(n => !n.is_active)
           .filter(n => connected.includes(n.partner_public_key))
-          .map(n => n.partner_public_key));
+          .map(n => n.partner_public_key);
 
-        return asyncMap(inactive, (peer, cbk) => {
+        const peersToRemove = [].concat(closingPeers).concat(inactive);
+
+        return asyncMap(uniq(peersToRemove), (peer, cbk) => {
           const connection = getPeers.peers.find(n => n.public_key === peer);
 
           const reconnectedAt = connection.last_reconnection;

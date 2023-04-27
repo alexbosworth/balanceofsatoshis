@@ -1,5 +1,9 @@
 # Versions
 
+## 15.2.0
+
+- `reconnect`: Force reconnection on pending close peers to prevent stuck close
+
 ## 15.1.1
 
 - `fund`: Allow using unconfirmed UTXOs when `--utxo` is directly specified

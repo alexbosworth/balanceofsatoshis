@@ -1584,6 +1584,7 @@ prog
   // Attempt reconnecting to disconnected channel partners
   .command('reconnect', 'Reconnect to disconnected channel partners')
   .help('Inactive channels are also treated as disconnected channels')
+  .help('Closing out peers are disconnected to mitigate stuck closes')
   .help('This reconnects to all peers. Do not use --node to specify a peer')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Saved node to attempt reconnects on')

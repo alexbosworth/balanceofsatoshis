@@ -3,6 +3,7 @@ const {test} = require('@alexbosworth/tap');
 const {getNodeInfoResponse} = require('./../fixtures');
 const {listChannelsResponse} = require('./../fixtures');
 const {listPeersResponse} = require('./../fixtures');
+const {pendingChannelsResponse} = require('./../fixtures');
 const {reconnect} = require('./../../network');
 
 const makeLnd = ({channels, getNodeErr}) => {
@@ -13,6 +14,7 @@ const makeLnd = ({channels, getNodeErr}) => {
       getNodeInfo: ({}, cbk) => cbk(getNodeErr, getNodeInfoResponse),
       listChannels: ({}, cbk) => cbk(null, channels || listChannelsResponse),
       listPeers: ({}, cbk) => cbk(null, listPeersResponse),
+      pendingChannels: ({}, cbk) => cbk(null, pendingChannelsResponse),
     },
   };
 };
