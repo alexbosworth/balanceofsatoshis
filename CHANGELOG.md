@@ -1,5 +1,9 @@
 # Versions
 
+## 15.2.2
+
+- `create-channel-group`, `open-group-channel`: Pre-check peer open acceptance
+
 ## 15.2.1
 
 - `create-channel-group`, `open-group-channel`: Rebroadcast open transaction
