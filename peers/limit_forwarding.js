@@ -19,6 +19,7 @@ const splitEdge = n => n.split('/');
     [min_channel_confirmations]: <Minimum Required Channel Confs Number>
     only_allow: [<In Public Key / Out Public Key String>]
     only_disallow: [<In Public Key / Out Public Key String>]
+    stop_channels: [<Channel Id to Stop Traffic On String>]
   }
 
   @returns via cbk or Promise
@@ -54,6 +55,10 @@ module.exports = (args, cbk) => {
 
         if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToLimitForwarding']);
+        }
+
+        if (!isArray(args.stop_channels)) {
+          return cbk([400, 'ExpectedStopChannelsArrayToLimitForwarding']);
         }
 
         return cbk();
@@ -133,6 +138,7 @@ module.exports = (args, cbk) => {
           min_activation_age: args.min_channel_confirmations || undefined,
           only_allow: onlyAllow,
           only_disallow: onlyDisallow,
+          stop_channels: args.stop_channels.length ? args.stop_channels : null,
         });
 
         sub.on('error', err => {

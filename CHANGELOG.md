@@ -1,5 +1,9 @@
 # Versions
 
+## 15.3.0
+
+- `inbound-channel-rules`: Add support for `--stop` to stop forwards on channel
+
 ## 15.2.4
 
 - `balance`: Add anchor type channel anchor output value to balance total
