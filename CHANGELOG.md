@@ -1,5 +1,9 @@
 # Versions
 
+## 15.2.3
+
+- Add LND 0.16.2 as supported version
+
 ## 15.2.2
 
 - `create-channel-group`, `open-group-channel`: Pre-check peer open acceptance
