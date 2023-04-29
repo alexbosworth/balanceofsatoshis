@@ -18,6 +18,7 @@ const signPaymentRequest = require('./sign_payment_request');
 const coins = ['BTC'];
 const defaultFiatRateProvider = 'coinbase';
 const defaultInvoiceDescription = '';
+const defaultTimeoutCheckMs = 1000 * 60 * 3;
 const fiats = ['EUR', 'USD'];
 const hasFiat = n => /(eur|usd)/gim.test(n);
 const hoursFromNow = h => new Date(Date.now() + (h * 3600000)).toISOString();
@@ -303,18 +304,27 @@ module.exports = (args, cbk) => {
 
         args.logger.info({listening_for_virtual_channel_payment: true});
 
+        const expiry = new Date(parseRequest(addInvoice.request).expires_at);
+        let interval;
         const sub = subscribeToForwardRequests({lnd: args.lnd});
 
         // Stop listening for the HTLC when the invoice expires
-        const timeout = setTimeout(() => {
+        interval = setInterval(() => {
+          // Exit early when there is still time left until the expiry date
+          if (new Date() < expiry) {
+            return;
+          }
+
+          clearInterval(interval);
+
           sub.removeAllListeners();
 
           return cbk([408, 'TimedOutWaitingForPayment']);
         },
-        new Date(parseRequest(addInvoice.request).expires_at) - new Date());
+        defaultTimeoutCheckMs);
 
         const finished = (err, res) => {
-          clearTimeout(timeout);
+          clearInterval(interval);
 
           sub.removeAllListeners();
 

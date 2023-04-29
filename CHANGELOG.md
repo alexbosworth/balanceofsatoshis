@@ -1,5 +1,10 @@
 # Versions
 
+## 15.4.1
+
+- `invoice`: When using `--virtual` flag with a long timeout, fix early
+    termination
+
 ## 15.4.0
 
 - `inbound-channel-rules`: Add `JOINT_PUBLIC_CAPACITY` for rules based on
