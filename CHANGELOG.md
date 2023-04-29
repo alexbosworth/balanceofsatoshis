@@ -1,5 +1,9 @@
 # Versions
 
+## 15.2.4
+
+- `balance`: Add anchor type channel anchor output value to balance total
+
 ## 15.2.3
 
 - Add LND 0.16.2 as supported version
