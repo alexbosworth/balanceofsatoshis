@@ -10,6 +10,7 @@ const {versionInfoResponse} = require('./../fixtures');
 const makeArgs = overrides => {
   const args = {
     capacity: 1,
+    id: Buffer.alloc(33, 2),
     lnd: {
       chain: {
         registerBlockEpochNtfn: ({}) => {

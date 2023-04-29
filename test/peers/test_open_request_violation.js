@@ -11,6 +11,7 @@ const makeArgs = overrides => {
     is_clearnet: true,
     is_private: true,
     is_tor: true,
+    joint_public_capacity: 1,
     local_balance: 7,
     public_key: Buffer.alloc(33, 3).toString('hex'),
     rules: ['capacity > 5'],

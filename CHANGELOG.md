@@ -1,5 +1,10 @@
 # Versions
 
+## 15.4.0
+
+- `inbound-channel-rules`: Add `JOINT_PUBLIC_CAPACITY` for rules based on
+    existing joint capacity
+
 ## 15.3.0
 
 - `inbound-channel-rules`: Add support for `--stop` to stop forwards on channel

@@ -52,6 +52,10 @@ module.exports = args => {
     throw new Error('ExpectedChannelPrivateStatusToCheckOpenRequestRules');
   }
 
+  if (args.joint_public_capacity === undefined) {
+    throw new Error('ExpectedJointPublicCapacityToCheckOpenRequestRules');
+  }
+
   if (args.local_balance === undefined) {
     throw new Error('ExpectedLocalBalanceToCheckForOpenRequestViolation');
   }
@@ -75,6 +79,7 @@ module.exports = args => {
     channel_ages: args.channel_ages,
     clearnet: args.is_clearnet,
     fee_rates: args.fee_rates,
+    joint_public_capacity: args.joint_public_capacity,
     k: 1e3,
     local_balance: args.local_balance,
     m: 1e6,

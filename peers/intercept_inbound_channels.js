@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToOpenRequests} = require('ln-service');
@@ -65,6 +66,7 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
               is_obsolete: false,
               is_private: false,
               is_tor: false,
+              joint_public_capacity: 1,
               local_balance: 4,
               public_key: Buffer.alloc(33, 2).toString('hex'),
             });
@@ -111,8 +113,11 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
         });
       }],
 
+      // Get the node key identity
+      getIdentity: ['validate', ({}, cbk) => getIdentity({lnd}, cbk)],
+
       // Subscribe to open requests
-      subscribe: ['checkAddress', ({}, cbk) => {
+      subscribe: ['checkAddress', 'getIdentity', ({getIdentity}, cbk) => {
         const sub = subscribeToOpenRequests({lnd});
 
         // Copy the addresses into a pool
@@ -148,6 +153,7 @@ module.exports = ({addresses, lnd, logger, reason, rules, trust}, cbk) => {
             lnd,
             rules,
             capacity: request.capacity,
+            id: getIdentity.public_key,
             is_private: request.is_private,
             local_balance: request.local_balance,
             partner_public_key: peerId,

@@ -10,11 +10,13 @@ const isClear = sockets => !!sockets.find(n => !!isIP(n.socket.split(':')[0]));
 const isObsolete = n => !!n && n.startsWith('original');
 const isOnion = sockets => !!sockets.find(n => /onion/.test(n.socket));
 const openRequestViolation = require('./open_request_violation');
+const sumOf = arr => arr.reduce((sum, n) => sum + n, 0);
 
 /** Detect an open request rule violation
 
   {
     capacity: <Channel Capacity Tokens Number>
+    id: <Identity Public Key Hex String>
     [is_private]: <Channel Request Is For Private Channel Bool>
     lnd: <Authenticated LND API Object>
     local_balance: <Local Channel Balance Tokens Number>
@@ -35,6 +37,10 @@ module.exports = (args, cbk) => {
       validate: cbk => {
         if (!args.capacity) {
           return cbk([400, 'ExpectedChannelCapacityToDetectRuleViolation']);
+        }
+
+        if (!args.id) {
+          return cbk([400, 'ExpectedIdentityPublicKeyToDetectRuleViolation']);
         }
 
         if (!args.lnd) {
@@ -125,6 +131,11 @@ module.exports = (args, cbk) => {
           return getHeight.current_block_height - channelHeight;
         });
 
+        // Filter out channels that already exist
+        const jointChannels = getNodeFees.channels.filter(({policies}) => {
+          return policies.find(n => n.public_key === args.id);
+        });
+
         try {
           const {rule} = openRequestViolation({
             capacities: getNodeFees.channels.map(n => n.capacity),
@@ -139,6 +150,7 @@ module.exports = (args, cbk) => {
             is_obsolete: isObsolete(args.type),
             is_private: !!args.is_private,
             is_tor: hasTor,
+            joint_public_capacity: sumOf(jointChannels.map(n => n.capacity)),
             public_key: args.partner_public_key,
             rules: args.rules,
           });
