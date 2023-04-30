@@ -1,6 +1,6 @@
 # Versions
 
-## 15.4.1
+## 15.4.2
 
 - `invoice`: When using `--virtual` flag with a long timeout, fix early
     termination
