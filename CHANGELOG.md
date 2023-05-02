@@ -1,5 +1,9 @@
 # Versions
 
+## 15.4.3
+
+- `accounting`: Improve `invoices` report generation time on LND 0.16.0+
+
 ## 15.4.2
 
 - `invoice`: When using `--virtual` flag with a long timeout, fix early

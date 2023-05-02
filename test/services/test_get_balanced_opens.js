@@ -117,7 +117,10 @@ const makeArgs = overrides => {
 
           emitter.cancel = () => {};
 
-          process.nextTick(() => emitter.emit('data', {status: 'FAILED'}));
+          process.nextTick(() => emitter.emit('data', {
+            payment_hash: Buffer.alloc(32).toString('hex'),
+            status: 'FAILED',
+          }));
 
           return emitter;
         },
