@@ -1,5 +1,9 @@
 # Versions
 
+## 15.5.0
+
+- `invoice`: Add `--reject-on-amount-increase` to reject on price moves
+
 ## 15.4.3
 
 - `accounting`: Improve `invoices` report generation time on LND 0.16.0+

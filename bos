@@ -1043,12 +1043,14 @@ prog
   .help(`Fiat rate providers: ${priceProviders.join(', ')}`)
   .help('--virtual invoices cannot be used with payers who probe before pay')
   .help('Only one --virtual invoice can be active at a time')
+  .help('--reject-on-amount-increase can only be used with --virtual invoices')
   .argument('[amount]', 'Amount for invoice', STRING, '0')
   .option('--for <description>', 'What is the invoice requesting payment for')
   .option('--hours <expires_in>', 'Hours invoice is valid for', INT)
   .option('--include-hints', 'Include the default set of hop hint channels')
   .option('--node <node_name>', 'Use saved node to create invoice')
   .option('--rate-provider <rate_provider>', 'Rate provider', priceProviders)
+  .option('--reject-on-amount-increase', 'Reject if required amount increases')
   .option('--select-hints', 'Select hop hints to be added to the request')
   .option('--virtual', 'Request payment over a virtual channel')
   .option('--virtual-fee-rate <pm>', 'Fee rate to use on virtual channel', INT)
@@ -1062,6 +1064,7 @@ prog
           description: options.for,
           expires_in: options.hours,
           is_hinting: options.includeHints || undefined,
+          is_rejecting_option: !!options.rejectOnAmountIncrease || undefined,
           is_selecting_hops: options.selectHints || undefined,
           is_virtual: options.virtual || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,

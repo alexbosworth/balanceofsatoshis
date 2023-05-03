@@ -7,29 +7,24 @@ const {getChannel} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNodeAlias} = require('ln-sync');
-const {getPrices} = require('@alexbosworth/fiat');
-const {parseAmount} = require('ln-accounting');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToForwardRequests} = require('ln-service');
 
+const getInvoiceAmount = require('./get_invoice_amount');
 const signPaymentRequest = require('./sign_payment_request');
 
 const coins = ['BTC'];
 const defaultFiatRateProvider = 'coinbase';
 const defaultInvoiceDescription = '';
 const defaultTimeoutCheckMs = 1000 * 60 * 3;
-const fiats = ['EUR', 'USD'];
-const hasFiat = n => /(eur|usd)/gim.test(n);
 const hoursFromNow = h => new Date(Date.now() + (h * 3600000)).toISOString();
 const interval = 3000;
 const {isArray} = Array;
 const {isInteger} = Number;
 const isNumber = n => !isNaN(n);
 const mtokensAsBigUnit = n => (Number(n / BigInt(1000)) / 1e8).toFixed(8);
-const networks = {btc: 'BTC', btctestnet: 'BTC', btcregtest: 'BTC'};
 const parseRequest = request => parsePaymentRequest({request});
-const rateAsTokens = rate => 1e10 / rate;
 const times = 20 * 60 * 24;
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const uniq = arr => Array.from(new Set(arr));
@@ -42,6 +37,7 @@ const uniq = arr => Array.from(new Set(arr));
     [description]: <Invoice Description String>
     [expires_in]: <Invoice Expires In Hours Number>
     [is_hinting]: <Include Private Channels Bool>
+    [is_rejecting_option]: <Is Rejecting Amount Increases Bool>
     [is_selecting_hops]: <Is Selecting Hops Bool>
     [is_virtual]: <Is Using Virtual Channel for Invoice Bool>
     lnd: <Authenticated LND API Object>
@@ -81,6 +77,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'CannotUseDefaultHintsAndAlsoSelectHints']);
         }
 
+        if (!!args.is_rejecting_option && !args.is_virtual) {
+          return cbk([501, 'RejectingAmountChangesOnlySupportedWhenVirtual']);
+        }
+
         if (!!args.is_virtual && !!args.is_hinting) {
           return cbk([400, 'UsingHopHintsIsUnsupportedWithVirtualChannels']);
         }
@@ -112,21 +112,6 @@ module.exports = (args, cbk) => {
         }
 
         return cbk(null, hoursFromNow(args.expires_in));
-      }],
-
-      // Get the current price of BTC in USD/EUR
-      getFiatPrice: ['validate', ({}, cbk) => {
-        // Exit early when no fiat is referenced
-        if (!hasFiat(args.amount)) {
-          return cbk();
-        }
-
-        return getPrices({
-          from: args.rate_provider || defaultFiatRateProvider,
-          request: args.request,
-          symbols: [].concat(fiats),
-        },
-        cbk);
       }],
 
       // Get channels to allow for selecting individual hop hints
@@ -165,48 +150,15 @@ module.exports = (args, cbk) => {
       // Get wallet info
       getId: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
 
-      // Fiat rates
-      rates: [
-        'getFiatPrice',
-        'getNetwork',
-        ({getFiatPrice, getNetwork}, cbk) =>
-      {
-        // Exit early when there is no fiat
-        if (!getFiatPrice) {
-          return cbk();
-        }
-
-        if (!networks[getNetwork.network]) {
-          return cbk([400, 'UnsupportedNetworkForFiatPriceConversion']);
-        }
-
-        const rates = fiats.map(fiat => {
-          const {rate} = getFiatPrice.tickers.find(n => n.ticker === fiat);
-
-          return {fiat, unit: rateAsTokens(rate)};
-        });
-
-        return cbk(null, rates);
-      }],
-
-      // Parse the amount
-      parseAmount: ['rates', ({rates}, cbk) => {
-        const eur = !!rates ? rates.find(n => n.fiat === 'EUR') : null;
-        const usd = !!rates ? rates.find(n => n.fiat === 'USD') : null;
-
-        // Variables to use in amount
-        const variables = {
-          eur: !!eur ? eur.unit : undefined,
-          usd: !!usd ? usd.unit : undefined,
-        };
-
-        try {
-          const {tokens} = parseAmount({variables, amount: args.amount});
-
-          return cbk(null, {tokens});
-        } catch (err) {
-          return cbk([400, 'FailedToParseAmount', {err}]);
-        }
+      // Get tokens to invoice from the amount
+      parseAmount: ['getNetwork', ({getNetwork}, cbk) => {
+        return getInvoiceAmount({
+          amount: args.amount,
+          network: getNetwork.network,
+          provider: args.rate_provider || defaultFiatRateProvider,
+          request: args.request,
+        },
+        cbk);
       }],
 
       // Select hop hint channels
@@ -296,7 +248,11 @@ module.exports = (args, cbk) => {
       }],
 
       // Intercept virtual invoice forwards
-      interceptVirtualInvoice: ['addInvoice', ({addInvoice}, cbk) => {
+      interceptVirtualInvoice: [
+        'addInvoice',
+        'getNetwork',
+        ({addInvoice, getNetwork}, cbk) =>
+      {
         // Exit early when not intercepting the virtual forward
         if (!args.is_virtual) {
           return cbk();
@@ -348,6 +304,32 @@ module.exports = (args, cbk) => {
           // Reject too small amounts
           if (BigInt(forward.mtokens) < BigInt(addInvoice.mtokens)) {
             return forward.reject({});
+          }
+
+          // Check for optionality
+          if (!!args.is_rejecting_option) {
+            try {
+              const {tokens} = await getInvoiceAmount({
+                amount: args.amount,
+                network: getNetwork.network,
+                provider: args.rate_provider || defaultFiatRateProvider,
+                request: args.request,
+              });
+
+              // Exit early and reject when the received tokens is too low
+              if (tokens > addInvoice.tokens) {
+                args.logger.error({
+                  rejected: true,
+                  invoice_acceptable_amount_increased: tokens,
+                });
+
+                return forward.reject({});
+              }
+            } catch (err) {
+              args.logger.error({failed_to_get_invoice_amount: err});
+
+              return forward.reject({});
+            }
           }
 
           args.logger.info({accepting_payment: true});
