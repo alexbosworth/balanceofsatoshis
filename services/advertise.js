@@ -104,7 +104,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        let matches = [];
+        const matches = [];
 
         return getTags({fs: args.fs}, (err, res) => {
           if (!!err) {
