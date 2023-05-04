@@ -1,6 +1,6 @@
 # Versions
 
-## 15.6.0
+## 15.6.1
 
 - `advertise`: Add `--tag` to advertise to a specific list or lists of nodes
 
