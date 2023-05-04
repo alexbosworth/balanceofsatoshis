@@ -134,7 +134,11 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the graph to use to find candidates to send ads to
-      getGraph: ['getChannels', 'getTags', ({getChannels, getTags}, cbk) => {
+      getGraph: ['getChannels', ({getChannels}, cbk) => {
+        // Exit early when when advertising to tags.
+        if (!!args.tags.length) {
+          return cbk();
+        }
         // Exit early when using the entire graph
         if (args.max_hops !== directPeersDistance) {
           args.logger.info({sending_to_all_graph_nodes: true});
