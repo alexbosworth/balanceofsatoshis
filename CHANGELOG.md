@@ -1,5 +1,9 @@
 # Versions
 
+## 15.6.0
+
+- `advertise`: Add `--tag` to advertise to a specific list or lists of nodes
+
 ## 15.5.0
 
 - `invoice`: Add `--reject-on-amount-increase` to reject on price moves
