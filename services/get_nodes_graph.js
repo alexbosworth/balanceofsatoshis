@@ -65,6 +65,13 @@ module.exports = ({lnd, nodes}, cbk) => {
       getNodes: ['validate', ({}, cbk) => {
         return asyncMap(nodes, (id, cbk) => {
           return getNode({lnd, public_key: id}, (err, res) => {
+            const [code] = err || [];
+
+            // Exit early when node is not known
+            if (code === 404) {
+              return cbk();
+            }
+
             if (!!err) {
               return cbk(err);
             }
@@ -84,11 +91,12 @@ module.exports = ({lnd, nodes}, cbk) => {
 
       // Separate nodes and channels
       graph: ['getNodes', ({getNodes}, cbk) => {
+        const allNodes = getNodes.filter(n => !!n);
         const channels = [];
         const ids = {};
 
         // Populate the channels list
-        getNodes.forEach(node => {
+        allNodes.forEach(node => {
           return node.channels.forEach(channel => {
             // Exit early when this channel was seen already
             if (!!ids[channel.id]) {
@@ -101,7 +109,7 @@ module.exports = ({lnd, nodes}, cbk) => {
           });
         });
 
-        const nodes = getNodes.map(node => ({
+        const nodes = allNodes.map(node => ({
           alias: node.alias,
           color: node.color,
           features: node.features,

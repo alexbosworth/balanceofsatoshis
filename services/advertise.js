@@ -25,6 +25,7 @@ const createSecret = () => randomBytes(32).toString('hex');
 const defaultFilter = ['channels_count > 9'];
 const defaultMsg = (alias, key) => `Check out my node! ${alias} ${key}`;
 const directPeersDistance = 0;
+const featureKeysendBit = 55;
 const filterLimit = 10;
 const flatten = arr => [].concat(...arr);
 const hashOf = n => createHash('sha256').update(n).digest().toString('hex');
@@ -98,33 +99,36 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the list of tags and filter them.
-      getTags: ['validate', ({}, cbk) => {
-        // Exit early when there are no tags
+      getTags: ['getIdentity', ({getIdentity}, cbk) => {
+        // Exit early when there are no tags specified to advertise to
         if (!args.tags.length) {
           return cbk();
         }
-
-        const matches = [];
 
         return getTags({fs: args.fs}, (err, res) => {
           if (!!err) {
             return cbk(err);
           }
 
-          const {tags} = res;
-
-          args.tags.forEach(tagName => {
-            const tag = tags.find(t => t.alias === tagName);
-            if (!tag) {
-              return;
-            }
-
-            matches.push(tag.nodes);
+          // Look for a referenced tag that doesn't match a present tag
+          const unknown = args.tags.find(tagName => {
+            return !res.tags.find(t => t.alias === tagName);
           });
 
-            // Remove duplicates
-            return cbk(null, uniq(flatten(matches)));
+          // Make sure the tag is present
+          if (!!unknown) {
+            return cbk([404, 'FailedToFindTagWithSpecifiedName', {unknown}]);
+          }
 
+          // Collect all the node identity keys
+          const matches = args.tags.map(tagName => {
+            const tag = res.tags.find(t => t.alias === tagName);
+
+            return tag.nodes.filter(n => n !== getIdentity.public_key);
+          });
+
+          // Merge all tagged nodes and remove duplicates
+          return cbk(null, uniq(flatten(matches)));
         });
       }],
 
@@ -134,11 +138,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the graph to use to find candidates to send ads to
-      getGraph: ['getChannels', ({getChannels}, cbk) => {
+      getGraph: ['getChannels', 'getTags', ({getChannels, getTags}, cbk) => {
         // Exit early when when advertising to tags.
         if (!!args.tags.length) {
-          return cbk();
+          return getNodesGraph({lnd: args.lnd, nodes: getTags}, cbk);
         }
+
         // Exit early when using the entire graph
         if (args.max_hops !== directPeersDistance) {
           args.logger.info({sending_to_all_graph_nodes: true});
@@ -168,24 +173,16 @@ module.exports = (args, cbk) => {
       nodes: [
         'getGraph',
         'getIdentity',
-        'getTags',
         'message',
-        ({getGraph, getIdentity, getTags, message}, cbk) =>
+        ({getGraph, getIdentity, message}, cbk) =>
       {
-        // Exit early if tags are present
-        if (!!getTags) {
-          const nodes = getTags.filter(n => n !== getIdentity.public_key)
-            .map(n => ({public_key: n}));
-
-          return cbk(null, nodes);
-        }
-
         const {shuffled} = shuffle({array: getGraph.nodes});
 
         // Only consider 3rd party nodes that have known features
         const filteredNodes = shuffled
           .filter(n => n.public_key !== getIdentity.public_key)
           .filter(n => !!n.features.length)
+          .filter(n => n.features.map(n => n.bit).includes(featureKeysendBit))
           .map(node => {
             const channels = getGraph.channels.filter(channel => {
               const {policies} = channel;
