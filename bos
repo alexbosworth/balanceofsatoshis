@@ -115,6 +115,7 @@ prog
   .option('--message <message>', 'Custom advertisement message')
   .option('--min-hops <min_hops>', 'Minimum number of relaying nodes', INT)
   .option('--node <node_name>', 'Advertise via saved node')
+  .option('--tag <tag_name>', 'Advertise to a tag', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -122,11 +123,13 @@ prog
           logger,
           budget: options.budget || undefined,
           filters: flatten([options.filter].filter(n => !!n)),
+          fs: {getFile: readFile},
           is_dry_run: !!options.dryrun,
           lnd: (await lndForNode(logger, options.node)).lnd,
           message: options.message,
           max_hops: options.maxHops,
           min_hops: options.minHops,
+          tags: flatten([options.tag].filter(n => !!n)),
         });
       } catch (err) {
         return logger.error({err}) && reject();
