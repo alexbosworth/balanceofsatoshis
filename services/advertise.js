@@ -62,6 +62,7 @@ const utf8AsHex = utf8 => Buffer.from(utf8, 'utf8').toString('hex');
     [message]: <Message To Send String>
     [max_hops]: <Maxmimum Relaying Nodes Number>
     [min_hops]: <Minimum Relaying Nodes Number>
+    tags: [<Tag Name String>]
   }
 */
 module.exports = (args, cbk) => {
@@ -69,12 +70,12 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!args.fs) {
-          return cbk([400, 'ExpectedFileSystemToAdvertise']);
-        }
-
         if (!isArray(args.filters)) {
           return cbk([400, 'ExpectedArrayOfFiltersToAdvertise']);
+        }
+
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFileSystemMethodsToAdvertise']);
         }
 
         if (!args.lnd) {
@@ -83,6 +84,10 @@ module.exports = (args, cbk) => {
 
         if (!args.logger) {
           return cbk([400, 'ExpectedWinstonLoggerToAdvertise']);
+        }
+
+        if (!isArray(args.tags)) {
+          return cbk([400, 'ExpectedArrayOfTagsToAdvertiseTo']);
         }
 
         return cbk();
@@ -96,6 +101,11 @@ module.exports = (args, cbk) => {
         }
 
         return getChannels({lnd: args.lnd}, cbk);
+      }],
+
+      // Get the local identity to compose the ad message
+      getIdentity: ['validate', ({}, cbk) => {
+        return getWalletInfo({lnd: args.lnd}, cbk);
       }],
 
       // Get the list of tags and filter them.
@@ -130,11 +140,6 @@ module.exports = (args, cbk) => {
           // Merge all tagged nodes and remove duplicates
           return cbk(null, uniq(flatten(matches)));
         });
-      }],
-
-      // Get the local identity to compose the ad message
-      getIdentity: ['validate', ({}, cbk) => {
-        return getWalletInfo({lnd: args.lnd}, cbk);
       }],
 
       // Get the graph to use to find candidates to send ads to

@@ -108,6 +108,7 @@ prog
   .help('Default filter scope: channels_count > 9')
   .help('To only advertise to direct peers use --max-hops 0')
   .help('To avoid advertising to direct peers use --min-hops 1')
+  .help('Multiple --tag is supported to advertise across multiple tags')
   .option('--budget <budget>', 'Spending amount to allow for advertising', INT)
   .option('--dryrun', 'Avoid actually sending advertisements')
   .option('--filter <expression>', 'Require node match condition', REPEATABLE)
