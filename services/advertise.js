@@ -15,6 +15,7 @@ const {returnResult} = require('asyncjs-util');
 const {subscribeToProbeForRoute} = require('ln-service');
 
 const getNodesGraph = require('./get_nodes_graph');
+const {getTags} = require('./../tags');
 const {isMatchingFilters} = require('./../display');
 const {shuffle} = require('./../arrays');
 
@@ -25,6 +26,7 @@ const defaultFilter = ['channels_count > 9'];
 const defaultMsg = (alias, key) => `Check out my node! ${alias} ${key}`;
 const directPeersDistance = 0;
 const filterLimit = 10;
+const flatten = arr => [].concat(...arr);
 const hashOf = n => createHash('sha256').update(n).digest().toString('hex');
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const invoiceDescription = n => `👀 ${n}`;
@@ -50,6 +52,9 @@ const utf8AsHex = utf8 => Buffer.from(utf8, 'utf8').toString('hex');
 
   {
     filters: [<Node Condition Filter String>]
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     [is_dry_run]: <Avoid Sending Advertisements Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
@@ -63,6 +68,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFileSystemToAdvertise']);
+        }
+
         if (!isArray(args.filters)) {
           return cbk([400, 'ExpectedArrayOfFiltersToAdvertise']);
         }
@@ -88,13 +97,44 @@ module.exports = (args, cbk) => {
         return getChannels({lnd: args.lnd}, cbk);
       }],
 
+      // Get the list of tags and filter them.
+      getTags: ['validate', ({}, cbk) => {
+        // Exit early when there are no tags
+        if (!args.tags.length) {
+          return cbk();
+        }
+
+        let matches = [];
+
+        return getTags({fs: args.fs}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const {tags} = res;
+
+          args.tags.forEach(tagName => {
+            const tag = tags.find(t => t.alias === tagName);
+            if (!tag) {
+              return;
+            }
+
+            matches.push(tag.nodes);
+          });
+
+            // Remove duplicates
+            return cbk(null, uniq(flatten(matches)));
+
+        });
+      }],
+
       // Get the local identity to compose the ad message
       getIdentity: ['validate', ({}, cbk) => {
         return getWalletInfo({lnd: args.lnd}, cbk);
       }],
 
       // Get the graph to use to find candidates to send ads to
-      getGraph: ['getChannels', ({getChannels}, cbk) => {
+      getGraph: ['getChannels', 'getTags', ({getChannels, getTags}, cbk) => {
         // Exit early when using the entire graph
         if (args.max_hops !== directPeersDistance) {
           args.logger.info({sending_to_all_graph_nodes: true});
@@ -124,9 +164,18 @@ module.exports = (args, cbk) => {
       nodes: [
         'getGraph',
         'getIdentity',
+        'getTags',
         'message',
-        ({getGraph, getIdentity, message}, cbk) =>
+        ({getGraph, getIdentity, getTags, message}, cbk) =>
       {
+        // Exit early if tags are present
+        if (!!getTags) {
+          const nodes = getTags.filter(n => n !== getIdentity.public_key)
+            .map(n => ({public_key: n}));
+
+          return cbk(null, nodes);
+        }
+
         const {shuffled} = shuffle({array: getGraph.nodes});
 
         // Only consider 3rd party nodes that have known features
