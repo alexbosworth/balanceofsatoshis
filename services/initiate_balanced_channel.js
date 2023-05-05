@@ -10,7 +10,6 @@ const {connectPeer} = require('ln-sync');
 const {createInvoice} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
-const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPublicKey} = require('ln-service');
 const {maintainUtxoLocks} = require('ln-sync');

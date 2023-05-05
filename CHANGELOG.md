@@ -1,5 +1,9 @@
 # Versions
 
+## 15.7.0
+
+- `broadcast`: Wait for transaction validity on timelocked transactions
+
 ## 15.6.1
 
 - `advertise`: Add `--tag` to advertise to a specific list or lists of nodes

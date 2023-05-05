@@ -1,7 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const {broadcastTransaction} = require('ln-sync');
-const {createPsbt} = require('psbt');
 const {formatTokens} = require('ln-sync');
 const {fundPsbt} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');

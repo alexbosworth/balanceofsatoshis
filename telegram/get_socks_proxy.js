@@ -60,12 +60,25 @@ module.exports = ({fs, path}, cbk) => {
         const {host, password, port, userId} = parse(getFile);
 
         try {
-          const agent = new SocksProxyAgent({
-            password,
-            port,
-            userId,
-            hostname: host,
-          });
+          if (!host) {
+            throw new Error('ExpectedProxyHostAddressToCreateSocksProxy');
+          }
+
+          const url = new URL(`socks://${host}`);
+
+          if (!!password) {
+            url.password = password;
+          }
+
+          if (!!port) {
+            url.port = port;
+          }
+
+          if (!!userId) {
+            url.username = userId;
+          }
+
+          const agent = new SocksProxyAgent(url.toString());
 
           return cbk(null, {agent});
         } catch (err) {
