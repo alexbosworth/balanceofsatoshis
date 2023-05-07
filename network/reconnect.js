@@ -143,6 +143,11 @@ module.exports = ({lnd, retries}, cbk) => {
         return asyncMap(uniq(peersToRemove), (peer, cbk) => {
           const connection = getPeers.peers.find(n => n.public_key === peer);
 
+          // Exit early when not connected
+          if (!connection) {
+            return cbk();
+          }
+
           const reconnectedAt = connection.last_reconnection;
 
           // Exit early when a peer was too recently reconnected

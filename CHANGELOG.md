@@ -1,5 +1,9 @@
 # Versions
 
+## 15.7.1
+
+- `reconnect`: Fix reconnection when there is a disconnected closing out peer
+
 ## 15.7.0
 
 - `broadcast`: Wait for transaction validity on timelocked transactions
