@@ -1,5 +1,9 @@
 # Versions
 
+## 15.7.2
+
+- `telegram`: Ignore re-received chain txs where only the locktime is changed
+
 ## 15.7.1
 
 - `reconnect`: Fix reconnection when there is a disconnected closing out peer

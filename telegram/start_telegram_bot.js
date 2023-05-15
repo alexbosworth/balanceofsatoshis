@@ -28,6 +28,7 @@ const {handleStopCommand} = require('ln-telegram');
 const {handleVersionCommand} = require('ln-telegram');
 const {InputFile} = require('grammy');
 const {isMessageReplyAction} = require('ln-telegram');
+const {noLocktimeIdForTransaction} = require('@alexbosworth/blockchain');
 const {notifyOfForwards} = require('ln-telegram');
 const {postChainTransaction} = require('ln-telegram');
 const {postClosedMessage} = require('ln-telegram');
@@ -58,6 +59,7 @@ const {version} = require('./../package');
 const fileAsDoc = file => new InputFile(file.source, file.filename);
 const fromName = node => `${node.alias} ${node.public_key.substring(0, 8)}`;
 const getLnds = (x, y, z) => getNodeDetails({logger: x, names: y, nodes: z});
+const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const {isArray} = Array;
 const isHash = n => /^[0-9A-F]{64}$/i.test(n);
 let isBotInit = false;
@@ -947,6 +949,7 @@ module.exports = (args, cbk) => {
         let isFinished = false;
 
         return asyncEach(getNodes, ({from, lnd}, cbk) => {
+          const noLocktimeIds = [];
           const sub = subscribeToTransactions({lnd});
           const transactions = [];
 
@@ -961,6 +964,24 @@ module.exports = (args, cbk) => {
             }
 
             transactions.push(id);
+
+            // Check the transaction uniqueness against a locktime-absent hash
+            if (!!transaction.transaction) {
+              try {
+                const buffer = hexAsBuffer(transaction.transaction);
+
+                const noLocktimeId = noLocktimeIdForTransaction({buffer}).id;
+
+                // Exit early when a similar transaction has already been seen
+                if (noLocktimeIds.includes(noLocktimeId)) {
+                  return;
+                }
+
+                noLocktimeIds.push(noLocktimeId);
+              } catch (err) {
+                args.logger.error({err});
+              }
+            }
 
             try {
               const record = await getTransactionRecord({lnd, id});
