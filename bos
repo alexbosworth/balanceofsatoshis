@@ -231,11 +231,14 @@ prog
   .command('call', 'Make a raw API call and to get a raw API response')
   .help('If you do not specify a method it will list the supported methods')
   .argument('[method]', 'Method to call')
+  .option('--json', 'Output raw JSON as the output')
   .option('--node <node_name>', 'Saved node to use for call')
   .option('--param <param>', 'query encoded name=value', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
+        const r = options.json ? responses.returnJson : responses.returnObject;
+
         return commands.callRawApi({
           logger,
           ask: await commands.interrogate({}),
@@ -243,7 +246,7 @@ prog
           method: args.method,
           params: flatten([options.param].filter(n => !!n)),
         },
-        responses.returnObject({logger, reject, resolve}));
+        r({logger, reject, resolve}));
       } catch (err) {
         return logger.error({err}) && reject();
       }

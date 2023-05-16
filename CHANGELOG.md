@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.0
+
+- `call`: Add `--json` option to write the raw JSON to the console
+
 ## 15.7.2
 
 - `telegram`: Ignore re-received chain txs where only the locktime is changed
