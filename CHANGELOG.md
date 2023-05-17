@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.1
+
+- `telegram`: Correct re-received chain txs limiter to use accurate hashing
+
 ## 15.8.0
 
 - `call`: Add `--json` option to write the raw JSON to the console
