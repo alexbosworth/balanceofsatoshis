@@ -85,6 +85,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedAskFunctionToFundTransaction']);
         }
 
+        if (!!args.is_broadcast && !!args.is_dry_run) {
+          return cbk([400, 'BroadcastingSignedTxUnsupportedInDryRun']);
+        }
+
         if (!isArray(args.utxos)) {
           return cbk([400, 'ExpectedArrayOfUtxosToSpendToFundTransaction']);
         }
