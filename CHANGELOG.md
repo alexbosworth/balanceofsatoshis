@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.3
+
+- `gift`: Fix gift to work with LND 0.16.3
+
 ## 15.8.2
 
 - `fund`: Remove the ability to broadcast a signed tx when in dryrun mode

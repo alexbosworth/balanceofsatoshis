@@ -3,6 +3,7 @@ const {createInvoice} = require('ln-service');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
+const {parsePaymentRequest} = require('ln-service');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
@@ -77,10 +78,13 @@ module.exports = ({lnd, to, tokens}, cbk) => {
         'getWallet',
         ({createInvoice, getChannel, getWallet}, cbk) =>
       {
+        const {request} = createInvoice;
+
         try {
           const {route} = giftRoute({
             tokens,
             channel: getChannel,
+            delta: parsePaymentRequest({request}).cltv_delta,
             destination: getWallet.public_key,
             height: getWallet.current_block_height,
             payment: createInvoice.payment,

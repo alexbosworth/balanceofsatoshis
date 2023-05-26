@@ -51,7 +51,7 @@ const mtokPerTok = BigInt(1e3);
     }
   }
 */
-module.exports = ({channel, destination, height, payment, tokens}) => {
+module.exports = ({channel, delta, destination, height, payment, tokens}) => {
   if (!channel) {
     throw new Error('ExpectedChannelToCalculateGiftRoute');
   }
@@ -117,6 +117,7 @@ module.exports = ({channel, destination, height, payment, tokens}) => {
     height,
     mtokens,
     payment,
+    cltv_delta: delta || undefined,
     total_mtokens: !!payment ? mtokens : undefined,
   });
 
