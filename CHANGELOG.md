@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.4
+
+- `fund`: Fix specifying MAX when selecting unconfirmed UTXOs for funding
+
 ## 15.8.3
 
 - `gift`: Fix gift to work with LND 0.16.3
