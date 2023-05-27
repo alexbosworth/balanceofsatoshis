@@ -32,6 +32,7 @@ const {describeRoutingFailure} = require('./../display');
 
 const acceptTokens = 1;
 const bufferAsHex = buffer => buffer.toString('hex');
+const defaultChannelDescription = 'bos open-balanced-channel';
 const defaultMaxFeeMtokens = '9000';
 const {fromHex} = Transaction;
 const fundingAmount = (capacity, rate) => (capacity + (190 * rate)) / 2;
@@ -738,6 +739,7 @@ module.exports = (args, cbk) => {
         return proposeChannel({
           cooperative_close_address: args.address,
           capacity: askForCapacity,
+          description: defaultChannelDescription,
           give_tokens: giveTokens(askForCapacity),
           id: deriveFundingAddress.hash,
           key_index: args.multisig_key_index,

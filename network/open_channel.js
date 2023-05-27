@@ -26,6 +26,7 @@ const asBigTok = tokens => (tokens / 1e8).toFixed(8);
 const channelTokens = 5e6;
 const connectTimeout = 1000 * 30;
 const days = 90;
+const defaultDescription = 'bos increase-outbound-liquidity';
 const fastConf = 6;
 const {floor} = Math;
 const getMempoolRetries = 10;
@@ -313,6 +314,7 @@ module.exports = (args, cbk) => {
 
                 return openChannel({
                   chain_fee_tokens_per_vbyte: feeRate,
+                  description: defaultDescription,
                   fee_rate: numericFeeRate(args.set_fee_rate),
                   is_private: args.is_private,
                   lnd: args.lnd,

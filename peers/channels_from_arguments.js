@@ -1,4 +1,5 @@
 const defaultChannelCapacity = 5e6;
+const defaultChannelDescription = 'bos open';
 const isTrusted = type => ['private-trusted', 'public-trusted'].includes(type);
 const numericFeeRate = n => !!n && /^\d+$/.test(n) ? Number(n) : undefined;
 const privateTypes = ['private', 'private-trusted'];
@@ -23,6 +24,7 @@ const uniq = arr => Array.from(new Set(arr));
       channels: [{
         capacity: <Channel Capacity Tokens Number>
         [cooperative_close_address]: <Restrict Coop Close to Address String>
+        description: <Channel Description String>
         [give_tokens]: <Give Tokens Number>
         is_private: <Channel Is Private Bool>
         partner_public_key: <Channel Partner Identity Public Key Hex String>
@@ -37,6 +39,7 @@ module.exports = args => {
     return {
       capacity: args.capacities[i] || defaultChannelCapacity,
       cooperative_close_address: args.addresses[i] || undefined,
+      description: defaultChannelDescription,
       fee_rate: numericFeeRate(args.rates[i]),
       give_tokens: !!args.gives[i] ? Number(args.gives[i]) : undefined,
       is_private: !!args.types[i] && privateTypes.includes(args.types[i]),

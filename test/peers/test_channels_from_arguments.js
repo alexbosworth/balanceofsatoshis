@@ -27,6 +27,7 @@ const tests = [
         channels: [{
           capacity: 2,
           cooperative_close_address: 'address',
+          description: 'bos open',
           fee_rate: undefined,
           give_tokens: 1,
           is_private: true,
@@ -51,6 +52,7 @@ const tests = [
         channels: [{
           capacity: 5000000,
           cooperative_close_address: undefined,
+          description: 'bos open',
           fee_rate: undefined,
           give_tokens: undefined,
           is_private: false,
@@ -79,6 +81,7 @@ const tests = [
           channels: [{
             capacity: 1,
             cooperative_close_address: 'coopCloseAddressNodeA',
+            description: 'bos open',
             fee_rate: 1,
             give_tokens: 3,
             is_private: true,
@@ -93,6 +96,7 @@ const tests = [
           channels: [{
             capacity: 2,
             cooperative_close_address: 'coopCloseAddressNodeB',
+            description: 'bos open',
             fee_rate: 2,
             give_tokens: 4,
             is_private: false,

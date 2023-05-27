@@ -1,6 +1,6 @@
 # Versions
 
-## 15.8.4
+## 15.8.5
 
 - `fund`: Fix specifying MAX when selecting unconfirmed UTXOs for funding
 
