@@ -319,6 +319,7 @@ prog
 
   // Change the capacity of an existing channel
   .command('change-channel-capacity', 'Change the capacity of a channel')
+  .visible(false)
   .help('Remote node must be prepared to receive this type of request')
   .help('The remote node should also run this same command after you propose')
   .option('--node <node_name>', 'Use saved node details instead of local node')
@@ -801,6 +802,7 @@ prog
 
   // Gateway service
   .command('gateway', 'Request gateway for https://ln-operator.github.io/')
+  .visible(false)
   .help('Start LND gateway server listening for Web UI access')
   .help('Using the --remote option generates credentials for a remote gateway')
   .option('--minutes <minutes>', 'Minutes credentials valid for', INT, 10)
@@ -1618,11 +1620,11 @@ prog
 
   // Recover funds sent to p2pk using the node identity key
   .command('recover-p2pk', 'Recover chain funds sent to the node identity key')
+  .visible(false)
   .help('Sweep funds sent to your node public key into your regular wallet')
   .argument('<id>', 'Transaction id of funds sent to p2pk')
   .argument('<vout>', 'Transaction output index of funds sent to p2pk', INT)
   .option('--node <node_name>', 'Node to attempt p2pk recovery on')
-  .visible(false)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1765,6 +1767,7 @@ prog
 
   // Offer paid services
   .command('services', 'Run a KeySend paid services server')
+  .visible(false)
   .help('KeySend services are paid native Lightning Network services')
   .option('--activity-fees', 'Share routing fees earned vs num fwds')
   .option('--activity-volume', 'Share routing total volume amount')
@@ -1817,13 +1820,13 @@ prog
 
   // Get a swap API key or inspect an existing one
   .command('swap-api-key', 'Purchase a swap API key or inspect a swap API key')
+  .visible(false)
   .option('--api-key <api_key>', 'Hex encoded full swap API key')
   .option('--purchase', 'Purchase a new swap API key')
   .option('--macaroon <macaroon>', 'Hex encoded macaroon of swap API key')
   .option('--node <node_name>', 'Node to use to pay for API key')
   .option('--preimage <preimage>', 'Hex encoded preimage of swap API key')
   .option('--service-socket <swap_service_socket>', 'host:port for service')
-  .visible(false)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -2075,6 +2078,7 @@ prog
 
   // Use a paid service
   .command('use', 'Use a paid KeySend service from a services provider')
+  .visible(false)
   .help('KeySend services are paid native Lightning Network services')
   .help('All communication with these services uses LN payments')
   .help('Run services using the services command')

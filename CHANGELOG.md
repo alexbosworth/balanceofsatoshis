@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.6
+
+- `change-channel-capacity`, `gateway`, `services`, `use`: Hide commands
+
 ## 15.8.5
 
 - `fund`: Fix specifying MAX when selecting unconfirmed UTXOs for funding
