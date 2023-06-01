@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.7
+
+- `fund`: Fix error message when specifying UTXOs that do not exist
+
 ## 15.8.6
 
 - `change-channel-capacity`, `gateway`, `services`, `use`: Hide commands

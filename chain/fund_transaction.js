@@ -217,7 +217,9 @@ module.exports = (args, cbk) => {
 
         // Make sure that all inputs are known
         if (spend.filter(n => !n).length) {
-          return cbk([400, 'UnknownInputSelected', {known_utxos: spend}]);
+          const knownUtxos = spend.filter(n => !!n);
+
+          return cbk([400, 'UnknownInputSelected', {known: knownUtxos}]);
         }
 
         return getMaxFundAmount({
