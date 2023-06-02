@@ -958,15 +958,15 @@ module.exports = (args, cbk) => {
           sub.on('chain_transaction', async transaction => {
             const {id} = transaction;
 
-            // Exit early when this transaction has already been seen
-            if (transactions.includes(id)) {
+            // Exit early when this pending transaction has already been seen
+            if (!transaction.is_confirmed && transactions.includes(id)) {
               return;
             }
 
             transactions.push(id);
 
             // Check the transaction uniqueness against a locktime-absent hash
-            if (!!transaction.transaction) {
+            if (!transaction.is_confirmed && !!transaction.transaction) {
               try {
                 const buffer = hexAsBuffer(transaction.transaction);
 

@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.8
+
+- `telegram`: Fix sending a notification when a transaction confirms
+
 ## 15.8.7
 
 - `fund`: Fix error message when specifying UTXOs that do not exist
