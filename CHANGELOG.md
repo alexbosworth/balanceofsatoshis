@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.9
+
+- Add support for LND 0.16.3
+
 ## 15.8.8
 
 - `telegram`: Fix sending a notification when a transaction confirms
