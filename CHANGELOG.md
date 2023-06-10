@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.10
+
+- `fund`: Adjust to fix MAX fund errors
+
 ## 15.8.9
 
 - Add support for LND 0.16.3
