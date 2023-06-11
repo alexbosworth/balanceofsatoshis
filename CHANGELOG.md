@@ -1,5 +1,9 @@
 # Versions
 
+## 15.8.11
+
+- `call`: Improve error message to show a suggested public key
+
 ## 15.8.10
 
 - `fund`: Adjust to fix MAX fund errors

@@ -2,8 +2,11 @@ const {parse} = require('querystring');
 
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
+const {findKey} = require('ln-sync');
 const lnService = require('ln-service');
 const lnSync = require('ln-sync');
+const {getChannels} = require('ln-service');
+const {getNodeAlias} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const {calls} = require('./api');
@@ -124,7 +127,7 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
             prefix: `[${named}]`,
             suffix: !!argument.optional ? ' (Optional)' : String(),
             type: argument.type || 'input',
-            validate: input => {
+            validate: async input => {
               const isNumber = argument.type === 'number';
 
               // Exit early on number zero
@@ -154,7 +157,27 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
 
               // Public keys must be hex public keys
               if (argument.type === 'public_key' && !isPublicKey(input)) {
-                return 'A public key is required';
+                // Attempt to give a nice error message with a suggested pubkey
+                try {
+                  const lookup = await findKey({
+                    lnd,
+                    channels: (await getChannels({lnd})).channels,
+                    query: input,
+                  });
+
+                  if (!lookup.public_key) {
+                    throw new Error('FailedToFindMatchingPublicKeyForInput');
+                  }
+
+                  const {alias} = await getNodeAlias({
+                    lnd,
+                    id: lookup.public_key,
+                  });
+
+                  return `Did you mean ${alias} ${lookup.public_key}?`;
+                } catch (err) {
+                  return 'A public key is required';
+                }
               }
 
               return true;
