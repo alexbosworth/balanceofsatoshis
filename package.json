@@ -23,7 +23,7 @@
     "bip66": "1.1.5",
     "bitcoinjs-lib": "6.1.3",
     "bolt01": "1.2.6",
-    "bolt03": "1.2.15",
+    "bolt03": "1.3.0",
     "bolt07": "1.8.3",
     "cbor": "9.0.0",
     "colorette": "2.0.20",
@@ -31,13 +31,13 @@
     "csv-parse": "5.4.0",
     "ecpair": "2.1.0",
     "goldengate": "12.0.5",
-    "grammy": "1.16.1",
+    "grammy": "1.16.2",
     "hot-formula-parser": "4.0.0",
     "import-lazy": "4.0.0",
     "ini": "4.1.1",
     "inquirer": "9.2.7",
     "ln-accounting": "7.0.1",
-    "ln-service": "56.5.1",
+    "ln-service": "56.7.1",
     "ln-sync": "5.2.2",
     "ln-telegram": "4.6.1",
     "moment": "2.29.4",
@@ -55,7 +55,7 @@
   "devDependencies": {
     "@alexbosworth/tap": "15.0.12",
     "invoices": "2.2.3",
-    "ln-docker-daemons": "5.0.5",
+    "ln-docker-daemons": "5.0.6",
     "mock-lnd": "1.4.4"
   },
   "engines": {
@@ -83,5 +83,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis -t alexbosworth/balanceofsatoshis:$npm_package_version --push .",
     "test": "tap --branches=1 --functions=1 --lines=1 --statements=1 -t 60 test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "15.8.11"
+  "version": "15.8.12"
 }

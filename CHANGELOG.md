@@ -1,6 +1,6 @@
 # Versions
 
-## 15.8.11
+## 15.8.12
 
 - `call`: Improve error message to show a suggested public key
 
