@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const getSocket = require('./../../lnd/get_socket');
 
@@ -93,15 +95,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(getSocket(args), error, 'Got expected error');
+      await rejects(getSocket(args), error, 'Got expected error');
     } else {
       const {socket} = await getSocket(args);
 
       equal(socket, expected.socket, 'Got expected socket');
     }
 
-    return end();
+    return;
   });
 });

@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const {giftRoute} = require('./../../routing');
 
@@ -137,11 +139,11 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, strictSame, throws}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => giftRoute(args), new Error(error), 'Got expected error');
     } else {
-      strictSame(giftRoute(args).route, expected.route, 'Got expected route');
+      deepEqual(giftRoute(args).route, expected.route, 'Got expected route');
     }
 
     return end();

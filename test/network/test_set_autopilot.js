@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {setAutopilot} = require('./../../network');
 
@@ -21,15 +23,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(setAutopilot(args), error, 'Got expected error');
+      await rejects(setAutopilot(args), error, 'Got expected error');
     } else {
       const autopilot = await setAutopilot(args);
 
-      strictSame(autopilot, expected.autopilot, 'Got expected autopilot result');
+      deepEqual(autopilot, expected.autopilot, 'Got expected autopilot result');
     }
 
-    return end();
+    return;
   });
 });

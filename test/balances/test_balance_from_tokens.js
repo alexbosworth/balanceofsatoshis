@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const {balanceFromTokens} = require('./../../balances');
 
@@ -47,16 +49,14 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({end, equal, throws}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => balanceFromTokens(args), new Error(error));
+    } else {
+      const balance = balanceFromTokens(args);
 
-      return end();
+      equal(balance, expected.balance, 'Balance is calculated');
     }
-
-    const balance = balanceFromTokens(args);
-
-    equal(balance, expected.balance, 'Balance is calculated');
 
     return end();
   });

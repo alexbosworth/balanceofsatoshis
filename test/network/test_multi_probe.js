@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const multiProbe = require('./../../network/multi_probe');
 
@@ -105,13 +107,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, strictSame, throws}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => multiProbe(args), new Error(error), 'Got error');
     } else {
       const res = multiProbe(args);
 
-      strictSame(res, expected, 'Got expected result');
+      deepEqual(res, expected, 'Got expected result');
     }
 
     return end();

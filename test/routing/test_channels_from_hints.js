@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const {channelsFromHints} = require('./../../routing');
 
@@ -60,13 +62,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({end, equal, strictSame, throws}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => channelsFromHints(args), new Error(error), 'Got error');
     } else {
       const res = channelsFromHints(args);
 
-      strictSame(res, expected, 'Got expected result');
+      deepEqual(res, expected, 'Got expected result');
     }
 
     return end();

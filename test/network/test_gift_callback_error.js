@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
 
 const giftCallbackError = require('./../../network/gift_callback_error');
 
@@ -37,10 +38,10 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, ({end, strictSame}) => {
+  return test(description, (t, end) => {
     const err = giftCallbackError(args);
 
-    strictSame(err, expected.err, 'Got expected error');
+    deepEqual(err, expected.err, 'Got expected error');
 
     return end();
   });

@@ -1,5 +1,7 @@
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
+
 const {encode} = require('cbor');
-const {test} = require('@alexbosworth/tap');
 
 const registerNode = require('./../../nodes/register_node');
 
@@ -317,13 +319,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(registerNode(args), error, 'Got expected error');
+      await rejects(registerNode(args), error, 'Got expected error');
     } else {
       await registerNode(args);
     }
 
-    return end();
+    return;
   });
 });

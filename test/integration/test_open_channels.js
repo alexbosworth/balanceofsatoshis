@@ -1,3 +1,6 @@
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
+
 const {addPeer} = require('ln-service');
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
@@ -10,7 +13,6 @@ const {getWalletInfo} = require('ln-service');
 const {openChannel} = require('ln-service');
 const {signPsbt} = require('ln-service');
 const {spawnLightningCluster} = require('ln-docker-daemons');
-const {test} = require('@alexbosworth/tap');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {openChannels} = require('./../../peers');
@@ -23,7 +25,7 @@ const size = 2;
 const times = 1000;
 
 // Opening channels should open channels with specified nodes
-test(`Open channels`, async ({end, equal, strictSame}) => {
+test(`Open channels`, async () => {
   const {kill, nodes} = await spawnLightningCluster({size});
 
   const [{generate, lnd}, target] = nodes;

@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
 
 const {describeRoute} = require('./../../display');
 
@@ -90,11 +91,11 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     const description = await describeRoute(args);
 
-    strictSame(description, expected, 'Got expected route description');
+    deepEqual(description, expected, 'Got expected route description');
 
-    return end();
+    return;
   });
 });

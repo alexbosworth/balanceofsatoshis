@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const method = require('./../../tags/get_tags');
 
@@ -83,15 +85,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(method(args, args.test), error, 'Got error');
     } else {
       const res = await method(args);
 
-      strictSame(res, expected, 'Got expected res');
+      deepEqual(res, expected, 'Got expected res');
     }
 
-    return end();
+    return;
   });
 });

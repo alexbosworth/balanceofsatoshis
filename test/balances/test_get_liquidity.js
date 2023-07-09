@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getInfoResponse} = require('./../fixtures');
 const {getLiquidity} = require('./../../balances');
@@ -45,7 +47,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(getLiquidity(args), error, 'Got expected error');
     } else {
@@ -54,6 +56,6 @@ tests.forEach(({args, description, error, expected}) => {
       equal(balances.balance, expected.balance, 'Balance is calculated');
     }
 
-    return end();
+    return;
   });
 });

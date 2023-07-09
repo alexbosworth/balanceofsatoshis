@@ -1,3 +1,7 @@
+const {deepEqual} = require('node:assert').strict;
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
+
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncRetry = require('async/retry');
@@ -18,7 +22,6 @@ const {removePeer} = require('ln-service');
 const {signPsbt} = require('ln-service');
 const {spawnLightningCluster} = require('ln-docker-daemons');
 const {stopDaemon} = require('ln-service');
-const {test} = require('@alexbosworth/tap');
 
 const {openBalancedChannel} = require('./../../services');
 
@@ -36,7 +39,7 @@ const times = 2000;
 const tokens = 500095;
 
 // Opening a balanced channel with a peer should open a balanced channel
-test(`Open balanced channel`, async ({end, equal, strictSame}) => {
+test(`Open balanced channel`, async () => {
   const {kill, nodes} = await spawnLightningCluster({size});
 
   const [{generate, lnd}, target] = nodes;
@@ -260,8 +263,8 @@ test(`Open balanced channel`, async ({end, equal, strictSame}) => {
           addresses.sort();
           given.sort();
 
-          strictSame(addresses, [address, undefined], 'Got coop close addrs');
-          strictSame(given, [500000, 500000], 'Got coins given');
+          deepEqual(addresses, [address, undefined], 'Got coop close addrs');
+          deepEqual(given, [500000, 500000], 'Got coins given');
 
           return;
         });
@@ -273,5 +276,5 @@ test(`Open balanced channel`, async ({end, equal, strictSame}) => {
     await kill({});
   }
 
-  return end();
+  return;
 });

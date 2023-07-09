@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
 
 const {segmentMeasure} = require('./../../display');
 
@@ -21,8 +22,8 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, ({end, strictSame}) => {
-    strictSame(segmentMeasure(args), expected, 'Got expected result');
+  return test(description, (t, end) => {
+    deepEqual(segmentMeasure(args), expected, 'Got expected result');
 
     return end();
   });

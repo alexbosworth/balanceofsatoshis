@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getMempoolSize} = require('./../../chain');
 
@@ -53,15 +55,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(getMempoolSize(args), error, 'Got expected error');
+      await rejects(getMempoolSize(args), error, 'Got expected error');
     } else {
       const {vbytes} = await getMempoolSize(args);
 
       equal(vbytes, expected.vbytes, 'Got expected vbytes');
     }
 
-    return end();
+    return;
   });
 });

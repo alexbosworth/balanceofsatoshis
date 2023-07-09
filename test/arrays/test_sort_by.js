@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const {sortBy} = require('./../../arrays');
 
@@ -31,13 +33,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({end, strictSame, throws}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => sortBy(args), new Error(error), 'Got expected error');
     } else {
       const {sorted} = sortBy(args);
 
-      strictSame(sorted, expected.sorted, 'Array is sorted as expected');
+      deepEqual(sorted, expected.sorted, 'Array is sorted as expected');
     }
 
     return end();

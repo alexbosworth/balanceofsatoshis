@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
 
 const {returnObject} = require('./../../responses');
 
@@ -38,7 +40,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({end, equal, strictSame}) => {
+  return test(description, (t, end) => {
     let loggedErr;
     let loggedInfo;
 
@@ -61,7 +63,7 @@ tests.forEach(({args, description, error, expected}) => {
           file: args.file,
           write: (path, data, cbk) => cbk('err'),
           reject: err => {
-            strictSame(err, error, 'Got expected file write error');
+            deepEqual(err, error, 'Got expected file write error');
 
             return end();
           },

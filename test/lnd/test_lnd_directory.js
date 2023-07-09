@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const lndDirectory = require('./../../lnd/lnd_directory');
 
@@ -65,7 +67,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, throws}) => {
+  return test(description, async () => {
     if (!!error) {
       throws(() => lndDirectory(args), new Error(error), 'Got expected error');
     } else {
@@ -74,6 +76,6 @@ tests.forEach(({args, description, error, expected}) => {
       equal(path, expected.path, 'Got expected path');
     }
 
-    return end();
+    return;
   });
 });

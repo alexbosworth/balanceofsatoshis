@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getUtxos} = require('./../../chain');
 
@@ -108,9 +110,9 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(getUtxos(args), error, 'Got expected error');
+      await rejects(getUtxos(args), error, 'Got expected error');
     } else if (!args.count_below && !args.is_count) {
       const {utxos} = await getUtxos(args);
 
@@ -130,6 +132,6 @@ tests.forEach(({args, description, error, expected}) => {
       equal(count, expected.count, 'Got expected count');
     }
 
-    return end();
+    return;
   });
 });

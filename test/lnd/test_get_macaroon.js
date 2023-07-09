@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const getMacaroon = require('./../../lnd/get_macaroon');
 
@@ -37,15 +39,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(getMacaroon(args), error, 'Got expected error');
+      await rejects(getMacaroon(args), error, 'Got expected error');
     } else {
       const {macaroon} = await getMacaroon(args);
 
       equal(macaroon, expected.macaroon, 'Got expected macaroon');
     }
 
-    return end();
+    return;
   });
 });

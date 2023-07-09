@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
 
 const feesForSegment = require('./../../routing/fees_for_segment');
 
@@ -36,10 +37,10 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, ({end, equal, strictSame, throws}) => {
+  return test(description, (t, end) => {
     const {fees} = feesForSegment(args);
 
-    strictSame(fees, expected.fees, 'Got expected fees');
+    deepEqual(fees, expected.fees, 'Got expected fees');
 
     return end();
   });

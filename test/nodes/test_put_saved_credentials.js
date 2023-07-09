@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const putSavedCredentials = require('./../../nodes/put_saved_credentials');
 
@@ -67,13 +68,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(putSavedCredentials(args), error, 'Got expected error');
+      await rejects(putSavedCredentials(args), error, 'Got expected error');
     } else {
       await putSavedCredentials(args);
     }
 
-    return end();
+    return;
   });
 });

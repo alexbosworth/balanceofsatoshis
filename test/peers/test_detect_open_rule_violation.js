@@ -1,6 +1,7 @@
-const EventEmitter = require('events');
-
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const EventEmitter = require('node:events');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {chanInfoResponse} = require('./../fixtures');
 const detect = require('./../../peers/detect_open_rule_violation');
@@ -63,7 +64,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(detect(args), error, 'Got expected error');
     } else {
@@ -72,6 +73,6 @@ tests.forEach(({args, description, error, expected}) => {
       equal(rule, expected.rule, 'Got expected rule violation');
     }
 
-    return end();
+    return;
   });
 });

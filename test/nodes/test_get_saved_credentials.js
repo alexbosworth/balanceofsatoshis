@@ -1,4 +1,7 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getSavedCredentials} = require('./../../nodes');
 
@@ -77,16 +80,16 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(getSavedCredentials(args), error, 'Got expected error');
+      await rejects(getSavedCredentials(args), error, 'Got expected error');
     } else {
       const {credentials, node} = await getSavedCredentials(args);
 
-      strictSame(credentials, expected.credentials, 'Got expected credentials');
+      deepEqual(credentials, expected.credentials, 'Got expected credentials');
       equal(node, expected.node, 'Got expected node name');
     }
 
-    return end();
+    return;
   });
 });

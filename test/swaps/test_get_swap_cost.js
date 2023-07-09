@@ -1,6 +1,7 @@
-const EventEmitter = require('events');
-
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const EventEmitter = require('node:events');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getInfoResponse} = require('./../fixtures');
 const {getSwapCost} = require('./../../swaps');
@@ -122,13 +123,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(getSwapCost(args), error, 'Got expected error');
     } else {
       equal((await getSwapCost(args)).cost, expected.cost, 'Got cost');
     }
 
-    return end();
+    return;
   });
 });

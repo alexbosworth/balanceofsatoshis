@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const {decryptPayload} = require('./../../encryption');
 const {encrypted} = require('./fixtures');
@@ -37,7 +39,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, throws}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => decryptPayload(args), new Error(error), 'Got error');
     } else {

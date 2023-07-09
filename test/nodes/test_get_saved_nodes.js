@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getSavedNodes} = require('./../../nodes');
 
@@ -120,15 +122,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(getSavedNodes(args), error, 'Got expected error');
+      await rejects(getSavedNodes(args), error, 'Got expected error');
     } else {
       const {nodes} = await getSavedNodes(args);
 
-      strictSame(nodes, expected.nodes, 'Got expected nodes');
+      deepEqual(nodes, expected.nodes, 'Got expected nodes');
     }
 
-    return end();
+    return;
   });
 });

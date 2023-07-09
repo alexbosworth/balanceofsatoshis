@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const tableRowsFromCsv = require('./../../balances/table_rows_from_csv');
 
@@ -31,15 +33,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(tableRowsFromCsv(args), error, 'Got expected error');
     } else {
       const {rows} = await tableRowsFromCsv(args);
 
-      strictSame(rows, expected.rows, 'Got expected table rows');
+      deepEqual(rows, expected.rows, 'Got expected table rows');
     }
 
-    return end();
+    return;
   });
 });

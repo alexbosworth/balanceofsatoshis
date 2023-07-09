@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getChannelCloses} = require('./../../chain');
 const {getInfoResponse} = require('./../fixtures');
@@ -25,15 +27,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(getChannelCloses(args), error, 'Got expected error');
     } else {
       const closes = await getChannelCloses(args);
 
-      strictSame(closes, expected, 'Got expected closed channels');
+      deepEqual(closes, expected, 'Got expected closed channels');
     }
 
-    return end();
+    return;
   });
 });

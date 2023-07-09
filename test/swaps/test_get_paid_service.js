@@ -1,6 +1,8 @@
 const {encode} = require('cbor');
+const {equal} = require('node:assert').strict;
 const fetch = require('node-fetch');
-const {test} = require('@alexbosworth/tap');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getInfoResponse} = require('./../fixtures');
 const getPaidService = require('./../../swaps/get_paid_service');
@@ -42,7 +44,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(getPaidService(args), error, 'Got expected error');
     } else {
@@ -54,6 +56,6 @@ tests.forEach(({args, description, error, expected}) => {
       equal(paid.token, expected.token, 'Got expected token');
     }
 
-    return end();
+    return;
   });
 });

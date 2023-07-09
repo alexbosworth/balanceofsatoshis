@@ -1,6 +1,7 @@
-const EventEmitter = require('events');
-
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const EventEmitter = require('node:events');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getInfoResponse} = require('./../fixtures');
 const {getPeers} = require('./../../network');
@@ -294,17 +295,17 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(getPeers(args), error, 'Got expected error');
+      await rejects(getPeers(args), error, 'Got expected error');
     } else {
       const {peers} = await getPeers(args);
 
       peers.forEach(n => delete n.first_connected);
 
-      strictSame(peers, expected.peers, 'Got expected peers');
+      deepEqual(peers, expected.peers, 'Got expected peers');
     }
 
-    return end();
+    return;
   });
 });

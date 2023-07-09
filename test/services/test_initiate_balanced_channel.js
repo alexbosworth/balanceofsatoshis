@@ -1,7 +1,9 @@
-const EventEmitter = require('events');
+const {equal} = require('node:assert').strict;
+const EventEmitter = require('node:events');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {payments} = require('bitcoinjs-lib');
-const {test} = require('@alexbosworth/tap');
 const {Transaction} = require('bitcoinjs-lib');
 
 const {getInfoResponse} = require('./../fixtures');
@@ -314,7 +316,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(initiate(args, args.test), error, 'Got error');
     } else {
@@ -325,6 +327,6 @@ tests.forEach(({args, description, error, expected}) => {
       equal(initiated.transactions.length, 2, 'Got funding txs');
     }
 
-    return end();
+    return;
   });
 });

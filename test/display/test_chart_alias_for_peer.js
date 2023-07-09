@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
 
 const {chartAliasForPeer} = require('./../../display');
 
@@ -32,7 +33,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, ({end, equal, throws}) => {
+  return test(description, (t, end) => {
     const {display} = chartAliasForPeer(args);
 
     equal(display, expected.display, 'Got expected output');

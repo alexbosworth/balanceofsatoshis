@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {decryptCiphertext} = require('./../../encryption');
 
@@ -54,15 +56,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(decryptCiphertext(args), error, 'Got expected error');
+      await rejects(decryptCiphertext(args), error, 'Got expected error');
     } else {
       const {clear} = await decryptCiphertext(args);
 
       equal(clear, expected.clear, 'Got expected clear text output');
     }
 
-    return end();
+    return;
   });
 });

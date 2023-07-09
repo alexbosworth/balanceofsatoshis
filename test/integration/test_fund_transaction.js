@@ -1,10 +1,12 @@
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
+
 const {address} = require('bitcoinjs-lib');
 const {createChainAddress} = require('ln-service');
 const {crypto} = require('bitcoinjs-lib');
 const {networks} = require('bitcoinjs-lib');
 const {script} = require('bitcoinjs-lib');
 const {spawnLightningCluster} = require('ln-docker-daemons');
-const {test} = require('@alexbosworth/tap');
 const tinysecp = require('tiny-secp256k1');
 
 const {fundTransaction} = require('./../../chain');
@@ -19,7 +21,7 @@ const tapHash = k => crypto.taggedHash('TapTweak', k.publicKey.slice(1, 33));
 const tokens = 1e6;
 
 // Funding a transaction should result in a funded tx
-test(`Fund transaction`, async ({end, equal, strictSame}) => {
+test(`Fund transaction`, async () => {
   const ecp = (await import('ecpair')).ECPairFactory(tinysecp);
   const {kill, nodes} = await spawnLightningCluster({});
 

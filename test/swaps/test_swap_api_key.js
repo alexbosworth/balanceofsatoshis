@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {swapApiKey} = require('./../../swaps');
 
@@ -46,7 +48,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(swapApiKey(args), error, 'Got expected error');
     } else {
@@ -56,6 +58,6 @@ tests.forEach(({args, description, error, expected}) => {
       equal(service.swap_user_id, expected.swap_user_id, 'Got expected id');
     }
 
-    return end();
+    return;
   });
 });

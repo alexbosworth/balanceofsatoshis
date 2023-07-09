@@ -1,9 +1,11 @@
-const EventEmitter = require('events');
+const {deepEqual} = require('node:assert').strict;
+const EventEmitter = require('node:events');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {createSignedRequest} = require('invoices');
 const {createUnsignedRequest} = require('invoices');
 const secp256k1 = require('tiny-secp256k1');
-const {test} = require('@alexbosworth/tap');
 
 const getBalancedOpens = require('./../../services/get_balanced_opens');
 
@@ -158,15 +160,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(getBalancedOpens(args), error, 'Got error');
     } else {
       const {incoming} = await getBalancedOpens(args);
 
-      strictSame(incoming, expected.incoming, 'Got expected balanced opens');
+      deepEqual(incoming, expected.incoming, 'Got expected balanced opens');
     }
 
-    return end();
+    return;
   });
 });

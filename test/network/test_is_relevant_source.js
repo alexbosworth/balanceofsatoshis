@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
 
 const method = require('./../../network/is_relevant_source');
 
@@ -69,7 +70,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, throws}) => {
+  return test(description, (t, end) => {
     const got = method(args);
 
     equal(got, expected, 'Got expected result');

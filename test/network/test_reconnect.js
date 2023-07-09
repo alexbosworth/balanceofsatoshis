@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getNodeInfoResponse} = require('./../fixtures');
 const {listChannelsResponse} = require('./../fixtures');
@@ -23,7 +25,7 @@ const tests = [
   {
     args: {},
     description: 'An LND object is expected',
-    error: 'ExpectedLndToReconnectToDisconnectedPeers',
+    error: [400, 'ExpectedLndToReconnectToDisconnectedPeers'],
   },
   {
     args: {lnd: makeLnd({}), retries: 1},
@@ -94,15 +96,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(reconnect(args), error, 'Got expected error');
     } else {
       const {reconnected} = await reconnect(args);
 
-      strictSame(reconnected, expected, 'Got expected reconnections');
+      deepEqual(reconnected, expected, 'Got expected reconnections');
     }
 
-    return end();
+    return;
   });
 });

@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const getPastForwards = require('./../../routing/get_past_forwards');
 
@@ -45,15 +47,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(getPastForwards(args, args.test), error, 'Got error');
     } else {
       const {forwards} = await getPastForwards(args);
 
-      strictSame(forwards, expected.forwards, 'Got expected forwards');
+      deepEqual(forwards, expected.forwards, 'Got expected forwards');
     }
 
-    return end();
+    return;
   });
 });

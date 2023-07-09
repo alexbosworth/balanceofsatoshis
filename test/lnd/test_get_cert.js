@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const getCert = require('./../../lnd/get_cert');
 
@@ -42,15 +44,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(getCert(args), error, 'Got expected error');
+      await rejects(getCert(args), error, 'Got expected error');
     } else {
       const {cert} = await getCert(args);
 
       equal(cert, expected.cert, 'Got expected cert');
     }
 
-    return end();
+    return;
   });
 });

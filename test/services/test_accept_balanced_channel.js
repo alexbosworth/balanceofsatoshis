@@ -1,8 +1,10 @@
-const EventEmitter = require('events');
+const {equal} = require('node:assert').strict;
+const EventEmitter = require('node:events');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {address} = require('bitcoinjs-lib');
 const {networks} = require('bitcoinjs-lib');
-const {test} = require('@alexbosworth/tap');
 const {Transaction} = require('bitcoinjs-lib');
 
 const accept = require('./../../services/accept_balanced_channel');
@@ -168,7 +170,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(accept(args, args.test), error, 'Got error');
     } else {
@@ -179,6 +181,6 @@ tests.forEach(({args, description, error, expected}) => {
       equal(accepted.transactions.length, 1, 'Got funding txs');
     }
 
-    return end();
+    return;
   });
 });

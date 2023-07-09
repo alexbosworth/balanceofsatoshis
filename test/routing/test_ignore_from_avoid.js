@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const {ignoreFromAvoid} = require('./../../routing');
 
@@ -16,11 +18,11 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, strictSame, throws}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => ignoreFromAvoid(args), new Error(error), 'Got error');
     } else {
-      strictSame(ignoreFromAvoid(args).ignore, expected.ignore, 'Got ignores');
+      deepEqual(ignoreFromAvoid(args).ignore, expected.ignore, 'Got ignores');
     }
 
     return end();

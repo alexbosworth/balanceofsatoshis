@@ -1,6 +1,7 @@
-const EventEmitter = require('events');
-
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const EventEmitter = require('node:events');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {describeGraphResponse} = require('./../fixtures');
 const {findRecord} = require('./../../lnd');
@@ -125,7 +126,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(findRecord(args), error, 'Got expected error');
     } else {
@@ -133,9 +134,9 @@ tests.forEach(({args, description, error, expected}) => {
 
       (res.nodes || []).forEach(n => delete n.updated);
 
-      strictSame(res, expected, 'Got expected result');
+      deepEqual(res, expected, 'Got expected result');
     }
 
-    return end();
+    return;
   });
 });

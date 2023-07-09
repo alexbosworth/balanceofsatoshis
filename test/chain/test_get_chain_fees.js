@@ -1,6 +1,7 @@
-const EventEmitter = require('events');
-
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const EventEmitter = require('node:events');
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {getChainFees} = require('./../../chain');
 const {getInfoResponse} = require('./../fixtures');
@@ -67,15 +68,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, rejects, strictSame}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(getChainFees(args), error, 'Got expected error');
+      await rejects(getChainFees(args), error, 'Got expected error');
     } else {
       const fees = await getChainFees(args);
 
-      strictSame(fees, expected, 'Got expected fees rundown');
+      deepEqual(fees, expected, 'Got expected fees rundown');
     }
 
-    return end();
+    return;
   });
 });

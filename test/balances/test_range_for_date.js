@@ -1,4 +1,7 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const rangeForDate = require('./../../balances/range_for_date');
 
@@ -49,14 +52,14 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({end, equal, strictSame, throws}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => rangeForDate(args), new Error(error), 'Got expected error');
     } else if (!args.year && !!args.month) {
       equal(!!rangeForDate(args).after, true, 'Got expected after date');
       equal(!!rangeForDate(args).before, true, 'Got expected before date');
     } else {
-      strictSame(rangeForDate(args), expected, 'Got expected date range');
+      deepEqual(rangeForDate(args), expected, 'Got expected date range');
     }
 
     return end();

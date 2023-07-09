@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const method = require('./../../telegram/get_socks_proxy');
 
@@ -56,15 +58,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, rejects, type}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(method(args), error, 'Got error');
     } else {
       const {agent} = await method(args);
 
-      type(agent, expected, 'Got expected SOCKS proxy');
+      equal(agent.constructor.name, expected, 'Got expected SOCKS proxy');
     }
 
-    return end();
+    return;
   });
 });

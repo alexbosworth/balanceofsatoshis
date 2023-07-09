@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const {encryptToPublicKeys} = require('./../../encryption');
 
@@ -59,15 +61,15 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
-      rejects(encryptToPublicKeys(args), error, 'Got expected error');
+      await rejects(encryptToPublicKeys(args), error, 'Got expected error');
     } else {
       const {cipher} = await encryptToPublicKeys(args);
 
       equal(cipher, expected.cipher, 'Got expected cipher output');
     }
 
-    return end();
+    return;
   });
 });

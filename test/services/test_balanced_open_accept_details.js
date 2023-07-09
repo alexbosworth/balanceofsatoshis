@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const method = require('./../../services/balanced_open_accept_details');
 
@@ -102,11 +104,11 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({end, equal, throws, strictSame}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => method(args), new Error(error), 'Got error');
     } else {
-      strictSame(method(args), expected, 'Got expected result');
+      deepEqual(method(args), expected, 'Got expected result');
     }
 
     return end();

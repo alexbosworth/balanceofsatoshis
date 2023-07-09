@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
 
 const {derAsPem} = require('./../../encryption');
 
@@ -21,7 +22,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, throws}) => {
+  return test(description, (t, end) => {
     const {pem} = derAsPem(args);
 
     equal(pem, expected.pem, 'Got expected pem');

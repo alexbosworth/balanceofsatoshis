@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const {rejects} = require('node:assert').strict;
+const test = require('node:test');
 
 const getMaximum = require('./../../routing/get_maximum');
 
@@ -55,7 +57,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async ({end, equal, rejects}) => {
+  return test(description, async () => {
     if (!!error) {
       await rejects(getMaximum(args, args.test), error, 'Got expected error');
     } else {
@@ -64,6 +66,6 @@ tests.forEach(({args, description, error, expected}) => {
       equal(maximum, expected.maximum, 'Got expected value');
     }
 
-    return end();
+    return;
   });
 });

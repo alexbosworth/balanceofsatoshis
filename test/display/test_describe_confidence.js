@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {equal} = require('node:assert').strict;
+const test = require('node:test');
 
 const {describeConfidence} = require('./../../display');
 
@@ -36,7 +37,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, expected}) => {
-  return test(description, ({end, equal, throws}) => {
+  return test(description, (t, end) => {
     const {description} = describeConfidence(args);
 
     equal(description, expected.description, 'Got expected description');

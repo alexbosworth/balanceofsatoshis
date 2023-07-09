@@ -1,4 +1,5 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
 
 const {returnChart} = require('./../../responses');
 
@@ -31,7 +32,7 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected, res}) => {
-  return test(description, ({end, equal, strictSame, throws}) => {
+  return test(description, (t, end) => {
     const loggedErrors = [];
     const loggedInfo = [];
 
@@ -42,7 +43,7 @@ tests.forEach(({args, description, error, expected, res}) => {
 
     if (!!error) {
       return returnChart({logger ,reject: () => {
-        strictSame(loggedErrors, [{err: error}], 'Error logged as expected');
+        deepEqual(loggedErrors, [{err: error}], 'Error logged as expected');
 
         return end();
       }})(error);
@@ -52,7 +53,11 @@ tests.forEach(({args, description, error, expected, res}) => {
       logger,
       data: args.data,
       resolve: () => {
-        strictSame(loggedInfo.join('\n'), expected.join('\n'), 'Got expected info');
+        deepEqual(
+          loggedInfo.join('\n'),
+          expected.join('\n'),
+          'Got expected info'
+        );
 
         return end();
       },

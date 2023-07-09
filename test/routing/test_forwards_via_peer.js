@@ -1,4 +1,6 @@
-const {test} = require('@alexbosworth/tap');
+const {deepEqual} = require('node:assert').strict;
+const test = require('node:test');
+const {throws} = require('node:assert').strict;
 
 const forwardsViaPeer = require('./../../routing/forwards_via_peer');
 
@@ -23,13 +25,13 @@ const tests = [
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, ({end, equal, strictSame, throws}) => {
+  return test(description, (t, end) => {
     if (!!error) {
       throws(() => forwardsViaPeer(args), new Error(error), 'Got error');
     } else {
       const {forwards} = forwardsViaPeer(args);
 
-      strictSame(forwards, expected.forwards, 'Forwards are returned');
+      deepEqual(forwards, expected.forwards, 'Forwards are returned');
     }
 
     return end();
