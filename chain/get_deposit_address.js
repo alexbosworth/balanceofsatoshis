@@ -9,6 +9,7 @@ const bigTok = tokens => !tokens ? '0' : (tokens / 1e8).toFixed(8);
 
   {
     [format]: <Address Format String>
+    [fresh]: <Use Fresh Address Bool>
     lnd: <Authenticated LND API Object>
     [tokens]: <Tokens to Receive Number>
   }
@@ -19,7 +20,7 @@ const bigTok = tokens => !tokens ? '0' : (tokens / 1e8).toFixed(8);
     deposit_qr: <Deposit Address URL QR Code String>
   }
 */
-module.exports = ({format, lnd, tokens}, cbk) => {
+module.exports = ({format, fresh, lnd, tokens}, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
@@ -33,7 +34,7 @@ module.exports = ({format, lnd, tokens}, cbk) => {
 
       // Get an address
       getAddress: ['validate', ({}, cbk) => {
-        return createChainAddress({format, lnd, is_unused: true}, cbk);
+        return createChainAddress({format, lnd, is_unused: !fresh}, cbk);
       }],
 
       // Get a QR code for the address URL

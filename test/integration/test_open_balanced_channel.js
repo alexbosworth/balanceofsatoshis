@@ -1,5 +1,6 @@
 const {deepEqual} = require('node:assert').strict;
 const {equal} = require('node:assert').strict;
+const {exit} = require('node:process');
 const test = require('node:test');
 
 const asyncAuto = require('async/auto');
@@ -39,7 +40,9 @@ const times = 2000;
 const tokens = 500095;
 
 // Opening a balanced channel with a peer should open a balanced channel
-test(`Open balanced channel`, async () => {
+test(`Open balanced channel`, async t => {
+  t.after(() => exit());
+
   const {kill, nodes} = await spawnLightningCluster({size});
 
   const [{generate, lnd}, target] = nodes;

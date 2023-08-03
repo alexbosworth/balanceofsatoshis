@@ -273,6 +273,7 @@ prog
   .help('--format address types supported: np2wpkh, p2tr, p2wpkh (default)')
   .argument('[amount]', 'Amount to receive', INT)
   .option('--format <format>', 'Address type', ['np2wpkh', 'p2tr', 'p2wpkh'])
+  .option('--fresh', 'Create a fresh address')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to deposit coins to')
   .action((args, options, logger) => {
@@ -280,6 +281,7 @@ prog
       try {
         return chain.getDepositAddress({
           format: options.format || undefined,
+          fresh: options.fresh || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           tokens: args.amount,
         },

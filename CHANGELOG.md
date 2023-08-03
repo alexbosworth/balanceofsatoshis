@@ -1,5 +1,9 @@
 # Versions
 
+## 15.9.0
+
+- `chain-deposit`: Add `--fresh` option to generate a brand new chain address
+
 ## 15.8.15
 
 - `call`: Improve error message to show a suggested public key

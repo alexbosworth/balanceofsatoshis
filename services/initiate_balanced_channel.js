@@ -151,6 +151,8 @@ module.exports = (args, cbk) => {
         });
 
         sub.on('error', err => {
+          sub.removeAllListeners();
+
           return cbk(err);
         });
 
