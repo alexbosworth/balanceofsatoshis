@@ -1,5 +1,9 @@
 # Versions
 
+## 15.10.0
+
+- `invoice`: Add QR option to show a scannable QR code of the request
+
 ## 15.9.1
 
 - `chain-deposit`: Add `--fresh` option to generate a brand new chain address

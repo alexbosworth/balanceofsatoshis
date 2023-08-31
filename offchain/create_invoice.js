@@ -8,6 +8,7 @@ const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNodeAlias} = require('ln-sync');
 const {parsePaymentRequest} = require('ln-service');
+const qrcode = require('qrcode-terminal');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToForwardRequests} = require('ln-service');
 
@@ -37,6 +38,7 @@ const uniq = arr => Array.from(new Set(arr));
     [description]: <Invoice Description String>
     [expires_in]: <Invoice Expires In Hours Number>
     [is_hinting]: <Include Private Channels Bool>
+    [is_including_qr]: <Include QR Code Bool>
     [is_rejecting_option]: <Is Rejecting Amount Increases Bool>
     [is_selecting_hops]: <Is Selecting Hops Bool>
     [is_virtual]: <Is Using Virtual Channel for Invoice Bool>
@@ -48,6 +50,7 @@ const uniq = arr => Array.from(new Set(arr));
   @returns via cbk or Promise
   {
     [is_settled]: <Invoice Was Paid Bool>
+    [qr]: <QR Code String>
     [request]: <BOLT 11 Payment Request String>
     [tokens]: <Invoice Amount Number>
   }
@@ -411,17 +414,33 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Get a QR code for the request URL
+      qr: ['publicRequest', ({publicRequest}, cbk) => {
+        // Exit early when not including the QR code
+        if (!args.is_including_qr) {
+          return cbk();
+        }
+
+        const url = `LIGHTNING:${publicRequest.request.toUpperCase()}`;
+
+        return qrcode.generate(url, {small: true}, code => cbk(null, code));
+      }],
+
       // Log the virtual channel payment request
-      logRequest: ['publicRequest', ({publicRequest}, cbk) => {
+      logRequest: ['publicRequest', 'qr', ({publicRequest, qr}, cbk) => {
         // Exit early when not using a virtual channel
         if (!args.is_virtual) {
-          return cbk(null, publicRequest);
+          return cbk(null, {
+            request: publicRequest,
+            qr,
+          });
         }
 
         args.logger.info({
           request: publicRequest.request,
           tokens: parseRequest(publicRequest.request).tokens,
           virtual_fee_rate: args.virtual_fee_rate || undefined,
+          qr,
         });
 
         return cbk(null, {is_settled: true});

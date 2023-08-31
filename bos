@@ -1060,6 +1060,7 @@ prog
   .option('--hours <expires_in>', 'Hours invoice is valid for', INT)
   .option('--include-hints', 'Include the default set of hop hint channels')
   .option('--node <node_name>', 'Use saved node to create invoice')
+  .option('--qr', 'Encode payment request into a terminal output QR code')
   .option('--rate-provider <rate_provider>', 'Rate provider', priceProviders)
   .option('--reject-on-amount-increase', 'Reject if required amount increases')
   .option('--select-hints', 'Select hop hints to be added to the request')
@@ -1075,6 +1076,7 @@ prog
           description: options.for,
           expires_in: options.hours,
           is_hinting: options.includeHints || undefined,
+          is_including_qr: !!options.qr || undefined,
           is_rejecting_option: !!options.rejectOnAmountIncrease || undefined,
           is_selecting_hops: options.selectHints || undefined,
           is_virtual: options.virtual || undefined,
