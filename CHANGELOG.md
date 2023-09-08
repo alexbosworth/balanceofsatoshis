@@ -1,5 +1,9 @@
 # Versions
 
+## 15.11.0
+
+- `rebalance`: Add `INBOUND_BASE_FEE` to `--in-filter` and `--out-filter`
+
 ## 15.10.0
 
 - `invoice`: Add QR option to show a scannable QR code of the request

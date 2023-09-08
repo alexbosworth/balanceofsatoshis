@@ -231,6 +231,7 @@ module.exports = (args, cbk) => {
             const policy = channel.policies.find(n => n.public_key !== id);
 
             return {
+              base_fee_mtokens: policy.base_fee_mtokens,
               fee_rate: policy.fee_rate,
               is_disabled: policy.is_disabled,
               public_key: policy.public_key,
@@ -307,7 +308,11 @@ module.exports = (args, cbk) => {
           policies: getFees.channels.map(channel => {
             const policy = channel.policies.find(n => n.public_key !== id);
 
-            return {fee_rate: policy.fee_rate, public_key: policy.public_key};
+            return {
+              base_fee_mtokens: policy.base_fee_mtokens,
+              fee_rate: policy.fee_rate,
+              public_key: policy.public_key,
+            };
           }),
           tags: getTags.tags,
           query: args.out_through,

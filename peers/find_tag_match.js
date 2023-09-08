@@ -6,6 +6,7 @@ const {isMatchingFilters} = require('./../display');
 
 const {max} = Math;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
+const tok = n => Number(BigInt(n) / BigInt(1e3));
 
 /** Find a node for a tag query
 
@@ -18,6 +19,7 @@ const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
     }]
     [filters]: [<Filter Expression String>]
     policies: {
+      [base_fee_mtokens]: <Remote Base Fee Charged In Millitokens Number>
       [fee_rate]: <Remote Fees Charged in Millitokens Per Million Number>
       [is_disabled]: <Remote Channel Forwarding Is Disabled Bool>
       public_key: <Remote Public Key Hex String>
@@ -102,6 +104,7 @@ module.exports = ({channels, filters, policies, tags, query}) => {
           heights: withPeer.map(n => {
             return decodeChanId({channel: n.id}).block_height;
           }),
+          inbound_base_fee: max(...feeRates.map(n => tok(n.base_fee_mtokens))),
           inbound_fee_rate: max(...feeRates.map(n => n.fee_rate)),
           inbound_liquidity: sumOf(withPeer.map(n => n.remote_balance)),
           outbound_liquidity: sumOf(withPeer.map(n => n.local_balance)),
