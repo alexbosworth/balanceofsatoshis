@@ -287,28 +287,6 @@ module.exports = (args, cbk) => {
         return cbk();
       }],
 
-      // Check balance
-      checkBalance: [
-        'opens',
-        ({opens}, cbk) => {
-          const [{channels}] = opens;
-
-          getChainBalance({lnd: args.lnd}, (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            const totalCapacity = channels.reduce((acc, n) => acc + n.capacity, 0);
-
-            if (res.chain_balance < totalCapacity) {
-              return cbk([400, 'ExpectedChainBalanceToMatchTotalCapacityBeingOpened']);
-            }
-
-            return cbk();
-          });
-        }
-      ],
-
       // Get connected peers to see if we are already connected
       getPeers: ['getLnds', ({getLnds}, cbk) => {
         // Exit early when there are no opening nodes
@@ -338,7 +316,6 @@ module.exports = (args, cbk) => {
 
       // Connect up to the peers
       connect: [
-        'checkBalance',
         'getLnds',
         'getNodes',
         'getPeers',
@@ -494,8 +471,32 @@ module.exports = (args, cbk) => {
         ({internal}) => cbk(null, !internal));
       }],
 
+      // Check balance
+      checkBalance: ['isExternal', 'opens', ({isExternal, opens}, cbk) => {
+          // Exit early when externally funding
+          if (!!isExternal) {
+            return cbk();
+          }
+          const [{channels}] = opens;
+
+          getChainBalance({lnd: args.lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            const totalCapacity = channels.reduce((acc, n) => acc + n.capacity, 0);
+
+            if (res.chain_balance < totalCapacity) {
+              return cbk([400, 'ExpectedChainBalanceToMatchTotalCapacityBeingOpened']);
+            }
+
+            return cbk();
+          });
+        }
+      ],
+
       // Ask for the fee rate to use for internally funded opens
-      askForFeeRate: ['isExternal', ({isExternal}, cbk) => {
+      askForFeeRate: ['isExternal', 'checkBalance', ({isExternal}, cbk) => {
         // Exit early when there are no internal funds being spent or internal fee rate is specified
         if (!!isExternal || !!args.internal_fund_fee_rate) {
           return cbk(null, {});
@@ -508,6 +509,7 @@ module.exports = (args, cbk) => {
       openChannels: [
         'askForFeeRate',
         'capacities',
+        'checkBalance',
         'connect',
         'getLnds',
         'getNodes',
