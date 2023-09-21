@@ -1,5 +1,13 @@
 # Versions
 
+## 16.0.0
+
+- `chain-deposit`: Change default address type to `p2tr`
+
+### Breaking Changes
+
+- Remove support for LND 0.14.5 and below
+
 ## 15.11.0
 
 - `rebalance`: Add `INBOUND_BASE_FEE` to `--in-filter` and `--out-filter`

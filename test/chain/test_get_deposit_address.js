@@ -12,14 +12,28 @@ const tests = [
   },
   {
     args: {
-      lnd: {default: {newAddress: ({}, cbk) => cbk(null, {address: 'addr'})}},
+      lnd: {
+        default: {newAddress: ({}, cbk) => cbk(null, {address: 'addr'})},
+        wallet: {
+          listAccounts: ({}, cbk) => cbk(null, {
+            accounts: [{address_type: 'TAPROOT_PUBKEY'}],
+          }),
+        },
+      },
     },
     description: 'A chain address is returned',
     expected: {deposit_address: 'addr', deposit_qr: true},
   },
   {
     args: {
-      lnd: {default: {newAddress: ({}, cbk) => cbk(null, {address: 'addr'})}},
+      lnd: {
+        default: {newAddress: ({}, cbk) => cbk(null, {address: 'addr'})},
+        wallet: {
+          listAccounts: ({}, cbk) => cbk(null, {
+            accounts: [{address_type: 'TAPROOT_PUBKEY'}],
+          }),
+        },
+      },
       tokens: 1,
     },
     description: 'A chain address is returned',

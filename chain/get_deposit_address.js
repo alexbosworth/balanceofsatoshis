@@ -4,6 +4,7 @@ const qrcode = require('qrcode-terminal');
 const {returnResult} = require('asyncjs-util');
 
 const bigTok = tokens => !tokens ? '0' : (tokens / 1e8).toFixed(8);
+const defaultFormat = 'p2tr';
 
 /** Get deposit address
 
@@ -34,7 +35,12 @@ module.exports = ({format, fresh, lnd, tokens}, cbk) => {
 
       // Get an address
       getAddress: ['validate', ({}, cbk) => {
-        return createChainAddress({format, lnd, is_unused: !fresh}, cbk);
+        return createChainAddress({
+          lnd,
+          format: format || defaultFormat,
+          is_unused: !fresh,
+        },
+        cbk);
       }],
 
       // Get a QR code for the address URL
