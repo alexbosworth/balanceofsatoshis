@@ -496,7 +496,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Ask for the fee rate to use for internally funded opens
-      askForFeeRate: ['isExternal', 'checkBalance', ({isExternal}, cbk) => {
+      askForFeeRate: ['checkBalance', 'isExternal', ({isExternal}, cbk) => {
         // Exit early when there are no internal funds being spent or internal fee rate is specified
         if (!!isExternal || !!args.internal_fund_fee_rate) {
           return cbk(null, {});
