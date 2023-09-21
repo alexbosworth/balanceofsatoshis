@@ -473,27 +473,27 @@ module.exports = (args, cbk) => {
 
       // Check balance
       checkBalance: ['isExternal', 'opens', ({isExternal, opens}, cbk) => {
-          // Exit early when externally funding
-          if (!!isExternal) {
-            return cbk();
-          }
-          const [{channels}] = opens;
-
-          getChainBalance({lnd: args.lnd}, (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            const totalCapacity = channels.reduce((acc, n) => acc + n.capacity, 0);
-
-            if (res.chain_balance < totalCapacity) {
-              return cbk([400, 'ExpectedChainBalanceToMatchTotalCapacityBeingOpened']);
-            }
-
-            return cbk();
-          });
+        // Exit early when externally funding
+        if (!!isExternal) {
+          return cbk();
         }
-      ],
+
+        const [{channels}] = opens;
+
+        getChainBalance({lnd: args.lnd}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const totalCapacity = channels.reduce((acc, n) => acc + n.capacity, 0);
+
+          if (res.chain_balance < totalCapacity) {
+            return cbk([400, 'ExpectedChainBalanceToMatchTotalCapacityBeingOpened']);
+          }
+
+          return cbk();
+        });
+      }],
 
       // Ask for the fee rate to use for internally funded opens
       askForFeeRate: ['isExternal', 'checkBalance', ({isExternal}, cbk) => {
