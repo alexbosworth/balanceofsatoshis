@@ -471,7 +471,7 @@ module.exports = (args, cbk) => {
         ({internal}) => cbk(null, !internal));
       }],
 
-      // Check balance
+      // Make sure there is enough coins to fund the open
       checkBalance: ['isExternal', 'opens', ({isExternal, opens}, cbk) => {
         // Exit early when externally funding
         if (!!isExternal) {
