@@ -15,6 +15,7 @@ const asyncRetry = require('async/retry');
 const {broadcastChainTransaction} = require('ln-service');
 const {cancelPendingChannel} = require('ln-service');
 const {fundPendingChannels} = require('ln-service');
+const {getChainBalance} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getFundedTransaction} = require('ln-sync');
 const {getNetwork} = require('ln-sync');
@@ -286,6 +287,28 @@ module.exports = (args, cbk) => {
         return cbk();
       }],
 
+      // Check balance
+      checkBalance: [
+        'opens',
+        ({opens}, cbk) => {
+          const [{channels}] = opens;
+
+          getChainBalance({lnd: args.lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            const totalCapacity = channels.reduce((acc, n) => acc + n.capacity, 0);
+
+            if (res.chain_balance < totalCapacity) {
+              return cbk([400, 'ExpectedChainBalanceToMatchTotalCapacityBeingOpened']);
+            }
+
+            return cbk();
+          });
+        }
+      ],
+
       // Get connected peers to see if we are already connected
       getPeers: ['getLnds', ({getLnds}, cbk) => {
         // Exit early when there are no opening nodes
@@ -315,6 +338,7 @@ module.exports = (args, cbk) => {
 
       // Connect up to the peers
       connect: [
+        'checkBalance',
         'getLnds',
         'getNodes',
         'getPeers',
