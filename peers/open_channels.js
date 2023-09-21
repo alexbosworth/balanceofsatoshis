@@ -15,6 +15,7 @@ const asyncRetry = require('async/retry');
 const {broadcastChainTransaction} = require('ln-service');
 const {cancelPendingChannel} = require('ln-service');
 const {fundPendingChannels} = require('ln-service');
+const {getChainBalance} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getFundedTransaction} = require('ln-sync');
 const {getNetwork} = require('ln-sync');
@@ -470,8 +471,32 @@ module.exports = (args, cbk) => {
         ({internal}) => cbk(null, !internal));
       }],
 
+      // Make sure there is enough coins to fund the open
+      checkBalance: ['isExternal', 'opens', ({isExternal, opens}, cbk) => {
+        // Exit early when externally funding
+        if (!!isExternal) {
+          return cbk();
+        }
+
+        const [{channels}] = opens;
+
+        return getChainBalance({lnd: args.lnd}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const totalCapacity = channels.reduce((acc, n) => acc + n.capacity, 0);
+
+          if (res.chain_balance < totalCapacity) {
+            return cbk([400, 'ExpectedChainBalanceToMatchTotalCapacityBeingOpened']);
+          }
+
+          return cbk();
+        });
+      }],
+
       // Ask for the fee rate to use for internally funded opens
-      askForFeeRate: ['isExternal', ({isExternal}, cbk) => {
+      askForFeeRate: ['checkBalance', 'isExternal', ({isExternal}, cbk) => {
         // Exit early when there are no internal funds being spent or internal fee rate is specified
         if (!!isExternal || !!args.internal_fund_fee_rate) {
           return cbk(null, {});
@@ -484,6 +509,7 @@ module.exports = (args, cbk) => {
       openChannels: [
         'askForFeeRate',
         'capacities',
+        'checkBalance',
         'connect',
         'getLnds',
         'getNodes',
