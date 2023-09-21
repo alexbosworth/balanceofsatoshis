@@ -480,7 +480,7 @@ module.exports = (args, cbk) => {
 
         const [{channels}] = opens;
 
-        getChainBalance({lnd: args.lnd}, (err, res) => {
+        return getChainBalance({lnd: args.lnd}, (err, res) => {
           if (!!err) {
             return cbk(err);
           }
