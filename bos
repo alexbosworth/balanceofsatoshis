@@ -272,7 +272,7 @@ prog
   .command('chain-deposit', 'Deposit coins in the on-chain wallet')
   .help('--format address types supported: np2wpkh, p2tr, p2wpkh (default)')
   .argument('[amount]', 'Amount to receive', INT)
-  .option('--format <format>', 'Address type', ['np2wpkh', 'p2tr', 'p2wpkh'])
+  .option('--format <format>', 'Address type', ['np2wpkh', 'p2tr', 'p2wpkh'], 'p2tr')
   .option('--fresh', 'Create a fresh address')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to deposit coins to')
