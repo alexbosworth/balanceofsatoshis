@@ -54,6 +54,7 @@ const peerAddedDelayMs = 1000 * 5;
 const pendingCheckTimes = 60 * 10;
 const per = (a, b) => (a / b).toFixed(2);
 const relockIntervalMs = 1000 * 20;
+const sumOf = arr => arr.reduce((sum, n) => sum + n, 0);
 const times = 10;
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const uniq = arr => Array.from(new Set(arr));
@@ -471,28 +472,31 @@ module.exports = (args, cbk) => {
         ({internal}) => cbk(null, !internal));
       }],
 
-      // Make sure there is enough coins to fund the open
-      checkBalance: ['isExternal', 'opens', ({isExternal, opens}, cbk) => {
-        // Exit early when externally funding
+      // Get the chain balance to see if there is enough available
+      getBalance: ['isExternal', ({isExternal}, cbk) => {
+        // Exit early when not using internal balance to fund
         if (!!isExternal) {
           return cbk();
         }
 
-        const [{channels}] = opens;
+        return getChainBalance({lnd: args.lnd}, cbk);
+      }],
 
-        return getChainBalance({lnd: args.lnd}, (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          const totalCapacity = channels.reduce((acc, n) => acc + n.capacity, 0);
-
-          if (res.chain_balance < totalCapacity) {
-            return cbk([400, 'ExpectedChainBalanceToMatchTotalCapacityBeingOpened']);
-          }
-
+      // Make sure there is enough coins to fund the opens
+      checkBalance: ['getBalance', 'opens', ({getBalance, opens}, cbk) => {
+        // Exit early when externally funding
+        if (!getBalance) {
           return cbk();
-        });
+        }
+
+        const capacities = opens.map(n => n.channels.map(n => n.capacity));
+
+        // Make sure that the chain balance is sufficient
+        if (getBalance.chain_balance < sumOf(flatten(capacities))) {
+          return cbk([400, 'ExpectedChainBalanceAboveCapacityBeingOpened']);
+        }
+
+        return cbk();
       }],
 
       // Ask for the fee rate to use for internally funded opens

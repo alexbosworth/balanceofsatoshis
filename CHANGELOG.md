@@ -1,6 +1,6 @@
 # Versions
 
-## 16.0.0
+## 16.0.1
 
 - `chain-deposit`: Change default address type to `p2tr`
 
