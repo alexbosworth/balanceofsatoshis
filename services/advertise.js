@@ -23,7 +23,7 @@ const {shuffle} = require('./../arrays');
 const {ceil} = Math;
 const cltvDelay = 144;
 const createSecret = () => randomBytes(32).toString('hex');
-const defaultFilter = ['channels_count < 9'];
+const defaultFilter = ['channels_count > 9'];
 const defaultMsg = (alias, key) => `Check out my node! ${alias} ${key}`;
 const directPeersDistance = 0;
 const featureKeysendBit = 55;
