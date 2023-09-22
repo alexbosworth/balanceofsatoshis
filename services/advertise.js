@@ -146,6 +146,11 @@ module.exports = (args, cbk) => {
         'getTags',
         ({getChannels, getIdentity, getTags}, cbk) =>
       {
+        // Exit early if no avoids specified
+        if (!args.avoid.length) {
+          return cbk(null, {ignore: []});
+        }
+
         return getIgnores({
           avoid: args.avoid,
           channels: getChannels.channels,
