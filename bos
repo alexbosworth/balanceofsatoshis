@@ -109,6 +109,7 @@ prog
   .help('To only advertise to direct peers use --max-hops 0')
   .help('To avoid advertising to direct peers use --min-hops 1')
   .help('Multiple --tag is supported to advertise across multiple tags')
+  .option('--avoid <avoid>', 'Avoid advertising to node/chan/tag', REPEATABLE)
   .option('--budget <budget>', 'Spending amount to allow for advertising', INT)
   .option('--dryrun', 'Avoid actually sending advertisements')
   .option('--filter <expression>', 'Require node match condition', REPEATABLE)
@@ -122,6 +123,7 @@ prog
       try {
         return await services.advertise({
           logger,
+          avoid: flatten([options.avoid].filter(n => !!n)),
           budget: options.budget || undefined,
           filters: flatten([options.filter].filter(n => !!n)),
           fs: {getFile: readFile},

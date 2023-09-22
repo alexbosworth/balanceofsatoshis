@@ -14,6 +14,7 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToProbeForRoute} = require('ln-service');
 
+const {getIgnores} = require('./../routing');
 const getNodesGraph = require('./get_nodes_graph');
 const {getTags} = require('./../tags');
 const {isMatchingFilters} = require('./../display');
@@ -22,7 +23,7 @@ const {shuffle} = require('./../arrays');
 const {ceil} = Math;
 const cltvDelay = 144;
 const createSecret = () => randomBytes(32).toString('hex');
-const defaultFilter = ['channels_count > 9'];
+const defaultFilter = ['channels_count < 9'];
 const defaultMsg = (alias, key) => `Check out my node! ${alias} ${key}`;
 const directPeersDistance = 0;
 const featureKeysendBit = 55;
@@ -52,6 +53,7 @@ const utf8AsHex = utf8 => Buffer.from(utf8, 'utf8').toString('hex');
 /** Advertise to nodes that accept KeySend
 
   {
+    [avoid]: [<Avoid Advertising To String>]
     filters: [<Node Condition Filter String>]
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
@@ -70,6 +72,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!isArray(args.avoid)) {
+          return cbk([400, 'ExpectedAvoidArrayToAdvertise']);
+        }
+
         if (!isArray(args.filters)) {
           return cbk([400, 'ExpectedArrayOfFiltersToAdvertise']);
         }
@@ -93,60 +99,69 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get channels to substitute for graph when ads are for peers only
-      getChannels: ['validate', ({}, cbk) => {
-        // Exit early when advertising to more than direct peers
-        if (args.max_hops !== 0) {
-          return cbk();
-        }
-
-        return getChannels({lnd: args.lnd}, cbk);
-      }],
+      // Get channels
+      getChannels: ['validate', ({}, cbk) => getChannels({lnd: args.lnd}, cbk)],
 
       // Get the local identity to compose the ad message
       getIdentity: ['validate', ({}, cbk) => {
         return getWalletInfo({lnd: args.lnd}, cbk);
       }],
 
-      // Get the list of tags and filter them.
-      getTags: ['getIdentity', ({getIdentity}, cbk) => {
+      // Get tags
+      getTags: ['validate', ({}, cbk) => getTags({fs: args.fs}, cbk)],
+
+      // Filter tags
+      filterTags: ['getIdentity', 'getTags', ({getIdentity, getTags}, cbk) => {
         // Exit early when there are no tags specified to advertise to
         if (!args.tags.length) {
           return cbk();
         }
 
-        return getTags({fs: args.fs}, (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          // Look for a referenced tag that doesn't match a present tag
-          const unknown = args.tags.find(tagName => {
-            return !res.tags.find(t => t.alias === tagName);
-          });
-
-          // Make sure the tag is present
-          if (!!unknown) {
-            return cbk([404, 'FailedToFindTagWithSpecifiedName', {unknown}]);
-          }
-
-          // Collect all the node identity keys
-          const matches = args.tags.map(tagName => {
-            const tag = res.tags.find(t => t.alias === tagName);
-
-            return tag.nodes.filter(n => n !== getIdentity.public_key);
-          });
-
-          // Merge all tagged nodes and remove duplicates
-          return cbk(null, uniq(flatten(matches)));
+        // Look for a referenced tag that doesn't match a present tag
+        const unknown = args.tags.find(tagName => {
+          return !getTags.tags.find(t => t.alias === tagName);
         });
+
+        // Make sure the tag is present
+        if (!!unknown) {
+          return cbk([404, 'FailedToFindTagWithSpecifiedName', {unknown}]);
+        }
+
+        // Collect all the node identity keys
+        const matches = args.tags.map(tagName => {
+          const tag = getTags.tags.find(t => t.alias === tagName);
+
+          return tag.nodes.filter(n => n !== getIdentity.public_key);
+        });
+
+        // Merge all tagged nodes and remove duplicates
+        return cbk(null, uniq(flatten(matches)));
+      }],
+
+
+      // Get ignores
+      getIgnores: [
+        'getChannels',
+        'getIdentity',
+        'getTags',
+        ({getChannels, getIdentity, getTags}, cbk) =>
+      {
+        return getIgnores({
+          avoid: args.avoid,
+          channels: getChannels.channels,
+          lnd: args.lnd,
+          logger: args.logger,
+          public_key: getIdentity.public_key,
+          tags: getTags.tags,
+        },
+        cbk);
       }],
 
       // Get the graph to use to find candidates to send ads to
-      getGraph: ['getChannels', 'getTags', ({getChannels, getTags}, cbk) => {
+      getGraph: ['getChannels', 'filterTags', ({getChannels, filterTags}, cbk) => {
         // Exit early when when advertising to tags.
         if (!!args.tags.length) {
-          return getNodesGraph({lnd: args.lnd, nodes: getTags}, cbk);
+          return getNodesGraph({lnd: args.lnd, nodes: filterTags}, cbk);
         }
 
         // Exit early when using the entire graph
@@ -178,8 +193,9 @@ module.exports = (args, cbk) => {
       nodes: [
         'getGraph',
         'getIdentity',
+        'getIgnores',
         'message',
-        ({getGraph, getIdentity, message}, cbk) =>
+        ({getGraph, getIdentity, getIgnores, message}, cbk) =>
       {
         const {shuffled} = shuffle({array: getGraph.nodes});
 
@@ -225,6 +241,7 @@ module.exports = (args, cbk) => {
         return asyncFilterLimit(nodes, filterLimit, (node, cbk) => {
           return getRouteToDestination({
             destination: node.public_key,
+            ignore: getIgnores.ignore,
             lnd: args.lnd,
             max_fee: maxFeeTokens,
             messages: [
@@ -259,7 +276,11 @@ module.exports = (args, cbk) => {
       }],
 
       // Send message to nodes
-      send: ['message', 'nodes', ({message, nodes}, cbk) => {
+      send: [
+        'getIgnores', 
+        'message', 
+        'nodes', 
+        ({getIgnores, message, nodes}, cbk) => {
         const maxSpendPerNode = sendTokens + maxFeeTokens;
         const sent = [];
 
@@ -279,6 +300,7 @@ module.exports = (args, cbk) => {
           const probe = subscribeToProbeForRoute({
             cltv_delay: cltvDelay,
             destination: node.public_key,
+            ignore: getIgnores.ignore,
             lnd: args.lnd,
             max_fee: maxFeeTokens,
             messages: [
