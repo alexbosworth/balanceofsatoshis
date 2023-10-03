@@ -1,5 +1,9 @@
 # Versions
 
+## 16.0.2
+
+- `trade-secret`: Fix advertising when node is behind TorV3
+
 ## 16.0.1
 
 - `chain-deposit`: Change default address type to `p2tr`
