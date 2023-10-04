@@ -7,12 +7,13 @@ Commands for working with LND balances.
 
 Supported LND versions:
 
+- v0.17.0-beta
 - v0.16.0-beta to v0.16.4-beta
 - v0.15.2-beta to v0.15.5-beta
 
 ## Install
 
-- Requires an [installation of Node v16+][nodejs-install-guide]
+- Requires an [installation of Node v18+][nodejs-install-guide]
 
 ```shell
 npm install -g balanceofsatoshis

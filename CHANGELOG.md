@@ -1,5 +1,12 @@
 # Versions
 
+## 17.0.0
+
+### Breaking Changes
+
+- Remove `gateway` command
+- Remove support for node.js 16 and require 18+
+
 ## 16.0.2
 
 - `trade-secret`: Fix advertising when node is behind TorV3

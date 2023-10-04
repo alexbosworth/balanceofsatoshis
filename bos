@@ -802,36 +802,6 @@ prog
     });
   })
 
-  // Gateway service
-  .command('gateway', 'Request gateway for https://ln-operator.github.io/')
-  .visible(false)
-  .help('Start LND gateway server listening for Web UI access')
-  .help('Using the --remote option generates credentials for a remote gateway')
-  .option('--minutes <minutes>', 'Minutes credentials valid for', INT, 10)
-  .option('--node <node_name>', 'Node for gateway')
-  .option('--nospend', 'Credentials do not include spending privileges')
-  .option('--port <port>', 'Port for gateway', INT, 4805)
-  .option('--remote <url>', 'Output credentials for a remote gateway')
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        return lnd.gateway({
-          logger,
-          credentials: await lnd.lndCredentials({
-            is_nospend: options.nospend,
-            node: options.node,
-          }),
-          minutes: options.minutes,
-          is_nospend: options.nospend || undefined,
-          port: options.port,
-          remote: options.remote,
-        });
-      } catch (err) {
-        return logger.error({err}) && reject();
-      }
-    });
-  })
-
   // Give a peer some tokens
   .command('gift', 'Give a direct peer some free funds off-chain')
   .visible(false)
