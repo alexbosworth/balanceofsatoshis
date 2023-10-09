@@ -1,5 +1,9 @@
 # Versions
 
+## 17.0.1
+
+- `closed`: Fix issue getting resolutions for p2tr channel types
+
 ## 17.0.0
 
 ### Breaking Changes
