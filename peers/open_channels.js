@@ -37,10 +37,10 @@ const channelsFromArguments = require('./channels_from_arguments');
 const {getAddressUtxo} = require('./../chain');
 const getChannelOutpoints = require('./get_channel_outpoints');
 
-const anchorChannelFeatureBits = [22, 23];
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const description = 'bos open';
 const detectNetworks = ['btc', 'btctestnet'];
+const featureAnchors = 'anchor_zero_fee_htlc_tx';
 const flatten = arr => [].concat(...arr);
 const format = 'p2wpkh';
 const {fromHex} = Transaction;
@@ -65,7 +65,6 @@ const utxoPollingTimes = 20;
 /** Open channels with peers
 
   {
-    [skip_anchors_check]: <Skip Check For Anchor Channels Bool>
     ask: <Ask For Input Function>
     capacities: [<New Channel Capacity Tokens String>]
     cooperative_close_addresses: [<Cooperative Close Address>]
@@ -81,6 +80,7 @@ const utxoPollingTimes = 20;
     public_keys: [<Public Key Hex String>]
     request: <Request Function>
     set_fee_rates: [<Fee Rate Number>]
+    [skip_anchors_check]: <Skip Check For Anchor Channel Support Bool>
     types: [<Channel Type String>]
   }
 
@@ -403,33 +403,71 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Check for legacy channels
-      checkLegacyChannels: ['connect', 'getPeers', ({getPeers}, cbk) => {
-        // Exit early if allowing legacy channels
+      // Get connected peers again to look for features
+      getConnected: ['connect', 'getLnds', ({getLnds}, cbk) => {
+        // Exit early when allowing non-anchor support
         if (!!args.skip_anchors_check) {
           return cbk();
         }
 
-        const peers = getPeers.map(n => n.peers);
+        // Exit early when there are no opening nodes
+        if (!args.opening_nodes.length) {
+          return getPeers({lnd: args.lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
 
-        const legacyNodes = flatten(peers).map(n => {
+            return cbk(null, [{peers: res.peers}]);
+          });
+        }
 
-          if (!n.features.length) {
-            return n.public_key;
-          }
+        return asyncMap(args.opening_nodes, (node, cbk) => {
+          const {lnd} = getLnds.find(n => n.node === node);
 
-          const anchorCheck = n.features.find(feature => !!feature.bit && anchorChannelFeatureBits.includes(feature.bit));
+          return getPeers({lnd}, (err, res) => {
+            if (!!err) {
+              return cbk(err);
+            }
 
-          if (!anchorCheck) {
-            return n.public_key;
-          }
+            return cbk(null, {node, peers: res.peers});
+          });
+        },
+        cbk);
+      }],
 
-          return undefined;
-        }).filter(n => !!n);
+      // Check for channels that do not support anchor feature bit
+      checkAnchorSupport: [
+        'getConnected',
+        'opens',
+        ({getConnected, opens}, cbk) =>
+      {
+        // Exit early when allowing non-anchor support
+        if (!!args.skip_anchors_check) {
+          return cbk();
+        }
 
-        
-        if (!!legacyNodes.length) {
-          return cbk([400, 'AnchorChannelFeaturesNotFoundForPeers', {legacyNodes}]);
+        const channelOpens = flatten(opens.map(n => n.channels));
+
+        // Ids of nodes that are being opened to
+        const ids = channelOpens.map(n => n.partner_public_key);
+
+        // All the now connected peers
+        const peers = flatten(getConnected.map(n => n.peers));
+
+        // Only consider peers that are actually being opened to
+        const openingTo = peers.filter(n => ids.includes(n.public_key));
+
+        // Every peer's features set should include the anchors feature
+        const noAnchorsSupport = openingTo.filter(peer => {
+          return !peer.features.map(n => n.type).includes(featureAnchors);
+        });
+
+        // Node ids of the peers that dont' support anchors
+        const noAnchors = noAnchorsSupport.map(n => n.public_key);
+
+        // One of the peers fails to signal support for anchor channels
+        if (!!noAnchors.length) {
+          return cbk([400, 'AnchorChannelFeatureNotFound', {noAnchors}]);
         }
 
         return cbk();
@@ -437,7 +475,7 @@ module.exports = (args, cbk) => {
 
       // Check all nodes that they will allow an inbound channel
       checkAcceptance: [
-        'checkLegacyChannels',
+        'checkAnchorSupport',
         'connect',
         'getLnds',
         'opens',
