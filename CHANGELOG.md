@@ -1,5 +1,9 @@
 # Versions
 
+## 17.1.0
+
+- `open`: Add check for anchor channel support and `--skip-anchors-check` flag
+
 ## 17.0.1
 
 - `closed`: Fix issue getting resolutions for p2tr channel types
