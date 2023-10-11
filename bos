@@ -1242,7 +1242,7 @@ prog
   .help('For trusted funding specify --type as private-trusted/public-trusted')
   .help('Trusted channel funding is not supported in LND 0.15.0 and below')
   .argument('<peer_public_keys...>', 'With nodes with public keys')
-  .option('--skip-anchors-check <check_for_anchor_channels>')
+  .option('--skip-anchors-check', 'Do not check for anchor support')
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
   .option('--avoid-broadcast', 'Avoid broadcasting channel open transaction')
   .option('--coop-close-address <addr>', 'Coop-close address', REPEATABLE)
