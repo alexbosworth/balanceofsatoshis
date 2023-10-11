@@ -1242,6 +1242,7 @@ prog
   .help('For trusted funding specify --type as private-trusted/public-trusted')
   .help('Trusted channel funding is not supported in LND 0.15.0 and below')
   .argument('<peer_public_keys...>', 'With nodes with public keys')
+  .option('--skip-anchors-check <check_for_anchor_channels>')
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
   .option('--avoid-broadcast', 'Avoid broadcasting channel open transaction')
   .option('--coop-close-address <addr>', 'Coop-close address', REPEATABLE)
@@ -1258,6 +1259,7 @@ prog
         return peers.openChannels({
           logger,
           ask: await commands.interrogate({}),
+          skip_anchors_check: options.skipAnchorsCheck || undefined,
           capacities: collect(options.amount),
           cooperative_close_addresses: collect(options.coopCloseAddress),
           fs: {getFile: readFile},

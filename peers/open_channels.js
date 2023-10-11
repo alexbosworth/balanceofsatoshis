@@ -37,6 +37,7 @@ const channelsFromArguments = require('./channels_from_arguments');
 const {getAddressUtxo} = require('./../chain');
 const getChannelOutpoints = require('./get_channel_outpoints');
 
+const anchorChannelFeatureBits = [22, 23];
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const description = 'bos open';
 const detectNetworks = ['btc', 'btctestnet'];
@@ -64,6 +65,7 @@ const utxoPollingTimes = 20;
 /** Open channels with peers
 
   {
+    [skip_anchors_check]: <Skip Check For Anchor Channels Bool>
     ask: <Ask For Input Function>
     capacities: [<New Channel Capacity Tokens String>]
     cooperative_close_addresses: [<Cooperative Close Address>]
@@ -401,8 +403,41 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Check for legacy channels
+      checkLegacyChannels: ['connect', 'getPeers', ({getPeers}, cbk) => {
+        // Exit early if allowing legacy channels
+        if (!!args.skip_anchors_check) {
+          return cbk();
+        }
+
+        const peers = getPeers.map(n => n.peers);
+
+        const legacyNodes = flatten(peers).map(n => {
+
+          if (!n.features.length) {
+            return n.public_key;
+          }
+
+          const anchorCheck = n.features.find(feature => !!feature.bit && anchorChannelFeatureBits.includes(feature.bit));
+
+          if (!anchorCheck) {
+            return n.public_key;
+          }
+
+          return undefined;
+        }).filter(n => !!n);
+
+        
+        if (!!legacyNodes.length) {
+          return cbk([400, 'AnchorChannelFeaturesNotFoundForPeers', {legacyNodes}]);
+        }
+
+        return cbk();
+      }],
+
       // Check all nodes that they will allow an inbound channel
       checkAcceptance: [
+        'checkLegacyChannels',
         'connect',
         'getLnds',
         'opens',
