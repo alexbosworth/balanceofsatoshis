@@ -36,6 +36,7 @@ const {authenticatedLnd} = require('./../lnd');
 const channelsFromArguments = require('./channels_from_arguments');
 const {getAddressUtxo} = require('./../chain');
 const getChannelOutpoints = require('./get_channel_outpoints');
+const getPeersForNodes = require('./get_peers_for_nodes');
 
 const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const description = 'bos open';
@@ -292,29 +293,7 @@ module.exports = (args, cbk) => {
 
       // Get connected peers to see if we are already connected
       getPeers: ['getLnds', ({getLnds}, cbk) => {
-        // Exit early when there are no opening nodes
-        if (!args.opening_nodes.length) {
-          return getPeers({lnd: args.lnd}, (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            return cbk(null, [{peers: res.peers}]);
-          });
-        }
-
-        return asyncMap(args.opening_nodes, (node, cbk) => {
-          const {lnd} = getLnds.find(n => n.node === node);
-
-          return getPeers({lnd}, (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            return cbk(null, {node, peers: res.peers});
-          });
-        },
-        cbk);
+        return getPeersForNodes({lnd: args.lnd, nodes: getLnds}, cbk);
       }],
 
       // Connect up to the peers
@@ -410,29 +389,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        // Exit early when there are no opening nodes
-        if (!args.opening_nodes.length) {
-          return getPeers({lnd: args.lnd}, (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            return cbk(null, [{peers: res.peers}]);
-          });
-        }
-
-        return asyncMap(args.opening_nodes, (node, cbk) => {
-          const {lnd} = getLnds.find(n => n.node === node);
-
-          return getPeers({lnd}, (err, res) => {
-            if (!!err) {
-              return cbk(err);
-            }
-
-            return cbk(null, {node, peers: res.peers});
-          });
-        },
-        cbk);
+        return getPeersForNodes({lnd: args.lnd, nodes: getLnds}, cbk);
       }],
 
       // Check for channels that do not support anchor feature bit

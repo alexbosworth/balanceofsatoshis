@@ -1,6 +1,6 @@
 # Versions
 
-## 17.1.0
+## 17.1.1
 
 - `open`: Add check for anchor channel support and `--skip-anchors-check` flag
 
