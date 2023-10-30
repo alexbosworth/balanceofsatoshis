@@ -1,5 +1,9 @@
 # Versions
 
+## 17.1.2
+
+- `recover-p2pk`: Fix recovering funds not sent to index 0
+
 ## 17.1.1
 
 - `open`: Add check for anchor channel support and `--skip-anchors-check` flag

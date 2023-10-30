@@ -141,7 +141,7 @@ module.exports = ({id, lnd, request, vout}, cbk) => {
 
         const scriptPubKey = toOutputScript(createAddress.address, network);
 
-        tx.addInput(hexAsBuffer(id).reverse(), inputIndex, inputSequence);
+        tx.addInput(hexAsBuffer(id).reverse(), vout, inputSequence);
         tx.addOutput(scriptPubKey, output.tokens);
 
         // There is only one output on the sweep transaction
