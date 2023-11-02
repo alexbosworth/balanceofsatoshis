@@ -12,7 +12,8 @@ const runTelegramBot = require('./run_telegram_bot');
 const defaultPaymentsBudget = 0;
 const isNumber = n => !isNaN(n);
 const restartDelayMs = 1000 * 60 * 3;
-const smallUnitsType = 'rounded';
+const roundedUnitsType = 'rounded';
+const smallUnitsType = 'full';
 
 /** Connect nodes to Telegram
 
@@ -25,7 +26,8 @@ const smallUnitsType = 'rounded';
       writeFile: <Write File Function>
     }
     [id]: <Authorized User Id Number>
-    is_small_units: <Formatting Should Use Small Units Bool>
+    [is_rounded_units]: <Formatting Should Use Rounded Units Bool>
+    [is_small_units]: <Formatting Should Use Small Units Bool>
     logger: <Winston Logger Object>
     [min_forward_tokens]: <Minimum Forward Tokens Number>
     [min_rebalance_tokens]: <Minimum Rebalance Tokens Number>
@@ -103,12 +105,15 @@ module.exports = (args, cbk) => {
 
       // Set the units formatting
       setUnits: ['validate', ({}, cbk) => {
-        // Exit early when using default units formatting
-        if (!args.is_small_units) {
-          return cbk();
+        // Set rounded value formatting type
+        if (!!args.is_rounded_units) {
+          process.env.PREFERRED_TOKENS_TYPE = roundedUnitsType;
         }
 
-        process.env.PREFERRED_TOKENS_TYPE = smallUnitsType;
+        // Set small units value formatting type
+        if (!!args.is_small_units) {
+          process.env.PREFERRED_TOKENS_TYPE = smallUnitsType;
+        }
 
         return cbk();
       }],

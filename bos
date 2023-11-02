@@ -1922,6 +1922,7 @@ prog
   .option('--node <node_name>', 'Node to connect to Telegram', REPEATABLE)
   .option('--reset-api-key', 'Reset the Telegram API key')
   .option('--use-proxy <path>', 'Proxy agent to connect to Telegram')
+  .option('--use-rounded-units', 'No leading zeros or fractions on amounts')
   .option('--use-small-units', 'Avoid showing leading zeros on amounts')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -1937,6 +1938,7 @@ prog
             makeDirectory: mkdir,
           },
           id: options.connect,
+          is_rounded_units: options.useRoundedUnits || undefined,
           is_small_units: options.useSmallUnits || undefined,
           min_forward_tokens: options.ignoreForwardsBelow || undefined,
           min_rebalance_tokens: options.ignoreRebalancesBelow || undefined,
