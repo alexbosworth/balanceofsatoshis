@@ -1,5 +1,9 @@
 # Versions
 
+## 17.2.0
+
+- `telegram`: Add `--use-rounded-units` to format amounts as rounded amounts
+
 ## 17.1.2
 
 - `recover-p2pk`: Fix recovering funds not sent to index 0
