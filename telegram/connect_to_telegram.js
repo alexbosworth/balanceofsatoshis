@@ -12,7 +12,7 @@ const runTelegramBot = require('./run_telegram_bot');
 const defaultPaymentsBudget = 0;
 const isNumber = n => !isNaN(n);
 const restartDelayMs = 1000 * 60 * 3;
-const smallUnitsType = 'full';
+const smallUnitsType = 'rounded';
 
 /** Connect nodes to Telegram
 
