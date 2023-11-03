@@ -198,7 +198,6 @@ module.exports = (args, cbk) => {
 
       // Parse capacities
       capacities: ['validate', ({}, cbk) => {
-        console.log('inside')
         const capacities = args.capacities.map(amount => {
           try {
             return parseAmount({amount}).tokens;
@@ -570,7 +569,6 @@ module.exports = (args, cbk) => {
         'opens',
         ({getLnds, getNodes, opens}, cbk) =>
       {
-        console.log(opens[0].channels)
         // When there are multiple batches, broadcasting must be stopped
         const [, hasMultipleBatches] = opens;
 
