@@ -3,6 +3,7 @@ const defaultChannelDescription = 'bos open';
 const isTrusted = type => ['private-trusted', 'public-trusted'].includes(type);
 const numericFeeRate = n => !!n && /^\d+$/.test(n) ? Number(n) : undefined;
 const privateTypes = ['private', 'private-trusted'];
+const taprootChannelType = 'taproot';
 const trustedFundingTypes = ['private-trusted', 'public-trusted'];
 const uniq = arr => Array.from(new Set(arr));
 
@@ -11,6 +12,7 @@ const uniq = arr => Array.from(new Set(arr));
   {
     addresses: [<Address String>]
     capacities: [<Channel Capacity Tokens Number>]
+    channel_types: [<Channel Output Types String>]
     gives: [<Give Tokens String>]
     nodes: [<Channel Partner Node Identity Public Key Hex String>]
     rates: [<Set Fee Rate String>]
@@ -27,6 +29,7 @@ const uniq = arr => Array.from(new Set(arr));
         description: <Channel Description String>
         [give_tokens]: <Give Tokens Number>
         is_private: <Channel Is Private Bool>
+        is_simplified_taproot: <Channel Is Taproot Bool>
         partner_public_key: <Channel Partner Identity Public Key Hex String>
         [rate]: <Set Fee Rate String>
       }]
@@ -35,6 +38,7 @@ const uniq = arr => Array.from(new Set(arr));
   }
 */
 module.exports = args => {
+  console.log(args)
   const channels = args.nodes.map((key, i) => {
     return {
       capacity: args.capacities[i] || defaultChannelCapacity,
@@ -43,6 +47,7 @@ module.exports = args => {
       fee_rate: numericFeeRate(args.rates[i]),
       give_tokens: !!args.gives[i] ? Number(args.gives[i]) : undefined,
       is_private: !!args.types[i] && privateTypes.includes(args.types[i]),
+      is_simplified_taproot: !!args.channel_types[i] && args.channel_types[i] == taprootChannelType ? true : false,
       is_trusted_funding: !!args.types[i] && isTrusted(args.types[i]),
       node: args.saved[i] || undefined,
       partner_public_key: key,
