@@ -88,6 +88,7 @@ test(`Open channels`, async () => {
             request: () => {},
             set_fee_rates: [],
             types: [],
+            channel_types: [],
           });
         });
       },

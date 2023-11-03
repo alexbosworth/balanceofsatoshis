@@ -22,7 +22,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const interval = 200;
 const log = () => {};
 const size = 2;
-const times = 20;
+const times = 1000;
 
 // Opening taproot channels should open channels with specified nodes
 test(`Open taproot channels`, async () => {

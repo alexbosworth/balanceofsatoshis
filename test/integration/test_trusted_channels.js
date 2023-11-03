@@ -114,6 +114,7 @@ test(`Open channels`, async () => {
             request: () => {},
             set_fee_rates: [],
             types: ['private-trusted'],
+            channel_types: [],
           });
         });
       },
