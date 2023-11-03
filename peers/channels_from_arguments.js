@@ -38,7 +38,6 @@ const uniq = arr => Array.from(new Set(arr));
   }
 */
 module.exports = args => {
-  console.log(args)
   const channels = args.nodes.map((key, i) => {
     return {
       capacity: args.capacities[i] || defaultChannelCapacity,
