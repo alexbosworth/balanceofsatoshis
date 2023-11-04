@@ -89,6 +89,7 @@ test(`Open taproot channels`, async () => {
             },
             capacities: [],
             cooperative_close_addresses: [],
+            commitments: ['simplified_taproot'],
             fs: {getFile: () => {}},
             gives: [],
             logger: {info: log, error: log},
@@ -97,7 +98,6 @@ test(`Open taproot channels`, async () => {
             request: () => {},
             set_fee_rates: [],
             types: ['private'],
-            channel_types: ['taproot']
           });
         });
       },

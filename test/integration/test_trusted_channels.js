@@ -106,6 +106,7 @@ test(`Open channels`, async () => {
             },
             capacities: [],
             cooperative_close_addresses: [],
+            commitments: [],
             fs: {getFile: () => {}},
             gives: [],
             logger: {info: log, error: log},
@@ -114,7 +115,6 @@ test(`Open channels`, async () => {
             request: () => {},
             set_fee_rates: [],
             types: ['private-trusted'],
-            channel_types: [],
           });
         });
       },

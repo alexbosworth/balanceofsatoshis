@@ -79,6 +79,7 @@ test(`Open channels`, async () => {
               throw new Error('UnrecognizedParameter');
             },
             capacities: ['6*m'],
+            commitments: [],
             cooperative_close_addresses: [address],
             fs: {getFile: () => {}},
             gives: [1e5],
@@ -88,7 +89,6 @@ test(`Open channels`, async () => {
             request: () => {},
             set_fee_rates: [],
             types: [],
-            channel_types: [],
           });
         });
       },
