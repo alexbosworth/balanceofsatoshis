@@ -1,5 +1,9 @@
 # Versions
 
+## 17.4.0
+
+- `telegram`: Add support for indicating if a channel is private when opening
+
 ## 17.3.0
 
 - `open`: Add `commitment` flag to allow specifying a simplified_taproot type
