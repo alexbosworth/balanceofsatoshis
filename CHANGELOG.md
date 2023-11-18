@@ -1,5 +1,9 @@
 # Versions
 
+## 17.5.0
+
+- `call`: Add support for `getBlockHeader` to get a block header
+
 ## 17.4.0
 
 - `telegram`: Add support for indicating if a channel is private when opening

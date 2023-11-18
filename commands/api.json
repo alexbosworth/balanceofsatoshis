@@ -382,6 +382,23 @@
       "method": "getBlock"
     },
     {
+      "arguments": [
+        {
+          "description": "Get block header at a specific height",
+          "named": "height",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "Block hash to get header for",
+          "named": "id",
+          "optional": true,
+          "type": "hash"
+        }
+      ],
+      "method": "getBlockHeader"
+    },
+    {
       "method": "getChainAddresses"
     },
     {
