@@ -1,5 +1,9 @@
 # Versions
 
+## 17.5.1
+
+- `telegram`: Fix /earnings to support high forwards counts
+
 ## 17.5.0
 
 - `call`: Add support for `getBlockHeader` to get a block header
