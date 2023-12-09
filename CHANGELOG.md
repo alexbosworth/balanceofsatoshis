@@ -1,6 +1,6 @@
 # Versions
 
-## 17.5.2
+## 17.5.3
 
 - `telegram`: Fix /earnings to support high forwards counts
 
