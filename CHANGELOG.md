@@ -1,5 +1,9 @@
 # Versions
 
+## 17.5.4
+
+- `lnurl`: Fix support for specifying `--avoid` flag
+
 ## 17.5.3
 
 - `telegram`: Fix /earnings to support high forwards counts

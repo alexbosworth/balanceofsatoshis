@@ -1187,6 +1187,7 @@ prog
           logger,
           ask: await commands.interrogate({}),
           avoid: flatten([options.avoid].filter(n => !!n)),
+          fs: {getFile: readFile},
           function: args.function,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           lnurl: options.url,

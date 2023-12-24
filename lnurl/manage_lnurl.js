@@ -18,6 +18,9 @@ const supportedFunctions = ['auth', 'channel', 'pay', 'withdraw'];
   {
     ask: <Ask Function>
     avoid: [<Avoid Forwarding Through String>]
+    fs: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     function: <Lnurl Function String>
     request: <Request Function>
     lnd: <Authenticated LND API Object>
@@ -41,6 +44,10 @@ module.exports = (args, cbk) => {
 
         if (!isArray(args.avoid)) {
           return cbk([400, 'ExpectedArrayOfAvoidsToManageLnurl']);
+        }
+
+        if (!args.fs) {
+          return cbk([400, 'ExpectedFileSystemMethodsToManageLnurl']);
         }
 
         if (!supportedFunctions.includes(args.function)) {
@@ -114,6 +121,7 @@ module.exports = (args, cbk) => {
         return pay({
           ask: args.ask,
           avoid: args.avoid,
+          fs: args.fs,
           lnd: args.lnd,
           lnurl: args.lnurl,
           logger: args.logger,

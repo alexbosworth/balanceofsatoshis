@@ -20,6 +20,9 @@ const tokensAsMillitokens = n => n * 1000;
   {
     ask: <Ask Function>
     avoid: [<Avoid Forwarding Through String>]
+    [fs]: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+    }
     lnd: <Authenticated LND API Object>
     lnurl: <Lnurl String>
     logger: <Winston Logger Object>
@@ -181,6 +184,7 @@ module.exports = (args, cbk) => {
       pay: ['confirm', 'getRequest', ({getRequest}, cbk) => {
         return pay({
           avoid: args.avoid,
+          fs: args.fs,
           lnd: args.lnd,
           logger: args.logger,
           max_fee: args.max_fee,
