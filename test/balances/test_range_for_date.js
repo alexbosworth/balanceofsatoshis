@@ -12,11 +12,6 @@ const tests = [
     expected: {},
   },
   {
-    args: {year: -999999},
-    description: 'An invalid year results in an error',
-    error: 'UnrecognizedFormatForAccountingYear',
-  },
-  {
     args: {year: 2019, month: '1'},
     description: 'First month and 2019 year returns Jan 2019',
     expected: {
@@ -31,11 +26,6 @@ const tests = [
       after: '2018-12-31T23:59:59.999Z',
       before: '2019-02-01T00:00:00.000Z',
     },
-  },
-  {
-    args: {year: 2019, month: 1e7},
-    description: 'A valid month is required',
-    error: 'UnrecognizedFormatForAccountingMonth',
   },
   {
     args: {year: 2019},

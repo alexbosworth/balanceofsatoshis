@@ -16,6 +16,7 @@ const {subscribeToMultiPathProbe} = require('probing');
 
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
+const {getIcons} = require('./../display');
 const {getIgnores} = require('./../routing');
 const {getTags} = require('./../tags');
 const probeDestination = require('./probe_destination');
@@ -119,6 +120,15 @@ module.exports = (args, cbk) => {
         }
 
         return getChannels({lnd: args.lnd}, cbk);
+      }],
+
+      // Get node icons
+      getIcons: ['validate', ({}, cbk) => {
+        if (!args.fs || !args.find_max) {
+          return cbk();
+        }
+
+        return getIcons({fs: args.fs}, cbk);
       }],
 
       // Get the node public key
@@ -283,10 +293,18 @@ module.exports = (args, cbk) => {
       multiProbe: [
         'decodeRequest',
         'getDestination',
+        'getIcons',
         'getIgnores',
         'getOuts',
         'isLegacy',
-        ({decodeRequest, getDestination, getIgnores, isLegacy}, cbk) =>
+        ({
+          decodeRequest,
+          getDestination,
+          getIcons,
+          getIgnores,
+          isLegacy,
+        },
+        cbk) =>
       {
         // Exit early when not doing a multi-path
         if (!args.find_max && args.max_paths === singlePath) {
@@ -346,7 +364,11 @@ module.exports = (args, cbk) => {
         });
 
         sub.on('probing', async ({route}) => {
-          const {description} = await describeRoute({route, lnd: args.lnd});
+          const {description} = await describeRoute({
+            route,
+            lnd: args.lnd,
+            tagged: !!getIcons ? getIcons.nodes : undefined,
+          });
 
           return args.logger.info({probing: description});
         });
@@ -357,6 +379,7 @@ module.exports = (args, cbk) => {
             lnd: args.lnd,
             reason: failure.reason,
             route: failure.route,
+            tagged: !!getIcons ? getIcons.nodes : undefined,
           });
 
           return args.logger.info({failure: description});

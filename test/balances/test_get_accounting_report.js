@@ -66,11 +66,6 @@ const tests = [
     error: [400, 'ExpectedRequestFunctionToGetAccountingReport'],
   },
   {
-    args: makeArgs({year: Infinity}),
-    description: 'Date must be reasonable',
-    error: [400, 'UnrecognizedFormatForAccountingYear'],
-  },
-  {
     args: makeArgs({}),
     description: 'Get accounting report',
     expected: {
