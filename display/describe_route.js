@@ -3,6 +3,7 @@ const asyncMap = require('async/map');
 const {getNode} = require('ln-service');
 const {gray} = require('colorette');
 const {greenBright} = require('colorette');
+const {redBright} = require('colorette');
 const {returnResult} = require('asyncjs-util');
 
 const describeConfidence = require('./describe_confidence');
@@ -109,10 +110,12 @@ module.exports = ({lnd, route, tagged}, cbk) => {
         const path = route.hops.map((hop, i, hops) => {
           const {alias} = getAliases.find(n => n.id === hop.public_key);
           const {channel} = hop;
+          const delta = !i ? null : hops[i - 1].timeout - hops[i].timeout;
           const isFinal = i === hops.length - 1 && hops.length !== 1;
           const pair = [(hops[i - 1] || {}).public_key, hop.public_key].sort();
 
           const edgeIndex = pairEdgeIndex(pair, hop.public_key);
+          const expiry = delta > 240 ? redBright(` Expiry +${delta}`) : '';
           const feeMtokens = isFinal ? hops[i-1].fee_mtokens : hop.fee_mtokens;
           const forwarder = `${aliasColor(alias)} ${hop.public_key}`.trim();
 
@@ -120,7 +123,7 @@ module.exports = ({lnd, route, tagged}, cbk) => {
 
           const rate = formatFeeRate({rate: feeRate}).display;
 
-          const forward = `${forwarder}. Fee rate: ${rate}`;
+          const forward = `${forwarder}. Fee rate: ${rate}${expiry}`;
 
           if (!i) {
             return [`${gray(channel)} ${description || String()}`, forward];

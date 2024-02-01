@@ -1,6 +1,6 @@
 # Versions
 
-## 17.5.5
+## 17.5.6
 
 - `lnurl`: Fix support for specifying `--avoid` flag
 

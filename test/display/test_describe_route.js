@@ -59,7 +59,7 @@ const tests = [
             forward: 1,
             forward_mtokens: '1000',
             public_key: Buffer.alloc(33).toString('hex'),
-            timeout: 1,
+            timeout: 2,
           },
           {
             channel: '0x0x2',
