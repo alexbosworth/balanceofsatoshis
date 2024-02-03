@@ -1,0 +1,94 @@
+{
+  "responses": {
+    "lsps1GetinfoResponse": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "website": "",
+        "options": {
+          "min_channel_confirmations": 2,
+          "min_onchain_payment_confirmations": 1,
+          "supports_zero_channel_reserve": false,
+          "min_onchain_payment_size_sat": "1000000",
+          "max_channel_expiry_blocks": 20160,
+          "min_initial_client_balance_sat": "0",
+          "max_initial_client_balance_sat": "1000000",
+          "min_initial_lsp_balance_sat": "0",
+          "max_initial_lsp_balance_sat": "100000000",
+          "min_channel_balance_sat": "50000",
+          "max_channel_balance_sat": "100000000"
+        }
+      }
+    },
+    "lsps1CreateOrderResponse": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "order_id": "bb4b5d0a-8334-49d8-9463-90a6d413af7c",
+        "lsp_balance_sat": "5000000",
+        "client_balance_sat": "2000000",
+        "confirms_within_blocks": 1,
+        "channel_expiry_blocks": 12,
+        "token": "",
+        "created_at": "2012-04-23T18:25:43.511Z",
+        "expires_at": "2015-01-25T19:29:44.612Z",
+        "announceChannel": true,
+        "order_state": "CREATED",
+        "payment": {
+          "state": "EXPECT_PAYMENT",
+          "fee_total_sat": "8888",
+          "order_total_sat": "2008888",
+          "lightning_invoice": "",
+          "onchain_address": "",
+          "min_onchain_payment_confirmations": 0,
+          "min_fee_for_0conf": 253,
+          "onchain_payment": {
+            "outpoint": "0301e0480b374b32851a9462db29dc19fe830a7f7d7a88b81612b9d42099c0ae:1",
+            "sat": "1200",
+            "confirmed": false
+          }
+        },
+        "channel": {
+          "funded_at": "2012-04-23T18:25:43.511Z",
+          "funding_outpoint": "0301e0480b374b32851a9462db29dc19fe830a7f7d7a88b81612b9d42099c0ae:0",
+          "expires_at": "2012-04-23T18:25:43.511Z"
+        }
+      }
+    },
+    "lsps1GetOrderResponse": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "order_id": "bb4b5d0a-8334-49d8-9463-90a6d413af7c",
+        "lsp_balance_sat": "5000000",
+        "client_balance_sat": "2000000",
+        "confirms_within_blocks": 1,
+        "channel_expiry_blocks": 12,
+        "token": "",
+        "created_at": "2012-04-23T18:25:43.511Z",
+        "expires_at": "2015-01-25T19:29:44.612Z",
+        "announceChannel": true,
+        "order_state": "CREATED",
+        "payment": {
+          "state": "EXPECT_PAYMENT",
+          "fee_total_sat": "8888",
+          "order_total_sat": "2008888",
+          "lightning_invoice": "lnbc252u1p3aht9ysp580g4633gd2x9lc5al0wd8wx0mpn9748jeyz46kqjrpxn52uhfpjqpp5qgf67tcqmuqehzgjm8mzya90h73deafvr4m5705l5u5l4r05l8cqdpud3h8ymm4w3jhytnpwpczqmt0de6xsmre2pkxzm3qydmkzdjrdev9s7zhgfaqxqyjw5qcqpjrzjqt6xptnd85lpqnu2lefq4cx070v5cdwzh2xlvmdgnu7gqp4zvkus5zapryqqx9qqqyqqqqqqqqqqqcsq9q9qyysgqen77vu8xqjelum24hgjpgfdgfgx4q0nehhalcmuggt32japhjuksq9jv6eksjfnppm4hrzsgyxt8y8xacxut9qv3fpyetz8t7tsymygq8yzn05",
+          "onchain_address": "bc1p5uvtaxzkjwvey2tfy49k5vtqfpjmrgm09cvs88ezyy8h2zv7jhas9tu4yr",
+          "min_onchain_payment_confirmations": 0,
+          "min_fee_for_0conf": 253,
+          "onchain_payment": {
+            "outpoint": "0301e0480b374b32851a9462db29dc19fe830a7f7d7a88b81612b9d42099c0ae:1",
+            "sat": "1200",
+            "confirmed": false
+          }
+        },
+        "channel": {
+          "funded_at": "2012-04-23T18:25:43.511Z",
+          "funding_outpoint": "0301e0480b374b32851a9462db29dc19fe830a7f7d7a88b81612b9d42099c0ae:0",
+          "expires_at": "2012-04-23T18:25:43.511Z"
+        }
+      }
+    }
+  }
+}
