@@ -1,0 +1,32 @@
+{
+  "requests": {
+    "lsps1GetinfoRequest": {
+      "jsonrpc": "2.0",
+      "method": "lsps1.get_info",
+      "id": 1,
+      "params": {}
+    },
+    "lsps1CreateOrderRequest": {
+      "jsonrpc": "2.0",
+      "method": "lsps1.create_order",
+      "id": 1,
+      "params": {
+        "lsp_balance_sat": "5000000",
+        "client_balance_sat": "2000000",
+        "confirms_within_blocks": 1,
+        "channel_expiry_blocks": 144,
+        "token": "",
+        "refund_onchain_address": "",
+        "announceChannel": true
+      }
+    },
+    "lsps1GetOrderRequest": {
+      "jsonrpc": "2.0",
+      "method": "lsps1.get_order",
+      "id": 1,
+      "params": {
+        "order_id": "1"
+      }
+    }
+  }
+}

@@ -30,6 +30,7 @@ const encryption = importLazy('./encryption');
 const lnd = importLazy('./lnd');
 const lnurl = importLazy('./lnurl');
 const {lnurlFunctions} = commandConstants;
+const lsp = require('./lsp');
 const network = importLazy('./network');
 const nodes = importLazy('./nodes');
 const offchain = importLazy('./offchain');
@@ -1195,6 +1196,42 @@ prog
           max_paths: options.maxPaths,
           out: flatten([options.out].filter(n => !!n)),
           request: commands.simpleRequest,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
+  // LSP Server
+  .command('lsp-server', 'Serve as Liquidity Service Provider')
+  .help('Provide inbound liquidity to clients for a fee')
+  .option('--max-capacity <tokens>', 'Maximum channel capacity', STRING, "100000000")
+  .option('--max-channel-expiry <blocks>', 'Maximum channel expiry blocks', INT, 20160)
+  .option('--max-push-amount <tokens>', 'Maximum push amount', STRING, "1000000")
+  .option('--min-capacity <tokens>', 'Minimum channel capacity', STRING, "1000000")
+  .option('--min-channel-confs <confs>', 'Minimum channel confirmations', INT, 2)
+  .option('--min-onchain-confs <confs>', 'Minimum on-chain confirmations', INT, 1)
+  .option('--min-onchain-payment-size <tokens>', 'Minimum on-chain payment', STRING, "1000000")
+  .option('--min-push-amount <tokens>', 'Minimum push amount', STRING, "0")
+  .option('--website <url>', 'URL to advertise as a liquidity provider')
+  .option('--node <node_name>', 'Node to run a lsp server')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return lsp.lsps1({
+          logger,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          max_capacity: options.maxCapacity,
+          max_channel_expiry: options.maxChannelExpiry,
+          max_push_amount: options.maxPushAmount,
+          min_capacity: options.minCapacity,
+          min_channel_confs: options.minChannelConfs,
+          min_onchain_confs: options.minOnchainConfs,
+          min_onchain_payment_size: options.minOnchainPaymentSize,
+          min_push_amount: options.minPushAmount,
+          website: options.website,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
