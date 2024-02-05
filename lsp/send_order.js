@@ -92,11 +92,11 @@ module.exports = (args, cbk) => {
         console.log('order message', message);
 
         if (message.method !== requests.lsps1CreateOrderRequest.method) {
-          return cbk([400, 'ExpectedValidRequestMethodToSendOrderMessage']);
+          return cbk();
         }
 
         if (message.jsonrpc !== requests.lsps1CreateOrderRequest.jsonrpc) {
-          return cbk([400, 'ExpectedValidJsonRpcToSendOrderMessage']);
+          return cbk();
         }
 
         if (!message.params) {
@@ -224,7 +224,7 @@ module.exports = (args, cbk) => {
 
       // Send error message
       sendErrorMessage: ['getMessage', ({getMessage}, cbk) => {
-        if (!getMessage.error) {
+        if (!getMessage || !getMessage.error) {
           return cbk();
         }
 
@@ -240,7 +240,7 @@ module.exports = (args, cbk) => {
       }],
 
       getChainHeight: ['getMessage', ({getMessage}, cbk) => {
-        if (!!getMessage.error) {
+        if (!getMessage || !getMessage.message) {
           return cbk();
         }
 
@@ -249,8 +249,8 @@ module.exports = (args, cbk) => {
 
       // Get chain fees
       getChainFees: ['getMessage', ({getMessage}, cbk) => {
-        // Exit early when there is an error
-        if (!!getMessage.error) {
+        // Exit early when there is no message
+        if (!getMessage || !getMessage.message) {
           return cbk();
         }
 
@@ -261,8 +261,8 @@ module.exports = (args, cbk) => {
 
       // Calculate fees
       getFees: ['getChainFees', 'getMessage', ({getChainFees, getMessage}, cbk) => {
-        // Exit early when there is an error
-        if (!!getMessage.error) {
+        // Exit early when there is no message
+        if (!getMessage || !getMessage.message) {
           return cbk();
         }
 
@@ -283,8 +283,8 @@ module.exports = (args, cbk) => {
 
       // Send order message
       makeOrder: ['getFees', 'getMessage', async ({getFees, getMessage}) => {
-        // Exit early when there is an error
-        if (!!getMessage.error) {
+        // Exit early when there is no message
+        if (!getMessage || !getMessage.message) {
           return;
         }
 
@@ -345,26 +345,25 @@ module.exports = (args, cbk) => {
         'makeOrder',
         ({getChainHeight, getMessage, makeOrder}, cbk) => 
       {
-          // Exit early when there is an error
-          if (!!getMessage.error) {
+        // Exit early when there is no message
+        if (!getMessage || !getMessage.message) {
             return cbk();
           }
 
-          const {address, id} = makeOrder;
-          const height = getChainHeight.current_block_height;
+        const {address, id} = makeOrder;
+        const height = getChainHeight.current_block_height;
 
 
-          const invoiceSub = subscribeToInvoice({id, lnd: args.lnd});
-          const onchainSub = subscribeToChainAddress({
-            bech32_address: address, 
-            lnd: args.lnd, 
-            min_confirmations: constants.minOnchainConfs, 
-            min_height: height,
-          });
+        const invoiceSub = subscribeToInvoice({id, lnd: args.lnd});
+        const onchainSub = subscribeToChainAddress({
+          bech32_address: address, 
+          lnd: args.lnd, 
+          min_confirmations: constants.minOnchainConfs, 
+          min_height: height,
+        });
 
-          return cbk(null, {invoiceSub, onchainSub});
-        }
-      ],
+        return cbk(null, {invoiceSub, onchainSub});
+      }],
 
       // Subscribe to invoice
       subscribeToPaymentRequest: [
@@ -374,8 +373,8 @@ module.exports = (args, cbk) => {
         'makeSubscriptions',
         ({getChainFees, getMessage, makeOrder, makeSubscriptions}, cbk) => 
       {
-        // Exit early when there is an error
-        if (!!getMessage.error) {
+        // Exit early when there is no message
+        if (!getMessage || !getMessage.message) {
           return cbk();
         }
 
@@ -475,7 +474,7 @@ module.exports = (args, cbk) => {
         ({getChainFees, getMessage, makeOrder, makeSubscriptions}, cbk) => 
       {
         // Exit early when there is an error
-        if (!!getMessage.error) {
+        if (!getMessage || !getMessage.message) {
           return cbk();
         }
 

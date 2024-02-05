@@ -44,12 +44,12 @@ async function test() {
         console.log('message received', JSON.parse(decodeMessage(n.message)));
         const {invoice, address, amount} = createOrderResponse(n.message);
         if (!!invoice || !!address) {
-          // const payinvoice = await pay({lnd: l, request: invoice});
+          const payinvoice = await pay({lnd: l, request: invoice});
   
-          // console.log('pay invoice response', payinvoice);
-          const payOnchain = await sendToChainAddress({lnd: l, address, tokens: Number(amount)});
+          console.log('pay invoice response', payinvoice);
+          // const payOnchain = await sendToChainAddress({lnd: l, address, tokens: Number(amount)});
   
-          console.log('pay onchain response', payOnchain);
+          // console.log('pay onchain response', payOnchain);
         }
       }
       catch(e) {
