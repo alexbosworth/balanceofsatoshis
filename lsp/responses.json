@@ -63,7 +63,7 @@
         "lsp_balance_sat": "",
         "client_balance_sat": "0",
         "confirms_within_blocks": 1,
-        "channel_expiry_blocks": 12,
+        "channel_expiry_blocks": 13000,
         "token": "",
         "created_at": "",
         "expires_at": "",
@@ -76,7 +76,7 @@
           "lightning_invoice": "",
           "onchain_address": "",
           "min_onchain_payment_confirmations": 0,
-          "min_fee_for_0conf": 253,
+          "min_fee_for_0conf": 0,
           "onchain_payment": {
             "outpoint": "",
             "sat": "",

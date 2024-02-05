@@ -87,8 +87,6 @@ module.exports = (args, cbk) => {
           // Your max local balance is same as max capacity
           responseMessage.result.options.max_initial_lsp_balance_sat = args.max_capacity;
 
-          console.log(responseMessage)
-
           return sendMessageToPeer({
             lnd: args.lnd,
             message: encodeMessage(responseMessage),

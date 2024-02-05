@@ -1,15 +1,9 @@
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToPeerMessages} = require('ln-service');
-const {createInvoice} = require('ln-service');
-const {subscribeToInvoice} = require('ln-service');
-const {openChannel} = require('ln-service');
-const {sendMessageToPeer} = require('ln-service');
-const info = require('./info');
-const order = require('./order');
-const decodeMessage = (n) => Buffer.from(n, 'hex').toString();
-const encodeMessage = (n) => Buffer.from(JSON.stringify(n)).toString('hex');
-const messageType = 37913;
+const sendInfo = require('./send_info');
+const sendOrder = require('./send_order');
+const {constants} = require('./constants.json');
 const isNumber = n => !isNaN(n);
 const orders = new Map();
 
@@ -54,11 +48,11 @@ module.exports = (args, cbk) => {
 
         sub.on('message_received', async n => {
           try {
-            if (!n.type || n.type !== messageType) {
+            if (!n.type || n.type !== constants.messageType) {
               return;
             }
 
-            await info({
+            await sendInfo({
               max_capacity: args.max_capacity,
               message: n.message,
               min_capacity: args.min_capacity,
@@ -69,7 +63,7 @@ module.exports = (args, cbk) => {
               type: n.type,
             });
 
-            await order({
+            await sendOrder({
               orders,
               fee_rate: args.fee_rate,
               max_capacity: args.max_capacity,
