@@ -82,51 +82,6 @@ module.exports = (args, cbk) => {
               type: n.type,
             });
 
-            const message = decodeMessage(n.message);
-            const parsed = JSON.parse(message);
-            console.log('Parsed message', parsed);
-
-            if (parsed.method === 'lsps1.get_info') {
-              console.log('Sending get info response');
-              return await sendMessageToPeer({
-                lnd: args.lnd,
-                message: encodeMessage(getInfoResponse),
-                public_key: n.public_key,
-                type: n.type,
-              });
-            }
-
-            if (parsed.method === 'lsps1.create_order') {
-              console.log('Sending create order response');
-              const invoice = await createInvoice({lnd: args.lnd, tokens: 20088});
-              createOrderResponse.result.payment.lightning_invoice = invoice.request;
-
-              await sendMessageToPeer({
-                lnd: args.lnd,
-                message: encodeMessage(createOrderResponse),
-                public_key: n.public_key,
-                type: n.type,
-              });
-
-              const sub = subscribeToInvoice({lnd: args.lnd, id: invoice.id});
-
-              sub.on('invoice_updated', async invoice => {
-                try {
-                  if (!!invoice.is_confirmed) {
-                    const channel = await openChannel({
-                      lnd: args.lnd,
-                      partner_public_key: n.public_key,
-                      is_private: true,
-                    });
-  
-                    console.log('Open channel response', channel);
-                  }
-                } catch (e) {
-                  console.log('Error opening channel', e);
-                }
-              });
-            }
-
           } catch (err) {
             //Ignore errors
             args.logger.error({err});
