@@ -2,7 +2,6 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 const {randomBytes} = require('crypto');
 const {createHash} = require('crypto');
-const {sendMessageToPeer} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
 const {createChainAddress} = require('ln-service');
 const {createHodlInvoice} = require('ln-service');
@@ -10,6 +9,10 @@ const {subscribeToInvoice} = require('ln-service');
 const {settleHodlInvoice} = require('ln-service');
 const {openChannel} = require('ln-service');
 const {cancelHodlInvoice} = require('ln-service');
+const {sendToChainAddress} = require('ln-service');
+const {getHeight} = require('ln-service');
+const {sendMessageToPeer} = require('ln-service');
+const {subscribeToChainAddress} = require('ln-service');
 
 const {requests} = require('./requests.json');
 const {responses} = require('./responses.json');
@@ -24,10 +27,12 @@ const isNumber = n => !isNaN(n);
 const sumOf = (a, b) => a + b;
 const currentDate = () => new Date().toISOString();
 const orderExpiryMs = 1000 * 60 * 60;
+const onchainExpiryMs = 1000 * 60 * 60 * 24;
 const channelExpiryMs = 1000 * 60 * 60 * 24 * 90;
 const expiryDate = (n) => new Date(Date.now() + n).toISOString();
 const randomSecret = () => randomBytes(32);
 const sha256 = buffer => createHash('sha256').update(buffer).digest('hex');
+const refundTargetConfs = 6;
 
 
 module.exports = (args, cbk) => {
@@ -83,6 +88,8 @@ module.exports = (args, cbk) => {
       // Validate the message
       getMessage: ['validate', ({}, cbk) => {
         const message = parse(decodeMessage(args.message));
+
+        console.log('order message', message);
 
         if (message.method !== requests.lsps1CreateOrderRequest.method) {
           return cbk([400, 'ExpectedValidRequestMethodToSendOrderMessage']);
@@ -221,6 +228,8 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
+        console.log('error message', getMessage.error);
+
         return sendMessageToPeer({
           lnd: args.lnd,
           message: encodeMessage(getMessage.error),
@@ -230,6 +239,14 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      getChainHeight: ['getMessage', ({getMessage}, cbk) => {
+        if (!!getMessage.error) {
+          return cbk();
+        }
+
+        return getHeight({lnd: args.lnd}, cbk);
+      }],
+
       // Get chain fees
       getChainFees: ['getMessage', ({getMessage}, cbk) => {
         // Exit early when there is an error
@@ -237,7 +254,6 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        console.log('Get chain fees', getMessage)
         const blocks = getMessage.message.params.confirms_within_blocks;
 
         return getChainFeeRate({confirmation_target: Number(blocks), lnd: args.lnd}, cbk);
@@ -297,14 +313,13 @@ module.exports = (args, cbk) => {
           const invoiceId = sha256(secret);
   
           const {request, id} = await createHodlInvoice({expires_at: expiresAt, id: invoiceId, lnd: args.lnd, tokens: fees});
-          const {address} = await createChainAddress({lnd: args.lnd});
+          const {address} = await createChainAddress({lnd: args.lnd, is_unused: false});
   
           orderResponse.result.payment.lightning_invoice = request;
-          orderResponse.result.payment.onchain_payment = address;
+          orderResponse.result.payment.onchain_address = address;
           orderResponse.result.payment.min_onchain_payment_confirmations = constants.minOnchainConfs;
           orderResponse.result.payment.onchain_payment = null;
           orderResponse.result.channel = null;
-  
   
           await sendMessageToPeer({
             lnd: args.lnd,
@@ -323,35 +338,66 @@ module.exports = (args, cbk) => {
         }
       }],
 
+      // Make subscriptions ahead to clear together later
+      makeSubscriptions: [
+        'getChainHeight',
+        'getMessage',
+        'makeOrder',
+        ({getChainHeight, getMessage, makeOrder}, cbk) => 
+      {
+          // Exit early when there is an error
+          if (!!getMessage.error) {
+            return cbk();
+          }
+
+          const {address, id} = makeOrder;
+          const height = getChainHeight.current_block_height;
+
+
+          const invoiceSub = subscribeToInvoice({id, lnd: args.lnd});
+          const onchainSub = subscribeToChainAddress({
+            bech32_address: address, 
+            lnd: args.lnd, 
+            min_confirmations: constants.minOnchainConfs, 
+            min_height: height,
+          });
+
+          return cbk(null, {invoiceSub, onchainSub});
+        }
+      ],
+
       // Subscribe to invoice
       subscribeToPaymentRequest: [
-      'getChainFees', 
-      'getMessage', 
-      'makeOrder', 
-      ({getChainFees, getMessage, makeOrder}, cbk) => {
+        'getChainFees', 
+        'getMessage', 
+        'makeOrder',
+        'makeSubscriptions',
+        ({getChainFees, getMessage, makeOrder, makeSubscriptions}, cbk) => 
+      {
         // Exit early when there is an error
         if (!!getMessage.error) {
           return cbk();
         }
 
         const {id, orderId, secret} = makeOrder;
-
-        const sub = subscribeToInvoice({id, lnd: args.lnd});
+        const {invoiceSub, onchainSub} = makeSubscriptions;
 
         const timeout = setTimeout(() => {
-          sub.removeAllListeners();
+          invoiceSub.removeAllListeners();
 
-          return cbk([503, 'TimedOutWaitingForResponse']);
+          return cbk([503, 'TimedOutWaitingForLightningPayment']);
         },
         orderExpiryMs);
 
-        sub.on('invoice_updated', async invoice => {
+        invoiceSub.on('invoice_updated', async invoice => {
           try {
             if (!invoice.is_held) {
               return;
             }
 
             clearTimeout(timeout);
+            invoiceSub.removeAllListeners();
+            onchainSub.removeAllListeners();
 
             // Update payment state to hold
             const order = args.orders.get(orderId);
@@ -396,7 +442,8 @@ module.exports = (args, cbk) => {
             console.log('order status finally', parsedOrder);
           } catch (err) {
             clearTimeout(timeout);
-            sub.removeAllListeners();
+            invoiceSub.removeAllListeners();
+            onchainSub.removeAllListeners();
             // Cancel invoice on error
             await cancelHodlInvoice({lnd: args.lnd, id});
 
@@ -412,9 +459,104 @@ module.exports = (args, cbk) => {
           }
         });
 
-        sub.on('error', () => {
+        invoiceSub.on('error', () => {
           clearTimeout(timeout);
-          sub.removeAllListeners();
+          invoiceSub.removeAllListeners();
+        });
+      }],
+
+      // Subscribe to onchain payment
+      subscribeToOnchainPayment: [
+        'getChainFees',
+        'getChainHeight',
+        'getMessage',
+        'makeOrder',
+        'makeSubscriptions',
+        ({getChainFees, getMessage, makeOrder, makeSubscriptions}, cbk) => 
+      {
+        // Exit early when there is an error
+        if (!!getMessage.error) {
+          return cbk();
+        }
+
+        const {orderId} = makeOrder;
+        const {message} = getMessage;
+        const {invoiceSub, onchainSub} = makeSubscriptions;
+
+        const timeout = setTimeout(() => {
+          onchainSub.removeAllListeners();
+
+          return cbk([503, 'TimedOutWaitingForOnchainPayment']);
+        },
+        onchainExpiryMs);
+
+        onchainSub.on('confirmation', async n => {
+          try {
+            console.log('onchain payment', n);
+            clearTimeout(timeout);
+            invoiceSub.removeAllListeners();
+            onchainSub.removeAllListeners();
+
+            // Update payment state to paid
+            const order = args.orders.get(orderId);
+            const parsedOrder = parse(order);
+            parsedOrder.result.payment.state = constants.paymentStates.paid;
+            args.orders.set(orderId, JSON.stringify(parsedOrder));
+
+            console.log('order status before channel opened for onchain', parsedOrder);
+
+            // Attempt to open channel
+            const channel = await openChannel({
+              lnd: args.lnd,
+              partner_public_key: args.pubkey,
+              local_tokens: parsedOrder.result.lsp_balance_sat,
+              fee_rate: getChainFees.tokens_per_vbyte,
+              description: `Open channel with ${args.pubkey} for order ${orderId}`,
+              is_private: parsedOrder.result.announce_channel
+            });
+
+            // Update the order with the channel
+            parsedOrder.result.channel = {
+              funding_outpoint: `${channel.transaction_id}:${channel.transaction_vout}`,
+              funded_at: currentDate(),
+              expires_at: expiryDate(channelExpiryMs),
+            };
+
+            // Mark the order as completed
+            parsedOrder.result.order_state = constants.orderStates.completed;
+
+            args.orders.set(orderId, JSON.stringify(parsedOrder));
+
+            console.log('order status after channel opened for onchain', parsedOrder);
+
+          } catch (err) {
+            clearTimeout(timeout);
+            invoiceSub.removeAllListeners();
+            onchainSub.removeAllListeners();
+            // Update the order state to failed
+            const order = args.orders.get(orderId);
+            const parsedOrder = parse(order);
+            parsedOrder.result.order_state = constants.orderStates.failed;
+            args.orders.set(orderId, JSON.stringify(parsedOrder));
+
+            // Refund the onchain payment
+            await sendToChainAddress({
+              address: message.params.refund_onchain_address,
+              lnd: args.lnd,
+              target_confirmations: refundTargetConfs,
+              tokens: Number(message.params.lsp_balance_sat),
+            });
+
+            parsedOrder.result.payment.state = constants.paymentStates.refunded;
+            args.orders.set(orderId, JSON.stringify(parsedOrder));
+
+            args.logger.error({err});
+          }
+        });
+
+        onchainSub.on('error', () => {
+          clearTimeout(timeout);
+          onchainSub.removeAllListeners();
         });
       }],
     },

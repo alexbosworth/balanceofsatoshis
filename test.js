@@ -1,4 +1,4 @@
-const { sendMessageToPeer, subscribeToPeerMessages, pay } = require("ln-service");
+const { sendMessageToPeer, subscribeToPeerMessages, pay, sendToChainAddress } = require("ln-service");
 const lnd = require('./lnd');
 const logger = require('@alexbosworth/caporal')
 const decodeMessage = (n) => Buffer.from(n, 'hex').toString();
@@ -36,16 +36,24 @@ async function test() {
     const sub = subscribeToPeerMessages({lnd: l});
 
     sub.on('message_received', async n => {
-      if(getInfoResponse(n.message)) {
-        await sendMessageToPeer({message: encodeMessage(createOrder), lnd: l, public_key: n.public_key, type: n.type});
+      try {
+        if(getInfoResponse(n.message)) {
+          await sendMessageToPeer({message: encodeMessage(createOrder), lnd: l, public_key: n.public_key, type: n.type});
+        }
+  
+        console.log('message received', JSON.parse(decodeMessage(n.message)));
+        const {invoice, address, amount} = createOrderResponse(n.message);
+        if (!!invoice || !!address) {
+          // const payinvoice = await pay({lnd: l, request: invoice});
+  
+          // console.log('pay invoice response', payinvoice);
+          const payOnchain = await sendToChainAddress({lnd: l, address, tokens: Number(amount)});
+  
+          console.log('pay onchain response', payOnchain);
+        }
       }
-
-      console.log('message received', JSON.parse(decodeMessage(n.message)));
-      const invoice = createOrderResponse(n.message);
-      if (!!invoice) {
-        const payinvoice = await pay({lnd: l, request: invoice});
-
-        console.log('pay invoice response', payinvoice);
+      catch(e) {
+        console.log(e);
       }
     });
 
@@ -59,11 +67,12 @@ function createOrderResponse(message) {
   try {
     const msg = decodeMessage(message);
     const parsedMessge = JSON.parse(msg);
+
     if (!parsedMessge.result || !parsedMessge.result.payment){
-      return;
+      return {invoice: null, address: null, amount: null};
     }
     
-    return parsedMessge.result.payment.lightning_invoice;
+    return {invoice: parsedMessge.result.payment.lightning_invoice, address: parsedMessge.result.payment.onchain_address, amount: parsedMessge.result.payment.order_total_sat};
   } catch(e) {
     console.log(e);
   }
@@ -74,7 +83,7 @@ function getInfoResponse(message) {
   try {
     const msg = decodeMessage(message);
     const parsedMessage = JSON.parse(msg);
-    // console.log(parsedMessage);
+
     if (!parsedMessage.result || !parsedMessage.result.options) {
       return false;
     }
