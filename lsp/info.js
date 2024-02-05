@@ -3,6 +3,7 @@ const {returnResult} = require('asyncjs-util');
 const {sendMessageToPeer} = require('ln-service');
 const {requests} = require('./requests.json');
 const {responses} = require('./responses.json');
+const {constants} = require('./constants.json');
 
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');
@@ -18,32 +19,12 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedMaxCapacityToSendInfoMessage']);
         }
 
-        if (!args.max_channel_expiry) {
-          return cbk([400, 'ExpectedMaxChannelExpiryToSendInfoMessage']);
-        }
-
-        if (!args.max_push_amount)  {
-          return cbk([400, 'ExpectedMaxPushAmountToSendInfoMessage']);
-        }
-
         if (!args.min_capacity) {
           return cbk([400, 'ExpectedMinCapacityToSendInfoMessage']);
         }
 
-        if (args.min_channel_confs === undefined) {
-          return cbk([400, 'ExpectedMinChannelConfsToSendInfoMessage']);
-        }
-
-        if (!args.min_onchain_confs) {
-          return cbk([400, 'ExpectedMinOnchainConfsToSendInfoMessage']);
-        }
-
         if (!args.min_onchain_payment_size) {
           return cbk([400, 'ExpectedMinOnchainPaymentSizeToSendInfoMessage']);
-        }
-
-        if (!args.min_push_amount) {
-          return cbk([400, 'ExpectedMinPushAmountToSendInfoMessage']);
         }
 
         if (!args.lnd) {
@@ -92,13 +73,15 @@ module.exports = (args, cbk) => {
 
           responseMessage.result.website = args.website || '';
           responseMessage.result.options.max_channel_balance_sat = args.max_capacity;
-          responseMessage.result.options.min_onchain_payment_confirmations = args.min_onchain_confs;
+          responseMessage.result.options.min_onchain_payment_confirmations = constants.minOnchainConfs;
           responseMessage.result.options.min_onchain_payment_size_sat = args.min_onchain_payment_size;
-          responseMessage.result.options.max_channel_expiry_blocks = args.max_channel_expiry;
-          responseMessage.result.options.min_initial_client_balance_sat = args.min_push_amount;
-          responseMessage.result.options.max_initial_client_balance_sat = args.max_push_amount;
+          responseMessage.result.options.max_channel_expiry_blocks = constants.channelExpiryBlocks;
+          responseMessage.result.options.min_initial_client_balance_sat = constants.minPushAmount;
+          responseMessage.result.options.max_initial_client_balance_sat = constants.maxPushAmount;
           responseMessage.result.options.min_channel_balance_sat = args.min_capacity;
-          responseMessage.result.options.min_channel_confirmations = args.min_channel_confs;
+          responseMessage.result.options.min_channel_confirmations = constants.minChannelConfs;
+          responseMessage.result.options.min_initial_lsp_balance_sat = args.min_capacity;
+          responseMessage.result.options.max_initial_lsp_balance_sat = args.max_capacity;
           responseMessage.id = message.id;
 
           // Your max local balance is same as max capacity

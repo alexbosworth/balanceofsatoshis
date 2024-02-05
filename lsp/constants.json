@@ -1,0 +1,21 @@
+{
+  "constants": {
+    "messageType": 37913,
+    "minPushAmount": "0",
+    "maxPushAmount": "0",
+    "channelExpiryBlocks": 13000,
+    "minChannelConfs": 3,
+    "minOnchainConfs": 2,
+    "orderStates": {
+      "created": "CREATED",
+      "completed": "COMPLETED",
+      "failed": "FAILED"
+    },
+    "paymentStates": {
+      "expectPayment": "EXPECT_PAYMENT",
+      "hold": "HOLD",
+      "paid": "PAID",
+      "refunded": "REFUNDED"
+    }
+  }
+}
