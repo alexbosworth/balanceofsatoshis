@@ -19,13 +19,13 @@ async function test() {
       "method": "lsps1.create_order",
       "id": 5678,
       "params": {
-        "lsp_balance_sat": "5000000",
-        "client_balance_sat": "2000000",
-        "confirms_within_blocks": 1,
+        "lsp_balance_sat": "200000",
+        "client_balance_sat": "0",
+        "confirms_within_blocks": 2,
         "channel_expiry_blocks": 144,
         "token": "",
         "refund_onchain_address": "bc1qvmsy0f3yyes6z9jvddk8xqwznndmdwapvrc0xrmhd3vqj5rhdrrq6hz49h",
-        "announceChannel": false
+        "announce_channel": false
       },
     }
 
@@ -40,7 +40,7 @@ async function test() {
         await sendMessageToPeer({message: encodeMessage(createOrder), lnd: l, public_key: n.public_key, type: n.type});
       }
 
-
+      console.log('message received', JSON.parse(decodeMessage(n.message)));
       const invoice = createOrderResponse(n.message);
       if (!!invoice) {
         const payinvoice = await pay({lnd: l, request: invoice});
@@ -74,7 +74,7 @@ function getInfoResponse(message) {
   try {
     const msg = decodeMessage(message);
     const parsedMessage = JSON.parse(msg);
-    console.log(parsedMessage);
+    // console.log(parsedMessage);
     if (!parsedMessage.result || !parsedMessage.result.options) {
       return false;
     }

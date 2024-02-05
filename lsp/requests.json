@@ -11,13 +11,13 @@
       "method": "lsps1.create_order",
       "id": 1,
       "params": {
-        "lsp_balance_sat": "5000000",
-        "client_balance_sat": "2000000",
-        "confirms_within_blocks": 1,
-        "channel_expiry_blocks": 144,
+        "lsp_balance_sat": "",
+        "client_balance_sat": "0",
+        "confirms_within_blocks": 3,
+        "channel_expiry_blocks": 13000,
         "token": "",
         "refund_onchain_address": "",
-        "announceChannel": true
+        "announce_channel": true
       }
     },
     "lsps1GetOrderRequest": {
