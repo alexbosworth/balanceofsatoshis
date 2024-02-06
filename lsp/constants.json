@@ -1,5 +1,6 @@
 {
   "constants": {
+    "jsonrpc": "2.0",
     "messageType": 37913,
     "minPushAmount": "0",
     "maxPushAmount": "0",

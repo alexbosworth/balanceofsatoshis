@@ -803,6 +803,32 @@ prog
     });
   })
 
+  // Buy an inbound channel
+  .command('get-inbound-channel', 'Buy an inbound channel')
+  .help('Buy an inbound channel from a node on the network')
+  .option('--amount <tokens>', 'Tokens to spend on inbound channel', INT)
+  .option('--node <node_name>', 'Node to buy inbound channel from')
+  .option('--priority <blocks>', 'Confirms within blocks', INT, 144)
+  .option('--pubkey <public_key>', 'Public key of node to buy channel from')
+  .option('--type <type>', 'Channel type: private/public', STRING, 'public')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return lsp.lsps1Client({
+          logger,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          priority: options.priority,
+          pubkey: options.pubkey,
+          tokens: args.amount,
+          type: options.type,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
   // Give a peer some tokens
   .command('gift', 'Give a direct peer some free funds off-chain')
   .visible(false)
@@ -1204,34 +1230,6 @@ prog
     });
   })
 
-  // LSP Server
-  .command('lsp-server', 'Serve as Liquidity Service Provider')
-  .help('Provide inbound liquidity to clients for a fee')
-  .option('--fee-rate <ppm>', 'Fee rate to charge for liquidity per quarter', INT, 1000)
-  .option('--max-capacity <tokens>', 'Maximum channel capacity', STRING, "100000000")
-  .option('--min-capacity <tokens>', 'Minimum channel capacity', STRING, "1000000")
-  .option('--min-onchain-payment-size <tokens>', 'Minimum on-chain payment', STRING, "1000000")
-  .option('--website <url>', 'URL to advertise as a liquidity provider')
-  .option('--node <node_name>', 'Node to run a lsp server')
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        return lsp.lsps1({
-          logger,
-          fee_rate: options.feeRate,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          max_capacity: options.maxCapacity,
-          min_capacity: options.minCapacity,
-          min_onchain_payment_size: options.minOnchainPaymentSize,
-          website: options.website,
-        },
-        responses.returnObject({logger, reject, resolve}));
-      } catch (err) {
-        return logger.error({err}) && reject();
-      }
-    });
-  })
-
   // Saved nodes
   .command('nodes', 'List and edit saved nodes')
   .help('Locking and unlocking requires existing installation of GPG')
@@ -1262,6 +1260,34 @@ prog
         node: args.node || undefined,
       },
       responses.returnObject({logger, reject, resolve}));
+    });
+  })
+
+  // Offer inbound liquidity
+  .command('offer-channel-open', 'Serve as Liquidity Service Provider')
+  .help('Provide inbound liquidity to clients for a fee')
+  .option('--fee-rate <ppm>', 'Fee rate to charge for liquidity per quarter', INT, 1000)
+  .option('--max-capacity <tokens>', 'Maximum channel capacity', STRING, "100000000")
+  .option('--min-capacity <tokens>', 'Minimum channel capacity', STRING, "1000000")
+  .option('--min-onchain-payment-size <tokens>', 'Minimum on-chain payment', STRING, "1000000")
+  .option('--website <url>', 'URL to advertise as a liquidity provider')
+  .option('--node <node_name>', 'Node to run a lsp server')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return lsp.lsps1Server({
+          logger,
+          fee_rate: options.feeRate,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          max_capacity: options.maxCapacity,
+          min_capacity: options.minCapacity,
+          min_onchain_payment_size: options.minOnchainPaymentSize,
+          website: options.website,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
     });
   })
 

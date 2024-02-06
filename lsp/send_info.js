@@ -4,6 +4,7 @@ const {sendMessageToPeer} = require('ln-service');
 const {requests} = require('./requests.json');
 const {responses} = require('./responses.json');
 const {constants} = require('./constants.json');
+const makeErrorMessage = require('./make_error_message');
 
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');
@@ -61,12 +62,19 @@ module.exports = (args, cbk) => {
         try {
           const message = parse(decodeMessage(args.message));
 
-          if (message.method !== requests.lsps1GetinfoRequest.method) {
-            return cbk();
-          }
+          if (!message.params) {
+            const error = {
+              error: makeErrorMessage({code: -32606, message: 'Invalid params', data: {
+              property: 'params',
+              message: 'MissingParamsInCreateOrderRequest'
+            }})};
 
-          if (message.jsonrpc !== requests.lsps1GetinfoRequest.jsonrpc) {
-            return cbk();
+            return sendMessageToPeer({
+              lnd: args.lnd,
+              message: encodeMessage(error),
+              public_key: args.pubkey,
+              type: args.type,
+            }, cbk);
           }
 
           const responseMessage = responses.lsps1GetinfoResponse;
