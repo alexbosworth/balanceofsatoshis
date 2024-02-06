@@ -1,40 +1,39 @@
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
+
 const {randomBytes} = require('crypto');
 const {createHash} = require('crypto');
-const {getChainFeeRate} = require('ln-service');
+
+const {cancelHodlInvoice} = require('ln-service');
 const {createChainAddress} = require('ln-service');
 const {createHodlInvoice} = require('ln-service');
-const {subscribeToInvoice} = require('ln-service');
-const {settleHodlInvoice} = require('ln-service');
-const {openChannel} = require('ln-service');
-const {cancelHodlInvoice} = require('ln-service');
-const {sendToChainAddress} = require('ln-service');
 const {getHeight} = require('ln-service');
+const {getChainFeeRate} = require('ln-service');
+const {openChannel} = require('ln-service');
+const {settleHodlInvoice} = require('ln-service');
 const {sendMessageToPeer} = require('ln-service');
+const {sendToChainAddress} = require('ln-service');
 const {subscribeToChainAddress} = require('ln-service');
+const {subscribeToInvoice} = require('ln-service');
 
-const {requests} = require('./requests.json');
-const {responses} = require('./responses.json');
 const {constants} = require('./constants.json');
+const {responses} = require('./responses.json');
 const makeErrorMessage = require('./make_error_message');
 
-
+const channelExpiryMs = 1000 * 60 * 60 * 24 * 90;
+const currentDate = () => new Date().toISOString();
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');
-const {parse} = JSON;
-const {stringify} = JSON;
-const makeOrderId = () => randomBytes(32).toString('hex');
-const isNumber = n => !isNaN(n);
-const sumOf = (a, b) => a + b;
-const currentDate = () => new Date().toISOString();
-const orderExpiryMs = 1000 * 60 * 60;
-const onchainExpiryMs = 1000 * 60 * 60 * 24;
-const channelExpiryMs = 1000 * 60 * 60 * 24 * 90;
 const expiryDate = (n) => new Date(Date.now() + n).toISOString();
+const isNumber = n => !isNaN(n);
+const makeOrderId = () => randomBytes(32).toString('hex');
+const onchainExpiryMs = 1000 * 60 * 60 * 24;
+const orderExpiryMs = 1000 * 60 * 60;
+const {parse} = JSON;
 const randomSecret = () => randomBytes(32);
-const sha256 = buffer => createHash('sha256').update(buffer).digest('hex');
 const refundTargetConfs = 6;
+const sha256 = buffer => createHash('sha256').update(buffer).digest('hex');
+const sumOf = (a, b) => a + b;
 
 
 module.exports = (args, cbk) => {

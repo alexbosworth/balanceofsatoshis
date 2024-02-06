@@ -1,13 +1,16 @@
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
+
 const {subscribeToPeerMessages} = require('ln-service');
-const sendInfo = require('./send_info');
+
+const {constants} = require('./constants.json');
 const processOrder = require('./process_order');
 const returnOrderInfo = require('./return_order_info');
-const {constants} = require('./constants.json');
+const sendInfo = require('./send_info');
+
+const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const isNumber = n => !isNaN(n);
 const orders = new Map();
-const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const {parse} = JSON;
 const {requests} = require('./requests.json');
 
