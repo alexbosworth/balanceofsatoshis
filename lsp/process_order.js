@@ -17,6 +17,8 @@ const {subscribeToChainAddress} = require('ln-service');
 const {requests} = require('./requests.json');
 const {responses} = require('./responses.json');
 const {constants} = require('./constants.json');
+const makeErrorMessage = require('./make_error_message');
+
 
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');
@@ -76,6 +78,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedPubkeyToSendOrderMessage']);
         }
 
+        if (!args.type) {
+          return cbk([400, 'ExpectedTypeToSendOrderMessage']);
+        }
+
         try {
           parse(decodeMessage(args.message));
         } catch (e) {
@@ -88,16 +94,6 @@ module.exports = (args, cbk) => {
       // Validate the message
       getMessage: ['validate', ({}, cbk) => {
         const message = parse(decodeMessage(args.message));
-
-        console.log('order message', message);
-
-        if (message.method !== requests.lsps1CreateOrderRequest.method) {
-          return cbk();
-        }
-
-        if (message.jsonrpc !== requests.lsps1CreateOrderRequest.jsonrpc) {
-          return cbk();
-        }
 
         if (!message.params) {
           const error = {
@@ -224,7 +220,7 @@ module.exports = (args, cbk) => {
 
       // Send error message
       sendErrorMessage: ['getMessage', ({getMessage}, cbk) => {
-        if (!getMessage || !getMessage.error) {
+        if (!getMessage.error) {
           return cbk();
         }
 
@@ -240,7 +236,7 @@ module.exports = (args, cbk) => {
       }],
 
       getChainHeight: ['getMessage', ({getMessage}, cbk) => {
-        if (!getMessage || !getMessage.message) {
+        if (!getMessage.message) {
           return cbk();
         }
 
@@ -250,7 +246,7 @@ module.exports = (args, cbk) => {
       // Get chain fees
       getChainFees: ['getMessage', ({getMessage}, cbk) => {
         // Exit early when there is no message
-        if (!getMessage || !getMessage.message) {
+        if (!getMessage.message) {
           return cbk();
         }
 
@@ -262,7 +258,7 @@ module.exports = (args, cbk) => {
       // Calculate fees
       getFees: ['getChainFees', 'getMessage', ({getChainFees, getMessage}, cbk) => {
         // Exit early when there is no message
-        if (!getMessage || !getMessage.message) {
+        if (!getMessage.message) {
           return cbk();
         }
 
@@ -284,7 +280,7 @@ module.exports = (args, cbk) => {
       // Send order message
       makeOrder: ['getFees', 'getMessage', async ({getFees, getMessage}) => {
         // Exit early when there is no message
-        if (!getMessage || !getMessage.message) {
+        if (!getMessage.message) {
           return;
         }
 
@@ -346,7 +342,7 @@ module.exports = (args, cbk) => {
         ({getChainHeight, getMessage, makeOrder}, cbk) => 
       {
         // Exit early when there is no message
-        if (!getMessage || !getMessage.message) {
+        if (!getMessage.message) {
             return cbk();
           }
 
@@ -374,7 +370,7 @@ module.exports = (args, cbk) => {
         ({getChainFees, getMessage, makeOrder, makeSubscriptions}, cbk) => 
       {
         // Exit early when there is no message
-        if (!getMessage || !getMessage.message) {
+        if (!getMessage.message) {
           return cbk();
         }
 
@@ -474,7 +470,7 @@ module.exports = (args, cbk) => {
         ({getChainFees, getMessage, makeOrder, makeSubscriptions}, cbk) => 
       {
         // Exit early when there is an error
-        if (!getMessage || !getMessage.message) {
+        if (!getMessage.message) {
           return cbk();
         }
 
@@ -560,17 +556,5 @@ module.exports = (args, cbk) => {
       }],
     },
     returnResult({reject, resolve}, cbk));
-  });
-}
-
-function makeErrorMessage({code, data, message, id}) {
-  return stringify({
-    jsonrpc: "2.0",
-    id,
-    error: {
-      code,
-      message,
-      data,
-    }
   });
 }

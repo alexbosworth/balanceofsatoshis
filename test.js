@@ -29,6 +29,15 @@ async function test() {
       },
     }
 
+    const getOrder = {
+      "jsonrpc": "2.0",
+      "method": "lsps1.get_order",
+      "id": 5678,
+      "params": {
+        "order_id": "abcde"
+      }
+    }
+
     const message = Buffer.from(JSON.stringify(getInfo)).toString('hex');
 
     await sendMessageToPeer({message, lnd: l, public_key: '02b4f62b6163043bcf3c4854b8a84947e64b8dc4c5ade7ed62d3d0e055ecec97ba', type: 37913})
@@ -37,12 +46,14 @@ async function test() {
 
     sub.on('message_received', async n => {
       try {
+        console.log('message received', JSON.parse(decodeMessage(n.message)));
         if(getInfoResponse(n.message)) {
           await sendMessageToPeer({message: encodeMessage(createOrder), lnd: l, public_key: n.public_key, type: n.type});
         }
   
-        console.log('message received', JSON.parse(decodeMessage(n.message)));
         const {invoice, address, amount} = createOrderResponse(n.message);
+
+
         if (!!invoice || !!address) {
           const payinvoice = await pay({lnd: l, request: invoice});
   

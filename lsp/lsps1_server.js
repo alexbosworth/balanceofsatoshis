@@ -2,11 +2,14 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToPeerMessages} = require('ln-service');
 const sendInfo = require('./send_info');
-const sendOrder = require('./send_order');
+const processOrder = require('./process_order');
+const returnOrderInfo = require('./return_order_info');
 const {constants} = require('./constants.json');
 const isNumber = n => !isNaN(n);
 const orders = new Map();
-
+const decodeMessage = n => Buffer.from(n, 'hex').toString();
+const {parse} = JSON;
+const {requests} = require('./requests.json');
 
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
@@ -52,29 +55,50 @@ module.exports = (args, cbk) => {
               return;
             }
 
-            await sendInfo({
-              max_capacity: args.max_capacity,
-              message: n.message,
-              min_capacity: args.min_capacity,
-              min_onchain_payment_size: args.min_onchain_payment_size,
-              lnd: args.lnd,
-              logger: args.logger,
-              pubkey: n.public_key,
-              type: n.type,
-            });
+            const message = parse(decodeMessage(n.message));
 
-            await sendOrder({
-              orders,
-              fee_rate: args.fee_rate,
-              max_capacity: args.max_capacity,
-              message: n.message,
-              min_capacity: args.min_capacity,
-              min_onchain_payment_size: args.min_onchain_payment_size,
-              lnd: args.lnd,
-              logger: args.logger,
-              pubkey: n.public_key,
-              type: n.type,
-            });
+            if (!message.jsonrpc || message.jsonrpc !== constants.jsonrpc) {
+              return;
+            }
+
+            if (message.method === requests.lsps1GetinfoRequest.method) {
+              await sendInfo({
+                max_capacity: args.max_capacity,
+                message: n.message,
+                min_capacity: args.min_capacity,
+                min_onchain_payment_size: args.min_onchain_payment_size,
+                lnd: args.lnd,
+                logger: args.logger,
+                pubkey: n.public_key,
+                type: n.type,
+              });
+            }
+
+            if (message.method === requests.lsps1CreateOrderRequest.method) {
+              await processOrder({
+                orders,
+                fee_rate: args.fee_rate,
+                max_capacity: args.max_capacity,
+                message: n.message,
+                min_capacity: args.min_capacity,
+                min_onchain_payment_size: args.min_onchain_payment_size,
+                lnd: args.lnd,
+                logger: args.logger,
+                pubkey: n.public_key,
+                type: n.type,
+              });
+            }
+
+            if (message.method === requests.lsps1GetOrderRequest.method) {
+              await returnOrderInfo({
+                orders,
+                message: n.message,
+                lnd: args.lnd,
+                logger: args.logger,
+                pubkey: n.public_key,
+                type: n.type,
+              })
+            }
 
           } catch (err) {
             //Ignore errors
@@ -90,9 +114,7 @@ module.exports = (args, cbk) => {
           return cbk();
         });
       }],
-
-
-  },
+    },
     returnResult({reject, resolve}, cbk));
   });
 };
