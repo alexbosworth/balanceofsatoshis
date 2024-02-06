@@ -22,6 +22,7 @@ const prog = require('@alexbosworth/caporal');
 const commandConstants = require('./commands/constants');
 
 const {accountingCategories} = commandConstants;
+const {inboundChannelMethods} = commandConstants;
 const balances = importLazy('./balances');
 const chain = importLazy('./chain');
 const commands = importLazy('./commands');
@@ -805,8 +806,13 @@ prog
 
   // Buy an inbound channel
   .command('get-inbound-channel', 'Buy an inbound channel')
+  .argument('<method>', 'Method', keys(inboundChannelMethods))
   .help('Buy an inbound channel from a node on the network')
-  .option('--amount <tokens>', 'Tokens to spend on inbound channel', INT)
+  .help('request-info returns the information about the channel from the seller')
+  .help('buy-channel places an order for an inbound channel')
+  .help('check-order checks the status of an inbound channel order')
+  .option('--amount <tokens>', 'Amount of inbound liquidity', INT)
+  .option('--order-id <id>', 'Order id to check', STRING)
   .option('--node <node_name>', 'Node to buy inbound channel from')
   .option('--priority <blocks>', 'Confirms within blocks', INT, 144)
   .option('--pubkey <public_key>', 'Public key of node to buy channel from')
@@ -816,10 +822,13 @@ prog
       try {
         return lsp.lsps1Client({
           logger,
+          ask: await commands.interrogate({}),
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          method: args.method,
+          order_id: options.orderId,
           priority: options.priority,
           pubkey: options.pubkey,
-          tokens: args.amount,
+          tokens: options.amount,
           type: options.type,
         },
         responses.returnObject({logger, reject, resolve}));

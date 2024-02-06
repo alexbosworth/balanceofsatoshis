@@ -7,6 +7,7 @@
     "channelExpiryBlocks": 13000,
     "minChannelConfs": 3,
     "minOnchainConfs": 2,
+    "targetConfsForOnchainPayment": 6,
     "orderStates": {
       "created": "CREATED",
       "completed": "COMPLETED",
@@ -17,6 +18,11 @@
       "hold": "HOLD",
       "paid": "PAID",
       "refunded": "REFUNDED"
+    },
+    "methods": {
+      "buy-channel": "buy_channel",
+      "check-order": "check_order",
+      "request-info": "request_info"
     }
   }
 }

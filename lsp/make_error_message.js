@@ -1,4 +1,3 @@
-const {stringify} = JSON;
 
 
 module.exports = ({code, data, message}) => {
@@ -14,12 +13,12 @@ module.exports = ({code, data, message}) => {
     throw new Error('ExpectedErrorMessageToMakeErrorMessage');
   }
 
-  return stringify({
+  return {
     jsonrpc: "2.0",
     error: {
       code,
       message,
       data,
     }
-  });
+  };
 }
