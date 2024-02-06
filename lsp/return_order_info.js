@@ -2,11 +2,8 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
 const {sendMessageToPeer} = require('ln-service');
-const makeErrorMessage = require('./make_error_message');
-const {requests} = require('./requests.json');
-const {responses} = require('./responses.json');
-const {constants} = require('./constants.json');
 
+const makeErrorMessage = require('./make_error_message');
 
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');

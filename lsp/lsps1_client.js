@@ -1,28 +1,28 @@
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
-
 const {returnResult} = require('asyncjs-util');
+
+const {addPeer} = require('ln-service');
 const {createChainAddress} = require('ln-service');
 const {getNode} = require('ln-service');
 const {sendMessageToPeer} = require('ln-service');
-const {addPeer} = require('ln-service');
 const {subscribeToPeerMessages} = require('ln-service');
 
 const buyChannel = require('./buy_channel');
 const {constants} = require('./constants.json');
-const isNumber = n => !isNaN(n);
-const orders = new Map();
+const {requests} = require('./requests.json');
+
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');
-const {parse} = JSON;
-const {requests} = require('./requests.json');
-const minPriority = 2;
+const format = 'p2wpkh';
+const isNumber = n => !isNaN(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const knownTypes = ['private', 'public'];
+const minPriority = 2;
+const {parse} = JSON;
 const peerAddedDelayMs = 1000 * 5;
-const times = 10;
 const publicType = 'public';
-const format = 'p2wpkh';
+const times = 10;
 
 
 module.exports = (args, cbk) => {

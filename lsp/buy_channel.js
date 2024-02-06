@@ -1,10 +1,12 @@
 const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
-const {sendMessageToPeer, parsePaymentRequest, payViaPaymentRequest, sendToChainAddress} = require('ln-service');
-const {requests}  = require('./requests.json');
-const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');
+const {parsePaymentRequest} = require('ln-service');
+const {payViaPaymentRequest} = require('ln-service');
+const {sendToChainAddress} = require('ln-service');
+
 const {constants} = require('./constants.json');
+
 const lightningPaymentType = 'lightning';
 const onchainPaymentType = 'onchain';
 
