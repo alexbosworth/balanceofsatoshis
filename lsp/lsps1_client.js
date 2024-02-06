@@ -1,18 +1,15 @@
 const asyncAuto = require('async/auto');
-const asyncRetry = require('async/retry');
 const asyncDetectSeries = require('async/detectSeries');
 
 const {returnResult} = require('asyncjs-util');
+const {createChainAddress} = require('ln-service');
 const {getNode} = require('ln-service');
 const {sendMessageToPeer} = require('ln-service');
 const {addPeer} = require('ln-service');
 const {subscribeToPeerMessages} = require('ln-service');
 
-const sendInfo = require('./send_info');
-const processOrder = require('./process_order');
-const returnOrderInfo = require('./return_order_info');
+const buyChannel = require('./buy_channel');
 const {constants} = require('./constants.json');
-const requestInfo = require('./request_info');
 const isNumber = n => !isNaN(n);
 const orders = new Map();
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
@@ -24,6 +21,8 @@ const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const knownTypes = ['private', 'public'];
 const peerAddedDelayMs = 1000 * 5;
 const times = 10;
+const publicType = 'public';
+const format = 'p2wpkh';
 
 
 module.exports = (args, cbk) => {
@@ -31,14 +30,26 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguements
       validate: cbk => {
+        if (!args.ask) {
+          return cbk([400, 'ExpectedAskFunctionToRunLspClient']);
+        }
+
         if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToRunLspClient']);
+        }
+        
+        if (!args.method || !constants.methods[args.method]) {
+          return cbk([400, 'ExpectedKnownMethodToRunLspClient']);
         }
         
         if (!args.logger) {
           return cbk([400, 'ExpectedLoggerToRunLspClient']);
         }
-        
+
+        if (constants.methods[args.method] === constants.methods['check-order'] && !args.order_id) {
+          return cbk([400, 'ExpectedOrderIdToRunLspClient']);
+        }
+
         if (!args.priority || !isNumber(args.priority)) {
           return cbk([400, 'ExpectedPriorityToRunLspClient']);
         }
@@ -49,6 +60,10 @@ module.exports = (args, cbk) => {
         
         if (!args.pubkey || !isPublicKey(args.pubkey)) {
           return cbk([400, 'ExpectedValidHexPubkeyToRunLspClient']);
+        }
+
+        if (!args.tokens || !isNumber(args.tokens)) {
+          return cbk([400, 'ExpectedAmountToRunLspClient']);
         }
         
         if (!args.type) {
@@ -64,7 +79,11 @@ module.exports = (args, cbk) => {
       
       // Get node info
       getNodeInfo: ['validate', ({}, cbk) => {
-        return getNode({lnd: args.lnd, public_key: args.pubkey, is_omitting_channels: true}, cbk);
+        return getNode({
+          lnd: args.lnd, 
+          public_key: args.pubkey, 
+          is_omitting_channels: true
+        }, cbk);
       }],
       
       // Connect to node
@@ -100,32 +119,111 @@ module.exports = (args, cbk) => {
             }
             
             const message = parse(decodeMessage(n.message));
-            
-            if (!message.jsonrpc || message.jsonrpc !== constants.jsonrpc || !message.result) {
-              return;
-            }
-            
+
             if (!!message.error) {
               args.logger.error({error: message.error});
             }
             
-            if (!!message.result.options) {
+            if (!message.jsonrpc || message.jsonrpc !== constants.jsonrpc || !message.result) {
+              return;
+            }
+
+            if (constants.methods[args.method] === constants.methods['buy-channel']) {
+              await buyChannel({
+                announce_channel: args.type === publicType,
+                ask: args.ask,
+                lnd: args.lnd,
+                logger: args.logger,
+                message: message.result,
+                priority: args.priority,
+                pubkey: n.public_key,
+                tokens: args.tokens,
+                type: n.type,
+              })
+            }
+
+            if (constants.methods[args.method] === constants.methods['check-order']) {
+
+              args.logger.info(message.result);
+              sub.removeAllListeners();
+            }
+
+            // Log the order info and exit
+            if (constants.methods[args.method] === constants.methods['request-info']) {
               args.logger.info(message.result.options);
+              sub.removeAllListeners();
             }
           } catch (err) {
             args.logger.error({err});
           }
         });
         
+        sub.on('error', err => {
+          sub.removeAllListeners();
+        });
+        
         return cbk();
+      }],
+
+      // Generate refund address
+      getRefundAddress: ['subscribe', ({}, cbk) => {
+        if (constants.methods[args.method] !== constants.methods['buy-channel']) {
+          return cbk();
+        }
+        
+        return createChainAddress({format, lnd: args.lnd}, cbk);
+      }],
+
+      // Send order for inbound channel
+      sendBuyOrder: ['getRefundAddress', 'subscribe', ({getRefundAddress}, cbk) => {
+        if (constants.methods[args.method] !== constants.methods['buy-channel']) {
+          return cbk();
+        }
+
+        const order = requests.lsps1CreateOrderRequest;
+        order.params.announce_channel = args.type === publicType;
+        order.params.channel_expiry_blocks = constants.channelExpiryBlocks;
+        order.params.confirms_within_blocks = args.priority;
+        order.params.lsp_balance_sat = args.tokens;
+        order.params.refund_onchain_address = getRefundAddress.address;
+        
+        const message = encodeMessage(order);
+        
+        return sendMessageToPeer({
+          message,
+          lnd: args.lnd,
+          public_key: args.pubkey,
+          type: constants.messageType,
+        }, cbk);
       }],
       
       // Send getinfo request
-      sendGetinfo: ['subscribe', ({}, cbk) => {
+      requestInfo: ['subscribe', ({}, cbk) => {
+        if (constants.methods[args.method] !== constants.methods['request-info']) {
+          return cbk();
+        }
+        
         const message = encodeMessage(requests.lsps1GetinfoRequest);
-
+        
         return sendMessageToPeer({
           message,
+          lnd: args.lnd,
+          public_key: args.pubkey,
+          type: constants.messageType,
+        }, cbk);
+      }],
+
+      // Check order status
+      checkOrder: ['subscribe', ({}, cbk) => {
+        if (constants.methods[args.method] !== constants.methods['check-order']) {
+          return cbk();
+        }
+
+        const orderStatusMessage = requests.lsps1GetOrderRequest;
+        orderStatusMessage.params.order_id = args.order_id;
+
+        return sendMessageToPeer({
+          message: encodeMessage(orderStatusMessage),
           lnd: args.lnd,
           public_key: args.pubkey,
           type: constants.messageType,

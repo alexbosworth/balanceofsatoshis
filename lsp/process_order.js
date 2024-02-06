@@ -224,8 +224,6 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        console.log('error message', getMessage.error);
-
         return sendMessageToPeer({
           lnd: args.lnd,
           message: encodeMessage(getMessage.error),
@@ -398,12 +396,12 @@ module.exports = (args, cbk) => {
             const order = args.orders.get(orderId);
             const parsedOrder = parse(order);
 
-            console.log('order status initial', parsedOrder);
+            args.logger.info({initial_status: parsedOrder.result});
 
             parsedOrder.result.payment.state = constants.paymentStates.hold;
             args.orders.set(orderId, JSON.stringify(parsedOrder));
 
-            console.log('order status before channel opened', parsedOrder);
+            args.logger.info({before_channel_opened_status: parsedOrder.result});
 
             // Attempt to open channel
             const channel = await openChannel({
@@ -412,7 +410,7 @@ module.exports = (args, cbk) => {
               local_tokens: parsedOrder.result.lsp_balance_sat,
               fee_rate: getChainFees.tokens_per_vbyte,
               description: `Open channel with ${args.pubkey} for order ${orderId}`,
-              is_private: parsedOrder.result.announce_channel
+              is_private: !parsedOrder.result.announce_channel
             });
 
             // Update the order with the channel
@@ -424,7 +422,7 @@ module.exports = (args, cbk) => {
 
             args.orders.set(orderId, JSON.stringify(parsedOrder));
 
-            console.log('order status after channel opened', parsedOrder);
+            args.logger.info({after_channel_opened_status: parsedOrder.result});
   
             // Use the secret to claim the funds
             await settleHodlInvoice({secret, lnd: args.lnd});
@@ -434,7 +432,7 @@ module.exports = (args, cbk) => {
             parsedOrder.result.payment.state = constants.paymentStates.paid;
             args.orders.set(orderId, JSON.stringify(parsedOrder));
 
-            console.log('order status finally', parsedOrder);
+            args.logger.info({final_status: parsedOrder.result});
           } catch (err) {
             clearTimeout(timeout);
             invoiceSub.removeAllListeners();
@@ -449,7 +447,7 @@ module.exports = (args, cbk) => {
             parsedOrder.result.payment.state = constants.paymentStates.refunded;
             args.orders.set(orderId, JSON.stringify(parsedOrder));
 
-            console.log('order status finally after failing', parsedOrder);
+            args.logger.info({failed_order_status: parsedOrder.result});
             args.logger.error({err});
           }
         });
@@ -487,7 +485,6 @@ module.exports = (args, cbk) => {
 
         onchainSub.on('confirmation', async n => {
           try {
-            console.log('onchain payment', n);
             clearTimeout(timeout);
             invoiceSub.removeAllListeners();
             onchainSub.removeAllListeners();
@@ -498,7 +495,7 @@ module.exports = (args, cbk) => {
             parsedOrder.result.payment.state = constants.paymentStates.paid;
             args.orders.set(orderId, JSON.stringify(parsedOrder));
 
-            console.log('order status before channel opened for onchain', parsedOrder);
+            args.logger.info({order_status_for_onchain_payment: parsedOrder.result});
 
             // Attempt to open channel
             const channel = await openChannel({
@@ -507,7 +504,7 @@ module.exports = (args, cbk) => {
               local_tokens: parsedOrder.result.lsp_balance_sat,
               fee_rate: getChainFees.tokens_per_vbyte,
               description: `Open channel with ${args.pubkey} for order ${orderId}`,
-              is_private: parsedOrder.result.announce_channel
+              is_private: !parsedOrder.result.announce_channel
             });
 
             // Update the order with the channel
@@ -522,7 +519,7 @@ module.exports = (args, cbk) => {
 
             args.orders.set(orderId, JSON.stringify(parsedOrder));
 
-            console.log('order status after channel opened for onchain', parsedOrder);
+            args.logger.info({order_status_after_onchain_payment: parsedOrder.result});
 
           } catch (err) {
             clearTimeout(timeout);
