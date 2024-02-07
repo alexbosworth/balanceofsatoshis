@@ -22,7 +22,6 @@ const prog = require('@alexbosworth/caporal');
 const commandConstants = require('./commands/constants');
 
 const {accountingCategories} = commandConstants;
-const {inboundChannelMethods} = commandConstants;
 const balances = importLazy('./balances');
 const chain = importLazy('./chain');
 const commands = importLazy('./commands');
@@ -806,15 +805,16 @@ prog
 
   // Buy an inbound channel
   .command('get-inbound-channel', 'Buy an inbound channel')
-  .argument('<method>', 'Method', keys(inboundChannelMethods))
   .help('Buy an inbound channel from a node on the network')
   .help('request-info returns the information about the channel from the seller')
   .help('buy-channel places an order for an inbound channel')
   .help('check-order checks the status of an inbound channel order')
-  .option('--amount <tokens>', 'Amount of inbound liquidity', INT)
-  .option('--order-id <id>', 'Order id to check', STRING)
+  .argument('<pubkey>', 'Public key of node to buy channel from')
+  .option('--amount <tokens>', 'Amount of inbound liquidity', INT, 5e6)
+  .option('--dryrun <dryrun>', 'Returns information from seller')
+  .option('--recovery <orderId>', 'Order id to check', STRING)
   .option('--node <node_name>', 'Node to buy inbound channel from')
-  .option('--priority <blocks>', 'Confirms within blocks', INT, 144)
+  .option('--max-expected-wait-hours <hours>', 'Max expected wait time for channel open', INT, 48)
   .option('--pubkey <public_key>', 'Public key of node to buy channel from')
   .option('--type <type>', 'Channel type: private/public', STRING, 'public')
   .action((args, options, logger) => {
@@ -823,11 +823,11 @@ prog
         return lsp.lsps1Client({
           logger,
           ask: await commands.interrogate({}),
+          is_dry_run: !!options.dryrun,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          method: args.method,
-          order_id: options.orderId,
-          priority: options.priority,
-          pubkey: options.pubkey,
+          max_wait_hours: options.maxExpectedWaitHours,
+          pubkey: args.pubkey,
+          recovery: options.recovery,
           tokens: options.amount,
           type: options.type,
         },
@@ -1275,10 +1275,9 @@ prog
   // Offer inbound liquidity
   .command('offer-channel-open', 'Serve as Liquidity Service Provider')
   .help('Provide inbound liquidity to clients for a fee')
-  .option('--fee-rate <ppm>', 'Fee rate to charge for liquidity per quarter', INT, 1000)
-  .option('--max-capacity <tokens>', 'Maximum channel capacity', STRING, "100000000")
-  .option('--min-capacity <tokens>', 'Minimum channel capacity', STRING, "1000000")
-  .option('--min-onchain-payment-size <tokens>', 'Minimum on-chain payment', STRING, "1000000")
+  .option('--capacity-fee-rate <ppm>', 'Fee rate to charge for liquidity per quarter', INT, 1000)
+  .option('--max-capacity <tokens>', 'Maximum channel capacity', INT, 1e7)
+  .option('--min-capacity <tokens>', 'Minimum channel capacity', INT, 1e6)
   .option('--website <url>', 'URL to advertise as a liquidity provider')
   .option('--node <node_name>', 'Node to run a lsp server')
   .action((args, options, logger) => {
@@ -1286,11 +1285,10 @@ prog
       try {
         return lsp.lsps1Server({
           logger,
-          fee_rate: options.feeRate,
+          fee_rate: options.capacityFeeRate,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           max_capacity: options.maxCapacity,
           min_capacity: options.minCapacity,
-          min_onchain_payment_size: options.minOnchainPaymentSize,
           website: options.website,
         },
         responses.returnObject({logger, reject, resolve}));

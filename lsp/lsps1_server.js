@@ -31,10 +31,6 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedMinCapacityToRunLspServer']);
         }
 
-        if (!args.min_onchain_payment_size || !isNumber(args.min_onchain_payment_size)) {
-          return cbk([400, 'ExpectedMinOnchainPaymentSizeToRunLspServer']);
-        }
-
         if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToRunLspServer']);
         }
@@ -69,7 +65,6 @@ module.exports = (args, cbk) => {
                 max_capacity: args.max_capacity,
                 message: n.message,
                 min_capacity: args.min_capacity,
-                min_onchain_payment_size: args.min_onchain_payment_size,
                 lnd: args.lnd,
                 logger: args.logger,
                 pubkey: n.public_key,
@@ -84,7 +79,6 @@ module.exports = (args, cbk) => {
                 max_capacity: args.max_capacity,
                 message: n.message,
                 min_capacity: args.min_capacity,
-                min_onchain_payment_size: args.min_onchain_payment_size,
                 lnd: args.lnd,
                 logger: args.logger,
                 pubkey: n.public_key,
