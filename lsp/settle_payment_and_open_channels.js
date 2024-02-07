@@ -80,21 +80,21 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Attempt to open channel
       openChannel: ['acceptsOpen', ({}, cbk) => {
-        // Attempt to open channel
         return openChannel({
-          lnd: args.lnd,
-          partner_public_key: args.pubkey,
-          local_tokens: order.result.lsp_balance_sat,
-          fee_rate: args.chain_fees,
           description: `Open channel with ${args.pubkey} for order ${args.order_id}`,
-          is_private: !order.result.announce_channel
+          fee_rate: args.chain_fees,
+          is_private: !order.result.announce_channel,
+          lnd: args.lnd,
+          local_tokens: order.result.lsp_balance_sat,
+          partner_public_key: args.pubkey,
         },
         cbk);
       }],
       
+      // Update the order with the channel
       updateOrder: ['openChannel', ({openChannel}, cbk) => {
-        // Update the order with the channel
         order.result.channel = {
           funding_outpoint: `${openChannel.transaction_id}:${openChannel.transaction_vout}`,
           funded_at: currentDate(),
