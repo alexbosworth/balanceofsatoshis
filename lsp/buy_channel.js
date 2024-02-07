@@ -5,6 +5,10 @@ const {parsePaymentRequest} = require('ln-service');
 const {payViaPaymentRequest} = require('ln-service');
 
 const {constants} = require('./constants.json');
+const {probe} = require('../network');
+const {probeDestination} = require('../network');
+const probeMaxFee = 1337;
+const probeTimeoutMinutes = 5;
 
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
@@ -144,17 +148,32 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Probe destination
+      probeDestination: ['ask', ({}, cbk) => {
+        const {payment} = args.message;
+
+        return probeDestination({
+          lnd: args.lnd,
+          logger: args.logger,
+          request: payment.lightning_invoice,
+          timeout_minutes: probeTimeoutMinutes,
+        },
+        cbk);
+      }],
+
       // Pay lightning invoice
-      payLightning: ['ask', ({ask}, cbk) => {
+      payLightning: ['ask', 'probeDestination', ({ask, probeDestination}, cbk) => {
         if (!ask) {
           return cbk();
         }
 
         const {payment} = args.message;
+        const fee = probeDestination.fee;
 
         return payViaPaymentRequest({
           lnd: args.lnd,
           request: payment.lightning_invoice,
+          max_fee: fee,
         },
         cbk)
       }],
