@@ -1278,8 +1278,8 @@ prog
   .option('--capacity-fee-rate <ppm>', 'Fee rate to charge for liquidity per quarter', INT, 1000)
   .option('--max-capacity <tokens>', 'Maximum channel capacity', INT, 1e7)
   .option('--min-capacity <tokens>', 'Minimum channel capacity', INT, 1e6)
-  .option('--website <url>', 'URL to advertise as a liquidity provider')
   .option('--node <node_name>', 'Node to run a lsp server')
+  .option('--website <url>', 'URL to advertise as a liquidity provider')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {

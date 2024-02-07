@@ -69,6 +69,7 @@ module.exports = (args, cbk) => {
                 logger: args.logger,
                 pubkey: n.public_key,
                 type: n.type,
+                website: args.website,
               });
             }
 

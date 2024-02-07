@@ -98,7 +98,7 @@ module.exports = (args, cbk) => {
           
           // Log the order info and exit
           if (!!args.is_dry_run) {
-            args.logger.info(message.result.options);
+            args.logger.info([message.result.options, {website: message.result.website || undefined}]);
             
             sub.removeAllListeners();
             return;
