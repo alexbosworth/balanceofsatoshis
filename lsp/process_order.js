@@ -293,11 +293,8 @@ module.exports = (args, cbk) => {
   
           // Same as fees because push amounts are not supported
           orderResponse.result.payment.order_total_sat = String(fees);
-
-          const secret = randomSecret();
-          const invoiceId = sha256(secret);
   
-          const {request, id} = await createHodlInvoice({expires_at: expiresAt, id: invoiceId, lnd: args.lnd, tokens: fees});
+          const {id, request, secret} = await createHodlInvoice({expires_at: expiresAt, lnd: args.lnd, tokens: fees});
   
           orderResponse.result.payment.lightning_invoice = request;
           orderResponse.result.payment.onchain_address = null;
@@ -315,7 +312,7 @@ module.exports = (args, cbk) => {
           // Store the order
           args.orders.set(orderId, JSON.stringify(orderResponse));
 
-          return {id, orderId, secret: secret.toString('hex')};
+          return {id, orderId, secret};
         } catch (err) {
           // Ignore errors
           return;
