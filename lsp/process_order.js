@@ -219,14 +219,6 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      getChainHeight: ['getMessage', ({getMessage}, cbk) => {
-        if (!getMessage.message) {
-          return cbk();
-        }
-
-        return getHeight({lnd: args.lnd}, cbk);
-      }],
-
       // Get chain fees
       getChainFees: ['getMessage', ({getMessage}, cbk) => {
         // Exit early when there is no message
