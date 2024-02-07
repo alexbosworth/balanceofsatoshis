@@ -20,7 +20,7 @@ const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');
 const expiryDate = (n) => new Date(Date.now() + n).toISOString();
 const isNumber = n => !isNaN(n);
-const makeOrderId = () => randomBytes(32).toString('hex');
+const makeOrderId = () => randomBytes(16).toString('hex');
 const orderExpiryMs = 1000 * 60 * 60;
 const {parse} = JSON;
 const {stringify} = JSON;
