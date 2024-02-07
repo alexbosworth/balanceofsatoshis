@@ -7,6 +7,7 @@ const {createChainAddress} = require('ln-service');
 const {getNode} = require('ln-service');
 const {sendMessageToPeer} = require('ln-service');
 const {subscribeToPeerMessages} = require('ln-service');
+const {connectPeer} = require('ln-sync');
 
 const buyChannel = require('./buy_channel');
 const {constants} = require('./constants.json');
@@ -65,35 +66,9 @@ module.exports = (args, cbk) => {
         return cbk();
       },
       
-      // Get node info
-      getNodeInfo: ['validate', ({}, cbk) => {
-        return getNode({
-          lnd: args.lnd, 
-          public_key: args.pubkey, 
-          is_omitting_channels: true
-        }, cbk);
-      }],
-      
       // Connect to node
-      connect: ['getNodeInfo', ({getNodeInfo}, cbk) => {
-        const {sockets} = getNodeInfo;
-        
-        if (!sockets.length) {
-          return cbk([503, 'NoAddressesFoundForNodeToConnectToNode']);
-        }
-        
-        return asyncDetectSeries(sockets, ({socket}, cbk) => {
-          return addPeer({
-            socket, 
-            lnd: args.lnd, 
-            public_key: args.pubkey, 
-            retry_count: times, 
-            retry_delay: peerAddedDelayMs
-          }, err => {
-            return cbk(null, !err);
-          });
-        },
-        cbk);
+      connect: ['validate', ({}, cbk) => {        
+        return connectPeer({id: args.pubkey, lnd: args.lnd}, cbk);
       }],
       
       // Subscribe to server messages
@@ -101,36 +76,42 @@ module.exports = (args, cbk) => {
         const sub = subscribeToPeerMessages({lnd: args.lnd});
         
         sub.on('message_received', async n => {
+          if (!n.type || n.type !== constants.messageType) {
+            return;
+          }
+
           try {
-            if (!n.type || n.type !== constants.messageType) {
-              return;
-            }
+            parse(decodeMessage(n.message));
+          } catch (err) {
+            return;
+          }
+
+          const message = parse(decodeMessage(n.message));
+          
+          if (!!message.error) {
+            args.logger.error({error: message.error});
+          }
+          
+          if (!message.jsonrpc || message.jsonrpc !== constants.jsonrpc || !message.result) {
+            return;
+          }
+          
+          // Log the order info and exit
+          if (!!args.is_dry_run) {
+            args.logger.info(message.result.options);
             
-            const message = parse(decodeMessage(n.message));
+            sub.removeAllListeners();
+            return;
+          }
+          
+          if (!!args.recovery) {
+            args.logger.info(message.result);
             
-            if (!!message.error) {
-              args.logger.error({error: message.error});
-            }
-            
-            if (!message.jsonrpc || message.jsonrpc !== constants.jsonrpc || !message.result) {
-              return;
-            }
-            
-            // Log the order info and exit
-            if (!!args.is_dry_run) {
-              args.logger.info(message.result.options);
-              
-              sub.removeAllListeners();
-              return;
-            }
-            
-            if (!!args.recovery) {
-              args.logger.info(message.result);
-              
-              sub.removeAllListeners();
-              return;
-            }
-            
+            sub.removeAllListeners();
+            return;
+          }
+          
+          try {
             if (!args.is_dry_run && !args.recovery) {
               await buyChannel({
                 announce_channel: args.type === publicType,
@@ -153,6 +134,7 @@ module.exports = (args, cbk) => {
         
         sub.on('error', err => {
           sub.removeAllListeners();
+          args.logger.error({err});
         });
         
         return cbk();
