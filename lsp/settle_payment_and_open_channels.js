@@ -2,6 +2,7 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 const {openChannel} = require('ln-service');
 const {settleHodlInvoice} = require('ln-service');
+const {acceptsChannelOpen} = require('ln-sync');
 
 const {constants} = require('./constants.json');
 
@@ -44,7 +45,7 @@ module.exports = (args, cbk) => {
         if (!args.pubkey) {
           return cbk([400, 'ExpectedPubkeyToSettlePaymentAndOpenChannels']);
         }
-
+        
         if (!args.secret) {
           return cbk([400, 'ExpectedSecretToSettlePaymentAndOpenChannels']);
         }
@@ -58,8 +59,8 @@ module.exports = (args, cbk) => {
         return cbk();
       },
       
-      // Open channel
-      openChannel: ['validate', ({}, cbk) => {
+      // Check if channel open is accepted
+      acceptsOpen: ['validate', ({}, cbk) => {
         order = parse(args.order);
         args.logger.info({initial_status: order.result});
         
@@ -70,6 +71,16 @@ module.exports = (args, cbk) => {
         
         args.logger.info({before_channel_opened_status: order.result});
         
+        return acceptsChannelOpen({
+          capacity: order.result.lsp_balance_sat,
+          is_private: !order.result.announce_channel,
+          lnd: args.lnd,
+          partner_public_key: args.pubkey,
+        }, 
+        cbk);
+      }],
+
+      openChannel: ['acceptsOpen', ({}, cbk) => {
         // Attempt to open channel
         return openChannel({
           lnd: args.lnd,
@@ -113,7 +124,7 @@ module.exports = (args, cbk) => {
           args.orders.set(args.order_id, stringify(order));
           
           args.logger.info({final_status: order.result});
-
+          
           return cbk();
         })
       }]
