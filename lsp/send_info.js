@@ -4,7 +4,6 @@ const {sendMessageToPeer} = require('ln-service');
 
 const {constants} = require('./constants.json');
 const makeErrorMessage = require('./make_error_message');
-const {requests} = require('./requests.json');
 const {responses} = require('./responses.json');
 
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
@@ -23,10 +22,6 @@ module.exports = (args, cbk) => {
 
         if (!args.min_capacity) {
           return cbk([400, 'ExpectedMinCapacityToSendInfoMessage']);
-        }
-
-        if (!args.min_onchain_payment_size) {
-          return cbk([400, 'ExpectedMinOnchainPaymentSizeToSendInfoMessage']);
         }
 
         if (!args.lnd) {
@@ -81,20 +76,23 @@ module.exports = (args, cbk) => {
           const responseMessage = responses.lsps1GetinfoResponse;
 
           responseMessage.result.website = args.website || '';
-          responseMessage.result.options.max_channel_balance_sat = args.max_capacity;
+          responseMessage.result.options.max_channel_balance_sat = String(args.max_capacity);
           responseMessage.result.options.min_onchain_payment_confirmations = constants.minOnchainConfs;
-          responseMessage.result.options.min_onchain_payment_size_sat = args.min_onchain_payment_size;
+
+          // Null, onchain payment is not supported
+          responseMessage.result.options.min_onchain_payment_size_sat = constants.minOnchainPaymentSize;
+
           responseMessage.result.options.max_channel_expiry_blocks = constants.channelExpiryBlocks;
           responseMessage.result.options.min_initial_client_balance_sat = constants.minPushAmount;
           responseMessage.result.options.max_initial_client_balance_sat = constants.maxPushAmount;
-          responseMessage.result.options.min_channel_balance_sat = args.min_capacity;
+          responseMessage.result.options.min_channel_balance_sat = String(args.min_capacity);
           responseMessage.result.options.min_channel_confirmations = constants.minChannelConfs;
-          responseMessage.result.options.min_initial_lsp_balance_sat = args.min_capacity;
-          responseMessage.result.options.max_initial_lsp_balance_sat = args.max_capacity;
+          responseMessage.result.options.min_initial_lsp_balance_sat = String(args.min_capacity);
+          responseMessage.result.options.max_initial_lsp_balance_sat = String(args.max_capacity);
           responseMessage.id = message.id;
 
           // Your max local balance is same as max capacity
-          responseMessage.result.options.max_initial_lsp_balance_sat = args.max_capacity;
+          responseMessage.result.options.max_initial_lsp_balance_sat = String(args.max_capacity);
 
           return sendMessageToPeer({
             lnd: args.lnd,

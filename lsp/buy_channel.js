@@ -3,12 +3,8 @@ const {returnResult} = require('asyncjs-util');
 
 const {parsePaymentRequest} = require('ln-service');
 const {payViaPaymentRequest} = require('ln-service');
-const {sendToChainAddress} = require('ln-service');
 
 const {constants} = require('./constants.json');
-
-const lightningPaymentType = 'lightning';
-const onchainPaymentType = 'onchain';
 
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
@@ -148,27 +144,9 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Ask for onchain or offchain payment
-      askPaymentType: ['ask', ({}, cbk) => {
-        // Exit early if onchain payment is not supported
-        const {payment} = args.message;
-
-        if (!payment.onchain_address || payment.onchain_address === '') {
-          return cbk(null, {type: 'lightning'});
-        }
-
-        return args.ask({
-          message: 'Do you want to pay with onchain or lightning funds?',
-          name: 'payment_type',
-          type: 'list',
-          choices: [lightningPaymentType, onchainPaymentType],
-        },
-        ({payment_type}) => cbk(null, {type: payment_type}));
-      }],
-
       // Pay lightning invoice
-      payLightning: ['askPaymentType', ({askPaymentType}, cbk) => {
-        if (askPaymentType.type !== lightningPaymentType) {
+      payLightning: ['ask', ({ask}, cbk) => {
+        if (!ask) {
           return cbk();
         }
 
@@ -179,30 +157,6 @@ module.exports = (args, cbk) => {
           request: payment.lightning_invoice,
         },
         cbk)
-      }],
-
-      // Send onchain payment
-      payOnchain: ['askPaymentType', ({askPaymentType}, cbk) => {
-        if (askPaymentType.type !== onchainPaymentType) {
-          return cbk();
-        }
-
-        const {payment} = args.message;
-
-        return sendToChainAddress({
-          address: payment.onchain_address,
-          lnd: args.lnd,
-          target_confirmations: constants.targetConfsForOnchainPayment,
-          tokens: Number(payment.order_total_sat)
-        }, 
-        cbk)
-      }],
-
-      // Payment sent
-      paymentSent: ['payLightning', 'payOnchain', ({}, cbk) => {
-        args.logger.info({payment_sent: true});
-
-        return cbk();
       }],
     },
     returnResult({reject, resolve}, cbk));

@@ -1,13 +1,13 @@
 {
   "constants": {
+    "channelExpiryBlocks": 13000,
     "jsonrpc": "2.0",
     "messageType": 37913,
-    "minPushAmount": "0",
     "maxPushAmount": "0",
-    "channelExpiryBlocks": 13000,
     "minChannelConfs": 3,
     "minOnchainConfs": 2,
-    "targetConfsForOnchainPayment": 6,
+    "minOnchainPaymentSize": null,
+    "minPushAmount": "0",
     "orderStates": {
       "created": "CREATED",
       "completed": "COMPLETED",
@@ -19,10 +19,6 @@
       "paid": "PAID",
       "refunded": "REFUNDED"
     },
-    "methods": {
-      "buy-channel": "buy_channel",
-      "check-order": "check_order",
-      "request-info": "request_info"
-    }
+    "targetConfsForOnchainPayment": 6
   }
 }

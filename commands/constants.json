@@ -7,11 +7,6 @@
     "invoices": "invoices",
     "payments": "payments"
   },
-  "inboundChannelMethods": {
-    "request-info": "request_info",
-    "buy-channel": "buy_channel",
-    "check-order": "check_order"
-  },
   "lnurlFunctions": {
     "auth": "auth",
     "channel": "channel",
