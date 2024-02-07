@@ -27,8 +27,7 @@ const isNumber = n => !isNaN(n);
 const makeOrderId = () => randomBytes(32).toString('hex');
 const orderExpiryMs = 1000 * 60 * 60;
 const {parse} = JSON;
-const randomSecret = () => randomBytes(32);
-const sha256 = buffer => createHash('sha256').update(buffer).digest('hex');
+const {stringify} = JSON;
 const sumOf = (a, b) => a + b;
 
 
@@ -310,7 +309,7 @@ module.exports = (args, cbk) => {
           });
 
           // Store the order
-          args.orders.set(orderId, JSON.stringify(orderResponse));
+          args.orders.set(orderId, stringify(orderResponse));
 
           return {id, orderId, secret};
         } catch (err) {
@@ -357,7 +356,7 @@ module.exports = (args, cbk) => {
             args.logger.info({initial_status: parsedOrder.result});
 
             parsedOrder.result.payment.state = constants.paymentStates.hold;
-            args.orders.set(orderId, JSON.stringify(parsedOrder));
+            args.orders.set(orderId, stringify(parsedOrder));
 
             args.logger.info({before_channel_opened_status: parsedOrder.result});
 
@@ -378,7 +377,7 @@ module.exports = (args, cbk) => {
               expires_at: expiryDate(channelExpiryMs),
             };
 
-            args.orders.set(orderId, JSON.stringify(parsedOrder));
+            args.orders.set(orderId, stringify(parsedOrder));
 
             args.logger.info({after_channel_opened_status: parsedOrder.result});
   
@@ -388,7 +387,7 @@ module.exports = (args, cbk) => {
             // Update the order state
             parsedOrder.result.order_state = constants.orderStates.completed;
             parsedOrder.result.payment.state = constants.paymentStates.paid;
-            args.orders.set(orderId, JSON.stringify(parsedOrder));
+            args.orders.set(orderId, stringify(parsedOrder));
 
             args.logger.info({final_status: parsedOrder.result});
           } catch (err) {
@@ -402,7 +401,7 @@ module.exports = (args, cbk) => {
             const parsedOrder = parse(order);
             parsedOrder.result.order_state = constants.orderStates.failed;
             parsedOrder.result.payment.state = constants.paymentStates.refunded;
-            args.orders.set(orderId, JSON.stringify(parsedOrder));
+            args.orders.set(orderId, stringify(parsedOrder));
 
             args.logger.info({failed_order_status: parsedOrder.result});
             args.logger.error({err});
