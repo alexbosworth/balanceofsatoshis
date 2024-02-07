@@ -2,23 +2,19 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 
 const {randomBytes} = require('crypto');
-const {createHash} = require('crypto');
 
 const {cancelHodlInvoice} = require('ln-service');
-const {createChainAddress} = require('ln-service');
 const {createHodlInvoice} = require('ln-service');
 const {getHeight} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
-const {openChannel} = require('ln-service');
-const {settleHodlInvoice} = require('ln-service');
 const {sendMessageToPeer} = require('ln-service');
 const {subscribeToInvoice} = require('ln-service');
 
 const {constants} = require('./constants.json');
 const {responses} = require('./responses.json');
 const makeErrorMessage = require('./make_error_message');
+const settlePaymentAndOpenChannels = require('./settle_payment_and_open_channels');
 
-const channelExpiryMs = 1000 * 60 * 60 * 24 * 90;
 const currentDate = () => new Date().toISOString();
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');
@@ -351,45 +347,17 @@ module.exports = (args, cbk) => {
 
             // Update payment state to hold
             const order = args.orders.get(orderId);
-            const parsedOrder = parse(order);
 
-            args.logger.info({initial_status: parsedOrder.result});
-
-            parsedOrder.result.payment.state = constants.paymentStates.hold;
-            args.orders.set(orderId, stringify(parsedOrder));
-
-            args.logger.info({before_channel_opened_status: parsedOrder.result});
-
-            // Attempt to open channel
-            const channel = await openChannel({
+            await settlePaymentAndOpenChannels({
+              order,
+              secret,
+              chain_fees: getChainFees.tokens_per_vbyte,
               lnd: args.lnd,
-              partner_public_key: args.pubkey,
-              local_tokens: parsedOrder.result.lsp_balance_sat,
-              fee_rate: getChainFees.tokens_per_vbyte,
-              description: `Open channel with ${args.pubkey} for order ${orderId}`,
-              is_private: !parsedOrder.result.announce_channel
+              logger: args.logger,
+              order_id: orderId,
+              orders: args.orders,
+              pubkey: args.pubkey,
             });
-
-            // Update the order with the channel
-            parsedOrder.result.channel = {
-              funding_outpoint: `${channel.transaction_id}:${channel.transaction_vout}`,
-              funded_at: currentDate(),
-              expires_at: expiryDate(channelExpiryMs),
-            };
-
-            args.orders.set(orderId, stringify(parsedOrder));
-
-            args.logger.info({after_channel_opened_status: parsedOrder.result});
-  
-            // Use the secret to claim the funds
-            await settleHodlInvoice({secret, lnd: args.lnd});
-            
-            // Update the order state
-            parsedOrder.result.order_state = constants.orderStates.completed;
-            parsedOrder.result.payment.state = constants.paymentStates.paid;
-            args.orders.set(orderId, stringify(parsedOrder));
-
-            args.logger.info({final_status: parsedOrder.result});
           } catch (err) {
             clearTimeout(timeout);
             sub.removeAllListeners();
