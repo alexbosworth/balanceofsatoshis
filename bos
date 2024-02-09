@@ -32,6 +32,7 @@ const lnurl = importLazy('./lnurl');
 const {lnurlFunctions} = commandConstants;
 const network = importLazy('./network');
 const nodes = importLazy('./nodes');
+const nostr = importLazy('./nostr');
 const offchain = importLazy('./offchain');
 const {peerSortOptions} = commandConstants;
 const peers = importLazy('./peers');
@@ -1231,6 +1232,36 @@ prog
         is_unlocking: options.unlock || undefined,
         lock_credentials_to: flatten([options.lock].filter(n => !!n)),
         node: args.node || undefined,
+      },
+      responses.returnObject({logger, reject, resolve}));
+    });
+  })
+
+  .command('nostr', 'Collection of nostr features')
+  .help('--add-relay flag saves a relay to publish data to')
+  .help('--broadcast-message broadcasts an event to relays')
+  .help('--nostr-key flag saves nostr private key encrypted to your node')
+  .help('--remove-relay flag deletes a saved relay')
+  .option('--add-relay <relay_uri>', 'Saves a relay to broadcast events to', REPEATABLE)
+  .option('--broadcast-message <broadcast_message>', 'Broadcast an event to relays')
+  .option('--node <node_name>', 'Saved node to encrypt nostr key to')
+  .option('--nostr-key <nostr_private_key>', 'Saves nostr private key')
+  .option('--remove-relay <relay_uri>', 'Removes a saved relay', REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      return nostr.manageNostr({
+        logger,
+        add: flatten([options.addRelay].filter(n => !!n)),
+        fs: {
+          writeFile,
+          getFile: readFile,
+          makeDirectory: mkdir,
+        },
+        lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+        message: options.broadcastMessage || undefined,
+        node: options.node || undefined,
+        nostr_key: options.nostrKey || undefined,
+        remove: flatten([options.removeRelay].filter(n => !!n)),
       },
       responses.returnObject({logger, reject, resolve}));
     });
