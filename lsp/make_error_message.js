@@ -1,6 +1,29 @@
+const {versionJsonRpc} = require('./lsps1_protocol');
 
+/** Make an error message
 
-module.exports = ({code, data, message}) => {
+  {
+    code: <Error Code Number>
+    data: <Error Data Object>
+    id: <Request Id Number or String>
+    message: <Error Message string>
+  }
+
+  @throws
+  <Error>
+
+  @returns
+  {
+    error: {
+      code: <Error Code Number>
+      data: <Error Data Object>
+      message: <Error Message string>
+    }
+    id: <Request Id Number or String>
+    jsonrpc: <JSON RPC Version String>
+  }
+*/
+module.exports = ({code, data, id, message}) => {
   if (!code) {
     throw new Error('ExpectedErrorCodeToMakeErrorMessage');
   }
@@ -9,16 +32,13 @@ module.exports = ({code, data, message}) => {
     throw new Error('ExpectedErrorDataToMakeErrorMessage');
   }
 
+  if (!id) {
+    throw new Error('ExpectedIdToMakeErrorMessage');
+  }
+
   if (!message) {
     throw new Error('ExpectedErrorMessageToMakeErrorMessage');
   }
 
-  return {
-    jsonrpc: "2.0",
-    error: {
-      code,
-      message,
-      data,
-    }
-  };
-}
+  return {id, error: {code, data, message}, jsonrpc: versionJsonRpc};
+};

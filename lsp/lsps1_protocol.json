@@ -1,0 +1,20 @@
+{
+  "codeInvalidParameters": -32606,
+  "codeResourceNotFound": 404,
+  "codeOptionMismatch": 1000,
+  "errMessageInvalidParams": "Invalid params",
+  "errMessageNotFound": "Not found",
+  "errMessageOptionMismatch": "Option mismatch",
+  "methodCreateOrder": "lsps1.create_order",
+  "methodGetInfo": "lsps1.get_info",
+  "methodGetOrder": "lsps1.get_order",
+  "orderStateFailed": "FAILED",
+  "orderStateCompleted": "COMPLETED",
+  "orderStateCreated": "CREATED",
+  "paymentStateExpectedPayment": "EXPECT_PAYMENT",
+  "paymentStateHeldPayment": "HOLD",
+  "paymentStatePaid": "PAID",
+  "paymentStateRefunded": "REFUNDED",
+  "typeForMessaging": 37913,
+  "versionJsonRpc": "2.0"
+}

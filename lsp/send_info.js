@@ -2,107 +2,123 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 const {sendMessageToPeer} = require('ln-service');
 
-const {constants} = require('./constants.json');
+const {codeInvalidParameters} = require('./lsps1_protocol');
+const {defaultChannelActiveConfs} = require('./constants');
+const {defaultLifetimeBlocks} = require('./constants');
+const {errMessageInvalidParams} = require('./lsps1_protocol');
 const makeErrorMessage = require('./make_error_message');
-const {responses} = require('./responses.json');
+const {typeForMessaging} = require('./lsps1_protocol');
+const {versionJsonRpc} = require('./lsps1_protocol');
 
-const decodeMessage = n => Buffer.from(n, 'hex').toString();
-const encodeMessage = n => Buffer.from(JSON.stringify(n)).toString('hex');
-const {parse} = JSON;
+const decodeMessage = hex => JSON.parse(Buffer.from(hex, 'hex').toString());
+const encodeMessage = obj => Buffer.from(JSON.stringify(obj)).toString('hex');
 
+/** Send general terms for the channel open service
 
+  {
+    max_capacity: <Maximum Supported Channel Capacity Tokens Number>
+    message: <Received Message Hex String>
+    min_capacity: <Minimum Supported Channel Capacity Tokens Number>
+    lnd: <Authenticated LND API Object>
+    to_peer: <Peer Public Key Hex String>
+    [website]: <Related Website URL String>
+  }
+
+  @returns via cbk or Promise
+*/
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
-      // Check arguements
+      // Check arguments
       validate: cbk => {
         if (!args.max_capacity) {
-          return cbk([400, 'ExpectedMaxCapacityToSendInfoMessage']);
-        }
-
-        if (!args.min_capacity) {
-          return cbk([400, 'ExpectedMinCapacityToSendInfoMessage']);
-        }
-
-        if (!args.lnd) {
-          return cbk([400, 'ExpectedAuthenticatedLndToSendInfoMessage']);
-        }
-
-        if (!args.logger) {
-          return cbk([400, 'ExpectedLoggerToSendInfoMessage']);
+          return cbk([400, 'ExpectedMaxCapacityToSendLsps1InfoMessage']);
         }
 
         if (!args.message) {
-          return cbk([400, 'ExpectedMessageToSendInfoMessage']);
-        }
-
-        if (!args.pubkey) {
-          return cbk([400, 'ExpectedPubkeyToSendInfoMessage']);
-        }
-
-        if (!args.type) {
-          return cbk([400, 'ExpectedTypeToSendInfoMessage']);
+          return cbk([400, 'ExpectedMessageToSendLsps1InfoMessage']);
         }
 
         try {
-          parse(decodeMessage(args.message));
+          decodeMessage(args.message);
         } catch (e) {
-          return cbk([400, 'ExpectedValidMessageToSendInfoMessage']);
+          return cbk([400, 'ExpectedValidMessageToSendLsps1InfoMessage']);
+        }
+
+        if (!args.min_capacity) {
+          return cbk([400, 'ExpectedMinCapacityToSendLsps1InfoMessage']);
+        }
+
+        if (!args.lnd) {
+          return cbk([400, 'ExpectedAuthenticatedLndToSendLsps1InfoMessage']);
+        }
+
+        if (!args.to_peer) {
+          return cbk([400, 'ExpectedIdentityPubKeyToSendLsps1InfoMessage']);
         }
 
         return cbk();
       },
 
-      // Send getinfo response
-      sendInfoMessage: ['validate', ({}, cbk) => {
-        try {
-          const message = parse(decodeMessage(args.message));
+      // Make the terms response
+      response: ['validate', ({}, cbk) => {
+        const {id, params} = decodeMessage(args.message);
 
-          if (!message.params) {
-            const error = {
-              error: makeErrorMessage({code: -32606, message: 'Invalid params', data: {
-              property: 'params',
-              message: 'MissingParamsInCreateOrderRequest'
-            }})};
-
-            return sendMessageToPeer({
-              lnd: args.lnd,
-              message: encodeMessage(error),
-              public_key: args.pubkey,
-              type: args.type,
-            }, cbk);
-          }
-
-          const responseMessage = responses.lsps1GetinfoResponse;
-
-          responseMessage.result.website = args.website || '';
-          responseMessage.result.options.max_channel_balance_sat = String(args.max_capacity);
-          responseMessage.result.options.min_onchain_payment_confirmations = constants.minOnchainConfs;
-
-          // Null, onchain payment is not supported
-          responseMessage.result.options.min_onchain_payment_size_sat = constants.minOnchainPaymentSize;
-
-          responseMessage.result.options.max_channel_expiry_blocks = constants.channelExpiryBlocks;
-          responseMessage.result.options.min_initial_client_balance_sat = constants.minPushAmount;
-          responseMessage.result.options.max_initial_client_balance_sat = constants.maxPushAmount;
-          responseMessage.result.options.min_channel_balance_sat = String(args.min_capacity);
-          responseMessage.result.options.min_channel_confirmations = constants.minChannelConfs;
-          responseMessage.result.options.min_initial_lsp_balance_sat = String(args.min_capacity);
-          responseMessage.result.options.max_initial_lsp_balance_sat = String(args.max_capacity);
-          responseMessage.id = message.id;
-
-          // Your max local balance is same as max capacity
-          responseMessage.result.options.max_initial_lsp_balance_sat = String(args.max_capacity);
-
-          return sendMessageToPeer({
-            lnd: args.lnd,
-            message: encodeMessage(responseMessage),
-            public_key: args.pubkey,
-            type: args.type,
-          }, cbk);
-        } catch (err) {
-          return cbk([400, 'FailedToSendInfoMessage', {err}]);
+        // A response cannot be returned when there is no request id
+        if (!id) {
+          return cbk([400, 'ExpectedMessageIdToSendLsps1ChannelOpenInfo']);
         }
+
+        // Exit early when params are missing
+        if (!params) {
+          return cbk(null, {
+            id,
+            error: makeErrorMessage({
+              code: codeInvalidParameters,
+              data: {
+                message: 'MissingParamsInGetInfoRequest',
+                property: 'params',
+              },
+              message: errMessageInvalidParams,
+            }),
+          });
+        }
+
+        return cbk(null, {
+          id,
+          result: {
+            options: {
+              max_channel_balance_sat: args.max_capacity.toString(),
+              max_channel_expiry_blocks: defaultLifetimeBlocks,
+              max_initial_client_balance_sat: Number().toString(),
+              max_initial_lsp_balance_sat: args.max_capacity.toString(),
+              min_channel_balance_sat: args.min_capacity.toString(),
+              min_channel_confirmations: defaultChannelActiveConfs,
+              min_initial_client_balance_sat: Number().toString(),
+              min_initial_lsp_balance_sat: args.min_capacity.toString(),
+              min_onchain_payment_confirmations: null,
+              min_onchain_payment_size_sat: null,
+              supports_zero_channel_reserve: false,
+            },
+            website: args.website || String(),
+          },
+        });
+      }],
+
+      // Send the terms response via p2p messaging
+      sendInfoMessage: ['response', ({response}, cbk) => {
+        return sendMessageToPeer({
+          lnd: args.lnd,
+          message: encodeMessage({
+            error: response.error || undefined,
+            id: response.id,
+            jsonrpc: versionJsonRpc,
+            result: response.result || undefined,
+          }),
+          public_key: args.to_peer,
+          type: typeForMessaging,
+        },
+        cbk);
       }],
     },
     returnResult({reject, resolve}, cbk));

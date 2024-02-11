@@ -805,17 +805,13 @@ prog
 
   // Buy an inbound channel
   .command('get-inbound-channel', 'Buy an inbound channel')
-  .help('Buy an inbound channel from a node on the network')
-  .help('request-info returns the information about the channel from the seller')
-  .help('buy-channel places an order for an inbound channel')
-  .help('check-order checks the status of an inbound channel order')
-  .argument('<pubkey>', 'Public key of node to buy channel from')
-  .option('--amount <tokens>', 'Amount of inbound liquidity', INT, 5e6)
-  .option('--dryrun <dryrun>', 'Returns information from seller')
-  .option('--recovery <orderId>', 'Order id to check', STRING)
-  .option('--node <node_name>', 'Node to buy inbound channel from')
-  .option('--max-expected-wait-hours <hours>', 'Max expected wait time for channel open', INT, 48)
-  .option('--pubkey <public_key>', 'Public key of node to buy channel from')
+  .help('Obtain an inbound channel from a node on the network')
+  .argument('<service>', 'Public key identity of node to get channel from')
+  .option('--amount <tokens>', 'Capacity of inbound channel desired', INT, 5e6)
+  .option('--dryrun <dryrun>', 'Request a price quote only')
+  .option('--max-wait-hours <hours>', 'Hours to wait for the open', INT, 48)
+  .option('--node <node_name>', 'Node to get inbound channel for')
+  .option('--recovery <orderId>', 'Check the status of prior order', STRING)
   .option('--type <type>', 'Channel type: private/public', STRING, 'public')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -823,12 +819,13 @@ prog
         return lsp.lsps1Client({
           logger,
           ask: await commands.interrogate({}),
+          capacity: options.amount,
+          fs: {getFile: readFile},
           is_dry_run: !!options.dryrun,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          max_wait_hours: options.maxExpectedWaitHours,
-          pubkey: args.pubkey,
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          max_wait_hours: options.maxWaitHours,
           recovery: options.recovery,
-          tokens: options.amount,
+          service_node: args.service,
           type: options.type,
         },
         responses.returnObject({logger, reject, resolve}));
@@ -1272,23 +1269,28 @@ prog
     });
   })
 
-  // Offer inbound liquidity
-  .command('offer-channel-open', 'Serve as Liquidity Service Provider')
-  .help('Provide inbound liquidity to clients for a fee')
-  .option('--capacity-fee-rate <ppm>', 'Fee rate to charge for liquidity per quarter', INT, 1000)
-  .option('--max-capacity <tokens>', 'Maximum channel capacity', INT, 1e7)
+  // Offer channel open attempts
+  .command('offer-channel-open', 'Offer peers channel open attempts for a fee')
+  .help('Requires peer to use get-inbound-channel or other LSPS1 client')
+  .option('--added-base-fee <n>', 'Fixed surcharge on all orders', INT, 75000)
+  .option('--capacity-fee-rate <ppm>', 'Fee per year for capacity', INT, 10000)
+  .option('--max-capacity <tokens>', 'Maximum channel capacity', INT, 1e8)
   .option('--min-capacity <tokens>', 'Minimum channel capacity', INT, 1e6)
-  .option('--node <node_name>', 'Node to run a lsp server')
-  .option('--website <url>', 'URL to advertise as a liquidity provider')
+  .option('--node <node_name>', 'Node to offer channels on')
+  .option('--private-fee-rate <ppm>', 'Add private capacity charge', INT, 1000)
+  .option('--website <url>', 'URL to advertise as informational website')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
         return lsp.lsps1Server({
           logger,
+          base_fee: options.addedBaseFee,
           fee_rate: options.capacityFeeRate,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          lnd: (await lndForNode(logger, options.node)).lnd,
           max_capacity: options.maxCapacity,
           min_capacity: options.minCapacity,
+          orders: new Map(),
+          private_fee_rate: options.privateFeeRate,
           website: options.website,
         },
         responses.returnObject({logger, reject, resolve}));

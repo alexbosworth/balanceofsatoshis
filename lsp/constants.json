@@ -1,24 +1,5 @@
 {
-  "constants": {
-    "channelExpiryBlocks": 13000,
-    "jsonrpc": "2.0",
-    "messageType": 37913,
-    "maxPushAmount": "0",
-    "minChannelConfs": 3,
-    "minOnchainConfs": 2,
-    "minOnchainPaymentSize": null,
-    "minPushAmount": "0",
-    "orderStates": {
-      "created": "CREATED",
-      "completed": "COMPLETED",
-      "failed": "FAILED"
-    },
-    "paymentStates": {
-      "expectPayment": "EXPECT_PAYMENT",
-      "hold": "HOLD",
-      "paid": "PAID",
-      "refunded": "REFUNDED"
-    },
-    "targetConfsForOnchainPayment": 6
-  }
+  "assumedOpenTransactionVbytes": 150,
+  "defaultChannelActiveConfs": 6,
+  "defaultLifetimeBlocks": 13000
 }
