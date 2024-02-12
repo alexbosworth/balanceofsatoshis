@@ -1,5 +1,10 @@
 # Versions
 
+## 17.6.0
+
+- `get-inbound-channel`: Add command to get an inbound channel open
+- `offer-channel-open`: Add command to offer channel opens
+
 ## 17.5.6
 
 - `lnurl`: Fix support for specifying `--avoid` flag
