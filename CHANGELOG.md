@@ -1,6 +1,6 @@
 # Versions
 
-## 17.6.0
+## 17.6.1
 
 - `get-inbound-channel`: Add command to get an inbound channel open
 - `offer-channel-open`: Add command to offer channel opens
