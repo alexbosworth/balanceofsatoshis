@@ -100,7 +100,6 @@ module.exports = (args, cbk) => {
         });
 
         subMessages.on('message_received', async received => {
-          
           // Exit early when a peer message is not for the LSPS1 type
           if (received.type !== typeForMessaging) {
             return;
