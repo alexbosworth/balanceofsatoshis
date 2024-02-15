@@ -122,6 +122,7 @@ module.exports = (args, cbk) => {
                 message: 'MissingParamsInCreateOrderRequest',
                 property: 'params',
               },
+              id: message.id,
               message: errMessageInvalidParams,
             }),
           });
@@ -135,6 +136,7 @@ module.exports = (args, cbk) => {
                 message: 'MissingLspBalanceInCreateOrderRequest',
                 property: 'lsp_balance_sat',
               },
+              id: message.id,
               message: errMessageInvalidParams,
             }),
           });
@@ -148,6 +150,7 @@ module.exports = (args, cbk) => {
                 message: 'MissingClientBalanceInCreateOrderRequest',
                 property: 'client_balance_sat',
               },
+              id: message.id,
               message: errMessageInvalidParams,
             }),
           });
@@ -161,6 +164,7 @@ module.exports = (args, cbk) => {
                 message: 'MissingConfirmsWithinBlocksInCreateOrderRequest',
                 property: 'confirms_within_blocks',
               },
+              id: message.id,
               message: errMessageInvalidParams,
             }),
           });
@@ -174,6 +178,7 @@ module.exports = (args, cbk) => {
                 message: 'MissingChannelExpiryBlocksInCreateOrderRequest',
                 property: 'channel_expiry_blocks',
               },
+              id: message.id,
               message: errMessageInvalidParams,
             }),
           });
@@ -187,6 +192,7 @@ module.exports = (args, cbk) => {
                 message: 'MissingAnnounceChannelInCreateOrderRequest',
                 property: 'announce_channel',
               },
+              id: message.id,
               message: errMessageInvalidParams,
             }),
           });
@@ -205,6 +211,7 @@ module.exports = (args, cbk) => {
                 message: 'OrderExceedingTotalCapacityInCreateOrderRequest',
                 property: 'lsp_balance_sat',
               },
+              id: message.id,
               message: errMessageOptionMismatch,
             }),
           });
@@ -218,6 +225,7 @@ module.exports = (args, cbk) => {
                 message: 'OrderBelowMinCapacityInCreateOrderRequest',
                 property: 'lsp_balance_sat',
               },
+              id: message.id,
               message: errMessageOptionMismatch,
             }),
           });
@@ -231,6 +239,7 @@ module.exports = (args, cbk) => {
                 message: 'ClientBalanceTooHighInCreateOrderRequest',
                 property: 'client_balance_sat',
               },
+              id: message.id,
               message: errMessageOptionMismatch,
             }),
           });
@@ -246,6 +255,7 @@ module.exports = (args, cbk) => {
                 message: 'ChannelExpiryBlocksTooHighInCreateOrderRequest',
                 property: 'channel_expiry_blocks',
               },
+              id: message.id,
               message: errMessageOptionMismatch,
             }),
           });
