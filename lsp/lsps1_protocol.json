@@ -5,6 +5,7 @@
   "errMessageInvalidParams": "Invalid params",
   "errMessageNotFound": "Not found",
   "errMessageOptionMismatch": "Option mismatch",
+  "featureBit": 729,
   "methodCreateOrder": "lsps1.create_order",
   "methodGetInfo": "lsps1.get_info",
   "methodGetOrder": "lsps1.get_order",

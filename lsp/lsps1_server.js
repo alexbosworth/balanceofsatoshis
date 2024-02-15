@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const {getIdentity} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
+const {getWalletInfo} = require('ln-service');
 const {subscribeToChannels} = require('ln-service');
 const {subscribeInvoices} = require('ln-service');
 const {subscribeToPeerMessages} = require('ln-service');
@@ -11,9 +12,11 @@ const {methodGetOrder} = require('./lsps1_protocol');
 const processOrder = require('./process_order');
 const sendOrder = require('./send_order');
 const sendInfo = require('./send_info');
+const {featureBit} = require('./lsps1_protocol');
 const {typeForMessaging} = require('./lsps1_protocol');
 const {versionJsonRpc} = require('./lsps1_protocol');
 
+const addAction = 0;
 const decodeMessage = n => JSON.parse(Buffer.from(n, 'hex').toString());
 const isMap = n => n instanceof Map;
 const isNumber = n => !isNaN(n);
@@ -86,8 +89,36 @@ module.exports = (args, cbk) => {
       // Get the node identity to show what server is advertising the opens
       getId: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
 
+      // Get wallet info
+      getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
+
+      // Broadcast Lsp service feature bit
+      broadcastFeature: ['getInfo', ({getInfo}, cbk) => {
+        const findFeature = getInfo.features.find(n => n.bit === featureBit);
+
+        // Exit early when the feature bit is already set
+        if (!!findFeature) {
+          return cbk();
+        }
+
+        const req = {
+          feature_updates: [{
+            action: addAction,
+            feature_bit: featureBit
+          }]
+        };
+
+        return args.lnd.peers.UpdateNodeAnnouncement(req, (err, res) => {
+          if (!!err) {
+            return cbk([503, 'UnexpectedErrorBroadcastingFeatureBit', {err}]);
+          }
+
+          return cbk();
+        });
+      }],
+
       // Serve LSPS1 open requests
-      run: ['getId', ({getId}, cbk) => {
+      run: ['broadcastFeature', 'getId', ({getId}, cbk) => {
         const subChannels = subscribeToChannels({lnd: args.lnd});
         const subMessages = subscribeToPeerMessages({lnd: args.lnd});
 
