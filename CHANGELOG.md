@@ -1,5 +1,9 @@
 # Versions
 
+## 17.6.2
+
+- `offer-channel-open`: Fix error message responses not returning
+
 ## 17.6.1
 
 - `get-inbound-channel`: Add command to get an inbound channel open
