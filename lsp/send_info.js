@@ -6,7 +6,6 @@ const {codeInvalidParameters} = require('./lsps1_protocol');
 const {defaultChannelActiveConfs} = require('./constants');
 const {defaultLifetimeBlocks} = require('./constants');
 const {errMessageInvalidParams} = require('./lsps1_protocol');
-const makeErrorMessage = require('./make_error_message');
 const {typeForMessaging} = require('./lsps1_protocol');
 const {versionJsonRpc} = require('./lsps1_protocol');
 
@@ -73,14 +72,14 @@ module.exports = (args, cbk) => {
         if (!params) {
           return cbk(null, {
             id,
-            error: makeErrorMessage({
+            error: {
               code: codeInvalidParameters,
               data: {
                 message: 'MissingParamsInGetInfoRequest',
                 property: 'params',
               },
               message: errMessageInvalidParams,
-            }),
+            },
           });
         }
 

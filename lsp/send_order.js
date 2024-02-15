@@ -6,7 +6,6 @@ const {codeInvalidParameters} = require('./lsps1_protocol');
 const {codeResourceNotFound} = require('./lsps1_protocol');
 const {errMessageNotFound} = require('./lsps1_protocol');
 const {errMessageInvalidParams} = require('./lsps1_protocol');
-const makeErrorMessage = require('./make_error_message');
 const {typeForMessaging} = require('./lsps1_protocol');
 const {versionJsonRpc} = require('./lsps1_protocol');
 
@@ -17,7 +16,7 @@ const {parse} = JSON;
 /** Send the status of a previously created order
 
   {
-    orders: <LSPS1 Orders Map>
+    orders: <LSPS1 Orders Map Object>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     message: <Received Message String>
@@ -69,28 +68,28 @@ module.exports = (args, cbk) => {
         if (!params) {
           return cbk(null, {
             id,
-            error: makeErrorMessage({
+            error: {
               code: codeInvalidParameters,
               data: {
                 message: 'MissingParamsInGetOrderRequest',
                 property: 'params',
               },
               message: errMessageInvalidParams,
-            }),
+            },
           });
         }
 
         if (!params.order_id) {
           return cbk(null, {
             id,
-            error: makeErrorMessage({
+            error: {
               code: codeInvalidParameters,
               data: {
                 message: 'MissingOrderIdInGetOrderStatusRequest',
                 property: 'order_id',
               },
               message: errMessageInvalidParams,
-            }),
+            },
           });
         }
 
@@ -99,11 +98,11 @@ module.exports = (args, cbk) => {
         if (!order) {
           return cbk(null, {
             id,
-            error: makeErrorMessage({
+            error: {
               code: codeResourceNotFound,
               data: {},
               message: errMessageNotFound,
-            }),
+            },
           });
 
           return cbk(null, error);
