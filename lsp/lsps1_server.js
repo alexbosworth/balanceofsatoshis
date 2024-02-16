@@ -1,3 +1,4 @@
+const {addAdvertisedFeature} = require('ln-service');
 const asyncAuto = require('async/auto');
 const {getIdentity} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -101,16 +102,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        return args.lnd.peers.UpdateNodeAnnouncement({
-          feature_updates: [{action: addAction, feature_bit: featureBit}],
-        },
-        err => {
-          if (!!err) {
-            return cbk([503, 'UnexpectedErrorBroadcastingFeatureBit', {err}]);
-          }
-
-          return cbk();
-        });
+        return addAdvertisedFeature({feature: featureBit, lnd: args.lnd}, cbk);
       }],
 
       // Serve LSPS1 open requests

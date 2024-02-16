@@ -1,6 +1,6 @@
 # Versions
 
-## 17.7.0
+## 17.7.1
 
 - `offer-channel-open`: Add graph advertisement for offering support
 
