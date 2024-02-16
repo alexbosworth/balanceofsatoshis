@@ -89,26 +89,22 @@ module.exports = (args, cbk) => {
       // Get the node identity to show what server is advertising the opens
       getId: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
 
-      // Get wallet info
+      // Get wallet info to see if the LSPS1 feature is already advertised
       getInfo: ['validate', ({}, cbk) => getWalletInfo({lnd: args.lnd}, cbk)],
 
-      // Broadcast Lsp service feature bit
+      // Broadcast LSPS1 service feature bit
       broadcastFeature: ['getInfo', ({getInfo}, cbk) => {
-        const findFeature = getInfo.features.find(n => n.bit === featureBit);
+        const lsps1Feature = getInfo.features.find(n => n.bit === featureBit);
 
         // Exit early when the feature bit is already set
-        if (!!findFeature) {
+        if (!!lsps1Feature) {
           return cbk();
         }
 
-        const req = {
-          feature_updates: [{
-            action: addAction,
-            feature_bit: featureBit
-          }]
-        };
-
-        return args.lnd.peers.UpdateNodeAnnouncement(req, (err, res) => {
+        return args.lnd.peers.UpdateNodeAnnouncement({
+          feature_updates: [{action: addAction, feature_bit: featureBit}],
+        },
+        err => {
           if (!!err) {
             return cbk([503, 'UnexpectedErrorBroadcastingFeatureBit', {err}]);
           }
