@@ -1,5 +1,9 @@
 # Versions
 
+## 17.7.0
+
+- `offer-channel-open`: Add graph advertisement for offering support
+
 ## 17.6.2
 
 - `offer-channel-open`: Fix error message responses not returning
