@@ -1,5 +1,9 @@
 # Versions
 
+## 17.8.0
+
+- `get-inbound-channel`: Make `service` optional and show options if omitted
+
 ## 17.7.1
 
 - `offer-channel-open`: Add graph advertisement for offering support

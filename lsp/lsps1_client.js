@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const {connectPeer} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
+const {getIdentity} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -19,6 +20,7 @@ const isAnnounced = type => type === 'public';
 const isNumber = n => !!n && !isNaN(n);
 const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
+const isService = features => !!features.find(feature => feature.bit === 729);
 const knownTypes = ['private', 'public'];
 const niceAlias = n => `${(n.alias || n.id).trim()} ${n.id.substring(0, 8)}`;
 const split = n => n.split(':');
@@ -38,7 +40,7 @@ const split = n => n.split(':');
     logger: <Winston Logger Object>
     max_wait_hours: <Requested Maximum Channel Open Wait Hours Count Number>
     [recovery]: <Existing Order Recovery String>
-    service_node: <Provider Service Node Identity Public Key Hex String>
+    [service_node]: <Provider Service Node Identity Public Key Hex String>
     type: <Inbound Channel Type String>
   }
 
@@ -51,6 +53,10 @@ module.exports = (args, cbk) => {
       validate: cbk => {
         if (!args.ask) {
           return cbk([400, 'ExpectedInquirerFunctionForLsp1Client']);
+        }
+
+        if (!isNumber(args.capacity)) {
+          return cbk([400, 'ExpectedChannelCapacityAmountForLsp1Client']);
         }
 
         if (!args.fs) {
@@ -69,8 +75,8 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedWinstonLoggerForLsp1Client']);
         }
 
-        if (!args.service_node || !isPublicKey(args.service_node)) {
-          return cbk([400, 'ExpectedValidServiceNodeHexPubkeyForLsp1Client']);
+        if (!isNumber(args.max_wait_hours)) {
+          return cbk([400, 'ExpectedMaxOpenWaitHoursForLsp1Client']);
         }
 
         // Exit early when this is a recovery scenario
@@ -78,12 +84,8 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        if (!isNumber(args.capacity)) {
-          return cbk([400, 'ExpectedChannelCapacityAmountForLsp1Client']);
-        }
-
-        if (!isNumber(args.max_wait_hours)) {
-          return cbk([400, 'ExpectedMaxOpenWaitHoursForLsp1Client']);
+        if (!!args.service_node && !isPublicKey(args.service_node)) {
+          return cbk([400, 'ExpectedValidServiceNodeHexPubkeyForLsp1Client']);
         }
 
         if (!args.type) {
@@ -97,9 +99,55 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Get the network graph to see who is a potential LSPS1 server
+      getGraph: ['validate', ({}, cbk) => {
+        // Exit early when there is already a service specified to use
+        if (!!args.service_node) {
+          return cbk();
+        }
+
+        const {getNetworkGraph} = require('ln-service');
+        return getNetworkGraph({lnd: args.lnd}, cbk);
+      }],
+
+      // Get the self node identity
+      getId: ['validate', ({}, cbk) => getIdentity({lnd: args.lnd}, cbk)],
+
+      // Determine what service node will be used
+      service: ['getGraph', 'getId', ({getGraph, getId}, cbk) => {
+        // Exit early when there was a service pre-selected
+        if (!!args.service_node) {
+          return cbk(null, args.service_node);
+        }
+
+        const {sortBy} = require('./../arrays');
+
+        const {sorted} = sortBy({
+          array: getGraph.nodes.filter(n => isService(n.features)),
+          attribute: 'updated_at',
+        });
+
+        const services = sorted.filter(n => n.public_key !== getId.public_key);
+
+        if (!services.length) {
+          return cbk([404, 'NoServicesOfferingChannelsFound']);
+        }
+
+        return args.ask({
+          choices: services.map(node => ({
+            name: `${node.alias} ${node.public_key}`,
+            value: node.public_key,
+          })),
+          loop: false,
+          name: 'service',
+          type: 'list',
+        },
+        ({service}) => cbk(null, service));
+      }],
+
       // Get the alias of the service node
-      getAlias: ['validate', ({}, cbk) => {
-        return getNodeAlias({id: args.service_node, lnd: args.lnd}, cbk);
+      getAlias: ['service', ({service}, cbk) => {
+        return getNodeAlias({id: service, lnd: args.lnd}, cbk);
       }],
 
       // Connect to the service node
@@ -109,11 +157,11 @@ module.exports = (args, cbk) => {
         // It may take a while to establish a connection with the peer
         args.logger.info({connecting_to: node});
 
-        return connectPeer({id: args.service_node, lnd: args.lnd}, cbk);
+        return connectPeer({id: getAlias.id, lnd: args.lnd}, cbk);
       }],
 
       // Get the limits of the channel open service
-      getLimits: ['connect', ({}, cbk) => {
+      getLimits: ['connect', 'getAlias', ({getAlias}, cbk) => {
         // Exit early when recovering
         if (!!args.recovery) {
           return cbk();
@@ -126,7 +174,7 @@ module.exports = (args, cbk) => {
         return makeRequest({
           lnd: args.lnd,
           method: methodGetInfo,
-          service: args.service_node,
+          service: getAlias.id,
         },
         cbk);
       }],
@@ -192,7 +240,7 @@ module.exports = (args, cbk) => {
             lsp_balance_sat: args.capacity.toString(),
             token: String(),
           },
-          service: args.service_node,
+          service: getAlias.id,
         },
         cbk);
       }],
@@ -312,7 +360,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Ask for order status
-      getOrder: ['pay', 'quote', ({pay, quote}, cbk) => {
+      getOrder: ['pay', 'quote', 'service', ({pay, quote, service}, cbk) => {
         // Exit early when there was no real order
         if (!!args.is_dry_run) {
           return cbk();
@@ -329,10 +377,10 @@ module.exports = (args, cbk) => {
         args.logger.info({requesting_order_status: quote.id});
 
         return makeRequest({
+          service,
           lnd: args.lnd,
           method: methodGetOrder,
           params: {order_id: quote.id},
-          service: args.service_node,
         },
         cbk);
       }],

@@ -806,7 +806,7 @@ prog
   // Buy an inbound channel
   .command('get-inbound-channel', 'Buy an inbound channel')
   .help('Obtain an inbound channel from a node on the network')
-  .argument('<service>', 'Public key identity of node to get channel from')
+  .argument('[service]', 'Public key identity of node to get channel from')
   .option('--amount <tokens>', 'Capacity of inbound channel desired', INT, 5e6)
   .option('--dryrun <dryrun>', 'Request a price quote only')
   .option('--max-wait-hours <hours>', 'Hours to wait for the open', INT, 48)
