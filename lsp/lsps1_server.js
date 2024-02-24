@@ -3,7 +3,7 @@ const asyncAuto = require('async/auto');
 const {getIdentity} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {getWalletInfo} = require('ln-service');
-const {subscribeToChannels} = require('ln-service');
+const {subscribeToGraph} = require('ln-service');
 const {subscribeInvoices} = require('ln-service');
 const {subscribeToPeerMessages} = require('ln-service');
 
@@ -19,8 +19,10 @@ const {versionJsonRpc} = require('./lsps1_protocol');
 
 const addAction = 0;
 const decodeMessage = n => JSON.parse(Buffer.from(n, 'hex').toString());
+const defaultConnectivityTimeoutMs = 1000 * 60 * 15;
 const isMap = n => n instanceof Map;
 const isNumber = n => !isNaN(n);
+const {now} = Date;
 
 /** Run the LSPS1 Service
 
@@ -107,15 +109,27 @@ module.exports = (args, cbk) => {
 
       // Serve LSPS1 open requests
       run: ['broadcastFeature', 'getId', ({getId}, cbk) => {
-        const subChannels = subscribeToChannels({lnd: args.lnd});
+        const subGraph = subscribeToGraph({lnd: args.lnd});
         const subMessages = subscribeToPeerMessages({lnd: args.lnd});
+        let timeout;
 
         args.logger.info({lsp_server_running: getId.public_key});
 
-        subChannels.on('channel_opened', opened => {
-          return args.logger.info({
-            detected_channel_open_to: opened.partner_public_key,
-          });
+        // Make sure we are still hearing new info so we have connectivity
+        subGraph.on('channel_updated', updated => {
+          // Get rid of the existing dead switch timeout
+          clearTimeout(timeout);
+
+          // Set a new dead switch timeout
+          timeout = setTimeout(() => {
+            subGraph.removeAllListeners();
+            subMessages.removeAllListeners();
+
+            return cbk([503, 'DetectedLossOfNodeMessagingConnectivity']);
+          },
+          defaultConnectivityTimeoutMs);
+
+          return;
         });
 
         subMessages.on('message_received', async received => {
@@ -189,19 +203,23 @@ module.exports = (args, cbk) => {
           }
         });
 
-        subChannels.on('error', err => {
-          args.logger.error([503, 'UnexpectedErrInChansSubscription', {err}]);
+        subGraph.on('error', err => {
+          clearTimeout(timeout);
 
-          subChannels.removeAllListeners();
+          args.logger.error([503, 'UnexpectedErrInGraphSubscription', {err}]);
+
+          subGraph.removeAllListeners();
           subMessages.removeAllListeners();
 
           return cbk();
         });
 
         subMessages.on('error', err => {
+          clearTimeout(timeout);
+
           args.logger.error([503, 'UnexpectedErrInMsgsSubscription', {err}]);
 
-          subChannels.removeAllListeners();
+          subGraph.removeAllListeners();
           subMessages.removeAllListeners();
 
           return cbk();

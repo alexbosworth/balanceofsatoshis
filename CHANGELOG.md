@@ -1,6 +1,6 @@
 # Versions
 
-## 17.8.0
+## 17.8.1
 
 - `get-inbound-channel`: Make `service` optional and show options if omitted
 

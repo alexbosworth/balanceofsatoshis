@@ -3,6 +3,7 @@ const {randomBytes} = require('crypto');
 const asyncAuto = require('async/auto');
 const {createHodlInvoice} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
+const {getNodeAlias} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 const {sendMessageToPeer} = require('ln-service');
 const {subscribeToInvoice} = require('ln-service');
@@ -29,6 +30,7 @@ const {floor} = Math;
 const isNumber = n => !!n && !isNaN(n);
 const makeOrderId = () => randomBytes(16).toString('hex');
 const maxMessageIdLength = 100;
+const niceAlias = n => `${(n.alias || n.id).trim()} ${n.id}`;
 const notNegative = n => Math.max(0, n);
 const orderExpiryMs = 1000 * 60 * 60;
 const {parse} = JSON;
@@ -96,6 +98,11 @@ module.exports = (args, cbk) => {
 
         return cbk();
       },
+
+      // Get the peer alias
+      getAlias: ['validate', ({}, cbk) => {
+        return getNodeAlias({id: args.to_peer, lnd: args.lnd}, cbk);
+      }],
 
       // Parse the message
       message: ['validate', ({}, cbk) => {
@@ -331,7 +338,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Make the invoice for this order
-      makeInvoice: ['getFees', ({getFees}, cbk) => {
+      makeInvoice: ['getAlias', 'getFees', ({getAlias, getFees}, cbk) => {
         // Exit early when there was an error
         if (!getFees) {
           return cbk();
@@ -339,6 +346,13 @@ module.exports = (args, cbk) => {
 
         const capacity = tokensAsBigUnit(getFees.capacity);
         const expiry = expiryDate(channelExpiryMs);
+
+        args.logger.info({
+          capacity,
+          expiry,
+          quote: tokensAsBigUnit(getFees.fees),
+          returning_quote_to: niceAlias(getAlias),
+        });
 
         return createHodlInvoice({
           description: `Channel ${capacity} to ${expiry} (${getFees.order})`,
