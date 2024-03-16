@@ -289,6 +289,7 @@ module.exports = (args, cbk) => {
               return connectToPeer({
                 id: node.public_key,
                 lnd: args.lnd,
+                logger: args.logger,
                 sockets: sockets.map(n => n.socket),
               },
               err => {

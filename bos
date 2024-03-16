@@ -533,6 +533,27 @@ prog
     });
   })
 
+  // Connect to a node
+  .command('connect', 'Connect to a node')
+  .argument('<id>', 'Public key id of node to connect to')
+  .option('--node <node_name>', 'Saved node to connect with')
+  .option('--retries <count>', 'Times to retry the connection', INT)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return peers.connectToPeer({
+          logger,
+          id: args.id,
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          retries: options.retries,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
   // Coordinate a new group channel
   .command('create-channel-group', 'Coordinate balanced channels group')
   .help('Other nodes can join the group using join-channel-group')

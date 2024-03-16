@@ -1,5 +1,9 @@
 # Versions
 
+## 17.9.0
+
+- `connect`: Add command to attempt to peer with a node
+
 ## 17.8.1
 
 - `get-inbound-channel`: Make `service` optional and show options if omitted
