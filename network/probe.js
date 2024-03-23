@@ -23,6 +23,7 @@ const probeDestination = require('./probe_destination');
 
 const defaultFinalCltvDelta = 144;
 const defaultMaxPaths = 5;
+const effectiveFeeRate = (n, m) => Number(BigInt(1e6) * BigInt(n) / BigInt(m));
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
 const pathTimeoutMs = 1000 * 60 * 5;
@@ -387,12 +388,15 @@ module.exports = (args, cbk) => {
 
         sub.on('success', ({paths}) => {
           const liquidity = paths.reduce((m, n) => m + n.liquidity, Number());
+          const fees = paths.reduce((m, n) => m + n.fee, Number());
           const numPaths = paths.filter(n => !!n).length;
           const target = !args.find_max ? decodeRequest.tokens : undefined;
 
           args.logger.info({
             target_amount: !!target ? formatTokens({tokens: target}) : target,
             total_liquidity: formatTokens({tokens: liquidity}).display,
+            total_fee: formatTokens({tokens: fees}).display,
+            total_fee_rate: String(effectiveFeeRate(fees, liquidity)),
             total_paths: args.max_paths !== singlePath ? numPaths : undefined,
           });
 
