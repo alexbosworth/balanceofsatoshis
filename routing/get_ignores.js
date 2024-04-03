@@ -92,7 +92,9 @@ module.exports = (args, cbk) => {
         // Find global avoids in tags
         const tagAvoids = flatten(args.tags
           .filter(n => !!n.is_avoided)
-          .map(({nodes}) => nodes));
+          .map(({nodes}) => nodes))
+          .filter(n => n !== args.out_through)
+          .filter(n => n !== args.in_through);
 
         // Mix global avoids with explicit avoids
         const avoids = [].concat(args.avoid).concat(tagAvoids)

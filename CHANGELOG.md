@@ -1,6 +1,6 @@
 # Versions
 
-## 17.9.2
+## 17.9.3
 
 - `connect`: Add command to attempt to peer with a node
 
