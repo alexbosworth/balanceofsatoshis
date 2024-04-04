@@ -21,8 +21,9 @@ const {paymentStateExpectedPayment} = require('./lsps1_protocol');
 const {typeForMessaging} = require('./lsps1_protocol');
 const {versionJsonRpc} = require('./lsps1_protocol');
 
+const blocksAsMs = blocks => blocks * 10 * 60 * 1000;
+const blocksPerYear = 144 * 365;
 const capacityFee = (rate, capacity) => Math.floor(rate * capacity / 1e6 / 4);
-const channelExpiryMs = 1000 * 60 * 60 * 24 * 90;
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
 const encodeMessage = n => Buffer.from(n, 'utf8').toString('hex');
 const expiryDate = ms => new Date(Date.now() + ms).toISOString();
@@ -285,7 +286,7 @@ module.exports = (args, cbk) => {
 
         return sendMessageToPeer({
           lnd: args.lnd,
-          message: getMessage.error,
+          message: encodeMessage(stringify(getMessage.error)),
           public_key: args.to_peer,
           type: typeForMessaging,
         },
@@ -294,6 +295,11 @@ module.exports = (args, cbk) => {
 
       // Get chain fees
       getChainFees: ['getMessage', ({getMessage}, cbk) => {
+        // Exit early when there was an error
+        if (!!getMessage.error) {
+          return cbk();
+        }
+
         // Exit early when there are no message params to process
         if (!getMessage.params) {
           return cbk();
@@ -322,6 +328,7 @@ module.exports = (args, cbk) => {
         const baseFee = notNegative(floor(args.base_fee));
         const isPrivate = !getMessage.params.announce_channel;
         const rate = getChainFees.tokens_per_vbyte;
+        const time = getMessage.params.channel_expiry_blocks / blocksPerYear;
 
         const estimatedChainFee = floor(assumedOpenTransactionVbytes * rate);
         const privateRate = isPrivate ? args.private_fee_rate : Number();
@@ -330,22 +337,31 @@ module.exports = (args, cbk) => {
 
         const capacityFees = capacityFee(ppmFees, getMessage.capacity);
 
+        const ppmTotalFee = floor(time * capacityFees);
+
         return cbk(null, {
           capacity: getMessage.capacity,
-          fees: baseFee + notNegative(capacityFees) + estimatedChainFee,
+          fees: baseFee + notNegative(ppmTotalFee) + estimatedChainFee,
           order: getMessage.order,
         });
       }],
 
       // Make the invoice for this order
-      makeInvoice: ['getAlias', 'getFees', ({getAlias, getFees}, cbk) => {
+      makeInvoice: [
+        'getAlias',
+        'getFees',
+        'getMessage',
+        ({getAlias, getFees, getMessage}, cbk) =>
+      {
         // Exit early when there was an error
         if (!getFees) {
           return cbk();
         }
 
         const capacity = tokensAsBigUnit(getFees.capacity);
-        const expiry = expiryDate(channelExpiryMs);
+        const minLifetimeBlocks = getMessage.params.channel_expiry_blocks;
+
+        const expiry = expiryDate(blocksAsMs(minLifetimeBlocks));
 
         args.logger.info({
           capacity,
@@ -483,7 +499,7 @@ module.exports = (args, cbk) => {
         ({getOpenFeeRate, waitForPayment}, cbk) =>
       {
         // Exit early when there was an error
-        if (!waitForPayment.order) {
+        if (!waitForPayment || !waitForPayment.order) {
           return cbk();
         }
 

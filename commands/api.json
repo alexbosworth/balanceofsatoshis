@@ -49,6 +49,16 @@
     {
       "arguments": [
         {
+          "description": "Add an advertised feature",
+          "named": "feature",
+          "type": "number"
+        }
+      ],
+      "method": "addAdvertisedFeature"
+    },
+    {
+      "arguments": [
+        {
           "description": "Node identity hex encoded public key",
           "named": "public_key",
           "type": "public_key"
@@ -786,6 +796,16 @@
         }
       ],
       "method": "pay"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Remove an advertised feature",
+          "named": "feature",
+          "type": "number"
+        }
+      ],
+      "method": "removeAdvertisedFeature"
     },
     {
       "arguments": [{

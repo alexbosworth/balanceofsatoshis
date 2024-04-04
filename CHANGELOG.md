@@ -1,5 +1,11 @@
 # Versions
 
+## 17.10.0
+
+- `get-inbound-channel`: Add `--days` to specify minimum expected channel life
+- `offer-channel-open`: Correct client error messaging issue
+- `offer-channel-open`: Correct issue where PPM was overpriced vs description
+
 ## 17.9.3
 
 - `connect`: Add command to attempt to peer with a node

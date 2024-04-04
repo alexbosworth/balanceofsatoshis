@@ -2,11 +2,12 @@ const asyncAuto = require('async/auto');
 const {connectPeer} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getIdentity} = require('ln-service');
+const {getNetworkGraph} = require('ln-service');
 const {getNodeAlias} = require('ln-sync');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const {defaultLifetimeBlocks} = require('./constants');
+const {defaultLifetimeDays} = require('./constants');
 const makeRequest = require('./make_request');
 const {methodCreateOrder} = require('./lsps1_protocol');
 const {methodGetInfo} = require('./lsps1_protocol');
@@ -14,6 +15,7 @@ const {methodGetOrder} = require('./lsps1_protocol');
 const {probeDestination} = require('./../network');
 const {versionJsonRpc} = require('./lsps1_protocol');
 
+const daysAsBlocks = days => days * 144;
 const displayTokens = tokens => formatTokens({tokens}).display;
 const hoursAsBlocks = hours => hours * 6;
 const isAnnounced = type => type === 'public';
@@ -36,6 +38,7 @@ const split = n => n.split(':');
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     [is_dry_run]: <Get Channel Price Quote Only Bool>
+    [lifetime]: <Expected Minimum Channel Lifetime Existence Days Number>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
     max_wait_hours: <Requested Maximum Channel Open Wait Hours Count Number>
@@ -65,6 +68,10 @@ module.exports = (args, cbk) => {
 
         if (!!args.is_dry_run && !!args.recovery) {
           return cbk([400, 'DryRunNotSupportedWithRecoveryMode']);
+        }
+
+        if (!!args.lifetime && !isNumber(args.lifetime)) {
+          return cbk([400, 'ExpectedLifetimeDaysForLsps1Client']);
         }
 
         if (!args.lnd) {
@@ -106,7 +113,6 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const {getNetworkGraph} = require('ln-service');
         return getNetworkGraph({lnd: args.lnd}, cbk);
       }],
 
@@ -229,12 +235,14 @@ module.exports = (args, cbk) => {
 
         args.logger.info({estimating_routing_fee_to: niceAlias(getAlias)});
 
+        const lifetime = daysAsBlocks(args.lifetime || defaultLifetimeDays);
+
         return makeRequest({
           lnd: args.lnd,
           method: methodCreateOrder,
           params: {
             announce_channel: isAnnounced(args.type),
-            channel_expiry_blocks: defaultLifetimeBlocks,
+            channel_expiry_blocks: lifetime,
             client_balance_sat: Number().toString(),
             confirms_within_blocks: hoursAsBlocks(args.max_wait_hours),
             lsp_balance_sat: args.capacity.toString(),

@@ -1,5 +1,6 @@
 {
   "assumedOpenTransactionVbytes": 150,
   "defaultChannelActiveConfs": 6,
-  "defaultLifetimeBlocks": 13000
+  "defaultLifetimeBlocks": 13000,
+  "defaultLifetimeDays": 90
 }

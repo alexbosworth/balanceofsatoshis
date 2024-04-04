@@ -829,6 +829,7 @@ prog
   .help('Obtain an inbound channel from a node on the network')
   .argument('[service]', 'Public key identity of node to get channel from')
   .option('--amount <tokens>', 'Capacity of inbound channel desired', INT, 5e6)
+  .option('--days <days>', 'Minimum days expected for channel lifetime')
   .option('--dryrun <dryrun>', 'Request a price quote only')
   .option('--max-wait-hours <hours>', 'Hours to wait for the open', INT, 48)
   .option('--node <node_name>', 'Node to get inbound channel for')
@@ -843,6 +844,7 @@ prog
           capacity: options.amount,
           fs: {getFile: readFile},
           is_dry_run: !!options.dryrun,
+          lifetime: options.days,
           lnd: (await lndForNode(logger, options.node)).lnd,
           max_wait_hours: options.maxWaitHours,
           recovery: options.recovery,
