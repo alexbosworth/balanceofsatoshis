@@ -1,5 +1,12 @@
 # Versions
 
+## 18.0.0
+
+### Breaking Changes
+
+- `get-inbound-channel`: Protocol change is not compatible with previous
+- `offer-channel-open`: The `--website` option is no longer supported
+
 ## 17.10.0
 
 - `get-inbound-channel`: Add `--days` to specify minimum expected channel life
