@@ -1301,7 +1301,6 @@ prog
   .option('--min-capacity <tokens>', 'Minimum channel capacity', INT, 1e6)
   .option('--node <node_name>', 'Node to offer channels on')
   .option('--private-fee-rate <ppm>', 'Add private capacity charge', INT, 1000)
-  .option('--website <url>', 'URL to advertise as informational website')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1314,7 +1313,6 @@ prog
           min_capacity: options.minCapacity,
           orders: new Map(),
           private_fee_rate: options.privateFeeRate,
-          website: options.website,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {

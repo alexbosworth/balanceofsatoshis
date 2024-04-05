@@ -35,7 +35,6 @@ const {now} = Date;
     min_capacity: <Minimum Capacity Tokens Number>
     orders: <Orders Map Object>
     private_fee_rate: <Proportional Added Fee PPM for Private Channels Number>
-    [website]: <Website String>
   }
 
   @returns via cbk or Promise
@@ -75,15 +74,6 @@ module.exports = (args, cbk) => {
 
         if (args.private_fee_rate === undefined) {
           return cbk([400, 'ExpectedPrivateFeeRateToRunLsp1Server']);
-        }
-
-        // Make sure the website is a valid URL
-        if (!!args.website) {
-          try {
-            new URL(args.website);
-          } catch (err) {
-            return cbk([400, 'ExpectedValidUrlToRunLsp1Server']);
-          }
         }
 
         return cbk();
@@ -179,7 +169,6 @@ module.exports = (args, cbk) => {
                 min_capacity: args.min_capacity,
                 lnd: args.lnd,
                 to_peer: received.public_key,
-                website: args.website,
               });
             } catch (err) {
               return args.logger.error({err});

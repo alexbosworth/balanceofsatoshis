@@ -20,7 +20,6 @@ const encodeMessage = obj => Buffer.from(JSON.stringify(obj)).toString('hex');
     min_capacity: <Minimum Supported Channel Capacity Tokens Number>
     lnd: <Authenticated LND API Object>
     to_peer: <Peer Public Key Hex String>
-    [website]: <Related Website URL String>
   }
 
   @returns via cbk or Promise
@@ -99,7 +98,6 @@ module.exports = (args, cbk) => {
               min_onchain_payment_size_sat: null,
               supports_zero_channel_reserve: false,
             },
-            website: args.website || String(),
           },
         });
       }],
