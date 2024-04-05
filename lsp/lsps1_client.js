@@ -244,7 +244,7 @@ module.exports = (args, cbk) => {
             announce_channel: isAnnounced(args.type),
             channel_expiry_blocks: lifetime,
             client_balance_sat: Number().toString(),
-            confirms_within_blocks: hoursAsBlocks(args.max_wait_hours),
+            funding_confirms_within_blocks: hoursAsBlocks(args.max_wait_hours),
             lsp_balance_sat: args.capacity.toString(),
             token: String(),
           },

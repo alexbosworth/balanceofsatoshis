@@ -5,6 +5,7 @@ const {sendMessageToPeer} = require('ln-service');
 const {codeInvalidParameters} = require('./lsps1_protocol');
 const {defaultChannelActiveConfs} = require('./constants');
 const {defaultLifetimeBlocks} = require('./constants');
+const {defaultFundingConfirmedBlocks} = require('./constants')
 const {errMessageInvalidParams} = require('./lsps1_protocol');
 const {typeForMessaging} = require('./lsps1_protocol');
 const {versionJsonRpc} = require('./lsps1_protocol');
@@ -91,11 +92,12 @@ module.exports = (args, cbk) => {
               max_initial_client_balance_sat: Number().toString(),
               max_initial_lsp_balance_sat: args.max_capacity.toString(),
               min_channel_balance_sat: args.min_capacity.toString(),
-              min_channel_confirmations: defaultChannelActiveConfs,
+              min_funding_confirms_within_blocks: defaultFundingConfirmedBlocks,
               min_initial_client_balance_sat: Number().toString(),
               min_initial_lsp_balance_sat: args.min_capacity.toString(),
               min_onchain_payment_confirmations: null,
               min_onchain_payment_size_sat: null,
+              min_required_channel_confirmations: defaultChannelActiveConfs,
               supports_zero_channel_reserve: false,
             },
           },

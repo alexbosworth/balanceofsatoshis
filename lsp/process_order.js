@@ -164,13 +164,13 @@ module.exports = (args, cbk) => {
           });
         }
 
-        if (!isNumber(message.params.confirms_within_blocks)) {
+        if (!isNumber(message.params.funding_confirms_within_blocks)) {
           return cbk(null, {
             error: makeErrorMessage({
               code: codeInvalidParameters,
               data: {
                 message: 'MissingConfirmsWithinBlocksInCreateOrderRequest',
-                property: 'confirms_within_blocks',
+                property: 'funding_confirms_within_blocks',
               },
               id: message.id,
               message: errMessageInvalidParams,
@@ -305,7 +305,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const blocks = getMessage.params.confirms_within_blocks;
+        const blocks = getMessage.params.funding_confirms_within_blocks;
 
         return getChainFeeRate({
           confirmation_target: Number(blocks),
@@ -443,7 +443,7 @@ module.exports = (args, cbk) => {
             channel: null,
             channel_expiry_blocks: defaultLifetimeBlocks,
             client_balance_sat: Number().toString(),
-            confirms_within_blocks: message.params.confirms_within_blocks,
+            funding_confirms_within_blocks: message.params.funding_confirms_within_blocks,
             created_at: new Date().toISOString(),
             expires_at: expiryDate(orderExpiryMs),
             lsp_balance_sat: message.params.lsp_balance_sat,
@@ -483,7 +483,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const blocks = getMessage.params.confirms_within_blocks;
+        const blocks = getMessage.params.funding_confirms_within_blocks;
 
         return getChainFeeRate({
           confirmation_target: Number(blocks),
