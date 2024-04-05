@@ -4,8 +4,8 @@ const {sendMessageToPeer} = require('ln-service');
 
 const {codeInvalidParameters} = require('./lsps1_protocol');
 const {defaultChannelActiveConfs} = require('./constants');
-const {defaultLifetimeBlocks} = require('./constants');
 const {defaultFundingConfirmedBlocks} = require('./constants')
+const {defaultLifetimeBlocks} = require('./constants');
 const {errMessageInvalidParams} = require('./lsps1_protocol');
 const {typeForMessaging} = require('./lsps1_protocol');
 const {versionJsonRpc} = require('./lsps1_protocol');

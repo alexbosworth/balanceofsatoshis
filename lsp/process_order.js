@@ -435,6 +435,8 @@ module.exports = (args, cbk) => {
           return;
         }
 
+        const confTarget = message.params.funding_confirms_within_blocks;
+
         const response = stringify({
           id: message.id,
           jsonrpc: versionJsonRpc,
@@ -443,7 +445,7 @@ module.exports = (args, cbk) => {
             channel: null,
             channel_expiry_blocks: defaultLifetimeBlocks,
             client_balance_sat: Number().toString(),
-            funding_confirms_within_blocks: message.params.funding_confirms_within_blocks,
+            funding_confirms_within_blocks: confTarget,
             created_at: new Date().toISOString(),
             expires_at: expiryDate(orderExpiryMs),
             lsp_balance_sat: message.params.lsp_balance_sat,
