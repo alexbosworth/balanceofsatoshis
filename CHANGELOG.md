@@ -1,5 +1,9 @@
 # Versions
 
+## 18.1.0
+
+- `swap`: Add support for sending to an external address via Loop Out
+
 ## 18.0.0
 
 ### Breaking Changes
