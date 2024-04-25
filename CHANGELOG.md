@@ -1,5 +1,9 @@
 # Versions
 
+## 18.1.2
+
+- `pay`: Ignore global avoid list avoidance when avoided out peer is specified
+
 ## 18.1.0
 
 - `swap`: Add support for sending to an external address via Loop Out

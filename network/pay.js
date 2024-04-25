@@ -140,12 +140,15 @@ module.exports = (args, cbk) => {
           return cbk(null, {ignore: []});
         }
 
+        const [out] = args.out || [];
+
         return getIgnores({
           avoid: args.avoid,
           channels: getChannels.channels,
           in_through: args.in_through,
           lnd: args.lnd,
           logger: args.logger,
+          out_through: out,
           public_key: getIdentity.public_key,
           tags: getTags.tags,
         },
