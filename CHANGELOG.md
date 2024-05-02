@@ -1,6 +1,6 @@
 # Versions
 
-## 18.1.3
+## 18.1.4
 
 - `increase-inbound-liquidity`, `swap`, `swap-in`: Fix auth token purchase
 
