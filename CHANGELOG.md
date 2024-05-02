@@ -1,5 +1,9 @@
 # Versions
 
+## 18.1.3
+
+- `increase-inbound-liquidity`, `swap`, `swap-in`: Fix auth token purchase
+
 ## 18.1.2
 
 - `pay`: Ignore global avoid list avoidance when avoided out peer is specified
