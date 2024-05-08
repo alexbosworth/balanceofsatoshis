@@ -1,5 +1,9 @@
 # Versions
 
+## 18.1.5
+
+- `get-inbound-channel`: Limit max wait hours to the LSPS1 maximum setting
+
 ## 18.1.4
 
 - `increase-inbound-liquidity`, `swap`, `swap-in`: Fix auth token purchase
