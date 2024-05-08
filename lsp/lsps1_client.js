@@ -25,9 +25,9 @@ const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const isService = features => !!features.find(feature => feature.bit === 729);
 const knownTypes = ['private', 'public'];
+const maxAllowedWaitHours = 40;
 const niceAlias = n => `${(n.alias || n.id).trim()} ${n.id.substring(0, 8)}`;
 const split = n => n.split(':');
-const maxAllowedWaitHours = 40;
 
 /** LSPS1 Client: Purchase an inbound channel open attempt
 
