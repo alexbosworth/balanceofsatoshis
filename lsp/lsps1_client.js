@@ -7,6 +7,7 @@ const {getNodeAlias} = require('ln-sync');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const {defaultChannelActiveConfs} = require('./constants');
 const {defaultLifetimeDays} = require('./constants');
 const makeRequest = require('./make_request');
 const {methodCreateOrder} = require('./lsps1_protocol');
@@ -24,6 +25,7 @@ const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const isService = features => !!features.find(feature => feature.bit === 729);
 const knownTypes = ['private', 'public'];
+const maxAllowedWaitHours = 40;
 const niceAlias = n => `${(n.alias || n.id).trim()} ${n.id.substring(0, 8)}`;
 const split = n => n.split(':');
 
@@ -84,6 +86,10 @@ module.exports = (args, cbk) => {
 
         if (!isNumber(args.max_wait_hours)) {
           return cbk([400, 'ExpectedMaxOpenWaitHoursForLsp1Client']);
+        }
+
+        if (args.max_wait_hours > maxAllowedWaitHours) {
+          return cbk([400, 'ExpectedLowerMaxWaitHoursForLsps1Client']);
         }
 
         // Exit early when this is a recovery scenario
@@ -246,6 +252,7 @@ module.exports = (args, cbk) => {
             client_balance_sat: Number().toString(),
             funding_confirms_within_blocks: hoursAsBlocks(args.max_wait_hours),
             lsp_balance_sat: args.capacity.toString(),
+            required_channel_confirmations: defaultChannelActiveConfs,
             token: String(),
           },
           service: getAlias.id,
@@ -268,7 +275,7 @@ module.exports = (args, cbk) => {
           return cbk([503, 'UnexpectedAbsentOrderIdInLsps1OpenQuoteResponse']);
         }
 
-        const request = getQuote.response.payment.lightning_invoice;
+        const request = getQuote.response.payment.bolt11_invoice;
 
         if (!request) {
           return cbk([503, 'UnexpectedMissingPaymentRequestInQuoteResponse']);

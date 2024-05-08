@@ -831,7 +831,7 @@ prog
   .option('--amount <tokens>', 'Capacity of inbound channel desired', INT, 5e6)
   .option('--days <days>', 'Minimum days expected for channel lifetime')
   .option('--dryrun <dryrun>', 'Request a price quote only')
-  .option('--max-wait-hours <hours>', 'Hours to wait for the open', INT, 48)
+  .option('--max-wait-hours <hours>', 'Hours to wait for the open', INT, 40)
   .option('--node <node_name>', 'Node to get inbound channel for')
   .option('--recovery <orderId>', 'Check the status of prior order', STRING)
   .option('--type <type>', 'Channel type: private/public', STRING, 'public')
