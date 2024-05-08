@@ -453,7 +453,7 @@ module.exports = (args, cbk) => {
             order_state: orderStateCreated,
             payment: {
               fee_total_sat: makeInvoice.tokens.toString(),
-              lightning_invoice: makeInvoice.request,
+              bolt11_invoice: makeInvoice.request,
               min_fee_for_0conf: null,
               min_onchain_payment_confirmations: null,
               onchain_address: null,
