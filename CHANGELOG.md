@@ -1,5 +1,10 @@
 # Versions
 
+## 18.2.0
+
+- `call`: Add support for `inbound_base_discount_mtokens` and
+    `inbound_rate_discount` in `updateRoutingFees`
+
 ## 18.1.5
 
 - `get-inbound-channel`: Limit max wait hours to the LSPS1 maximum setting

@@ -1151,6 +1151,17 @@
           "type": "number"
         },
         {
+          "description": "Reduce fees from source by base amount millitokens",
+          "named": "inbound_base_discount_mtokens",
+          "optional": true
+        },
+        {
+          "description": "Reduce fees from source by parts per million rate",
+          "named": "inbound_rate_discount",
+          "optional": true,
+          "type": "number"
+        },
+        {
           "description": "Maximum payment forward amount millitokens",
           "named": "max_htlc_mtokens",
           "optional": true
