@@ -1,5 +1,9 @@
 # Versions
 
+## 18.2.1
+
+- Support LND 0.18.0
+
 ## 18.2.0
 
 - `call`: Add support for `inbound_base_discount_mtokens` and
