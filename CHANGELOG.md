@@ -1,5 +1,10 @@
 # Versions
 
+## 18.2.2
+
+- `graph`: represent inbound fees in policy display
+- `rebalance`: fix support for 0.18.0 inbound fees
+
 ## 18.2.1
 
 - Support LND 0.18.0

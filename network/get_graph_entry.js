@@ -23,6 +23,7 @@ const ageMs = time => moment(new Date(Date.now() - time)).fromNow(true);
 const blockTime = (current, start) => 1000 * 60 * 10 * (current - start);
 const defaultSort = 'age';
 const disableTag = isDisabled => isDisabled ? `${emojiIcons.disabled} ` : '';
+const displayDiscount = fee => !!fee && isFinite(fee) ? ` ←${-fee}` : '';
 const displayFee = (n, rate) => n.length ? formatFeeRate({rate}).display : ' ';
 const displayTokens = tokens => formatTokens({tokens}).display;
 const distanceTokens = 100;
@@ -34,6 +35,7 @@ const isClear = sockets => !!sockets.find(n => !!isIP(n.socket.split(':')[0]));
 const isLarge = features => !!features.find(n => n.type === 'large_channels');
 const isOnion = sockets => !!sockets.find(n => /onion/.test(n.socket));
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
+const join = arr => arr.join('');
 const {max} = Math;
 const {min} = Math;
 const sortBy = (a, b) => a > b ? 1 : (a !== b ? -1 : 0);
@@ -208,10 +210,12 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
             .map(n => n.policies.find(n => n.public_key !== peerKey))
             .filter(n => n.fee_rate !== undefined);
 
+          const backFee = min(...inPolicies.map(n => n.inbound_rate_discount));
           const inDisabled = inPolicies.filter(n => n.is_disabled === true);
           const inboundFeeRate = max(...inPolicies.map(n => n.fee_rate));
           const outDisabled = outPolicies.filter(n => n.is_disabled === true);
           const outFeeRate = max(...outPolicies.map(n => n.fee_rate));
+          const rebate = min(...outPolicies.map(n => n.inbound_rate_discount));
 
           const isInDisabled = inDisabled.length === inPolicies.length;
           const isOutDisabled = outDisabled.length === outPolicies.length;
@@ -246,11 +250,23 @@ module.exports = ({filters, fs, lnd, logger, query, sort}, cbk) => {
             return;
           }
 
+          const displayInPolicy = [
+            disableTag(isInDisabled),
+            displayFee(inPolicies, inboundFeeRate),
+            displayDiscount(backFee),
+          ];
+
+          const displayOutPolicy = [
+            disableTag(isOutDisabled),
+            displayFee(outPolicies, outFeeRate),
+            displayDiscount(rebate),
+          ];
+
           const row = [
             ageMs(blockTime(getHeight.current_block_height, connectHeight)),
-            disableTag(isInDisabled) + displayFee(inPolicies, inboundFeeRate),
+            join(displayInPolicy),
             displayTokens(capacity),
-            disableTag(isOutDisabled) + displayFee(outPolicies, outFeeRate),
+            join(displayOutPolicy),
             peerKey,
           ];
 

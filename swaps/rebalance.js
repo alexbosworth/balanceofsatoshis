@@ -699,6 +699,26 @@ module.exports = (args, cbk) => {
 
       // Get route for rebalance
       getRoute: ['channels', 'invoice', ({channels, invoice}, cbk) => {
+        // Find any inbound policy, LND 0.18.0 miscalculates fees here
+        const hasInboundPolicy = channels.find(channel => {
+          return channel.policies.find(policy => {
+            if (policy.inbound_base_discount_mtokens !== '0') {
+              return true;
+            }
+
+            if (policy.inbound_rate_discount !== 0) {
+              return true;
+            }
+
+            return false;
+          });
+        });
+
+        // Exit early when there is an inbound fee that needs a recalc
+        if (!!hasInboundPolicy) {
+          return cbk(null, {});
+        }
+
         return getRouteThroughHops({
           cltv_delta: cltvDelta,
           lnd: args.lnd,
