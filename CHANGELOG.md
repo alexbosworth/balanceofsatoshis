@@ -1,6 +1,6 @@
 # Versions
 
-## 18.2.4
+## 18.2.5
 
 - `graph`: represent inbound fees in policy display
 - `rebalance`: fix support for 0.18.0 inbound fees
