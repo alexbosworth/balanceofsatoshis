@@ -10,7 +10,6 @@ const {getHeight} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeerLiquidity} = require('ln-sync');
-const {getRouteThroughHops} = require('ln-service');
 const {getWalletVersion} = require('ln-service');
 const {parseAmount} = require('ln-accounting');
 const {payViaRoutes} = require('ln-service');
@@ -697,59 +696,17 @@ module.exports = (args, cbk) => {
       // Get the current height
       getHeight: ['channels', 'lnd', ({lnd}, cbk) => getHeight({lnd}, cbk)],
 
-      // Get route for rebalance
-      getRoute: ['channels', 'invoice', ({channels, invoice}, cbk) => {
-        // Find any inbound policy, LND 0.18.0 miscalculates fees here
-        const hasInboundPolicy = channels.find(channel => {
-          return channel.policies.find(policy => {
-            if (policy.inbound_base_discount_mtokens !== '0') {
-              return true;
-            }
-
-            if (policy.inbound_rate_discount !== 0) {
-              return true;
-            }
-
-            return false;
-          });
-        });
-
-        // Exit early when there is an inbound fee that needs a recalc
-        if (!!hasInboundPolicy) {
-          return cbk(null, {});
-        }
-
-        return getRouteThroughHops({
-          cltv_delta: cltvDelta,
-          lnd: args.lnd,
-          mtokens: invoice.mtokens,
-          payment: invoice.payment,
-          public_keys: channels.map(n => n.destination),
-          total_mtokens: !!invoice.payment ? invoice.mtokens : undefined,
-        },
-        (err, res) => {
-          // Exit early when there is an error and use local route calculation
-          if (!!err) {
-            return cbk(null, {});
-          }
-
-          return cbk(null, {route: res.route});
-        });
-      }],
-
       // Calculate route for rebalance
       routes: [
         'channels',
         'getHeight',
         'getPublicKey',
-        'getRoute',
         'invoice',
         'tokens',
         ({
           channels,
           getHeight,
           getPublicKey,
-          getRoute,
           invoice,
           tokens,
         },
@@ -766,16 +723,15 @@ module.exports = (args, cbk) => {
             total_mtokens: !!invoice.payment ? invoice.mtokens : undefined,
           });
 
-          const endRoute = getRoute.route || route;
           const maxFee = args.max_fee || defaultMaxFee;
           const maxFeeRate = args.max_fee_rate || defaultMaxFeeRate;
 
-          if (endRoute.tokens < minRebalanceAmount) {
+          if (route.tokens < minRebalanceAmount) {
             return cbk([503, 'EncounteredUnexpectedRouteLiquidityFailure']);
           }
 
           const [highFeeAt] = sortBy({
-            array: endRoute.hops.map(hop => ({
+            array: route.hops.map(hop => ({
               to: hop.public_key,
               fee: hop.fee,
             })),
@@ -783,15 +739,15 @@ module.exports = (args, cbk) => {
           }).sorted.reverse().map(n => n.to);
 
           // Exit early when a max fee is specified and exceeded
-          if (!!maxFee && endRoute.fee > maxFee) {
+          if (!!maxFee && route.fee > maxFee) {
             return cbk([
               400,
               'RebalanceTotalFeeTooHigh',
-              {needed_max_fee: endRoute.fee.toString(), high_fee: highFeeAt},
+              {needed_max_fee: route.fee.toString(), high_fee: highFeeAt},
             ]);
           }
 
-          const feeRate = ceil(endRoute.fee / endRoute.tokens * rateDivisor);
+          const feeRate = ceil(route.fee / route.tokens * rateDivisor);
 
           // Exit early when the max fee rate is specified and exceeded
           if (!!maxFeeRate && feeRate > maxFeeRate) {
@@ -802,7 +758,7 @@ module.exports = (args, cbk) => {
             ]);
           }
 
-          return cbk(null, [endRoute]);
+          return cbk(null, [route]);
         } catch (err) {
           return cbk([500, 'FailedToConstructRebalanceRoute', {err}]);
         }
