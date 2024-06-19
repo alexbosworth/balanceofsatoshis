@@ -764,6 +764,55 @@ module.exports = (args, cbk) => {
         }
       }],
 
+      // Calculate the total inbound fee discount
+      discount: [
+        'channels',
+        'getHeight',
+        'getPublicKey',
+        'invoice',
+        'routes',
+        ({
+          channels,
+          getHeight,
+          getPublicKey,
+          invoice,
+          routes,
+          tokens,
+        },
+        cbk) =>
+      {
+        const {route} = routeFromChannels({
+          channels: channels.map(channel => ({
+            capacity: channel.capacity,
+            destination: channel.destination,
+            id: channel.id,
+            policies: channel.policies.map(policy => ({
+              base_fee_mtokens: policy.base_fee_mtokens,
+              cltv_delta: policy.cltv_delta,
+              fee_rate: policy.fee_rate,
+              is_disabled: policy.is_disabled,
+              max_htlc_mtokens: policy.max_htlc_mtokens,
+              min_htlc_mtokens: policy.min_htlc_mtokens,
+              public_key: policy.public_key,
+            })),
+          })),
+          cltv_delta: cltvDelta,
+          destination: getPublicKey.public_key,
+          height: getHeight.current_block_height,
+          mtokens: (BigInt(invoice.tokens) * mtokensPerToken).toString(),
+          payment: invoice.payment,
+          total_mtokens: !!invoice.payment ? invoice.mtokens : undefined,
+        });
+
+        const [discounted] = routes;
+
+        const dif = BigInt(route.fee_mtokens) - BigInt(discounted.fee_mtokens);
+
+        return cbk(null, {
+          lowered: tokAsBigTok(Number(dif / mtokensPerToken)),
+        });
+      }],
+
       // Execute the rebalance
       pay: ['invoice', 'lnd', 'routes', ({invoice, lnd, routes}, cbk) => {
         return payViaRoutes({lnd, routes, id: invoice.id}, (err, res) => {
@@ -801,12 +850,14 @@ module.exports = (args, cbk) => {
 
       // Final rebalancing outcome
       rebalance: [
+        'discount',
         'getAdjustedInbound',
         'getAdjustedOutbound',
         'getInbound',
         'getOutbound',
         'pay',
         ({
+          discount,
           getAdjustedInbound,
           getAdjustedOutbound,
           getInbound,
@@ -828,6 +879,7 @@ module.exports = (args, cbk) => {
         const outPendingOut = getAdjustedOutbound.outbound_pending;
 
         return cbk(null, {
+          got_inbound_fee_discount: discount.lowered,
           rebalance: [
             {
               increased_inbound_on: inOn,
