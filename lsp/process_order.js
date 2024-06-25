@@ -443,7 +443,7 @@ module.exports = (args, cbk) => {
           result: {
             announce_channel: !!message.params.announce_channel,
             channel: null,
-            channel_expiry_blocks: defaultLifetimeBlocks,
+            channel_expiry_blocks: message.params.channel_expiry_blocks,
             client_balance_sat: Number().toString(),
             funding_confirms_within_blocks: confTarget,
             created_at: new Date().toISOString(),
