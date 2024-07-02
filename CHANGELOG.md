@@ -1,5 +1,9 @@
 # Versions
 
+## 19.0.1
+
+- `offer-channel-open`: Correct PPM fee pricing for custom lifetime lengths
+
 ## 19.0.0
 
 - `install-completion`: Add command to install shell tab autocompletion

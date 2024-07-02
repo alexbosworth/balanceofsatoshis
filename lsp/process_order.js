@@ -23,8 +23,9 @@ const {versionJsonRpc} = require('./lsps1_protocol');
 
 const blocksAsMs = blocks => blocks * 10 * 60 * 1000;
 const blocksPerYear = 144 * 365;
-const capacityFee = (rate, capacity) => Math.floor(rate * capacity / 1e6 / 4);
+const capacityFee = (rate, capacity) => Math.floor(rate * capacity / 1e6);
 const decodeMessage = n => Buffer.from(n, 'hex').toString();
+const describeBlocks = blocks => `${(blocks / 144).toFixed(2)} days`;
 const encodeMessage = n => Buffer.from(n, 'utf8').toString('hex');
 const expiryDate = ms => new Date(Date.now() + ms).toISOString();
 const {floor} = Math;
@@ -337,7 +338,17 @@ module.exports = (args, cbk) => {
 
         const capacityFees = capacityFee(ppmFees, getMessage.capacity);
 
-        const ppmTotalFee = floor(time * capacityFees);
+        const ppmTotalFee = Math.ceil(time * capacityFees);
+
+        args.logger.info({
+          request: {
+            capacity: tokensAsBigUnit(getMessage.capacity),
+            lifetime: describeBlocks(getMessage.params.channel_expiry_blocks),
+            ppm_fee: tokensAsBigUnit(ppmTotalFee),
+            base_fee: tokensAsBigUnit(baseFee),
+            chain_fee: tokensAsBigUnit(estimatedChainFee),
+          },
+        });
 
         return cbk(null, {
           capacity: getMessage.capacity,
