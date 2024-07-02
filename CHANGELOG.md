@@ -1,5 +1,16 @@
 # Versions
 
+## 19.0.0
+
+- `install-completion`: Add command to install shell tab autocompletion
+- `uninstall-completion`: Add command to remove shell tab autocompletion
+
+### Breaking Changes
+
+The previous autocompletion mode that required editing shell profile is no
+longer supported. To enable or disable autocompletion, run the new install or
+uninstall completion commands.
+
 ## 18.2.9
 
 - `graph`: represent inbound fees in policy display

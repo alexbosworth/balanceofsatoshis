@@ -24,6 +24,7 @@
     "public_key"
   ],
   "priceProviders": ["coinbase", "coindesk", "coingecko"],
+  "process": "bos",
   "rateProviders": ["coindesk", "coingecko"],
   "swapTypes": ["inbound", "outbound"]
 }

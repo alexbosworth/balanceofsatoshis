@@ -1,4 +1,5 @@
 const {accountingCategories} = require('./constants');
+const autocomplete = require('./autocomplete');
 const callRawApi = require('./call_raw_api');
 const fetchRequest = require('./fetch_request');
 const interrogate = require('./interrogate');
@@ -10,6 +11,7 @@ const {swapTypes} = require('./constants');
 
 module.exports = {
   accountingCategories,
+  autocomplete,
   callRawApi,
   fetchRequest,
   interrogate,

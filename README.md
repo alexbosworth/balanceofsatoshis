@@ -54,12 +54,13 @@ bos help commandName
 If you want autocomplete on commands and options you can do:
 
 ```
-## Autocomplete on MacOS/ZSH shells (on startup: you can add this to ~/.zshrc)
-autoload -Uz compinit && compinit
-source <(bos completion zsh)
+bos install-completion
+```
 
-## Autocomplete on bash (on startup: add to ~/.profile or ~/.bash_profile)
-source <(bos completion bash)
+Or to remove autocomplete
+
+```shell
+bos uninstall-completion
 ```
 
 ## Community
