@@ -808,13 +808,21 @@ module.exports = (args, cbk) => {
 
         const dif = BigInt(route.fee_mtokens) - BigInt(discounted.fee_mtokens);
 
+        // Exit early when the inbound incluive fee rate is actually higher
+        if (BigInt(discounted.fee_mtokens) > BigInt(route.fee_mtokens)) {
+          return cbk(null, {route});
+        }
+
         return cbk(null, {
           lowered: tokAsBigTok(Number(dif / mtokensPerToken)),
+          route: discounted,
         });
       }],
 
       // Execute the rebalance
-      pay: ['invoice', 'lnd', 'routes', ({invoice, lnd, routes}, cbk) => {
+      pay: ['discount', 'invoice', 'lnd', ({discount, invoice, lnd}, cbk) => {
+        const routes = [discount.route];
+
         return payViaRoutes({lnd, routes, id: invoice.id}, (err, res) => {
           if (!!err) {
             return cbk([503, 'UnexpectedErrExecutingRebalance', {err}]);

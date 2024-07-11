@@ -145,6 +145,10 @@ module.exports = (args, cbk) => {
           return cbk([404, 'NoServicesOfferingChannelsFound']);
         }
 
+        args.logger.info({
+          services: services.map(n => `${n.alias} ${n.public_key}`.trim()),
+        });
+
         return args.ask({
           choices: services.map(node => ({
             name: `${node.alias} ${node.public_key}`,
