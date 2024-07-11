@@ -1,6 +1,6 @@
 # Versions
 
-## 19.0.2
+## 19.0.3
 
 - `offer-channel-open`: Correct PPM fee pricing for custom lifetime lengths
 
