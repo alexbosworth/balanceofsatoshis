@@ -61,6 +61,8 @@ module.exports = (args, cbk) => {
 
       // Run the rebalance
       rebalance: ['validate', ({}, cbk) => {
+        const start = new Date().toISOString();
+
         return asyncRetry({
           errorFilter: err => {
             // Do not retry on invalid errors
@@ -87,6 +89,7 @@ module.exports = (args, cbk) => {
         },
         cbk => {
           return rebalance({
+            start,
             avoid: args.avoid,
             fs: args.fs,
             in_filters: args.in_filters,

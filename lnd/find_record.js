@@ -112,11 +112,12 @@ module.exports = ({lnd, query}, cbk) => {
               channels: res.channels,
               nodes: [{
                 alias: res.alias,
+                capacity: res.capacity,
                 color: res.color,
                 features: res.features,
                 public_key: getKey.value.public_key,
                 sockets: res.sockets.map(n => n.socket),
-                updated_at: res.last_updated,
+                updated_at: res.updated_at,
               }],
             });
           });
@@ -192,7 +193,7 @@ module.exports = ({lnd, query}, cbk) => {
 
             return {
               alias: node.alias,
-              capacity: asBigUnit(getGraph.channels.reduce(
+              capacity: asBigUnit(node.capacity || getGraph.channels.reduce(
                 (sum, {capacity, policies}) => {
                   if (!policies.find(n => n.public_key === node.public_key)) {
                     return sum;

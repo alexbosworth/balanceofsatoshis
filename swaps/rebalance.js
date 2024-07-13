@@ -11,6 +11,7 @@ const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
 const {getPeerLiquidity} = require('ln-sync');
 const {getWalletVersion} = require('ln-service');
+const moment = require('moment');
 const {parseAmount} = require('ln-accounting');
 const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -84,6 +85,7 @@ const uniq = arr => Array.from(new Set(arr));
     [out_filters]: [<Outbound Filter Formula String>]
     [out_inbound]: <Outbound Target Inbound Liquidity Tokens Number>
     [out_through]: <Pay Out Through Peer String>
+    [start]: <ISO 8601 Start Date String>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
   }
 
@@ -836,6 +838,19 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Calculate rebalance time
+      time: ['pay', ({}, cbk) => {
+        // Exit early when no start time was specified
+        if (!args.start) {
+          return cbk();
+        }
+
+        const end = new moment();
+        const start = new moment(new Date(args.start));
+
+        return cbk(null, moment.duration(end.diff(start)).humanize());
+      }],
+
       // Get adjusted inbound liquidity after rebalance
       getAdjustedInbound: ['getInbound', 'pay', ({getInbound, pay}, cbk) => {
         return getPeerLiquidity({
@@ -864,6 +879,7 @@ module.exports = (args, cbk) => {
         'getInbound',
         'getOutbound',
         'pay',
+        'time',
         ({
           discount,
           getAdjustedInbound,
@@ -871,6 +887,7 @@ module.exports = (args, cbk) => {
           getInbound,
           getOutbound,
           pay,
+          time,
         },
         cbk) =>
       {
@@ -888,6 +905,7 @@ module.exports = (args, cbk) => {
 
         return cbk(null, {
           got_inbound_fee_discount: discount.lowered,
+          total_execution_time: time,
           rebalance: [
             {
               increased_inbound_on: inOn,
