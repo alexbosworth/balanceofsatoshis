@@ -271,7 +271,7 @@ module.exports = (args, cbk) => {
           return cbk(null, {id: args.recovery});
         }
 
-        if (!getQuote.response || !getQuote.response.payment) {
+        if (!getQuote.response || !getQuote.response.payment || !getQuote.response.payment.bolt11) {
           return cbk([503, 'UnexpectedMissingQuoteInLsps1OpenQuoteResponse']);
         }
 
@@ -279,7 +279,7 @@ module.exports = (args, cbk) => {
           return cbk([503, 'UnexpectedAbsentOrderIdInLsps1OpenQuoteResponse']);
         }
 
-        const request = getQuote.response.payment.bolt11_invoice;
+        const request = getQuote.response.payment.bolt11.invoice;
 
         if (!request) {
           return cbk([503, 'UnexpectedMissingPaymentRequestInQuoteResponse']);

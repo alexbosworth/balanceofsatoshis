@@ -95,8 +95,6 @@ module.exports = (args, cbk) => {
               min_funding_confirms_within_blocks: defaultFundingConfirmedBlocks,
               min_initial_client_balance_sat: Number().toString(),
               min_initial_lsp_balance_sat: args.min_capacity.toString(),
-              min_onchain_payment_confirmations: null,
-              min_onchain_payment_size_sat: null,
               min_required_channel_confirmations: defaultChannelActiveConfs,
               supports_zero_channel_reserve: false,
             },
