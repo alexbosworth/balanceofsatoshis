@@ -447,6 +447,7 @@ module.exports = (args, cbk) => {
         }
 
         const confTarget = message.params.funding_confirms_within_blocks;
+        const requiredConfs = message.params.required_channel_confirmations;
 
         const response = stringify({
           id: message.id,
@@ -470,7 +471,7 @@ module.exports = (args, cbk) => {
                 state: paymentStateExpectedPayment,
               },
             },
-            required_channel_confirmations: message.params.required_channel_confirmations,
+            required_channel_confirmations: requiredConfs,
             token: String(),
           },
         });

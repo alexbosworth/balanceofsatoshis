@@ -271,8 +271,12 @@ module.exports = (args, cbk) => {
           return cbk(null, {id: args.recovery});
         }
 
-        if (!getQuote.response || !getQuote.response.payment || !getQuote.response.payment.bolt11) {
+        if (!getQuote.response || !getQuote.response.payment) {
           return cbk([503, 'UnexpectedMissingQuoteInLsps1OpenQuoteResponse']);
+        }
+
+        if (!getQuote.response.payment.bolt11) {
+          return cbk([503, 'UnexpectedMissingBolt11InLsps1OpenQuoteResponse']);
         }
 
         if (!getQuote.response.order_id) {
