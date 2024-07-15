@@ -1,5 +1,9 @@
 # Versions
 
+## 19.0.5
+
+- `get-inbound-channel`, `offer-channel-open`: Update to new LSPS1 protocol
+
 ## 19.0.4
 
 - `offer-channel-open`: Correct PPM fee pricing for custom lifetime lengths
