@@ -642,6 +642,9 @@
       "method": "getPendingPayments"
     },
     {
+      "method": "getPendingSweeps"
+    },
+    {
       "arguments": [
         {
           "description": "Key family number",

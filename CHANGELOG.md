@@ -1,5 +1,9 @@
 # Versions
 
+## 19.1.0
+
+- `call`: Add support for `getPendingSweeps` method to show pending sweeps
+
 ## 19.0.5
 
 - `get-inbound-channel`, `offer-channel-open`: Update to new LSPS1 protocol
