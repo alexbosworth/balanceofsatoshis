@@ -1,6 +1,6 @@
 # Versions
 
-## 19.1.0
+## 19.1.1
 
 - `call`: Add support for `getPendingSweeps` method to show pending sweeps
 
