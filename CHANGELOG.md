@@ -1,5 +1,9 @@
 # Versions
 
+## 19.2.0
+
+- `fees`: Add `--set-inbound-rate-discount` to set a source-based rate discount
+
 ## 19.1.1
 
 - `call`: Add support for `getPendingSweeps` method to show pending sweeps
