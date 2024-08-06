@@ -316,13 +316,13 @@ module.exports = (args, cbk) => {
             const maxFeeRate = max(...currentPolicies.map(n => n.fee_rate));
 
             // Only the least inbound discount rate across all peer channels applies
-            const maxInboundDiscountRate = min(...currentPolicies.map(n => n.inbound_rate_discount));
+            const minInboundDiscountRate = min(...currentPolicies.map(n => n.inbound_rate_discount));
 
             return {
               base_fee_mtokens: baseFeeMillitokens.toString(),
               cltv_delta: args.cltv_delta || cltvDelta,
               fee_rate: rate !== undefined ? rate : maxFeeRate,
-              inbound_rate_discount: args.inbound_rate_discount !== undefined ? args.inbound_rate_discount : maxInboundDiscountRate,
+              inbound_rate_discount: args.inbound_rate_discount !== undefined ? args.inbound_rate_discount : minInboundDiscountRate,
               transaction_id: channel.transaction_id,
               transaction_vout: channel.transaction_vout,
             };
