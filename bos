@@ -704,20 +704,21 @@ prog
     });
   })
 
-  // Show and set outbound fee rates
-  .command('fees', 'Show and adjust outbound fee rates')
+  // Show and set routing policy fee rates
+  .command('fees', 'Show and adjust routing fee rates')
   .help('List out fee rates, fix problems with routing policies, set out fees')
   .help('When setting fee, if channels pending, will wait for confirm to set')
-  .help('Set-fee-rate can use formulas: https://formulajs.info/functions/')
+  .help('--set-fee-rate can use formulas: https://formulajs.info/functions/')
   .help('Specify PERCENT(0.00) to set the fee as a fraction of routed amount')
   .help('Specify BIPS() to set the fee as parts per thousand')
   .help('You can use INBOUND and OUTBOUND in formulas for IF formulas')
   .help('You can use INBOUND_FEE_RATE to mirror an inbound fee')
   .help('You can use FEE_RATE_OF_<PUBKEY> to reference other node rates')
+  .help('--set-inbound-discount-rate is total discount on traffic from peer')
   .option('--node <node_name>', 'Saved node (not peer to set fees on)')
   .option('--set-cltv-delta <count>', 'Set the number of blocks for CLTV', INT)
   .option('--set-fee-rate <rate>', 'Fee in parts per million or use a formula')
-  .option('--set-inbound-discount-rate <rate>', 'Discount fee in parts per million')
+  .option('--set-inbound-rate-discount <rate>', 'Source discount rate in PPM')
   .option('--to <peer>', 'Peer key/alias/tag to set fees', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -727,7 +728,7 @@ prog
           cltv_delta: options.setCltvDelta,
           fee_rate: options.setFeeRate,
           fs: {getFile: readFile},
-          inbound_rate_discount: options.setInboundDiscountRate,
+          inbound_rate_discount: options.setInboundRateDiscount,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           to: flatten([options.to].filter(n => !!n)),
         },
