@@ -97,8 +97,10 @@ module.exports = (args, cbk) => {
           return cbk([400, 'SettingGlobalInboundRateDiscountNotSupported']);
         }
 
-        if (!isNumber(args.inbound_rate_discount)) {
-          return cbk([400, 'ExpectedNumericRateToSetInboundRateDiscount']);
+        if (!!args.inbound_rate_discount) {
+          if (!isNumber(args.inbound_rate_discount)) {
+            return cbk([400, 'ExpectedNumericRateToSetInboundRateDiscount']);
+          }
         }
 
         return cbk();

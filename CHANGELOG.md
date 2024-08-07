@@ -1,6 +1,6 @@
 # Versions
 
-## 19.2.0
+## 19.2.1
 
 - `fees`: Add `--set-inbound-rate-discount` to set a source-based rate discount
 
