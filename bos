@@ -569,6 +569,8 @@ prog
   .option('--fee-rate <per_vbyte>', 'Chain fee rate for open', INT)
   .option('--node <node_name>', 'Use saved node to create channels group')
   .option('--size <count>', 'Number of group members', INT, 3)
+  .option('--skip-channels', 'Skip channel creation')
+  .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -583,6 +585,8 @@ prog
           count: options.size,
           members: flatten([options.allow].filter(n => !!n)),
           rate: options.feeRate || floor(defaultRate.tokens_per_vbyte),
+          skipchannels: options.skipChannels || undefined,
+          utxos: flatten([options.utxo].filter(n => !!n)),
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
@@ -1147,6 +1151,8 @@ prog
   .argument('<code>', 'Invite code to join group', STRING)
   .option('--max-fee-rate <per_vbyte>', 'Maximum fee/vbyte for open', INT)
   .option('--node <node_name>', 'Use saved node to join group')
+  .option('--skip-channels', 'Skip channel creation')
+  .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1162,6 +1168,8 @@ prog
           logger,
           code: args.code,
           max_rate: options.maxFeeRate || defaultRate.tokens_per_vbyte,
+          skipchannels: options.skipChannels || undefined,
+          utxos: flatten([options.utxo].filter(n => !!n)),
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
