@@ -1,5 +1,9 @@
 # Versions
 
+## 19.3.0
+
+- `chainfees`: Add support for `min_relay_feerate` for LND 0.18.3 and higher
+
 ## 19.2.2
 
 - `fees`: Add `--set-inbound-rate-discount` to set a source-based rate discount

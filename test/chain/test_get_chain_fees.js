@@ -54,6 +54,7 @@ const tests = [
           estimateFee: (args, cbk) => {
             return cbk(null, {
               sat_per_kw: 1 + Math.round(1 / args.conf_target),
+              min_relay_fee_sat_per_kw: '250',
             });
           },
         },
@@ -63,6 +64,7 @@ const tests = [
     expected: {
       current_block_hash: '00',
       fee_by_block_target: {'2': 8, '3': 4},
+      min_relay_feerate: 1000,
     },
   },
 ];

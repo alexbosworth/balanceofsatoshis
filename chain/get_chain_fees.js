@@ -2,6 +2,7 @@ const asyncAuto = require('async/auto');
 const asyncTimesSeries = require('async/timesSeries');
 const {getChainFeeRate} = require('ln-service');
 const {getHeight} = require('ln-service');
+const {getMinimumRelayFee} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const bytesPerKb = 1e3;
@@ -26,6 +27,7 @@ const start = 2;
     fee_by_block_target: {
       $number: <Kvbyte Fee Rate Number>
     }
+    min_relay_feerate: <Chain Backend Minimum KVbyte Fee Rate Number>
   }
 */
 module.exports = ({blocks, lnd}, cbk) => {
@@ -63,8 +65,16 @@ module.exports = ({blocks, lnd}, cbk) => {
       // Get chain info
       getHeight: ['validate', ({}, cbk) => getHeight({lnd}, cbk)],
 
+      // Get the minimum relay fee rate
+      getMinFee: ['validate', ({}, cbk) => getMinimumRelayFee({lnd}, cbk)],
+
       // Collapse chain fees into steps
-      chainFees: ['getFees', 'getHeight', ({getFees, getHeight}, cbk) => {
+      chainFees: [
+        'getFees',
+        'getHeight',
+        'getMinFee',
+        ({getFees, getHeight, getMinFee}, cbk) =>
+      {
         let cursor = {};
         const feeByBlockTarget = {};
 
@@ -83,6 +93,7 @@ module.exports = ({blocks, lnd}, cbk) => {
         return cbk(null, {
           current_block_hash: getHeight.current_block_hash,
           fee_by_block_target: feeByBlockTarget,
+          min_relay_feerate: ceil(getMinFee.tokens_per_vbyte * bytesPerKb),
         });
       }],
     },
