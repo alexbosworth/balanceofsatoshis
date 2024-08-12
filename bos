@@ -591,6 +591,44 @@ prog
     });
   })
 
+  // Create a fanout group
+  .command('create-fanout-group', 'Coordinate balanced channels group')
+  .help('Other nodes can join the group using join-channel-group')
+  .help('When using --allow, all joining nodes must be identified')
+  .help('To specify order of group pairings, order using --allow ordering')
+  .help('For 2 person channels the joining node is the channel initiator')
+  .help('Do not use a chain fee that will not confirm within two weeks')
+  .option('--allow <public_key>', 'Only allow these nodes to join', REPEATABLE)
+  .option('--output-size <output_size>', 'Output size', INT, 5e6)
+  .option('--fee-rate <per_vbyte>', 'Chain fee rate for open', INT)
+  .option('--node <node_name>', 'Use saved node to create channels group')
+  .option('--size <count>', 'Number of group members', INT, 3)
+  .option('--output-count <count>', 'Number of outputs to fanout excluding change', INT, 1)
+  .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const {lnd} = await lndForNode(logger, options.node);
+
+        const defaultRate = await lnService.getChainFeeRate({lnd});
+
+        return await paidServices.createGroupFanout({
+          lnd,
+          logger,
+          capacity: options.outputSize,
+          count: options.size,
+          inputs: flatten([options.utxo].filter(n => !!n)),
+          members: flatten([options.allow].filter(n => !!n)),
+          output_count: options.outputCount,
+          rate: options.feeRate || floor(defaultRate.tokens_per_vbyte),
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
   // Export LND credentials
   .command('credentials', 'Export local credentials')
   .help('Output encrypted remote access credentials. Use with "nodes --add"')
@@ -1162,6 +1200,39 @@ prog
           logger,
           code: args.code,
           max_rate: options.maxFeeRate || defaultRate.tokens_per_vbyte,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
+  // Join a fanout group
+  .command('join-fanout-group', 'Join a group to fanout with peers')
+  .help('Another node should have run create-fanout-group to create group')
+  .argument('<code>', 'Invite code to join group', STRING)
+  .option('--max-fee-rate <per_vbyte>', 'Maximum fee/vbyte for open', INT)
+  .option('--node <node_name>', 'Use saved node to join group')
+  .option('--output-count <count>', 'Number of outputs to fanout excluding change', INT, 1)
+  .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const {lnd} = await lndForNode(logger, options.node);
+
+        const defaultRate = await lnService.getChainFeeRate({
+          confirmation_target: 2,
+          lnd,
+        });
+
+        return await paidServices.joinGroupFanout({
+          lnd,
+          logger,
+          code: args.code,
+          inputs: flatten([options.utxo].filter(n => !!n)),
+          max_rate: options.maxFeeRate || defaultRate.tokens_per_vbyte,
+          output_count: options.outputCount,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
