@@ -592,7 +592,7 @@ prog
   })
 
   // Create a fanout group
-  .command('create-fanout-group', 'Coordinate balanced channels group')
+  .command('create-fanout-group', 'Coordinate a group to fanout utxos')
   .help('Other nodes can join the group using join-channel-group')
   .help('When using --allow, all joining nodes must be identified')
   .help('To specify order of group pairings, order using --allow ordering')
