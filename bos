@@ -604,6 +604,7 @@ prog
   .option('--node <node_name>', 'Use saved node to create channels group')
   .option('--size <count>', 'Number of group members', INT, 3)
   .option('--output-count <count>', 'Number of outputs to fanout excluding change', INT, 1)
+  .option('--select-utxos', 'Specify UTXOs to spend interactively from a list')
   .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -615,9 +616,11 @@ prog
         return await paidServices.createGroupFanout({
           lnd,
           logger,
+          ask: await commands.interrogate({}),
           capacity: options.outputSize,
           count: options.size,
           inputs: flatten([options.utxo].filter(n => !!n)),
+          is_selecting_utxos: options.selectUtxos,
           members: flatten([options.allow].filter(n => !!n)),
           output_count: options.outputCount,
           rate: options.feeRate || floor(defaultRate.tokens_per_vbyte),
@@ -1215,6 +1218,7 @@ prog
   .option('--max-fee-rate <per_vbyte>', 'Maximum fee/vbyte for open', INT)
   .option('--node <node_name>', 'Use saved node to join group')
   .option('--output-count <count>', 'Number of outputs to fanout excluding change', INT, 1)
+  .option('--select-utxos', 'Specify UTXOs to spend interactively from a list')
   .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -1229,8 +1233,10 @@ prog
         return await paidServices.joinGroupFanout({
           lnd,
           logger,
+          ask: await commands.interrogate({}),
           code: args.code,
           inputs: flatten([options.utxo].filter(n => !!n)),
+          is_selecting_utxos: options.selectUtxos,
           max_rate: options.maxFeeRate || defaultRate.tokens_per_vbyte,
           output_count: options.outputCount,
         },
