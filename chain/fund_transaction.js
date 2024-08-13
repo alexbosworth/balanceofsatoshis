@@ -168,7 +168,7 @@ module.exports = (args, cbk) => {
             }
 
             const tokens = sumOf(input.map(utxo => {
-              return utxos.find(n => asOutpoint(n) === utxo).tokens;
+              return utxos.find(n => asOutpoint(n) === utxo.value).tokens;
             }));
 
             // Exit early when the amount is open ended

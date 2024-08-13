@@ -1,5 +1,9 @@
 # Versions
 
+## 19.3.1
+
+- `fund`: Fix validation for funding when using `--select-utxos`
+
 ## 19.3.0
 
 - `chainfees`: Add support for `min_relay_feerate` for LND 0.18.3 and higher
