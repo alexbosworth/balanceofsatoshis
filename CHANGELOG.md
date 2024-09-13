@@ -1,6 +1,6 @@
 # Versions
 
-## 19.3.2
+## 19.3.3
 
 - Add support for LND 0.18.3
 
