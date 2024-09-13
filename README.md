@@ -7,7 +7,7 @@ Commands for working with LND balances.
 
 Supported LND versions:
 
-- v0.18.0-beta to v0.18.2-beta
+- v0.18.0-beta to v0.18.3-beta
 - v0.17.0-beta to v0.17.5-beta
 - v0.16.0-beta to v0.16.4-beta
 - v0.15.2-beta to v0.15.5-beta
@@ -26,7 +26,6 @@ Or use a platform-specific guide:
 - [RaspiBlitz install guide][raspiblitz-install-guide]
 - [RaspiBolt/Debian guide][raspibolt-install-guide]
 - [Umbrel install guide][umbrel-install-guide]
-- [Voltage install guide][voltage-install-guide]
 
 If you want to try out any command without npm install, you can also do `npx
 balanceofsatoshis` to run a command directly.
@@ -733,4 +732,3 @@ bos inbound-channel rules --rule "if(private,capacity >= 9*m,capacity >= 5*m)"
 [raspiblitz-install-guide]: https://gist.github.com/openoms/823f99d1ab6e1d53285e489f7ba38602
 [raspibolt-install-guide]: https://raspibolt.org/guide/bonus/lightning/balance-of-satoshis.html
 [umbrel-install-guide]: https://web.archive.org/web/20240711203839/https://plebnet.wiki/wiki/Umbrel_-_Installing_BoS
-[voltage-install-guide]: https://docs.voltage.cloud/balance-of-satoshis-guides/balance-of-satoshis

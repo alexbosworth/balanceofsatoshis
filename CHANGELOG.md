@@ -1,5 +1,9 @@
 # Versions
 
+## 19.3.2
+
+- Add support for LND 0.18.3
+
 ## 19.3.1
 
 - `fund`: Fix validation for funding when using `--select-utxos`
