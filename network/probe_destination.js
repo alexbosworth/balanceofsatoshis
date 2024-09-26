@@ -28,8 +28,10 @@ const defaultMaxFee = 1337;
 const defaultTokens = 1;
 const featureTypeChannelType = 45;
 const featureTypeTrustedFunding = 51;
+const feeBuffer = fees => fees * 2;
 const {floor} = Math;
 const fromKeyType = '34349339';
+const htlcOutputSize = 43;
 const keySendPreimageType = '5482373484';
 const makeNonce = () => randomBytes(32).toString('hex');
 const {max} = Math;
@@ -38,6 +40,7 @@ const {min} = Math;
 const nodeKeyFamily = 6;
 const preimageByteLength = 32;
 const {now} = Date;
+const rate = n => n.commit_transaction_fee / (n.commit_transaction_weight / 4);
 const reserveRatio = 0.01;
 const signatureType = '34349337';
 const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
@@ -346,9 +349,10 @@ module.exports = (args, cbk) => {
         }
 
         const withBalance = withPeer.filter(n => {
+          const fees = n.commit_transaction_fee + (htlcOutputSize * rate(n));
           const reserve = n.local_reserve || floor(n.capacity * reserveRatio);
 
-          return n.local_balance - tokens > reserve + n.commit_transaction_fee;
+          return n.local_balance - tokens > reserve + feeBuffer(fees);
         });
 
         if (!withBalance.length) {

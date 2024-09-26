@@ -1,5 +1,9 @@
 # Versions
 
+## 19.3.4
+
+- Probing at low local balance value channels now corrects for fee buffer
+
 ## 19.3.3
 
 - Add support for LND 0.18.3
