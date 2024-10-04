@@ -1,6 +1,6 @@
 # Versions
 
-## 19.3.4
+## 19.3.5
 
 - Probing at low local balance value channels now corrects for fee buffer
 
