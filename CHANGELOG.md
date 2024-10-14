@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.0
+
+- `create-fanout-group`, `join-fanout-group`: add commands for collab fanout
+
 ## 19.3.5
 
 - Probing at low local balance value channels now corrects for fee buffer
