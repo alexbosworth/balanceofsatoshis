@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.1
+
+- `rebalance`: Correct for new fee buffer on close-to-balance rebalances
+
 ## 19.4.0
 
 - `create-fanout-group`, `join-fanout-group`: add commands for collab fanout

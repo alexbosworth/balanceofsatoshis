@@ -19,6 +19,7 @@ const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
 const bufFromHex = hex => Buffer.from(hex, 'hex');
+const channelReserve = n => n.local_reserve || Math.floor(n.capacity * 0.01);
 const cltvBuffer = 3;
 const dateBytesLength = 8;
 const datePrecisionLength = 6;
@@ -41,7 +42,6 @@ const nodeKeyFamily = 6;
 const preimageByteLength = 32;
 const {now} = Date;
 const rate = n => n.commit_transaction_fee / (n.commit_transaction_weight / 4);
-const reserveRatio = 0.01;
 const signatureType = '34349337';
 const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
 
@@ -331,7 +331,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Outgoing channel id
-      outgoingChannelId: ['getChannels', 'to', ({getChannels, to}, cbk) => {
+      outId: ['getChannels', 'to', ({getChannels, to}, cbk) => {
         if (!getChannels) {
           return cbk();
         }
@@ -350,7 +350,7 @@ module.exports = (args, cbk) => {
 
         const withBalance = withPeer.filter(n => {
           const fees = n.commit_transaction_fee + (htlcOutputSize * rate(n));
-          const reserve = n.local_reserve || floor(n.capacity * reserveRatio);
+          const reserve = channelReserve(n);
 
           return n.local_balance - tokens > reserve + feeBuffer(fees);
         });
@@ -363,7 +363,15 @@ module.exports = (args, cbk) => {
 
         const [channel] = sortBy({attribute, array: withBalance}).sorted;
 
-        return cbk(null, channel.id);
+        const bufferFees = htlcOutputSize * rate(channel);
+        const reserve = channelReserve(channel);
+
+        const fees = channel.commit_transaction_fee + bufferFees;
+        const spendable = channel.local_balance - reserve;
+
+        const maxPayable = floor(spendable - feeBuffer(fees));
+
+        return cbk(null, {id: channel.id, max: maxPayable || args.find_max});
       }],
 
       // Log sending towards destination
@@ -390,9 +398,9 @@ module.exports = (args, cbk) => {
         'getIcons',
         'getIdentity',
         'messages',
-        'outgoingChannelId',
+        'outId',
         'to',
-        ({getFeatures, getIcons, messages, outgoingChannelId, to}, cbk) =>
+        ({getFeatures, getIcons, messages, outId, to}, cbk) =>
       {
         return executeProbe({
           messages,
@@ -407,7 +415,7 @@ module.exports = (args, cbk) => {
           max_fee: args.max_fee,
           max_fee_mtokens: args.max_fee_mtokens,
           mtokens: !BigInt(to.mtokens) ? tokAsMtok(defaultTokens) : to.mtokens,
-          outgoing_channel: outgoingChannelId,
+          outgoing_channel: outId.id,
           payment: to.payment,
           routes: to.routes,
           tagged: !!getIcons ? getIcons.nodes : undefined,
@@ -418,7 +426,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Get maximum value of the successful route
-      getMax: ['probe', 'to', ({probe, to}, cbk) => {
+      getMax: ['outId', 'probe', 'to', ({outId, probe, to}, cbk) => {
         if (!args.find_max || !probe.route) {
           return cbk(null, {});
         }
@@ -445,7 +453,7 @@ module.exports = (args, cbk) => {
         // Found a successful high value route
         sub.once('success', ({maximum}) => {
           return cbk(null, {
-            maximum: min(args.find_max, max(maximum, probe.route.tokens)),
+            maximum: min(outId.max, max(maximum, probe.route.tokens)),
           });
         });
 
