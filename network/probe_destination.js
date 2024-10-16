@@ -415,7 +415,7 @@ module.exports = (args, cbk) => {
           max_fee: args.max_fee,
           max_fee_mtokens: args.max_fee_mtokens,
           mtokens: !BigInt(to.mtokens) ? tokAsMtok(defaultTokens) : to.mtokens,
-          outgoing_channel: outId.id,
+          outgoing_channel: !!outId ? outId.id : undefined,
           payment: to.payment,
           routes: to.routes,
           tagged: !!getIcons ? getIcons.nodes : undefined,

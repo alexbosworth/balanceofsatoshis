@@ -1,6 +1,6 @@
 # Versions
 
-## 19.4.1
+## 19.4.2
 
 - `rebalance`: Correct for new fee buffer on close-to-balance rebalances
 
