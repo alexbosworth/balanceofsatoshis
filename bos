@@ -494,6 +494,25 @@ prog
     });
   })
 
+  // Clean a command of unnecessary references
+  .command('clean-command', 'Clean command to remove outdated references')
+  .visible(false)
+  .argument('<command>', 'Escaped command to cleanup')
+  .option('--node <node_name>', 'Saved node to use for lookups')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return commands.clean({
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          command: args.command,
+        },
+        responses.returnOutput({logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
   // Clean out failed payments
   .command('clean-failed-payments', 'Clean out past failed payment data')
   .help('Remove old failed payment data for probes and other failed payments')
