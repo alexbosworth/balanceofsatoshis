@@ -863,7 +863,7 @@ prog
   .argument('<address_amount...>', 'Address and amount to send')
   .option('--broadcast', 'Broadcast the signed transaction')
   .option('--dryrun', 'Avoid locking up UTXOs')
-  .option('--fee-rate <fee>', 'Per vbyte fee rate for on-chain tx fee', INT)
+  .option('--fee-rate <fee>', 'Per vbyte fee rate for on-chain tx fee')
   .option('--node <node_name>', 'Node to spend coins')
   .option('--select-utxos', 'Specify UTXOs to spend interactively from a list')
   .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)

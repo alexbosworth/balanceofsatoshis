@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.4
+
+- `fund`: Explicitly disallow funding of txs with fractional fee rates
+
 ## 19.4.3
 
 - `rebalance`: Correct for new fee buffer on close-to-balance rebalances

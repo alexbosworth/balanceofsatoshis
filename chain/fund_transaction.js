@@ -26,6 +26,7 @@ const hasMaxAmount = amounts => !!amounts.find(n => !!n && !!/max/gim.test(n));
 const {isArray} = Array;
 const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
+const isValidFeeRate = n => !n || Number.isInteger(Number(n));
 const minConfs = 1;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const taprootAddressVersion = 1;
@@ -83,6 +84,10 @@ module.exports = (args, cbk) => {
 
         if (!args.ask) {
           return cbk([400, 'ExpectedAskFunctionToFundTransaction']);
+        }
+
+        if (!isValidFeeRate(args.fee_tokens_per_vbyte)) {
+          return cbk([400, 'ExpectedIntegerFeeRateForFundingTransaction']);
         }
 
         if (!!args.is_broadcast && !!args.is_dry_run) {
@@ -159,6 +164,7 @@ module.exports = (args, cbk) => {
             value: asOutpoint(utxo),
           })),
           loop: false,
+          message: 'Select UTXOs to spend',
           name: 'inputs',
           type: 'checkbox',
           validate: input => {
