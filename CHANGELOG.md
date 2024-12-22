@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.5
+
+- Add support for LND 0.18.4
+
 ## 19.4.4
 
 - `fund`: Explicitly disallow funding of txs with fractional fee rates

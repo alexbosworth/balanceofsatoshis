@@ -26,7 +26,7 @@ const defaultMaxPaths = 5;
 const effectiveFeeRate = (n, m) => Number(BigInt(1e6) * BigInt(n) / BigInt(m));
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
-const pathTimeoutMs = 1000 * 60 * 5;
+const pathTimeoutMs = 1000 * 60 * 90;
 const singlePath = 1;
 const uniq = arr => Array.from(new Set(arr));
 const unsupported = 501;

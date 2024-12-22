@@ -11,7 +11,7 @@ const {describeRoutingFailure} = require('./../display');
 
 const {now} = Date;
 const minutesAsMs = minutes => 1000 * 60 * minutes;
-const pathTimeoutMs = 1000 * 60 * 5;
+const pathTimeoutMs = 1000 * 60 * 90;
 const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
 
 /** Execute a probe
