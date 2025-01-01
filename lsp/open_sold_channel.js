@@ -114,7 +114,7 @@ module.exports = (args, cbk) => {
 
         return openChannel({
           description: `Sold channel open for invoice ${args.invoice_id}`,
-          fee_rate: args.chain_fee,
+          chain_fee_tokens_per_vbyte: args.chain_fee,
           is_private: !order.result.announce_channel,
           lnd: args.lnd,
           local_tokens: order.result.lsp_balance_sat,
