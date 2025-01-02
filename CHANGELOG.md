@@ -1,6 +1,6 @@
 # Versions
 
-## 19.4.6
+## 19.4.7
 
 - Add support for LND 0.18.4
 
