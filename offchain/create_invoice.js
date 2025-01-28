@@ -335,7 +335,10 @@ module.exports = (args, cbk) => {
             }
           }
 
-          args.logger.info({accepting_payment: true});
+          args.logger.info({
+            receiving_channel: forward.in_channel,
+            accepting_payment: true,
+          });
 
           forward.settle({secret: addInvoice.secret});
 

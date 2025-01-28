@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.8
+
+- `invoice`: Add `--virtual` inbound channel logging
+
 ## 19.4.7
 
 - Add support for LND 0.18.4
