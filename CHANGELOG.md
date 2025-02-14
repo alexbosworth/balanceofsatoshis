@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.9
+
+- `report`: Change fiat rate provider
+
 ## 19.4.8
 
 - `invoice`: Add `--virtual` inbound channel logging
