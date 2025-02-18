@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.10
+
+- Add support for LND 0.18.5
+
 ## 19.4.9
 
 - `report`: Change fiat rate provider
