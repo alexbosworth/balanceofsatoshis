@@ -44,7 +44,6 @@
     "moment": "2.30.1",
     "paid-services": "6.2.1",
     "probing": "5.0.4",
-    "psbt": "3.0.0",
     "qrcode-terminal": "0.12.0",
     "sanitize-filename": "1.6.3",
     "socks-proxy-agent": "8.0.5",
@@ -56,7 +55,7 @@
   "description": "Lightning balance CLI",
   "devDependencies": {
     "invoices": "3.0.0",
-    "ln-docker-daemons": "6.0.24"
+    "ln-docker-daemons": "6.0.25"
   },
   "engines": {
     "node": ">=18"
@@ -83,5 +82,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t alexbosworth/balanceofsatoshis -t alexbosworth/balanceofsatoshis:$npm_package_version --push .",
     "test": "npx nyc@17.1.0 node --experimental-test-coverage --test test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "19.4.11"
+  "version": "19.4.12"
 }
