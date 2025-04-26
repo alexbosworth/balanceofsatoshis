@@ -14,7 +14,6 @@ const percentFormat = n => isNaN(n) ? '0' : (n * 100).toFixed();
     currency: <Currency String>
     latest_block_at: <Last Block At ISO 8601 Date String>
     public_key: <Public Key Hex String>
-    rate: <Fiat Rate Number>
   }
 
   @returns
@@ -30,8 +29,6 @@ const percentFormat = n => isNaN(n) ? '0' : (n * 100).toFixed();
 module.exports = args => {
   const balance = formatAsBigUnit(args.balance);
 
-  const fiatBalance = dollarFormat(balance * args.rate);
-
   const report = [
     {
       subtitle: 'current status',
@@ -44,10 +41,7 @@ module.exports = args => {
       details: args.alias,
     },
     {
-      details: `${balance} ${args.currency} ($${fiatBalance})`,
-    },
-    {
-      details: `1 ${args.currency}~$${dollarFormat(args.rate)}`,
+      details: `${balance} ${args.currency}`,
     },
     {},
     {

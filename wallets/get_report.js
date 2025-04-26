@@ -13,7 +13,6 @@ const {getInvoices} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNetworkGraph} = require('ln-service');
 const {getPayments} = require('ln-sync');
-const {getPrices} = require('@alexbosworth/fiat');
 const {getWalletInfo} = require('ln-service');
 const {italicize} = require('@alexbosworth/html2unicode');
 const moment = require('moment');
@@ -57,11 +56,6 @@ module.exports = ({fs, node, request, style}, cbk) => {
   return asyncAuto({
     // Get authenticated lnd connection
     getLnd: cbk => authenticatedLnd({node}, cbk),
-
-    // Get exchange rate
-    getRate: cbk => {
-      return getPrices({request, from: rateProvider, symbols: [fiat]}, cbk);
-    },
 
     // Get balance
     getBalance: ['getLnd', ({getLnd}, cbk) => {
@@ -225,7 +219,6 @@ module.exports = ({fs, node, request, style}, cbk) => {
       'getInvoices',
       'getNetwork',
       'getPayments',
-      'getRate',
       'getRebalances',
       ({
         currency,
@@ -241,7 +234,6 @@ module.exports = ({fs, node, request, style}, cbk) => {
         getInvoices,
         getNetwork,
         getPayments,
-        getRate,
         getRebalances,
       }, cbk) =>
     {
@@ -259,7 +251,6 @@ module.exports = ({fs, node, request, style}, cbk) => {
         channel_balance: getBalance.channel_balance,
         latest_block_at: getInfo.latest_block_at,
         public_key: getInfo.public_key,
-        rate: getRate.tickers.find(n => n.ticker === fiat).rate,
       });
 
       const channelsActivity = channelsAsReportActivity({

@@ -15,10 +15,7 @@ const report = [
     details: 'alias',
   },
   {
-    details: '0.00000001 CURRENCY ($0.00)',
-  },
-  {
-    details: '1 CURRENCY~$1.00',
+    details: '0.00000001 CURRENCY',
   },
   {},
   {

@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.11
+
+- `report`: remove fiat
+
 ## 19.4.10
 
 - Add support for LND 0.18.5
