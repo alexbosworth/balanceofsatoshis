@@ -948,47 +948,12 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Set fee rates
-      setFeeRates: [
-        'broadcastChainTransaction',
-        'cancelLocks',
-        'detectFunding',
-        'fundChannels',
-        'getLnds',
-        'opens',
-        ({getLnds, opens}, cbk) =>
-      {
-        // Exit early when not specifying fee rates
-        if (args.set_fee_rates.length !== args.public_keys.length) {
-          return cbk();
-        }
-
-        return asyncEachSeries(opens, ({channels, node}, cbk) => {
-          const {lnd} = getLnds.find(n => n.node === node);
-
-          return asyncEachSeries(channels, (channel, cbk) => {
-            return adjustFees({
-              lnd,
-              cltv_delta: undefined,
-              fee_rate: channel.rate,
-              fs: args.fs,
-              logger: args.logger,
-              to: [channel.partner_public_key],
-            },
-            cbk);
-          },
-          cbk);
-        },
-        cbk);
-      }],
-
       // Transaction complete
       completed: [
         'broadcastChainTransaction',
         'cancelPending',
         'fundingPsbt',
         'getFunding',
-        'setFeeRates',
         ({getFunding, fundingPsbt}, cbk) =>
       {
         return cbk(null, {

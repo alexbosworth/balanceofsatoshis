@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.13
+
+- `open`: remove legacy LND support for `--set-fee-rate`
+
 ## 19.4.12
 
 - `report`: remove fiat
