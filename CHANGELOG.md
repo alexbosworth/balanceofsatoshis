@@ -1,5 +1,9 @@
 # Versions
 
+## 19.4.14
+
+- Add support for LND 0.19.0
+
 ## 19.4.13
 
 - `open`: remove legacy LND support for `--set-fee-rate`
