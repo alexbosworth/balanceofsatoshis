@@ -1458,6 +1458,7 @@ prog
   .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
   .option('--skip-anchors-check', 'Do not check for anchor support')
   .option('--type <type>', 'Type of channel (private/public)', REPEATABLE)
+  .option('--allow-minimal-reserve', 'Allow peer to have minimal reserve')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1479,6 +1480,7 @@ prog
           set_fee_rates: collect(options.setFeeRate),
           skip_anchors_check: options.skipAnchorsCheck || undefined,
           types: collect(options.type),
+          is_allowing_minimal_reserve: options.allowMinimalReserve || undefined,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
