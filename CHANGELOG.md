@@ -1,5 +1,10 @@
 # Versions
 
+## 19.5.0
+
+- `open`: allow going below safety minimum on remote reserve via
+    `--allow-minimal-reserve`
+
 ## 19.4.15
 
 - Add support for LND 0.19.1
