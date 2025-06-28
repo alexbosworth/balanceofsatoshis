@@ -1446,6 +1446,7 @@ prog
   .help('Trusted channel funding is not supported in LND 0.15.0 and below')
   .help('Simplified Taproot channels are not supported in LND 0.17.0 & below')
   .argument('<peer_public_keys...>', 'With nodes with public keys')
+  .option('--allow-minimal-reserve', 'Allow peer to have minimal reserve')
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
   .option('--avoid-broadcast', 'Avoid broadcasting channel open transaction')
   .option('--commitment <type>', 'default or simplified_taproot', REPEATABLE)
@@ -1458,7 +1459,6 @@ prog
   .option('--set-fee-rate <ppm>', 'Set forward fee rate to peer', REPEATABLE)
   .option('--skip-anchors-check', 'Do not check for anchor support')
   .option('--type <type>', 'Type of channel (private/public)', REPEATABLE)
-  .option('--allow-minimal-reserve', 'Allow peer to have minimal reserve')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1471,6 +1471,7 @@ prog
           fs: {getFile: readFile},
           gives: collect(options.give),
           internal_fund_fee_rate: options.internalFundAtFeeRate || undefined,
+          is_allowing_minimal_reserve: options.allowMinimalReserve || false,
           is_avoiding_broadcast: options.avoidBroadcast || undefined,
           is_external: options.externalFunding,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
@@ -1480,7 +1481,6 @@ prog
           set_fee_rates: collect(options.setFeeRate),
           skip_anchors_check: options.skipAnchorsCheck || undefined,
           types: collect(options.type),
-          is_allowing_minimal_reserve: options.allowMinimalReserve || undefined,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
