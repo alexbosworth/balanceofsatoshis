@@ -14,6 +14,7 @@ const uniq = arr => Array.from(new Set(arr));
     capacities: [<Channel Capacity Tokens Number>]
     commitments: [<Channel Commitment Types String>]
     gives: [<Give Tokens String>]
+    [is_allowing_minimal_reserve]: <Allow Peers to Have Minimal Reserve Bool>
     nodes: [<Channel Partner Node Identity Public Key Hex String>]
     rates: [<Set Fee Rate String>]
     saved: [<Open on Saved Node Name String>]
@@ -28,6 +29,7 @@ const uniq = arr => Array.from(new Set(arr));
         [cooperative_close_address]: <Restrict Coop Close to Address String>
         description: <Channel Description String>
         [give_tokens]: <Give Tokens Number>
+        [is_allowing_minimal_reserve]: <Allow Minimal Reserve Bool>
         is_private: <Channel Is Private Bool>
         is_simplified_taproot: <Channel Is Taproot Bool>
         partner_public_key: <Channel Partner Identity Public Key Hex String>
@@ -45,6 +47,7 @@ module.exports = args => {
       description: defaultChannelDescription,
       fee_rate: numericFeeRate(args.rates[i]),
       give_tokens: !!args.gives[i] ? Number(args.gives[i]) : undefined,
+      is_allowing_minimal_reserve: args.is_allowing_minimal_reserve,
       is_private: !!args.types[i] && privateTypes.includes(args.types[i]),
       is_simplified_taproot: isSimpleP2tr(args.commitments, i),
       is_trusted_funding: !!args.types[i] && isTrusted(args.types[i]),

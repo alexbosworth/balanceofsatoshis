@@ -1,6 +1,6 @@
 # Versions
 
-## 19.5.0
+## 19.5.1
 
 - `open`: allow going below safety minimum on remote reserve via
     `--allow-minimal-reserve`

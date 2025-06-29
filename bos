@@ -1446,7 +1446,7 @@ prog
   .help('Trusted channel funding is not supported in LND 0.15.0 and below')
   .help('Simplified Taproot channels are not supported in LND 0.17.0 & below')
   .argument('<peer_public_keys...>', 'With nodes with public keys')
-  .option('--allow-minimal-reserve', 'Allow peer to have minimal reserve')
+  .option('--allow-minimal-reserve', 'Allow peers to have minimal reserve')
   .option('--amount <channel_capacity>', 'Capacities to open', REPEATABLE)
   .option('--avoid-broadcast', 'Avoid broadcasting channel open transaction')
   .option('--commitment <type>', 'default or simplified_taproot', REPEATABLE)

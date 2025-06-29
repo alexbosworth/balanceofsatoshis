@@ -76,6 +76,7 @@ const utxoPollingTimes = 20;
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     gives: [<New Channel Give Tokens Number>]
+    [is_allowing_minimal_reserve]: <Allow Peers to Have Minimal Reserve Bool>
     [is_avoiding_broadcast]: <Avoid Funding Transaction Broadcast Bool>
     [is_external]: <Use External Funds to Open Channels Bool>
     lnd: <Authenticated LND API Object>
