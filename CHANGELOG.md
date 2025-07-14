@@ -1,6 +1,6 @@
 # Versions
 
-## 19.5.2
+## 19.5.3
 
 - `remove-peer`: Avoid query mempool size when chain fee rate is specified
 
