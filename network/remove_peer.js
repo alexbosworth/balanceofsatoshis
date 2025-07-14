@@ -315,6 +315,11 @@ module.exports = (args, cbk) => {
 
       // Get mempool size
       getMempool: ['getNetwork', ({getNetwork}, cbk) => {
+        // Exit early when the chain fee is specified directly
+        if (!!args.chain_fee_rate) {
+          return cbk();
+        }
+
         return getMempoolSize({
           network: getNetwork.network,
           request: args.request,

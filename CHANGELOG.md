@@ -1,5 +1,9 @@
 # Versions
 
+## 19.5.2
+
+- `remove-peer`: Avoid query mempool size when chain fee rate is specified
+
 ## 19.5.1
 
 - `open`: allow going below safety minimum on remote reserve via
