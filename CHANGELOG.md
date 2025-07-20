@@ -1,5 +1,9 @@
 # Versions
 
+## 19.5.4
+
+- Add support fort LND 0.19.2
+
 ## 19.5.3
 
 - `remove-peer`: Avoid query mempool size when chain fee rate is specified
