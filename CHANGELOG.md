@@ -1,8 +1,12 @@
 # Versions
 
+## 19.5.5
+
+- Add support for LND 0.19.3
+
 ## 19.5.4
 
-- Add support fort LND 0.19.2
+- Add support for LND 0.19.2
 
 ## 19.5.3
 
