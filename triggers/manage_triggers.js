@@ -67,7 +67,7 @@ module.exports = ({ask, lnd, logger}, cbk) => {
           ],
           message: 'Trigger action?',
           name: 'action',
-          type: 'list',
+          type: 'select',
         },
         ({action}) => cbk(null, action));
       }],
@@ -207,7 +207,7 @@ module.exports = ({ask, lnd, logger}, cbk) => {
           }),
           message: 'Triggers:',
           name: 'view',
-          type: 'list',
+          type: 'select',
         },
         ({view}) => cbk(null, view));
       }],
@@ -223,7 +223,7 @@ module.exports = ({ask, lnd, logger}, cbk) => {
           choices: [{name: 'Delete Trigger', value: actionDeleteTrigger}],
           message: 'Action?',
           name: 'modify',
-          type: 'list',
+          type: 'select',
         },
         ({modify}) => cbk(null, selectTrigger));
       }],

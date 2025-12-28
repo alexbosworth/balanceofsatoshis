@@ -18,9 +18,7 @@ const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
 const paidServices = importLazy('paid-services');
 const prog = require('@alexbosworth/caporal');
-const tabtab = importLazy('tabtab');
 
-const autocomplete = require('./commands/autocomplete');
 const commandConstants = require('./commands/constants');
 
 const {accountingCategories} = commandConstants;
@@ -1139,21 +1137,6 @@ prog
     });
   })
 
-  // Add tab completions
-  .command('install-completion')
-  .help('Add tab autocompletion to your shell profile')
-  .visible(false)
-  .action(async (args, options, logger) => {
-    try {
-      await tabtab.install({
-        completer: commandConstants.process,
-        name: commandConstants.process,
-      });
-    } catch (err) {
-      return logger.error({err}) && reject();
-    }
-  })
-
   // Create an invoice
   .command('invoice', 'Create an invoice and get a BOLT 11 payment request')
   .help('Amount can take m/k variables: 5*m for 5 million, 250*k = 0.0025')
@@ -2246,18 +2229,6 @@ prog
     });
   })
 
-  // Remove tab completions
-  .command('uninstall-completion')
-  .help('Remove tab autocompletion from your shell profile')
-  .visible(false)
-  .action(async (args, options, logger) => {
-    try {
-      await tabtab.uninstall({name: commandConstants.process});
-    } catch (err) {
-      return logger.error({err}) && reject();
-    }
-  })
-
   // Unlock wallet
   .command('unlock', 'Unlock wallet if locked')
   .help('Check if the wallet is locked, if so use a password file to unlock')
@@ -2326,7 +2297,5 @@ prog
       }
     });
   });
-
-autocomplete({prog});
 
 prog.parse(process.argv);

@@ -70,7 +70,7 @@ module.exports = ({ask, fs, lnd, logger, network, node}, cbk) => {
       chooseService: ['getServices', ({getServices}, cbk) => {
         return ask([{
           choices: getServices.services.slice().sort(byName).map(n => n.name),
-          type: 'list',
+          type: 'select',
           name: 'name',
           message: 'Choose service',
         }],

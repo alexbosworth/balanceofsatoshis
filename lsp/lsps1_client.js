@@ -156,7 +156,7 @@ module.exports = (args, cbk) => {
           })),
           loop: false,
           name: 'service',
-          type: 'list',
+          type: 'select',
         },
         ({service}) => cbk(null, service));
       }],

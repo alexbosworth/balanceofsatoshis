@@ -184,7 +184,7 @@ module.exports = (args, cbk) => {
           default: typeDefault,
           message: 'Channel type?',
           name: 'priv',
-          type: 'list',
+          type: 'select',
         },
         ({priv}) => cbk(null, priv));
       }],

@@ -8,7 +8,7 @@ const timeout = 1000 * 60 * 5;
 
 const dirs = ['integration'];
 
-const asPath = file => join(file.path, file.name);
+const asPath = file => join(file.path || file.parentPath, file.name);
 const flatten = arr => [].concat(...arr);
 
 const files = flatten(dirs.map(dir => {

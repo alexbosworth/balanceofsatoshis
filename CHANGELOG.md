@@ -1,5 +1,14 @@
 # Versions
 
+## 20.0.0
+
+- Add support for LND 0.20.0
+
+### Breaking Changes
+
+- Remove support for node.js 18, 20+ is now required
+- Remove support for CLI autocompletion
+
 ## 19.5.5
 
 - Add support for LND 0.19.3

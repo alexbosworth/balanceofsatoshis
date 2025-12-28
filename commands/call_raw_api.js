@@ -71,7 +71,7 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
           loop: false,
           message: 'Select method to call',
           name: 'method',
-          type: 'list',
+          type: 'select',
         },
         method => cbk(null, method));
       }],
