@@ -1,5 +1,9 @@
 # Versions
 
+## 20.0.1
+
+- Bump Docker node.js version
+
 ## 20.0.0
 
 - Add support for LND 0.20.0
