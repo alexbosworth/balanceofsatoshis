@@ -1,6 +1,6 @@
 # Versions
 
-## 20.0.1
+## 20.0.2
 
 - Bump Docker node.js version
 
