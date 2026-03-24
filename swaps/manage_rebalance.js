@@ -1,10 +1,18 @@
 const asyncAuto = require('async/auto');
+const asyncFilter = require('async/filter');
 const asyncRetry = require('async/retry');
+const {getChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const rebalance = require('./rebalance');
 
+const channelFromEdge = edge => edge.slice(0, -2);
+const codeMissingChannel = 404;
 const {isArray} = Array;
+const isEdge = n => /^\d*x\d*x\d*x(0|1)*$/.test(n);
+const joinWithNewLines = lines => lines.join('\n');
+const matchNewLines = /\r?\n/;
+const uniq = arr => Array.from(new Set(arr));
 
 /** Manage rebalance attempts
 
@@ -12,6 +20,7 @@ const {isArray} = Array;
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
+      writeFile: <Write File Contents Function> (path, contents, cbk) => {}
     }
     [in_filters]: [<Inbound Filter Formula String>]
     [in_outbound]: <Inbound Target Outbound Liquidity Tokens Number>
@@ -59,8 +68,58 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
+      // Get the avoid list and add it to the total avoids
+      getAvoids: ['validate', ({}, cbk) => {
+        // Exit early when there is no ignore list
+        if (!args.avoid_list) {
+          return cbk(null, {avoid: args.avoid, file: []});
+        }
+
+        return args.fs.getFile(args.avoid_list, (err, res) => {
+          if (!!err) {
+            return cbk([500, 'UnexpectedErrorFetchingAvoidList', {err}]);
+          }
+
+          const original = res.toString();
+
+          const file = uniq(original
+            .split(matchNewLines)
+            .map(line => line.trim())
+            .filter(line => !!line.length));
+
+          return cbk(null, {
+            file,
+            original,
+            avoid: file.concat(args.avoid || []),
+          });
+        });
+      }],
+
+      // Look at all of the lines in the file and clean them up
+      getCleanAvoids: ['getAvoids', ({getAvoids}, cbk) => {
+        return asyncFilter(getAvoids.file, (line, cbk) => {
+          // Exit early when not looking at an edge
+          if (!isEdge(line)) {
+            return cbk(null, true);
+          }
+
+          const id = channelFromEdge(line);
+
+          return getChannel({id, lnd: args.lnd}, err => {
+            const [code] = err || [];
+
+            if (code === codeMissingChannel) {
+              args.logger.info({deleting_missing_channel: id});
+            }
+
+            return cbk(null, code !== codeMissingChannel);
+          });
+        },
+        cbk);
+      }],
+
       // Run the rebalance
-      rebalance: ['validate', ({}, cbk) => {
+      rebalance: ['getAvoids', ({getAvoids}, cbk) => {
         const start = new Date().toISOString();
 
         return asyncRetry({
@@ -90,7 +149,7 @@ module.exports = (args, cbk) => {
         cbk => {
           return rebalance({
             start,
-            avoid: args.avoid,
+            avoid: getAvoids.avoid,
             fs: args.fs,
             in_filters: args.in_filters,
             in_outbound: args.in_outbound,
@@ -109,6 +168,33 @@ module.exports = (args, cbk) => {
           cbk);
         },
         cbk);
+      }],
+
+      // Write a cleaned up avoid list
+      writeCleanAvoidList: [
+        'getAvoids',
+        'getCleanAvoids',
+        ({getAvoids, getCleanAvoids}, cbk) =>
+      {
+        // Exit early when there is no ignore list
+        if (!args.avoid_list) {
+          return cbk(null, {avoid: args.avoid, file: []});
+        }
+
+        const cleaned = joinWithNewLines(getCleanAvoids);
+
+        // Exit early when the clean file is identical to the original
+        if (getAvoids.original === cleaned) {
+          return cbk();
+        }
+
+        return args.fs.writeFile(args.avoid_list, cleaned, err => {
+          if (!!err) {
+            return cbk([503, 'UnexpectedErrorWritingCleanedAvoidList', {err}]);
+          }
+
+          return cbk();
+        });
       }],
     },
     returnResult({reject, resolve, of: 'rebalance'}, cbk));

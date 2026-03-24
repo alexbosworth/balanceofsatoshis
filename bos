@@ -1719,6 +1719,8 @@ prog
   .help('--avoid can take a FORMULA/public_key to avoid inbound peers')
   .help('--avoid can take a public_key/FORMULA to avoid outbound peers')
   .help('--avoid FORMULA variables: FEE_RATE, BASE_FEE, HEIGHT, AGE')
+  .help('--avoid-list allows passing a file of newline separated avoids')
+  .help('--avoid-list will delete edges from the file unknown to the node')
   .help('--in decreases the inbound liquidity with a specific peer/tag')
   .help('--in-filter/--out-filter vars: CAPACITY/HEIGHTS/INBOUND_LIQUIDITY')
   .help('--in-filter/--out-filter vars: OUTBOUND_LIQUIDITY/PENDING_PAYMENTS')
@@ -1727,6 +1729,7 @@ prog
   .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey_or_chanid>', 'Avoid forwarding through', REPEATABLE)
   .option('--avoid-high-fee-routes', 'Avoid trying routes above max-fee-rate')
+  .option('--avoid-list', 'Path to file with newline separated list of avoids')
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
   .option('--in-filter <in_filter>', 'Filter inbound tag nodes', REPEATABLE)
   .option('--in-target-outbound <amt>', 'Balance up to outbound amount')
@@ -1744,7 +1747,8 @@ prog
         return swaps.manageRebalance({
           logger,
           avoid: flatten([options.avoid].filter(n => !!n)),
-          fs: {getFile: readFile},
+          avoid_list: options.avoidList || undefined,
+          fs: {writeFile, getFile: readFile},
           in_filters: flatten([options.inFilter].filter(n => !!n)),
           in_outbound: options.inTargetOutbound || undefined,
           in_through: options.in || undefined,

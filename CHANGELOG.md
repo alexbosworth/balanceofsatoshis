@@ -1,5 +1,9 @@
 # Versions
 
+## 20.1.0
+
+- `rebalance`: support for `--avoid_list` to move `--avoid` flags to a file
+
 ## 20.0.5
 
 - Add support for LND 0.20.1
