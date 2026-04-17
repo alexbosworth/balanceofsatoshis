@@ -1,6 +1,6 @@
 # Versions
 
-## 20.1.2
+## 20.1.3
 
 - `rebalance`: support for `--avoid_list` to move `--avoid` flags to a file
 
