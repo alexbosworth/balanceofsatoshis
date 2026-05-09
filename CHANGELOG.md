@@ -1,5 +1,11 @@
 # Versions
 
+## 21.0.0
+
+### Breaking Changes
+
+- Remove support for node.js 20, 22+ is now required
+
 ## 20.1.5
 
 - `rebalance`: support for `--avoid_list` to move `--avoid` flags to a file
