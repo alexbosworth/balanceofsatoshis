@@ -1,5 +1,11 @@
 # Versions
 
+## 22.0.0
+
+### Breaking Changes
+
+- Remove support for LND 0.19 and below
+
 ## 21.0.0
 
 ### Breaking Changes
