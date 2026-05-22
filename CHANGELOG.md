@@ -1,6 +1,6 @@
 # Versions
 
-## 22.0.1
+## 22.0.2
 
 ### Breaking Changes
 
