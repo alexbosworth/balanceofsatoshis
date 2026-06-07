@@ -104,7 +104,7 @@ module.exports = (args, cbk) => {
       },
 
       // Create a key pair for a virtual channel invoice
-      getKeyPair: ['validate', async ({}, cbk) => {
+      getKeyPair: ['validate', async ({}) => {
         // Exit early when not using a virtual channel
         if (!args.is_virtual) {
           return;

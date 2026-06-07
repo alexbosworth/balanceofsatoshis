@@ -1,5 +1,9 @@
 # Versions
 
+## 22.1.1
+
+- Improve support for SOCKS proxy on old node versions
+
 ## 22.1.0
 
 - Add support for LND 0.21.0
