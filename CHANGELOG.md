@@ -1,6 +1,6 @@
 # Versions
 
-## 22.1.1
+## 22.1.2
 
 - Improve support for SOCKS proxy on old node versions
 
