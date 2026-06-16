@@ -10,6 +10,7 @@ const {getNodeAlias} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const {calls} = require('./api');
+const promptType = require('./prompt_type');
 
 const {assign} = Object;
 const fromLnSync = 'ln-sync';
@@ -126,7 +127,7 @@ module.exports = ({ask, lnd, logger, method, params}, cbk) => {
             name: named,
             prefix: `[${named}]`,
             suffix: !!argument.optional ? ' (Optional)' : String(),
-            type: argument.type || 'input',
+            type: promptType({type: argument.type}).type || 'input',
             validate: async input => {
               const isNumber = argument.type === 'number';
 
