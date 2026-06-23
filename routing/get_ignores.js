@@ -162,17 +162,17 @@ module.exports = (args, cbk) => {
         return asyncMap(ids, (id, cbk) => {
           return getChannel({id, lnd: args.lnd}, (err, res) => {
             if (!!err) {
-              return cbk([404, 'FailedToFindChannelToAvoid', {err, id}]);
-            }
-
-            const [node1, node2] = res.policies.map(n => n.public_key);
-
-            const ignore = [
-              {channel: id, from_public_key: node1, to_public_key: node2},
-              {channel: id, from_public_key: node2, to_public_key: node1},
-            ];
-
+              // Warn for failed channel but continue processing other avoid tags.
+                args.logger.warn({FailedToFindChannelToAvoid: `${id}`});
+              //return cbk([404, 'FailedToFindChannelToAvoid', {err, id}]);
+            } else {
+                const [node1, node2] = res.policies.map(n => n.public_key);
+                const ignore = [
+                        {channel: id, from_public_key: node1, to_public_key: node2},
+                        {channel: id, from_public_key: node2, to_public_key: node1},
+                ];
             return cbk(null, ignore);
+            }
           });
         },
         cbk);
