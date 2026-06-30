@@ -37,7 +37,7 @@
     "ini": "7.0.0",
     "inquirer": "14.0.2",
     "ln-accounting": "10.0.3",
-    "ln-service": "59.1.1",
+    "ln-service": "59.1.2",
     "ln-sync": "8.0.3",
     "ln-telegram": "8.0.3",
     "minimist": "1.2.8",
@@ -54,7 +54,7 @@
   "description": "Lightning balance CLI",
   "devDependencies": {
     "invoices": "5.0.2",
-    "ln-docker-daemons": "8.0.1"
+    "ln-docker-daemons": "8.0.2"
   },
   "engines": {
     "node": ">=22"
@@ -81,5 +81,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64 -t alexbosworth/balanceofsatoshis -t alexbosworth/balanceofsatoshis:$npm_package_version --push .",
     "test": "npx nyc@17.1.0 node --experimental-test-coverage --test test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "22.1.4"
+  "version": "22.1.5"
 }
