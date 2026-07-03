@@ -2,7 +2,6 @@ const asyncAuto = require('async/auto');
 const {bech32} = require('bech32');
 const {returnResult} = require('asyncjs-util');
 const {signMessage} = require('ln-service');
-const tinysecp = require('tiny-secp256k1');
 
 const signAuthChallenge = require('./sign_auth_challenge');
 
@@ -35,9 +34,6 @@ const wordsAsUtf8 = n => Buffer.from(bech32.fromWords(n)).toString('utf8');
 module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
-      // Import the ECPair library
-      ecp: async () => (await import('ecpair')).ECPairFactory(tinysecp),
-
       // Check arguments
       validate: cbk => {
         if (!args.ask) {
@@ -112,18 +108,21 @@ module.exports = (args, cbk) => {
       }],
 
       // Derive keys and get signatures
-      sign: ['ecp', 'parse', 'seed', ({ecp, parse, seed}, cbk) => {
-        const sign = signAuthChallenge({
-          ecp,
-          hostname: parse.hostname,
-          k1: parse.k1,
-          seed: seed.signature,
-        });
+      sign: ['parse', 'seed', ({parse, seed}, cbk) => {
+        try {
+          const sign = signAuthChallenge({
+            hostname: parse.hostname,
+            k1: parse.k1,
+            seed: seed.signature,
+          });
 
-        return cbk(null, {
-          public_key: sign.public_key,
-          signature: sign.signature,
-        });
+          return cbk(null, {
+            public_key: sign.public_key,
+            signature: sign.signature,
+          });
+        } catch (err) {
+          return cbk([500, 'UnexpectedErrorSigningAuthChallenge', {err}]);
+        }
       }],
 
       // Display confirmation dialog with domain name and action

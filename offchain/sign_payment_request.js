@@ -1,6 +1,7 @@
 const {randomBytes} = require('crypto');
 
 const asyncAuto = require('async/auto');
+const asyncRetry = require('async/retry');
 const {createSignedRequest} = require('ln-service');
 const {createUnsignedRequest} = require('ln-service');
 const {decode} = require('bip66');
@@ -8,13 +9,15 @@ const {returnResult} = require('asyncjs-util');
 const {signBytes} = require('ln-service');
 const tinysecp256k1 = require('tiny-secp256k1');
 
-const bufferAsHex = buffer => buffer.toString('hex');
+const bufferAsHex = buffer => Buffer.from(buffer).toString('hex');
 const {concat} = Buffer;
 const defaultBaseFee = '1000';
 const defaultCltvDelta = 144;
 const defaultFeeRate = '1';
+const derivePublicKey = key => tinysecp256k1.pointFromScalar(key, true);
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const {isArray} = Array;
+const {isPrivate} = tinysecp256k1;
 const keyFamilyIdentity = 6;
 const keyIndexIdentity = 0;
 const makePrivateKey = () => randomBytes(32);
@@ -103,20 +106,33 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Create a key pair for a virtual channel invoice
-      getKeyPair: ['validate', async ({}) => {
+      // Generate key pair
+      getKeyPair: ['validate', ({}, cbk) => {
         // Exit early when not using a virtual channel
         if (!args.is_virtual) {
-          return;
+          return cbk();
         }
 
-        const ecp = (await import('ecpair')).ECPairFactory(tinysecp256k1);
+        return asyncRetry({}, cbk => {
+          const privateKey = makePrivateKey();
 
-        const key = ecp.fromPrivateKey(makePrivateKey());
+          // Very rarely random bytes are not a valid private key
+          if (!isPrivate(privateKey)) {
+            return cbk([503, 'ExpectedValidPrivateKeyFromRandomBytes']);
+          }
 
-        const publicKey = unit8AsHex(key.publicKey);
+          const publicKey = derivePublicKey(privateKey);
 
-        return {private_key: key.privateKey, public_key: publicKey};
+          if (!publicKey) {
+            return cbk([503, 'ExpectedDerivedPublicKeyFromPrivateKey']);
+          }
+
+          return cbk(null, {
+            private_key: privateKey,
+            public_key: bufferAsHex(publicKey),
+          });
+        },
+        cbk);
       }],
 
       // Assemble the hop hints from the chosen hint channels
