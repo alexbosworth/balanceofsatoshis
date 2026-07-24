@@ -1,18 +1,15 @@
 const asyncAuto = require('async/auto');
 const asyncMap = require('async/map');
+const {evaluateFormula} = require('@alexbosworth/formulas');
 const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getHeight} = require('ln-service');
 const {getNode} = require('ln-service');
-const {Parser} = require('hot-formula-parser');
 const {returnResult} = require('asyncjs-util');
-
-const {describeParseError} = require('./../display');
 
 const amountVariables = {btc: 1e8, k: 1e3, m: 1e6, mm: 1e6};
 const asFormula = n => ({formula: n.slice(0, n.length-67), key: n.slice(-66)});
 const asOutFilter = n => ({out_filter: n.slice(67), key: n.slice(0, 66)});
-const {assign} = Object;
 const channelFromEdge = edge => edge.slice(0, -2);
 const decodePair = n => n.split('/');
 const flatten = arr => [].concat(...arr);
@@ -25,7 +22,6 @@ const isFormula = n => /(.*)\/0[2-3][0-9A-F]{64}$/gim.test(n);
 const isOutFilter = n => /^0[2-3][0-9A-F]{64}\/(.*)/gim.test(n);
 const isPair = n => !!n && /^0[2-3][0-9A-F]{64}\/0[2-3][0-9A-F]{64}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/gim.test(n);
-const {keys} = Object;
 const pairAsIgnore = (a, b) => ({from_public_key: a, to_public_key: b});
 const uniq = arr => Array.from(new Set(arr));
 
@@ -255,35 +251,25 @@ module.exports = (args, cbk) => {
                   return;
                 }
 
-                const parser = new Parser();
-                const variables = {};
+                try {
+                  const parsed = evaluateFormula({
+                    formula,
+                    constants: {
+                      ...amountVariables,
+                      capacity,
+                      height,
+                      age: getHeight.current_block_height - height,
+                      base_fee: Number(outPolicy.base_fee_mtokens) || Number(),
+                      fee_rate: outPolicy.fee_rate || Number(),
+                      opposite_fee_rate: peerPolicy.fee_rate || Number(),
+                    },
+                  });
 
-                assign(variables, amountVariables);
-
-                assign(variables, {
-                  capacity,
-                  height,
-                  age: getHeight.current_block_height - height,
-                  base_fee: Number(outPolicy.base_fee_mtokens) || Number(),
-                  fee_rate: outPolicy.fee_rate || Number(),
-                  opposite_fee_rate: peerPolicy.fee_rate || Number(),
-                });
-
-                keys(variables).forEach(key => {
-                  parser.setVariable(key.toLowerCase(), variables[key]);
-                  parser.setVariable(key.toUpperCase(), variables[key]);
-
-                  return;
-                });
-
-                const parsed = parser.parse(formula);
-
-                if (!!parsed.error) {
-                  return {error: describeParseError({error: parsed.error})};
-                }
-
-                if (parsed.result === false) {
-                  return;
+                  if (!parsed.result) {
+                    return;
+                  }
+                } catch (err) {
+                  return {error: err.message};
                 }
 
                 return {
@@ -333,35 +319,25 @@ module.exports = (args, cbk) => {
                   return;
                 }
 
-                const parser = new Parser();
-                const variables = {};
+                try {
+                  const parsed = evaluateFormula({
+                    formula,
+                    constants: {
+                      ...amountVariables,
+                      capacity,
+                      height,
+                      age: getHeight.current_block_height - height,
+                      base_fee: Number(inPolicy.base_fee_mtokens) || Number(),
+                      fee_rate: inPolicy.fee_rate || Number(),
+                      opposite_fee_rate: outPolicy.fee_rate || Number(),
+                    },
+                  });
 
-                assign(variables, amountVariables);
-
-                assign(variables, {
-                  capacity,
-                  height,
-                  age: getHeight.current_block_height - height,
-                  base_fee: Number(inPolicy.base_fee_mtokens) || Number(),
-                  fee_rate: inPolicy.fee_rate || Number(),
-                  opposite_fee_rate: outPolicy.fee_rate || Number(),
-                });
-
-                keys(variables).forEach(key => {
-                  parser.setVariable(key.toLowerCase(), variables[key]);
-                  parser.setVariable(key.toUpperCase(), variables[key]);
-
-                  return;
-                });
-
-                const parsed = parser.parse(formula);
-
-                if (!!parsed.error) {
-                  return {error: describeParseError({error: parsed.error})};
-                }
-
-                if (parsed.result === false) {
-                  return;
+                  if (!parsed.result) {
+                    return;
+                  }
+                } catch (err) {
+                  return {error: err.message};
                 }
 
                 return {

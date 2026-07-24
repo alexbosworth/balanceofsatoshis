@@ -564,8 +564,11 @@ alias bosd="docker run -d --rm -v $HOME/.bos:/home/node/.bos alexbosworth/balanc
 Some commands take formula arguments. Formulas are expressions that allow you 
 to perform functions and reference variables.
 
-There is a dynamic playground here where you can play with expressions:
-https://formulajs.info/functions/
+Formulas are modeled after common spreadsheet formulas, but there is not a 1:1
+mapping of supported functions from all spreadsheets.
+
+See supported formula construction here:
+https://github.com/alexbosworth/formulas#custom-functions
 
 ### `--avoid`
 

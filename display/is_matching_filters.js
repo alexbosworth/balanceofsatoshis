@@ -1,10 +1,7 @@
-const {Parser} = require('hot-formula-parser');
-
-const describeParseError = require('./describe_parse_error');
+const {evaluateFormula} = require('@alexbosworth/formulas');
 
 const {assign} = Object;
 const defaultVariables = {btc: 1e8, k: 1e3, m: 1e6, mm: 1e6};
-const {keys} = Object;
 
 /** Determine if variables are consistent with filters
 
@@ -32,25 +29,14 @@ module.exports = ({filters, variables}) => {
 
   const vars = {};
 
-  [defaultVariables, variables].forEach(n => assign(vars, n));
+  [defaultVariables, variables].forEach(variable => assign(vars, variable));
 
   const filtered = filters.map(formula => {
-    const parser = new Parser();
-
-    keys(vars).forEach(key => {
-      parser.setVariable(key.toLowerCase(), vars[key]);
-      parser.setVariable(key.toUpperCase(), vars[key]);
-
-      return;
-    });
-
-    const parsed = parser.parse(formula);
-
-    if (!!parsed.error) {
-      return {formula, error: describeParseError({error: parsed.error})};
+    try {
+      return !evaluateFormula({constants: vars, formula}).result;
+    } catch (err) {
+      return {formula, error: err.message};
     }
-
-    return parsed.result === false;
   });
 
   const [errored] = filtered.filter(n => !!n.error);

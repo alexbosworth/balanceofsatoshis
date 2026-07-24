@@ -42,17 +42,17 @@ const tests = [
   {
     args: makeArgs({fee_rate: '1/0'}),
     description: 'Cannot divide by zero',
-    expected: {failure: 'FeeRateCalculationCannotDivideByZeroFormula'},
+    expected: {failure: 'ExpectedNonZeroDivisorForFormulaEvaluation'},
   },
   {
     args: makeArgs({fee_rate: '/'}),
     description: 'Formula must be valid',
-    expected: {failure: 'FailedToParseFeeRateFormula'},
+    expected: {failure: 'UnexpectedPrimaryTokenForFormulaParsing'},
   },
   {
     args: makeArgs({fee_rate: 'fee_rate'}),
     description: 'Formula must be valid',
-    expected: {failure: 'UnrecognizedVariableOrFunctionInFeeRateFormula'},
+    expected: {failure: 'ExpectedAllKnownConstantsInFormulaToEvaluate'},
   },
 ];
 

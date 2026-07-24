@@ -7,6 +7,7 @@ const {findTagMatch} = require('./../../peers');
 const makeArgs = overrides => {
   const args = {
     channels: [{
+      capacity: 3,
       id: '1x1x1',
       local_balance: 1,
       partner_public_key: Buffer.alloc(33, 3).toString('hex'),
@@ -36,13 +37,17 @@ const tests = [
     args: makeArgs({filters: ['invalid formula']}),
     description: 'A failed formula is provided',
     expected: {
-      failure: {error: 'FailedToParseFormula', formula: 'invalid formula'},
+      failure: {
+        error: 'UnexpectedTrailingTokenForFormulaParsing',
+        formula: 'invalid formula',
+      },
     },
   },
   {
     args: makeArgs({
       channels: [
         {
+          capacity: 2e8,
           id: '1x1x1',
           local_balance: 1e3,
           partner_public_key: Buffer.alloc(33, 3).toString('hex'),
@@ -50,6 +55,7 @@ const tests = [
           remote_balance: 1,
         },
         {
+          capacity: 2e8,
           id: '2x2x2',
           local_balance: 1e8,
           partner_public_key: Buffer.alloc(33, 2).toString('hex'),

@@ -12,6 +12,7 @@ const tok = n => Number(BigInt(n) / BigInt(1e3));
 
   {
     channels: [{
+      capacity: <Channel Token Capacity Number>
       id: <Standard Format Channel Id String>
       local_balance: <Channel Local Balance Tokens Number>
       partner_public_key: <Peer Public Key Hex String>
@@ -97,20 +98,25 @@ module.exports = ({channels, filters, policies, tags, query}) => {
       const feeRates = peerPolicies.filter(n => n.fee_rate !== undefined);
       const pendingPayments = withPeer.map(n => n.pending_payments.length);
 
-      const matching = isMatchingFilters({
-        filters: filters || [],
-        variables: {
-          capacity: sumOf(withPeer.map(n => n.capacity)),
-          heights: withPeer.map(n => {
-            return decodeChanId({channel: n.id}).block_height;
-          }),
-          inbound_base_fee: max(...feeRates.map(n => tok(n.base_fee_mtokens))),
-          inbound_fee_rate: max(...feeRates.map(n => n.fee_rate)),
-          inbound_liquidity: sumOf(withPeer.map(n => n.remote_balance)),
-          outbound_liquidity: sumOf(withPeer.map(n => n.local_balance)),
-          pending_payments: sumOf(pendingPayments),
-        },
-      });
+      const maxBaseFee = max(...feeRates.map(n => tok(n.base_fee_mtokens)));
+      const maxFeeRate = max(...feeRates.map(n => n.fee_rate));
+
+      const variables = {
+        capacity: sumOf(withPeer.map(n => n.capacity)),
+        heights: withPeer.map(n => {
+          return decodeChanId({channel: n.id}).block_height;
+        }),
+        inbound_liquidity: sumOf(withPeer.map(n => n.remote_balance)),
+        outbound_liquidity: sumOf(withPeer.map(n => n.local_balance)),
+        pending_payments: sumOf(pendingPayments),
+      };
+
+      if (!!feeRates.length) {
+        variables.inbound_base_fee = maxBaseFee;
+        variables.inbound_fee_rate = maxFeeRate;
+      }
+
+      const matching = isMatchingFilters({variables, filters: filters || []});
 
       if (!!matching.failure) {
         return matching;

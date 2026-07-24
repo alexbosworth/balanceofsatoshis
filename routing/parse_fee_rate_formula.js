@@ -1,4 +1,4 @@
-const {Parser} = require('hot-formula-parser');
+const {evaluateFormula} = require('@alexbosworth/formulas');
 
 const bipsAsPpm = bips => bips * 1e2;
 const {ceil} = Math;
@@ -12,7 +12,7 @@ const percentAsPpm = percent => percent * 1e4;
     inbound_liquidity: <Inbound Tokens Number>
     outbound_liquidity: <Outbound Tokens Number>
     node_rates: [{
-      key: <Node Key String>
+      key: <Label Prefixed Node Key String>
       rate: <Node PPM Rate Number>
     }]
   }
@@ -28,31 +28,30 @@ module.exports = args => {
     return {};
   }
 
-  const parser = new Parser();
+  const rates = args.node_rates.reduce((sum, n) => {
+    sum[n.key] = n.rate;
 
-  parser.setFunction('BIPS', params => bipsAsPpm(params.slice().pop()));
-  parser.setFunction('PERCENT', params => percentAsPpm(params.slice().pop()));
-  parser.setVariable('INBOUND', args.inbound_liquidity);
-  parser.setVariable('INBOUND_FEE_RATE', args.inbound_fee_rate);
-  parser.setVariable('OUTBOUND', args.outbound_liquidity);
+    return sum;
+  },
+  {});
 
-  args.node_rates.forEach(({key, rate}) => parser.setVariable(key, rate));
+  try {
+    const {result} = evaluateFormula({
+      constants: {
+        ...rates,
+        inbound: args.inbound_liquidity,
+        inbound_fee_rate: args.inbound_fee_rate,
+        outbound: args.outbound_liquidity,
+      },
+      formula: args.fee_rate,
+      functions: {
+        bips: bipsAsPpm,
+        percent: percentAsPpm,
+      },
+    });
 
-  const parsedRate = parser.parse(args.fee_rate.toUpperCase());
-
-  switch (parsedRate.error) {
-  case null:
-    break;
-
-  case '#DIV/0!':
-    return {failure: 'FeeRateCalculationCannotDivideByZeroFormula'};
-
-  case '#ERROR!':
-    return {failure: 'FailedToParseFeeRateFormula'};
-
-  default:
-    return {failure: 'UnrecognizedVariableOrFunctionInFeeRateFormula'};
+    return {rate: ceil(result)};
+  } catch (err) {
+    return {failure: err.message};
   }
-
-  return {rate: ceil(parsedRate.result)};
 };

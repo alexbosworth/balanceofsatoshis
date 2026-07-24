@@ -1,5 +1,12 @@
 # Versions
 
+## 23.0.0
+
+### Breaking Changes
+
+- Remove support for extended range of formulas, supported formulas are here:
+    https://github.com/alexbosworth/formulas#custom-functions
+
 ## 22.1.7
 
 - Add support for LND 0.21.1

@@ -1,4 +1,4 @@
-const {Parser} = require('hot-formula-parser');
+const {evaluateFormula} = require('@alexbosworth/formulas');
 
 const {isArray} = Array;
 const {keys} = Object;
@@ -72,7 +72,7 @@ module.exports = args => {
     throw new Error('ExpectedTorStatusToCheckOpenRequestRules');
   }
 
-  const variables = {
+  const constants = {
     btc: 1e8,
     capacities: args.capacities,
     capacity: args.capacity,
@@ -84,46 +84,14 @@ module.exports = args => {
     local_balance: args.local_balance,
     m: 1e6,
     mm: 1e6,
-    obsolete: args.is_obsolete,
+    obsolete: !!args.is_obsolete,
     private: args.is_private,
     public_key: args.public_key,
     tor: args.is_tor,
   };
 
-  const parser = new Parser();
-
-  // Add the variables to the parser
-  keys(variables).forEach(key => {
-    parser.setVariable(key.toLowerCase(), variables[key]);
-    parser.setVariable(key.toUpperCase(), variables[key]);
-
-    return;
-  });
-
   const violation = args.rules.find(rule => {
-    const parsed = parser.parse(rule);
-
-    switch (parsed.error) {
-    case '#DIV/0!':
-      throw new Error('CannotDivideByZeroInOpenRequestRule');
-
-    case '#ERROR!':
-      throw new Error('FailedToParseSpecifiedOpenRequestRule');
-
-    case '#N/A':
-    case '#NAME?':
-      throw new Error('UnrecognizedVariableOrFunctionInRequestRule');
-
-    case '#NUM':
-      throw new Error('InvalidNumberFoundInRequestRule');
-
-    case '#VALUE!':
-      throw new Error('UnexpectedValueTypeInRequestRule');
-
-    default:
-      // Rules must evaluate as truthy
-      return !parsed.result;
-    }
+    return !evaluateFormula({constants, formula: rule}).result;
   });
 
   return {rule: violation};

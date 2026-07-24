@@ -15,7 +15,7 @@ const tests = [
     description: 'An invalid filter returns a failure',
     expected: {
       failure: {
-        error: 'UnrecognizedVariableOrFunctionInFormula',
+        error: 'ExpectedAllKnownConstantsInFormulaToEvaluate',
         formula: 'foo',
       },
     },
