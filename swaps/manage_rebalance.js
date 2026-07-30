@@ -4,6 +4,7 @@ const asyncRetry = require('async/retry');
 const {getChannel} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const appendFailingEdge = require('./append_failing_edge');
 const rebalance = require('./rebalance');
 
 const channelFromEdge = edge => edge.slice(0, -2);
@@ -18,7 +19,10 @@ const uniq = arr => Array.from(new Set(arr));
 
   {
     [avoid]: [<Avoid Forwarding Through Node With Public Key Hex String>]
+    [avoid_append]: <Append Avoid Edges To Avoid List Matching Formula String>
+    [avoid_list]: <Use Avoid Directives From File At Path String>
     fs: {
+      appendFile: <Append to File Function> (path, content, cbk) => {}
       getFile: <Read File Contents Function> (path, cbk) => {}
       writeFile: <Write File Contents Function> (path, contents, cbk) => {}
     }
@@ -45,6 +49,10 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
+        if (!!args.avoid_append && !args.avoid_list) {
+          return cbk([400, 'ExpectedAvoidListToAppendAvoidsTo']);
+        }
+
         if (!args.fs) {
           return cbk([400, 'ExpectedFsToManageRebalance']);
         }
@@ -95,6 +103,35 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Create failing edge logger for avoid appending
+      logFail: ['validate', ({}, cbk) => {
+        // Exit early when there is no avoid appending
+        if (!args.avoid_append) {
+          return cbk();
+        }
+
+        return cbk(null, (err, failure) => {
+          return appendFailingEdge({
+            failure,
+            avoid: args.avoid_append,
+            fs: args.fs,
+            list: args.avoid_list
+          },
+          (err, res) => {
+            if (!!err) {
+              return args.logger.error({append_failure_error: err});
+            }
+
+            // Exit early when there was no append
+            if (!res.edge) {
+              return;
+            }
+
+            return args.logger.info({appended_failing_edge: res.edge});
+          });
+        });
+      }],
+
       // Look at all of the lines in the file and clean them up
       getCleanAvoids: ['getAvoids', ({getAvoids}, cbk) => {
         return asyncFilter(getAvoids.file, (line, cbk) => {
@@ -119,7 +156,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Run the rebalance
-      rebalance: ['getAvoids', ({getAvoids}, cbk) => {
+      rebalance: ['getAvoids', 'logFail', ({getAvoids, logFail}, cbk) => {
         const start = new Date().toISOString();
 
         return asyncRetry({
@@ -156,6 +193,7 @@ module.exports = (args, cbk) => {
             in_through: args.in_through,
             is_strict_max_fee_rate: args.is_strict_max_fee_rate,
             lnd: args.lnd,
+            log_failure: logFail || undefined,
             logger: args.logger,
             max_fee: Number(args.max_fee) || undefined,
             max_fee_rate: Number(args.max_fee_rate) || undefined,

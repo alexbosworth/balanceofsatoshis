@@ -62,7 +62,8 @@ const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
     [is_push]: <Is Push Payment Bool>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
-    lnd: <Authenticated LND gRPC API Object>
+    lnd: <Authenticated LND API Object>
+    [log_failure]: <Failure Details Log Callback Function>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_fee_mtokens]: <Maximum Fee Millitokens Number>
@@ -411,6 +412,7 @@ module.exports = (args, cbk) => {
           in_through: args.in_through,
           is_strict_max_fee: args.is_strict_max_fee,
           lnd: args.lnd,
+          log_failure: args.log_failure,
           logger: args.logger,
           max_fee: args.max_fee,
           max_fee_mtokens: args.max_fee_mtokens,

@@ -29,6 +29,7 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
     [in_through]: <In Through Public Key Hex String>
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND API Object>
+    [log_failure]: <Failure Details Log Callback Function>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_fee_mtokens]: <Maximum Fee Millitokens Number String>
@@ -180,6 +181,10 @@ module.exports = (args, cbk) => {
 
         // Log failures encountered while trying to find a route
         sub.on('routing_failure', async failure => {
+          if (!!args.log_failure) {
+            args.log_failure(null, failure);
+          }
+
           const {description} = await describeRoutingFailure({
             index: failure.index,
             lnd: args.lnd,

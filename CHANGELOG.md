@@ -1,5 +1,10 @@
 # Versions
 
+## 23.1.0
+
+- Add `--avoid-append` to add failing edges to an avoid list based on formula
+- Add support for LND 0.20.2
+
 ## 23.0.0
 
 ### Breaking Changes

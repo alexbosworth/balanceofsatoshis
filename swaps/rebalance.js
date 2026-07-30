@@ -77,6 +77,7 @@ const uniq = arr => Array.from(new Set(arr));
     [in_through]: <Pay In Through Peer String>
     [is_strict_max_fee_rate]: <Avoid Probing Too-High Fee Rate Routes Bool>
     lnd: <Authenticated LND API Object>
+    [log_failure]: <Failure Details Log Callback Function>
     logger: <Winston Logger Object>
     [max_fee]: <Maximum Fee Tokens Number>
     [max_fee_rate]: <Max Fee Rate Tokens Per Million Number>
@@ -643,6 +644,7 @@ module.exports = (args, cbk) => {
           is_strict_max_fee: args.is_strict_max_fee_rate || undefined,
           logger: args.logger,
           lnd: args.lnd,
+          log_failure: args.log_failure,
           max_fee_mtokens: maxFeeMtokens,
           out_through: getOutbound.public_key,
           timeout_minutes: args.timeout_minutes,
