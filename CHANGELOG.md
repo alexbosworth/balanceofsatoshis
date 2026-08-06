@@ -1,5 +1,9 @@
 # Versions
 
+## 23.1.4
+
+- Dependency cleanup: remove minimist dependency
+
 ## 23.1.3
 
 - Dependency cleanup: remove crypto js dependency
