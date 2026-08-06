@@ -28,7 +28,6 @@
     "bolt07": "1.9.5",
     "cbor": "10.0.12",
     "colorette": "2.0.20",
-    "crypto-js": "4.2.0",
     "csv-parse": "7.0.2",
     "goldengate": "16.0.4",
     "grammy": "1.45.1",
@@ -80,5 +79,5 @@
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64 -t alexbosworth/balanceofsatoshis -t alexbosworth/balanceofsatoshis:$npm_package_version --push .",
     "test": "node --experimental-test-coverage --test test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "23.1.2"
+  "version": "23.1.3"
 }

@@ -1,5 +1,9 @@
 # Versions
 
+## 23.1.3
+
+- Dependency cleanup: remove crypto js dependency
+
 ## 23.1.2
 
 - Add `--avoid-append` to add failing edges to an avoid list based on formula
