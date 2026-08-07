@@ -1,6 +1,6 @@
 # Versions
 
-## 23.1.4
+## 23.1.5
 
 - Dependency cleanup: remove minimist dependency
 
