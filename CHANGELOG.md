@@ -1,5 +1,10 @@
 # Versions
 
+## 23.1.6
+
+- Add support for LND 0.21.2
+- Add support for LND 0.20.3
+
 ## 23.1.5
 
 - Dependency cleanup: remove minimist dependency
