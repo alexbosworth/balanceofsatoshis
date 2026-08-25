@@ -2,18 +2,18 @@ const asyncAuto = require('async/auto');
 const asyncFilter = require('async/filter');
 const asyncRetry = require('async/retry');
 const {getChannel} = require('ln-service');
+const {getWalletInfo} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const appendFailingEdge = require('./append_failing_edge');
+const getAvoidList = require('./get_avoid_list');
 const rebalance = require('./rebalance');
+const writeAvoidList = require('./write_avoid_list');
 
 const channelFromEdge = edge => edge.slice(0, -2);
 const codeMissingChannel = 404;
 const {isArray} = Array;
 const isEdge = n => /^\d*x\d*x\d*x(0|1)*$/.test(n);
-const joinWithNewLines = lines => lines.join('\n');
-const matchNewLines = /\r?\n/;
-const uniq = arr => Array.from(new Set(arr));
 
 /** Manage rebalance attempts
 
@@ -24,6 +24,7 @@ const uniq = arr => Array.from(new Set(arr));
     fs: {
       appendFile: <Append to File Function> (path, content, cbk) => {}
       getFile: <Read File Contents Function> (path, cbk) => {}
+      renameFile: <Rename File Function> (from, to, cbk) => {}
       writeFile: <Write File Contents Function> (path, contents, cbk) => {}
     }
     [in_filters]: [<Inbound Filter Formula String>]
@@ -76,31 +77,28 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get the avoid list and add it to the total avoids
+      // Get the avoid directives from the avoid list file
       getAvoids: ['validate', ({}, cbk) => {
         // Exit early when there is no ignore list
         if (!args.avoid_list) {
-          return cbk(null, {avoid: args.avoid, file: []});
+          return cbk(null, {lines: []});
         }
 
-        return args.fs.getFile(args.avoid_list, (err, res) => {
-          if (!!err) {
-            return cbk([500, 'UnexpectedErrorFetchingAvoidList', {err}]);
-          }
+        return getAvoidList({
+          fs: {getFile: args.fs.getFile},
+          path: args.avoid_list,
+        },
+        cbk);
+      }],
 
-          const original = res.toString();
+      // Get the graph sync status to know if missing channels are reliable
+      getGraphSyncStatus: ['validate', ({}, cbk) => {
+        // Exit early when there is no ignore list to clean
+        if (!args.avoid_list) {
+          return cbk();
+        }
 
-          const file = uniq(original
-            .split(matchNewLines)
-            .map(line => line.trim())
-            .filter(line => !!line.length));
-
-          return cbk(null, {
-            file,
-            original,
-            avoid: file.concat(args.avoid || []),
-          });
-        });
+        return getWalletInfo({lnd: args.lnd}, cbk);
       }],
 
       // Create failing edge logger for avoid appending
@@ -133,8 +131,17 @@ module.exports = (args, cbk) => {
       }],
 
       // Look at all of the lines in the file and clean them up
-      getCleanAvoids: ['getAvoids', ({getAvoids}, cbk) => {
-        return asyncFilter(getAvoids.file, (line, cbk) => {
+      getCleanAvoids: [
+        'getAvoids',
+        'getGraphSyncStatus',
+        ({getAvoids, getGraphSyncStatus}, cbk) =>
+      {
+        // Exit early with no info when missing channels may be resurrected
+        if (!!getGraphSyncStatus && !getGraphSyncStatus.is_synced_to_graph) {
+          return cbk();
+        }
+
+        return asyncFilter(getAvoids.lines, (line, cbk) => {
           // Exit early when not looking at an edge
           if (!isEdge(line)) {
             return cbk(null, true);
@@ -186,7 +193,7 @@ module.exports = (args, cbk) => {
         cbk => {
           return rebalance({
             start,
-            avoid: getAvoids.avoid,
+            avoid: getAvoids.lines.concat(args.avoid || []),
             fs: args.fs,
             in_filters: args.in_filters,
             in_outbound: args.in_outbound,
@@ -208,31 +215,58 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Write a cleaned up avoid list
-      writeCleanAvoidList: [
+      // Determine which lines should be removed from the avoid list
+      removals: [
         'getAvoids',
         'getCleanAvoids',
         ({getAvoids, getCleanAvoids}, cbk) =>
       {
-        // Exit early when there is no ignore list
-        if (!args.avoid_list) {
-          return cbk(null, {avoid: args.avoid, file: []});
+        // Exit early with no removals when the clean check had no answer
+        if (!getCleanAvoids) {
+          return cbk(null, []);
         }
 
-        const cleaned = joinWithNewLines(getCleanAvoids);
+        // The clean avoids are the original lines minus missing channels
+        const keeping = new Set(getCleanAvoids);
 
-        // Exit early when the clean file is identical to the original
-        if (getAvoids.original === cleaned) {
+        // A line that was not kept refers to a channel absent from the graph
+        return cbk(null, getAvoids.lines.filter(n => !keeping.has(n)));
+      }],
+
+      // Get the avoid list again to preserve concurrently appended lines
+      getCurrentAvoids: ['removals', ({removals}, cbk) => {
+        // Exit early when no lines were cleaned out of the avoid list
+        if (!removals.length) {
           return cbk();
         }
 
-        return args.fs.writeFile(args.avoid_list, cleaned, err => {
-          if (!!err) {
-            return cbk([503, 'UnexpectedErrorWritingCleanedAvoidList', {err}]);
-          }
+        return getAvoidList({
+          fs: {getFile: args.fs.getFile},
+          path: args.avoid_list,
+        },
+        cbk);
+      }],
 
+      // Write a cleaned up avoid list
+      writeCleanAvoidList: [
+        'getCurrentAvoids',
+        'removals',
+        ({getCurrentAvoids, removals}, cbk) =>
+      {
+        // Exit early when there is no cleaned avoid list to write out
+        if (!getCurrentAvoids) {
           return cbk();
-        });
+        }
+
+        const removing = new Set(removals);
+
+        // Atomically write the avoid list without the cleaned out lines
+        return writeAvoidList({
+          fs: {renameFile: args.fs.renameFile, writeFile: args.fs.writeFile},
+          lines: getCurrentAvoids.lines.filter(n => !removing.has(n)),
+          path: args.avoid_list,
+        },
+        cbk);
       }],
     },
     returnResult({reject, resolve, of: 'rebalance'}, cbk));

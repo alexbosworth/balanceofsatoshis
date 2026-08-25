@@ -4,6 +4,7 @@ const {lstat} = require('fs');
 const {mkdir} = require('fs');
 const {readdir} = require('fs');
 const {readFile} = require('fs');
+const {rename} = require('fs');
 const {rmdir} = require('fs');
 const {spawn} = require('child_process');
 const {statSync} = require('fs');
@@ -1752,7 +1753,7 @@ prog
           avoid: flatten([options.avoid].filter(n => !!n)),
           avoid_append: options.avoidAppend || undefined,
           avoid_list: options.avoidList || undefined,
-          fs: {appendFile, writeFile, getFile: readFile},
+          fs: {appendFile, writeFile, getFile: readFile, renameFile: rename},
           in_filters: flatten([options.inFilter].filter(n => !!n)),
           in_outbound: options.inTargetOutbound || undefined,
           in_through: options.in || undefined,
