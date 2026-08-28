@@ -1735,7 +1735,7 @@ prog
   .option('--avoid-high-fee-routes', 'Avoid trying routes above max-fee-rate')
   .option('--avoid-list', 'Path to file with newline separated list of avoids')
   .option('--in <pubkey_or_alias>', 'Route in through a specific peer')
-  .option('--in-filter <in_filter>', 'Filter inbound tag nodes', REPEATABLE)
+  .option('--in-filter <in_filter>', 'Filter inbound peer/tag', REPEATABLE)
   .option('--in-target-outbound <amt>', 'Balance up to outbound amount')
   .option('--max-fee <max_fee>', 'Maximum fee to pay')
   .option('--max-fee-rate <max_fee_rate>', 'Max fee rate to pay')
@@ -1743,7 +1743,7 @@ prog
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Saved node to use for rebalance')
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
-  .option('--out-filter <out_filter>', 'Filter outbound tag nodes', REPEATABLE)
+  .option('--out-filter <out_filter>', 'Filter outbound peer/tag', REPEATABLE)
   .option('--out-target-inbound <amount>', 'Balance up to inbound amount')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {

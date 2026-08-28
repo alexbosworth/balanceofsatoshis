@@ -31,7 +31,7 @@ const tests = [
   {
     args: makeArgs({}),
     description: 'A tagged node is found',
-    expected: {match: Buffer.alloc(33, 3).toString('hex')},
+    expected: {failure: undefined, match: Buffer.alloc(33, 3).toString('hex')},
   },
   {
     args: makeArgs({filters: ['invalid formula']}),
@@ -41,7 +41,13 @@ const tests = [
         error: 'UnexpectedTrailingTokenForFormulaParsing',
         formula: 'invalid formula',
       },
+      match: undefined,
     },
+  },
+  {
+    args: makeArgs({filters: ['outbound_liquidity > 1']}),
+    description: 'A tag with no peers satisfying a filter is identified',
+    expected: {is_tag_filtered: true},
   },
   {
     args: makeArgs({
@@ -74,6 +80,7 @@ const tests = [
     }),
     description: 'A tagged node is found which complies with a filter',
     expected: {
+      failure: undefined,
       match: Buffer.alloc(33, 2).toString('hex'),
     },
   },

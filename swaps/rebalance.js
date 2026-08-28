@@ -3,7 +3,6 @@ const asyncMap = require('async/map');
 const asyncMapSeries = require('async/mapSeries');
 const asyncRetry = require('async/retry');
 const {createInvoice} = require('ln-service');
-const {findKey} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getHeight} = require('ln-service');
@@ -17,13 +16,14 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
-const {findTagMatch} = require('./../peers');
+const findRebalancePeer = require('./find_rebalance_peer');
 const {formatFeeRate} = require('./../display');
 const {getIgnores} = require('./../routing');
 const {homePath} = require('../storage');
 const {probeDestination} = require('./../network');
 const {sortBy} = require('./../arrays');
 
+const activeFilter = channels => channels.filter(n => !!n.is_active);
 const asRate = (fee, tokens) => ({rate: Math.ceil(fee / tokens * 1e6)});
 const {ceil} = Math;
 const channelMatch = /^\d*x\d*x\d*$/;
@@ -216,18 +216,22 @@ module.exports = (args, cbk) => {
         return getNode({lnd, public_key: getPublicKey.public_key}, cbk);
       }],
 
-      // Find inbound tag public key
-      findInTag: [
+      // Find inbound peer key
+      findInKey: [
         'getFees',
         'getInitialLiquidity',
         'getPublicKey',
         'getTags',
-        ({getFees, getInitialLiquidity, getPublicKey, getTags}, cbk) =>
+        'lnd',
+        ({getFees, getInitialLiquidity, getPublicKey, getTags, lnd}, cbk) =>
       {
         const id = getPublicKey.public_key;
 
-        const {failure, match, matches} = findTagMatch({
-          channels: getInitialLiquidity.channels.filter(n => n.is_active),
+        return findRebalancePeer({
+          lnd,
+          active_channels: activeFilter(getInitialLiquidity.channels),
+          channels: getInitialLiquidity.channels,
+          direction: 'in',
           filters: args.in_filters,
           policies: getFees.channels.map(channel => {
             const policy = channel.policies.find(n => n.public_key !== id);
@@ -239,41 +243,8 @@ module.exports = (args, cbk) => {
               public_key: policy.public_key,
             };
           }),
+          query: args.in_through,
           tags: getTags.tags,
-          query: args.in_through,
-        });
-
-        // Exit early when there is a filter error
-        if (!!failure) {
-          return cbk([400, 'FailedToParseFilter', failure]);
-        }
-
-        if (!!matches) {
-          return cbk([400, 'MultipleTagMatchesFoundForInPeer', {matches}]);
-        }
-
-        if (!match && !!args.in_filters && !!args.in_filters.length) {
-          return cbk([400, 'NoPeerMatchesFoundToSatisfyInboundFilter']);
-        }
-
-        return cbk(null, match);
-      }],
-
-      // Find inbound peer key if a name is specified
-      findInKey: [
-        'findInTag',
-        'getInitialLiquidity',
-        'lnd',
-        ({findInTag, getInitialLiquidity, lnd}, cbk) =>
-      {
-        if (!!findInTag) {
-          return cbk(null, findInTag);
-        }
-
-        return findKey({
-          lnd,
-          channels: getInitialLiquidity.channels,
-          query: args.in_through,
         },
         (err, res) => {
           if (!!err) {
@@ -286,14 +257,12 @@ module.exports = (args, cbk) => {
 
       // Find outbound peer key if a name is specified
       findOutKey: [
-        'findInTag',
         'getFees',
         'getInitialLiquidity',
         'getPublicKey',
         'getTags',
         'lnd',
         ({
-          findInTag,
           getFees,
           getInitialLiquidity,
           getPublicKey,
@@ -304,8 +273,11 @@ module.exports = (args, cbk) => {
       {
         const id = getPublicKey.public_key;
 
-        const {failure, match, matches} = findTagMatch({
-          channels: getInitialLiquidity.channels.filter(n => n.is_active),
+        return findRebalancePeer({
+          lnd,
+          active_channels: activeFilter(getInitialLiquidity.channels),
+          channels: getInitialLiquidity.channels,
+          direction: 'out',
           filters: args.out_filters,
           policies: getFees.channels.map(channel => {
             const policy = channel.policies.find(n => n.public_key !== id);
@@ -316,31 +288,8 @@ module.exports = (args, cbk) => {
               public_key: policy.public_key,
             };
           }),
+          query: args.out_through,
           tags: getTags.tags,
-          query: args.out_through,
-        });
-
-        // Exit early when there is a filter error
-        if (!!failure) {
-          return cbk([400, 'FailedToParseFilter', failure]);
-        }
-
-        if (!!matches) {
-          return cbk([400, 'MultipleTagMatchesFoundForOutPeer', {matches}]);
-        }
-
-        if (match) {
-          return cbk(null, match);
-        }
-
-        if (!match && !!args.out_filters && !!args.out_filters.length) {
-          return cbk([400, 'NoPeerMatchesFoundToSatisfyOutboundFilter']);
-        }
-
-        return findKey({
-          lnd,
-          channels: getInitialLiquidity.channels,
-          query: args.out_through,
         },
         (err, res) => {
           if (!!err) {
@@ -371,8 +320,7 @@ module.exports = (args, cbk) => {
       {
         const ban = ignore.filter(n => !n.channel).map(n => n.from_public_key);
 
-        const active = getInitialLiquidity.channels
-          .filter(n => !!n.is_active)
+        const active = activeFilter(getInitialLiquidity.channels)
           .filter(n => !ban.includes(n.partner_public_key));
 
         const channels = active
@@ -435,8 +383,7 @@ module.exports = (args, cbk) => {
         const ban = ignore.filter(n => !n.channel).map(n => n.from_public_key);
         const hasInThrough = !!args.in_through;
 
-        const activeChannels = getInitialLiquidity.channels
-          .filter(n => !!n.is_active)
+        const activeChannels = activeFilter(getInitialLiquidity.channels)
           .filter(n => n.partner_public_key !== getOutbound.public_key)
           .filter(n => !ban.includes(n.partner_public_key));
 

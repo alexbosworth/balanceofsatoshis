@@ -1,12 +1,4 @@
-const {decodeChanId} = require('bolt07');
-
-const flatten = arr => [].concat(...arr);
-const {shuffle} = require('./../arrays');
-const {isMatchingFilters} = require('./../display');
-
-const {max} = Math;
-const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
-const tok = n => Number(BigInt(n) / BigInt(1e3));
+const findPeerMatch = require('./find_peer_match');
 
 /** Find a node for a tag query
 
@@ -40,6 +32,7 @@ const tok = n => Number(BigInt(n) / BigInt(1e3));
       formula: <Errored Formula String>
     }
     [match]: <Matching Node Public Key Hex String>
+    [is_tag_filtered]: <Tag Matched But All Nodes Failed Filters Bool>
     [matches]: [{
       [alias]: <Tag Alias String>
       id: <Tag Id Hex String>
@@ -54,14 +47,8 @@ module.exports = ({channels, filters, policies, tags, query}) => {
     .map(n => n.partner_public_key)
     .filter(n => !disabled.includes(n));
 
-  // Find tags that match on id or on alias, and also have relevant nodes
-  const matches = tags.filter(tag => {
-    const nodes = (tag.nodes || []).filter(n => peerKeys.includes(n));
-
-    if (!nodes.length) {
-      return false;
-    }
-
+  // Find tags that match on id or on alias
+  const tagMatches = tags.filter(tag => {
     const alias = tag.alias || String();
 
     const isAliasMatch = alias.toLowerCase() === (query || '').toLowerCase();
@@ -70,9 +57,18 @@ module.exports = ({channels, filters, policies, tags, query}) => {
     return isAliasMatch || isIdMatch;
   });
 
+  // Limit tag matches to tags with relevant peers
+  const matches = tagMatches.filter(tag => {
+    return (tag.nodes || []).some(n => peerKeys.includes(n));
+  });
+
   const [tagMatch, ...otherTagMatches] = matches;
 
   // Exit early when there are no matches at all
+  if (!tagMatch && !!tagMatches.length && !!filters && !!filters.length) {
+    return {is_tag_filtered: true};
+  }
+
   if (!tagMatch) {
     return {};
   }
@@ -82,68 +78,16 @@ module.exports = ({channels, filters, policies, tags, query}) => {
     return {matches};
   }
 
-  // Get the array of nodes in the tag match
-  const tagMatches = tagMatch.nodes.filter(n => peerKeys.includes(n));
+  const {failure, match} = findPeerMatch({
+    channels,
+    filters,
+    policies,
+    nodes: tagMatch.nodes.filter(n => peerKeys.includes(n)),
+  });
 
-  // Filter out matches in the array of peers that do not fulfill criteria
-  const array = tagMatches
-    .map(key => {
-      if (!filters || !filters.length) {
-        return {match: key};
-      }
-
-      const peerPolicies = policies.filter(n => n.public_key === key);
-      const withPeer = channels.filter(n => n.partner_public_key === key);
-
-      const feeRates = peerPolicies.filter(n => n.fee_rate !== undefined);
-      const pendingPayments = withPeer.map(n => n.pending_payments.length);
-
-      const maxBaseFee = max(...feeRates.map(n => tok(n.base_fee_mtokens)));
-      const maxFeeRate = max(...feeRates.map(n => n.fee_rate));
-
-      const variables = {
-        capacity: sumOf(withPeer.map(n => n.capacity)),
-        heights: withPeer.map(n => {
-          return decodeChanId({channel: n.id}).block_height;
-        }),
-        inbound_liquidity: sumOf(withPeer.map(n => n.remote_balance)),
-        outbound_liquidity: sumOf(withPeer.map(n => n.local_balance)),
-        pending_payments: sumOf(pendingPayments),
-      };
-
-      if (!!feeRates.length) {
-        variables.inbound_base_fee = maxBaseFee;
-        variables.inbound_fee_rate = maxFeeRate;
-      }
-
-      const matching = isMatchingFilters({variables, filters: filters || []});
-
-      if (!!matching.failure) {
-        return matching;
-      }
-
-      if (!matching.is_matching) {
-        return;
-      }
-
-      return {match: key};
-    })
-    .filter(n => !!n);
-
-  // Exit early when there is no match
-  if (!array.length) {
-    return {};
+  if (!failure && !match && !!filters && !!filters.length) {
+    return {is_tag_filtered: true};
   }
 
-  // Exit early when there is a failure in the tag
-  if (!!array.find(n => !!n.failure)) {
-    return array.find(n => !!n.failure);
-  }
-
-  // Shuffle the results
-  const {shuffled} = shuffle({array});
-
-  const [{match}] = shuffled;
-
-  return {match};
+  return {failure, match};
 };
