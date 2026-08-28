@@ -3,6 +3,7 @@ const {stringify} = require('querystring');
 const {AbortController} = require('abort-controller');
 
 const encodeQs = qs => !qs ? '' : '?' + stringify(qs);
+const isPrivateHost = host => /^(127\.|10\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|localhost$|0\.0\.0\.0$|\[?::1\]?$)/.test((host || '').toLowerCase());
 const timeoutSignals = new WeakMap();
 
 /** Derive a request function that uses fetch to simulate request behavior
@@ -29,6 +30,22 @@ module.exports = ({fetch}, cbk) => {
       }
 
       const url = options.url + encodeQs(options.qs);
+
+      let parsedUrl;
+
+      try {
+        parsedUrl = new URL(url);
+      } catch (err) {
+        return cbk([400, 'ExpectedValidUrlToFetch', {err}]);
+      }
+
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        return cbk([400, 'UnsupportedUrlProtocolToFetch']);
+      }
+
+      if (isPrivateHost(parsedUrl.hostname)) {
+        return cbk([400, 'RequestToPrivateAddressNotAllowed']);
+      }
 
       try {
         // Make the request
