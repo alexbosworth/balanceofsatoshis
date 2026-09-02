@@ -15,7 +15,7 @@
     "url": "https://github.com/alexbosworth/balanceofsatoshis/issues"
   },
   "dependencies": {
-    "@alexbosworth/blockchain": "4.5.3",
+    "@alexbosworth/blockchain": "4.7.2",
     "@alexbosworth/caporal": "2.0.0",
     "@alexbosworth/fiat": "2.0.0",
     "@alexbosworth/formulas": "1.4.0",
@@ -40,7 +40,7 @@
     "ini": "7.0.0",
     "inquirer": "14.2.0",
     "ln-accounting": "10.0.5",
-    "ln-service": "59.3.5",
+    "ln-service": "59.3.7",
     "ln-sync": "8.0.6",
     "ln-telegram": "8.0.5",
     "moment": "2.30.1",

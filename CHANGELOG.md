@@ -1,5 +1,10 @@
 # Versions
 
+## 23.1.10
+
+- Add support for LND 0.21.3
+- Add support for LND 0.20.4
+
 ## 23.1.9
 
 - `rebalance`: Apply `--in-filter` and `--out-filter` to key and alias peers
