@@ -246,7 +246,12 @@ module.exports = (args, cbk) => {
         try {
           const outputs = args.addresses.map((address, i) => {
             const amount = args.amounts[i];
-            const variables = {max: getMax.max_tokens};
+            const variables = {};
+
+            // The max variable is only defined when a maximum is calculated
+            if (getMax.max_tokens !== undefined) {
+              variables.max = getMax.max_tokens;
+            }
 
             return {address, tokens: parseAmount({amount, variables}).tokens};
           });

@@ -21,6 +21,7 @@ const {isArray} = Array;
 const mtokensAsTokens = mtokens => Number(mtokens / BigInt(1e3));
 const pathTimeoutMs = 1000 * 60 * 5;
 const singlePath = 1;
+const withTotalFee = ({fee, ...res}) => ({total_fee: fee, ...res});
 
 /** Make a payment
 
@@ -229,6 +230,11 @@ module.exports = (args, cbk) => {
         const paths = [];
         const request = parsePaymentRequest({request: args.request});
 
+        // Multi-path payments look for paths to a destination, not to paths
+        if (!!request.paths) {
+          return cbk([501, 'MultiPathPayNotSupportedWithBlindedPaths']);
+        }
+
         const sub = subscribeToMultiPathProbe({
           cltv_delta: request.cltv_delta,
           destination: request.destination,
@@ -399,7 +405,15 @@ module.exports = (args, cbk) => {
         'singlePathPay',
         ({multiPathPay, singlePathPay}, cbk) =>
       {
-        return cbk(null, singlePathPay || multiPathPay);
+        const payment = singlePathPay || multiPathPay;
+
+        // Exit early when the payment was not through a blinded path
+        if (!payment || payment.blinded_path_fee === undefined) {
+          return cbk(null, payment);
+        }
+
+        // The fee of a blinded path payment is a total including the path fee
+        return cbk(null, withTotalFee(payment));
       }],
     },
     returnResult({reject, resolve, of: 'payment'}, cbk));

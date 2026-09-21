@@ -1147,7 +1147,11 @@ prog
   .help('--virtual invoices cannot be used with payers who probe before pay')
   .help('Only one --virtual invoice can be active at a time')
   .help('--reject-on-amount-increase can only be used with --virtual invoices')
+  .help('--encrypted-hints hides the node with blinded paths, needs an amount')
+  .help('--encrypted-hints with --select-hints picks the path outwards by hop')
+  .help('--virtual-fee-rate with selected --encrypted-hints is a receiver fee')
   .argument('[amount]', 'Amount for invoice', STRING, '0')
+  .option('--encrypted-hints', 'Use blinded paths instead of hop hints')
   .option('--for <description>', 'What is the invoice requesting payment for')
   .option('--hours <expires_in>', 'Hours invoice is valid for', INT)
   .option('--include-hints', 'Include the default set of hop hint channels')
@@ -1157,7 +1161,7 @@ prog
   .option('--reject-on-amount-increase', 'Reject if required amount increases')
   .option('--select-hints', 'Select hop hints to be added to the request')
   .option('--virtual', 'Request payment over a virtual channel')
-  .option('--virtual-fee-rate <pm>', 'Fee rate to use on virtual channel', INT)
+  .option('--virtual-fee-rate <pm>', 'Receiver fee rate on virtual/path', INT)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1167,6 +1171,7 @@ prog
           ask: await commands.interrogate({}),
           description: options.for,
           expires_in: options.hours,
+          is_encrypting_hints: options.encryptedHints || undefined,
           is_hinting: options.includeHints || undefined,
           is_including_qr: !!options.qr || undefined,
           is_rejecting_option: !!options.rejectOnAmountIncrease || undefined,
@@ -1551,6 +1556,7 @@ prog
 
   // Pay a payment request, probing first
   .command('pay', 'Pay a payment request, probing first')
+  .help('Blinded path requests are probed to the introduction node, 1 path')
   .argument('<request>', 'Payment Request')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
   .option('--avoid-high-fee-routes', 'Avoid evaluating too-high fee routes')
@@ -1670,6 +1676,7 @@ prog
   // Determine if a payment request is sendable
   .command('probe', 'Check if a payment request is sendable')
   .help('Simulate paying a payment request without actually paying it')
+  .help('Blinded path requests are probed to the introduction node, 1 path')
   .argument('<to>', 'Payment request or node public key')
   .argument('[amount]', 'Amount to probe, default: request amount')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)

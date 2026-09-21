@@ -2,6 +2,7 @@ const {createHash} = require('crypto');
 const {randomBytes} = require('crypto');
 
 const asyncAuto = require('async/auto');
+const asyncMap = require('async/map');
 const {decodePaymentRequest} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
@@ -14,10 +15,12 @@ const {returnResult} = require('asyncjs-util');
 const {signBytes} = require('ln-service');
 const {subscribeToFindMaxPayable} = require('probing');
 
+const blindedPathFee = require('./blinded_path_fee');
 const executeProbe = require('./execute_probe');
 const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
+const blinded = 'blinded';
 const bufFromHex = hex => Buffer.from(hex, 'hex');
 const channelReserve = n => n.local_reserve || Math.floor(n.capacity * 0.01);
 const cltvBuffer = 3;
@@ -33,14 +36,17 @@ const feeBuffer = fees => fees * 2;
 const {floor} = Math;
 const fromKeyType = '34349339';
 const htlcOutputSize = 43;
+const isBlindedHop = hop => !!hop.encrypted_data && !hop.path_key;
 const keySendPreimageType = '5482373484';
 const makeNonce = () => randomBytes(32).toString('hex');
 const {max} = Math;
 const messageType = '34349334';
 const {min} = Math;
+const mtokensAsTokens = mtokens => Number(BigInt(mtokens) / BigInt(1e3));
 const nodeKeyFamily = 6;
 const preimageByteLength = 32;
 const {now} = Date;
+const pathChannel = hop => isBlindedHop(hop) ? blinded : hop.channel;
 const rate = n => n.commit_transaction_fee / (n.commit_transaction_weight / 4);
 const signatureType = '34349337';
 const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
@@ -173,15 +179,17 @@ module.exports = (args, cbk) => {
               features: details.features,
               id: details.id,
               mtokens: tokAsMtok(args.tokens),
+              paths: details.paths,
               payment: details.payment,
               routes: details.routes,
               tokens: args.tokens,
             });
           }
 
+          // The destination of a blinded paths request is not known
           args.logger.info({
             description: details.description || undefined,
-            destination: details.destination,
+            destination: !details.paths ? details.destination : blinded,
             expires: moment(details.expires_at).fromNow(),
             id: details.id,
             tokens: details.tokens,
@@ -193,6 +201,7 @@ module.exports = (args, cbk) => {
             features: details.features,
             id: details.id,
             mtokens: details.mtokens || '0',
+            paths: details.paths,
             payment: details.payment,
             routes: details.routes,
             tokens: details.tokens,
@@ -209,6 +218,11 @@ module.exports = (args, cbk) => {
 
       // Lookup node destination details
       getDestinationNode: ['to', ({to}, cbk) => {
+        // Exit early when the destination is hidden behind blinded paths
+        if (!!to.paths) {
+          return cbk(null, {alias: String()});
+        }
+
         return getNode({
           is_omitting_channels: true,
           lnd: args.lnd,
@@ -222,6 +236,33 @@ module.exports = (args, cbk) => {
 
           return cbk(null, res);
         });
+      }],
+
+      // Lookup the introduction nodes of blinded paths
+      getIntroductionNodes: ['to', ({to}, cbk) => {
+        // Exit early when there are no blinded paths
+        if (!to.paths) {
+          return cbk();
+        }
+
+        const ids = to.paths.map(n => n.introduction_node);
+
+        return asyncMap(ids, (id, cbk) => {
+          return getNode({
+            is_omitting_channels: true,
+            lnd: args.lnd,
+            public_key: id,
+          },
+          (err, res) => {
+            // Suppress errors when the node is not found
+            if (!!err) {
+              return cbk(null, id);
+            }
+
+            return cbk(null, `${res.alias} ${id}`.trim());
+          });
+        },
+        cbk);
       }],
 
       // For destinations that are peers, get features directly
@@ -243,7 +284,7 @@ module.exports = (args, cbk) => {
           const peer = res.peers.find(n => n.public_key === to.destination);
 
           // Exit early when there are no peer features
-          if (!peer || !peers.features.length) {
+          if (!peer || !peer.features.length) {
             return cbk();
           }
 
@@ -277,8 +318,24 @@ module.exports = (args, cbk) => {
         return cbk(null, {features});
       }],
 
+      // Check that messages can be attached to the payment
+      checkMessages: ['to', ({to}, cbk) => {
+        // Exit early when there are no messages to attach
+        if (!args.message && !args.messages) {
+          return cbk();
+        }
+
+        // Blinded path hops only accept encrypted data in their payloads
+        if (!!to.paths) {
+          return cbk([501, 'MessagesNotSupportedWithBlindedPaths']);
+        }
+
+        return cbk();
+      }],
+
       // Determine messages to attach
       messages: [
+        'checkMessages',
         'getFeatures',
         'getIdentity',
         'to',
@@ -379,9 +436,37 @@ module.exports = (args, cbk) => {
       checkPath: [
         'getDestinationNode',
         'getIdentity',
+        'getIntroductionNodes',
         'to',
-        ({getDestinationNode, getIdentity, to}, cbk) =>
+        ({getDestinationNode, getIdentity, getIntroductionNodes, to}, cbk) =>
       {
+        // Exit early when the path is found to a blinded path introduction node
+        if (!!to.paths) {
+          const [node] = getIntroductionNodes;
+          const isSingle = getIntroductionNodes.length === [node].length;
+
+          // The probe amount is what the paths must deliver to the destination
+          const mtokens = !BigInt(to.mtokens) ? tokAsMtok(defaultTokens) :
+            to.mtokens;
+
+          // The fee of a blinded path is what relaying through it costs
+          const fees = to.paths.map(path => {
+            return mtokensAsTokens(blindedPathFee({mtokens, path}).fee_mtokens);
+          });
+
+          const [fee] = fees;
+
+          const nodes = getIntroductionNodes;
+
+          // A request may have a single path or multiple paths to choose from
+          args.logger.info({
+            blinded_path_fee: isSingle ? fee : fees,
+            checking_for_path_to_introduction: isSingle ? node : nodes,
+          });
+
+          return cbk();
+        }
+
         const sendingTo = `${getDestinationNode.alias} ${to.destination}`;
 
         if (to.destination === getIdentity.public_key) {
@@ -406,7 +491,7 @@ module.exports = (args, cbk) => {
         return executeProbe({
           messages,
           cltv_delta: (to.cltv_delta || defaultCltvDelta) + cltvBuffer,
-          destination: to.destination,
+          destination: !to.paths ? to.destination : undefined,
           features: getFeatures.features,
           ignore: args.ignore,
           in_through: args.in_through,
@@ -418,6 +503,7 @@ module.exports = (args, cbk) => {
           max_fee_mtokens: args.max_fee_mtokens,
           mtokens: !BigInt(to.mtokens) ? tokAsMtok(defaultTokens) : to.mtokens,
           outgoing_channel: !!outId ? outId.id : undefined,
+          paths: to.paths || undefined,
           payment: to.payment,
           routes: to.routes,
           tagged: !!getIcons ? getIcons.nodes : undefined,
@@ -431,6 +517,11 @@ module.exports = (args, cbk) => {
       getMax: ['outId', 'probe', 'to', ({outId, probe, to}, cbk) => {
         if (!args.find_max || !probe.route) {
           return cbk(null, {});
+        }
+
+        // Finding the maximum needs to probe the hops which are hidden in paths
+        if (!!to.paths) {
+          return cbk([501, 'FindMaxNotSupportedWithBlindedPaths']);
         }
 
         const sub = subscribeToFindMaxPayable({
@@ -476,9 +567,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'MaxFeeTooLow', {required_fee: probe.route.fee}]);
         }
 
-        args.logger.info({
-          paying: probe.route.hops.map(({channel}) => channel),
-        });
+        args.logger.info({paying: probe.route.hops.map(pathChannel)});
 
         return payViaRoutes({
           id: to.id,
@@ -499,7 +588,11 @@ module.exports = (args, cbk) => {
 
         const {route} = probe;
 
+        // The introduction node hop of a blinded path takes the path fee
+        const introduction = route.hops.find(hop => !!hop.path_key);
+
         return cbk(null, {
+          blinded_path_fee: !introduction ? undefined : introduction.fee,
           fee: !route ? undefined : route.fee,
           id: !pay ? undefined : pay.id,
           latency_ms: !route ? undefined : probe.latency_ms,
@@ -508,7 +601,7 @@ module.exports = (args, cbk) => {
           preimage: !pay ? undefined : pay.secret,
           probed: !!pay ? undefined : route.tokens - route.fee,
           relays: !route ? undefined : route.hops.map(n => n.public_key),
-          success: !route ? undefined : route.hops.map(({channel}) => channel),
+          success: !route ? undefined : route.hops.map(pathChannel),
         });
       }],
     },

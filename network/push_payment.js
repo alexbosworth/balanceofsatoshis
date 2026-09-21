@@ -346,7 +346,6 @@ module.exports = (args, cbk) => {
         const variables = {
           inbound,
           outbound,
-          eur: !!eur ? eur.unit : undefined,
           liquidity: sumOf(
             getChannels.channels
               .filter(n => n.partner_public_key === payment.destination)
@@ -359,8 +358,16 @@ module.exports = (args, cbk) => {
               .map(n => n.capacity)
           ),
           out_outbound: outOutbound,
-          usd: !!usd ? usd.unit : undefined,
         };
+
+        // Fiat rate variables are only defined when the rates are known
+        if (!!eur) {
+          variables.eur = eur.unit;
+        }
+
+        if (!!usd) {
+          variables.usd = usd.unit;
+        }
 
         try {
           const {tokens} = parseAmount({variables, amount: args.amount});

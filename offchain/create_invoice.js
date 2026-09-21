@@ -4,17 +4,21 @@ const asyncRetry = require('async/retry');
 const {createInvoice} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getChannel} = require('ln-service');
+const {getHeight} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getNodeAlias} = require('ln-sync');
 const {parsePaymentRequest} = require('ln-service');
+const {paymentPathFromChannels} = require('bolt04');
 const qrcode = require('qrcode-terminal');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToForwardRequests} = require('ln-service');
 
 const getInvoiceAmount = require('./get_invoice_amount');
+const selectBlindedPath = require('./select_blinded_path');
 const signPaymentRequest = require('./sign_payment_request');
 
+const blindedPathsFeatureBit = 262;
 const coins = ['BTC'];
 const defaultFiatRateProvider = 'coinbase';
 const defaultInvoiceDescription = '';
@@ -24,10 +28,16 @@ const interval = 3000;
 const {isArray} = Array;
 const {isInteger} = Number;
 const isNumber = n => !isNaN(n);
+const {max} = Math;
+const maxPathHops = 5;
+const minHopsCount = 4;
 const mtokensAsBigUnit = n => (Number(n / BigInt(1000)) / 1e8).toFixed(8);
+const paddingHop = 1;
 const parseRequest = request => parsePaymentRequest({request});
+const paymentSecretFeatureBits = [14, 15];
 const times = 20 * 60 * 24;
 const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
+const tokensAsMtokens = tokens => (BigInt(tokens) * BigInt(1e3)).toString();
 const uniq = arr => Array.from(new Set(arr));
 
 /** Create an invoice for a requested amount
@@ -37,6 +47,7 @@ const uniq = arr => Array.from(new Set(arr));
     ask: <Inquirer Function>
     [description]: <Invoice Description String>
     [expires_in]: <Invoice Expires In Hours Number>
+    [is_encrypting_hints]: <Use Blinded Paths as Encrypted Hop Hints Bool>
     [is_hinting]: <Include Private Channels Bool>
     [is_including_qr]: <Include QR Code Bool>
     [is_rejecting_option]: <Is Rejecting Amount Increases Bool>
@@ -45,7 +56,11 @@ const uniq = arr => Array.from(new Set(arr));
     lnd: <Authenticated LND API Object>
     [rate_provider]: <Fiat Rate Provider String>
     request: <Request Function>
+    [virtual_fee_rate]: <Virtual Channel or Receiver Fee Rate PPM Number>
   }
+
+  `virtual_fee_rate` is charged on a virtual channel or, with selected
+  encrypted hints, by the receiver on the blinded path.
 
   @returns via cbk or Promise
   {
@@ -80,6 +95,14 @@ module.exports = (args, cbk) => {
           return cbk([400, 'CannotUseDefaultHintsAndAlsoSelectHints']);
         }
 
+        if (!!args.is_encrypting_hints && !!args.is_hinting) {
+          return cbk([400, 'CannotUseDefaultHintsAndAlsoEncryptedHints']);
+        }
+
+        if (!!args.is_encrypting_hints && !!args.is_virtual) {
+          return cbk([400, 'EncryptedHintsUnsupportedWithVirtualChannels']);
+        }
+
         if (!!args.is_rejecting_option && !args.is_virtual) {
           return cbk([501, 'RejectingAmountChangesOnlySupportedWhenVirtual']);
         }
@@ -90,6 +113,13 @@ module.exports = (args, cbk) => {
 
         if (!!args.is_virtual && !!args.is_selecting_hops) {
           return cbk([400, 'ChoosingHopHintsUnsupportedWithVirtualChannels']);
+        }
+
+        // A receiver fee is charged on a virtual channel or a selected path
+        const isPath = !!args.is_encrypting_hints && !!args.is_selecting_hops;
+
+        if (!!args.virtual_fee_rate && !args.is_virtual && !isPath) {
+          return cbk([400, 'ExpectedVirtualChannelOrSelectedPathForFeeRate']);
         }
 
         if (!args.lnd) {
@@ -124,9 +154,10 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
+        // Hop hints are only needed for private channels, paths use any channel
         return getChannels({
           is_active: true,
-          is_private: true,
+          is_private: !args.is_encrypting_hints || undefined,
           lnd: args.lnd,
         },
         cbk);
@@ -135,7 +166,7 @@ module.exports = (args, cbk) => {
       // Get node aliases for channels for selecting hop hints
       getAliases: ['getChannels', ({getChannels}, cbk) => {
         // Exit early when not selecting hop hints
-        if (!args.is_selecting_hops) {
+        if (!args.is_selecting_hops || !!args.is_encrypting_hints) {
           return cbk();
         }
 
@@ -164,6 +195,63 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Blinded paths need an amount to set the maximum size of the payment
+      checkAmount: ['parseAmount', ({parseAmount}, cbk) => {
+        // Exit early when not using encrypted hints
+        if (!args.is_encrypting_hints) {
+          return cbk();
+        }
+
+        if (!parseAmount.tokens) {
+          return cbk([400, 'ExpectedNonZeroInvoiceAmountForEncryptedHints']);
+        }
+
+        return cbk();
+      }],
+
+      // Select a blinded path to use as encrypted hints
+      selectPath: [
+        'checkAmount',
+        'getChannels',
+        'getId',
+        'parseAmount',
+        ({getChannels, getId, parseAmount}, cbk) =>
+      {
+        // Exit early when not selecting a blinded path
+        if (!args.is_encrypting_hints || !args.is_selecting_hops) {
+          return cbk();
+        }
+
+        // Make sure there are some active channels to start a path from
+        if (!getChannels.channels.length) {
+          return cbk([400, 'NoActiveChannelsToSelectAsEncryptedHints']);
+        }
+
+        // A BOLT 11 field limits the path length, a receiver fee takes a hop
+        const maxHops = !args.virtual_fee_rate ? maxPathHops :
+          maxPathHops - paddingHop;
+
+        return selectBlindedPath({
+          ask: args.ask,
+          channels: getChannels.channels,
+          lnd: args.lnd,
+          max_hops: maxHops,
+          mtokens: tokensAsMtokens(parseAmount.tokens),
+          public_key: getId.public_key,
+        },
+        cbk);
+      }],
+
+      // Get the current height to set the blinded path expiration
+      getHeight: ['selectPath', ({selectPath}, cbk) => {
+        // Exit early when there is no blinded path to constrain
+        if (!selectPath) {
+          return cbk();
+        }
+
+        return getHeight({lnd: args.lnd}, cbk);
+      }],
+
       // Select hop hint channels
       selectChannels: [
         'getAliases',
@@ -172,7 +260,7 @@ module.exports = (args, cbk) => {
         ({getAliases, getChannels}, cbk) =>
       {
         // Exit early if not selecting channels
-        if (!args.is_selecting_hops) {
+        if (!args.is_selecting_hops || !!args.is_encrypting_hints) {
           return cbk();
         }
 
@@ -207,6 +295,11 @@ module.exports = (args, cbk) => {
 
       // Get the policies of selected channels
       getPolicies: ['selectChannels', ({selectChannels}, cbk) => {
+        // Exit early when there are no hint channels selected
+        if (!selectChannels) {
+          return cbk(null, []);
+        }
+
         return asyncMap(selectChannels, (channel, cbk) => {
           return getChannel({id: channel, lnd: args.lnd}, (err, res) => {
             // Exit early when the channel isn't found
@@ -231,23 +324,68 @@ module.exports = (args, cbk) => {
 
       // Create the invoice in the LND database
       addInvoice: [
+        'checkAmount',
         'expiresAt',
         'getPolicies',
         'parseAmount',
+        'selectPath',
         ({expiresAt, parseAmount}, cbk) => {
         // Exit with error when no amount is given
         if (!!args.is_virtual && !parseAmount.tokens) {
           return cbk([400, 'ExpectedNonZeroInvoiceForVirtualChannel']);
         }
 
+        // LND selects blinded paths itself when a path is not chosen manually
+        const isSelecting = !!args.is_selecting_hops;
+        const isLndBlinding = !!args.is_encrypting_hints && !isSelecting;
+
         return createInvoice({
           description: args.description || defaultInvoiceDescription,
           expires_at: expiresAt,
+          is_encrypting_routes: isLndBlinding || undefined,
           is_including_private_channels: args.is_hinting || undefined,
           lnd: args.lnd,
           tokens: parseAmount.tokens,
         },
         cbk);
+      }],
+
+      // Blind the selected path with the payment identifier as the path id
+      blindedPath: [
+        'addInvoice',
+        'getHeight',
+        'getId',
+        'selectPath',
+        ({addInvoice, getHeight, getId, selectPath}, cbk) =>
+      {
+        // Exit early when there is no selected path to blind
+        if (!selectPath) {
+          return cbk();
+        }
+
+        // The real hops of the path are the channel forwarders and the node
+        const hops = selectPath.channels.length + [getId.public_key].length;
+
+        // A receiver fee is charged by a padding hop, so one must be present
+        const minHops = !args.virtual_fee_rate ? hops : hops + paddingHop;
+
+        try {
+          // Short paths are padded with dummy hops to hide their true length
+          const path = paymentPathFromChannels({
+            channels: selectPath.channels,
+            cltv_delta: parseRequest(addInvoice.request).cltv_delta,
+            current_block_height: getHeight.current_block_height,
+            destination: getId.public_key,
+            hop_count: max(minHops, minHopsCount),
+            id: addInvoice.payment,
+            max_mtokens: addInvoice.mtokens,
+            receiver_fee_rate: args.virtual_fee_rate || undefined,
+          });
+
+          return cbk(null, path);
+        } catch (err) {
+          return cbk([503, 'FailedToCreateBlindedPathForHints', {err}]);
+        }
       }],
 
       // Intercept virtual invoice forwards
@@ -376,6 +514,7 @@ module.exports = (args, cbk) => {
       // Create the final signed public payment request
       publicRequest: [
         'addInvoice',
+        'blindedPath',
         'expiresAt',
         'getId',
         'getNetwork',
@@ -383,6 +522,7 @@ module.exports = (args, cbk) => {
         'parseAmount',
         ({
           addInvoice,
+          blindedPath,
           expiresAt,
           getId,
           getNetwork,
@@ -399,18 +539,26 @@ module.exports = (args, cbk) => {
           });
         }
 
+        const details = parseRequest(addInvoice.request);
+
+        // A blinded path carries the payment secret, so the feature is dropped
+        const features = !blindedPath ? details.features : details.features
+          .filter(n => !paymentSecretFeatureBits.includes(n.bit))
+          .concat([{bit: blindedPathsFeatureBit}]);
+
         return signPaymentRequest({
+          features,
           channels: getPolicies,
-          cltv_delta: parseRequest(addInvoice.request).cltv_delta,
+          cltv_delta: details.cltv_delta,
           description: args.description || defaultInvoiceDescription,
           destination: getId.public_key,
-          expires_at: expiresAt,
-          features: parseRequest(addInvoice.request).features,
+          expires_at: expiresAt || details.expires_at,
           id: addInvoice.id,
           is_virtual: args.is_virtual,
           lnd: args.lnd,
           network: getNetwork.bitcoinjs,
-          payment: addInvoice.payment,
+          paths: !blindedPath ? undefined : [blindedPath],
+          payment: !blindedPath ? addInvoice.payment : undefined,
           tokens: parseAmount.tokens,
           virtual_fee_rate: args.virtual_fee_rate,
         },

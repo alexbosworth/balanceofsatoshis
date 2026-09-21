@@ -1,6 +1,5 @@
-const {Transaction} = require('bitcoinjs-lib');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 
-const {fromHex} = Transaction;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 
 /** Calculate channel closing fees paid
@@ -40,7 +39,9 @@ module.exports = args => {
   }
 
   // Calculate the value of the outputs in the tx that spends the capacity
-  const outValue = sumOf(fromHex(closer.transaction).outs.map(n => n.value));
+  const {outputs} = componentsOfTransaction({transaction: closer.transaction});
+
+  const outValue = sumOf(outputs.map(n => n.tokens));
 
   const fees = []
     .concat(args.capacity - outValue)

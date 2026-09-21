@@ -23,10 +23,14 @@ const keyIndexIdentity = 0;
 const makePrivateKey = () => randomBytes(32);
 const minimalCltvDelta = 18;
 const rValue = r => r.length === 33 ? r.slice(1) : r;
+const tooLong = 'ExpectedBlindedPathWithinDataLengthLimitToConvertToHex';
 const unit8AsHex = n => Buffer.from(n).toString('hex');
 const virtualChannelId = '805x805x805';
 
 /** Create a signed BOLT 11 payment request
+
+  When `paths` are given, the request has no destination or payment identifier
+  and is signed with an ephemeral key so that the destination node is hidden.
 
   {
     channels: [{
@@ -48,7 +52,20 @@ const virtualChannelId = '805x805x805';
     id: <Payment Hash Hex String>
     lnd: <Authenticated LND API Object>
     network: <BitcoinJs Network Name String>
-    payment: <Payment Nonce Hex String>
+    [paths]: [{
+      base_fee_mtokens: <Accumulated Base Fee Millitokens String>
+      cltv_delta: <Accumulated CLTV Expiry Delta Number>
+      fee_rate: <Accumulated Fee Rate Millitokens Per Million Number>
+      hops: [{
+        encrypted_data: <Encrypted Recipient Data Hex String>
+        relay_key: <Blinded Node Public Key Hex String>
+      }]
+      introduction_node: <Introduction Node Public Key Hex String>
+      key: <First Hop Path Key Public Key Hex String>
+      max_htlc_mtokens: <Maximum HTLC Millitokens String>
+      min_htlc_mtokens: <Minimum HTLC Millitokens String>
+    }]
+    [payment]: <Payment Nonce Hex String>
     tokens: <Invoiced Amount Tokens Number>
   }
 
@@ -95,7 +112,15 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedNetworkNameToSignPaymentRequest']);
         }
 
-        if (!args.payment) {
+        if (args.paths !== undefined && !isArray(args.paths)) {
+          return cbk([400, 'ExpectedArrayOfBlindedPathsToSignPaymentRequest']);
+        }
+
+        if (!!args.paths && !!args.is_virtual) {
+          return cbk([400, 'ExpectedNoVirtualChannelWithBlindedPathsToSign']);
+        }
+
+        if (!args.payment && !args.paths) {
           return cbk([400, 'ExpectedPaymentNonceToSignPaymentRequest']);
         }
 
@@ -137,6 +162,11 @@ module.exports = (args, cbk) => {
 
       // Assemble the hop hints from the chosen hint channels
       hints: ['getKeyPair', ({getKeyPair}, cbk) => {
+        // Exit early when blinded paths are used instead of hop hints
+        if (!!args.paths) {
+          return cbk(null, []);
+        }
+
         // Exit early when using a virtual channel
         if (!!args.is_virtual) {
           return cbk(null, [[
@@ -183,24 +213,35 @@ module.exports = (args, cbk) => {
           const unsigned = createUnsignedRequest({
             cltv_delta: args.cltv_delta,
             description: args.description,
-            destination: destination.public_key,
+            destination: !destination ? undefined : destination.public_key,
             expires_at: args.expires_at,
             features: args.features,
             id: args.id,
             network: args.network,
-            payment: args.payment,
+            paths: args.paths,
+            payment: !args.paths ? args.payment : undefined,
             routes: !!hints.length ? hints : undefined,
             tokens: args.tokens,
           });
 
           return cbk(null, unsigned);
         } catch (err) {
+          // Exit early when a blinded path is too long for a request field
+          if (err.message === tooLong) {
+            return cbk([400, 'BlindedPathTooLongToEncodeInPaymentRequest']);
+          }
+
           return cbk([500, 'UnexpectedErrorCreatingUnsignedRequest', {err}]);
         }
       }],
 
       // Sign the unsigned payment request
       sign: ['getKeyPair', 'unsigned', ({getKeyPair, unsigned}, cbk) => {
+        // Exit early when a blinded paths request is signed by an ephemeral key
+        if (!!args.paths) {
+          return cbk(null, {});
+        }
+
         // Exit early when signing using the virtual key
         if (!!args.is_virtual) {
           const signature = tinysecp256k1.sign(
@@ -239,6 +280,7 @@ module.exports = (args, cbk) => {
       // Assemble the full signed request
       request: ['sign', 'unsigned', ({sign, unsigned}, cbk) => {
         try {
+          // A request without a signature is signed with an ephemeral key
           const {request} = createSignedRequest({
             destination: sign.destination,
             hrp: unsigned.hrp,

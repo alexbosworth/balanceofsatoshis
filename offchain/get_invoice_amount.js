@@ -84,10 +84,16 @@ module.exports = ({amount, network, provider, request}, cbk) => {
         const usd = !!rates ? rates.find(n => n.fiat === 'USD') : null;
 
         // Variables to use in amount
-        const variables = {
-          eur: !!eur ? eur.unit : undefined,
-          usd: !!usd ? usd.unit : undefined,
-        };
+        const variables = {};
+
+        // Fiat rate variables are only defined when the rates are known
+        if (!!eur) {
+          variables.eur = eur.unit;
+        }
+
+        if (!!usd) {
+          variables.usd = usd.unit;
+        }
 
         try {
           return cbk(null, {tokens: parseAmount({amount, variables}).tokens});

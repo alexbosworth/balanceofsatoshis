@@ -30,6 +30,7 @@
     "bitcoinjs-lib": "6.1.7",
     "bolt01": "4.0.0",
     "bolt03": "2.0.0",
+    "bolt04": "1.2.0",
     "bolt07": "2.0.0",
     "cbor": "10.0.12",
     "colorette": "2.0.20",
@@ -39,11 +40,11 @@
     "import-lazy": "4.0.0",
     "ini": "7.0.0",
     "inquirer": "14.2.2",
-    "ln-accounting": "10.0.6",
-    "ln-service": "59.4.1",
+    "ln-accounting": "10.0.7",
+    "ln-service": "59.6.0",
     "ln-sync": "8.0.6",
     "ln-telegram": "8.0.6",
-    "moment": "2.30.1",
+    "moment": "2.31.0",
     "paid-services": "8.0.7",
     "probing": "7.0.0",
     "qrcode-terminal": "0.12.0",
@@ -55,12 +56,38 @@
   },
   "description": "Lightning balance CLI",
   "devDependencies": {
-    "invoices": "6.1.4",
+    "invoices": "6.2.0",
     "ln-docker-daemons": "8.0.5"
   },
   "engines": {
     "node": ">=22"
   },
+  "files": [
+    "CHANGELOG.md",
+    "arrays",
+    "balances",
+    "bos",
+    "chain",
+    "commands",
+    "display",
+    "encryption",
+    "lnd",
+    "lnurl",
+    "lsp",
+    "network",
+    "nodes",
+    "offchain",
+    "peers",
+    "responses",
+    "routing",
+    "services",
+    "storage",
+    "swaps",
+    "tags",
+    "telegram",
+    "triggers",
+    "wallets"
+  ],
   "keywords": [
     "cli",
     "lightning",
@@ -70,7 +97,6 @@
     "submarine-swaps"
   ],
   "license": "MIT",
-  "main": "index.js",
   "name": "balanceofsatoshis",
   "repository": {
     "type": "git",
@@ -81,7 +107,7 @@
     "integration-tests": "node test/integration",
     "postpack": "PACKAGE_VERSION=$(cat package.json | grep \\\"version\\\" | head -1 | awk -F: '{ print $2 }' | sed 's/[\",]//g' | tr -d '[[:space:]]') && git tag -s v$PACKAGE_VERSION -m v$PACKAGE_VERSION && git push github --tags",
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64 -t alexbosworth/balanceofsatoshis -t alexbosworth/balanceofsatoshis:$npm_package_version --push .",
-    "test": "node --experimental-test-coverage --test test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
+    "test": "node --experimental-test-coverage --test test/arrays/*.js test/balances/*.js test/chain/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/network/*.js test/nodes/*.js test/offchain/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "23.1.12"
+  "version": "23.2.0"
 }

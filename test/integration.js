@@ -1,7 +1,7 @@
 const {join} = require('node:path');
 const {readdirSync} = require('node:fs');
 const {run} = require('node:test');
-const {tap} = require('node:test/reporters');
+const {spec} = require('node:test/reporters');
 
 const concurrency = 3;
 const timeout = 1000 * 60 * 5;
@@ -15,4 +15,4 @@ const files = flatten(dirs.map(dir => {
   return readdirSync(join(__dirname, dir), {withFileTypes: true}).map(asPath);
 }));
 
-run({concurrency, files, timeout}).compose(tap).pipe(process.stdout);
+run({concurrency, files, timeout}).compose(spec).pipe(process.stdout);

@@ -16,9 +16,11 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
 
 /** Execute a probe
 
+  `destination` is not required when probing to blinded `paths`
+
   {
     cltv_delta: <Final Cltv Delta Number>
-    destination: <Final Destination Public Key Hex String>
+    [destination]: <Final Destination Public Key Hex String>
     [features]: [{
       bit: <Feature Bit Number>
     }]
@@ -39,6 +41,19 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
       value: <Message To Final Destination Raw Value Hex Encoded String>
     }]
     [outgoing_channel]: <Outgoing Channel Id String>
+    [paths]: [{
+      base_fee_mtokens: <Accumulated Base Fee Millitokens String>
+      cltv_delta: <Accumulated CLTV Expiry Delta Number>
+      fee_rate: <Accumulated Fee Rate Millitokens Per Million Number>
+      hops: [{
+        encrypted_data: <Encrypted Recipient Data Hex String>
+        relay_key: <Relaying Node Public Key Hex String>
+      }]
+      [introduction_node]: <Introduction Node Public Key Hex String>
+      key: <First Hop Path Key Public Key Hex String>
+      [max_htlc_mtokens]: <Maximum HTLC Millitokens String>
+      [min_htlc_mtokens]: <Minimum HTLC Millitokens String>
+    }]
     [payment]: <Payment Identifier Hex String>
     [routes]: [[{
       [base_fee_mtokens]: <Base Fee Millitokens String>
@@ -67,10 +82,12 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
       hops: [{
         channel: <Standard Format Channel Id String>
         channel_capacity: <Channel Capacity Tokens Number>
+        [encrypted_data]: <Blinded Path Encrypted Data Hex String>
         fee: <Fee Number>
         fee_mtokens: <Fee Millitokens String>
         forward: <Forward Tokens Number>
         forward_mtokens: <Forward Millitokens String>
+        [path_key]: <Blinded Path Key Hex String>
         public_key: <Public Key Hex String>
         timeout: <Timeout Block Height Number>
       }]
@@ -89,7 +106,7 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedFinalCltvDeltaToExecuteProbe']);
         }
 
-        if (!args.destination) {
+        if (!args.destination && !args.paths) {
           return cbk([400, 'ExpectedDestinationToExecuteProbe']);
         }
 
@@ -145,25 +162,32 @@ module.exports = (args, cbk) => {
 
         const timeoutMinutes = minutesAsMs((args.timeout_minutes || Number()));
 
-        const sub = subscribeToProbeForRoute({
-          mtokens,
-          cltv_delta: args.cltv_delta,
-          destination: args.destination,
-          features: args.features,
-          ignore: args.ignore,
-          incoming_peer: args.in_through,
-          lnd: args.lnd,
-          max_fee_mtokens: strictMaxFee || undefined,
-          max_timeout_height: args.max_timeout_height,
-          messages: args.messages,
-          outgoing_channel: args.outgoing_channel,
-          path_timeout_ms: pathTimeoutMs,
-          payment: args.payment,
-          probe_timeout_ms: timeoutMinutes || undefined,
-          routes: args.routes,
-          tokens: args.tokens,
-          total_mtokens: !!args.payment ? mtokens : undefined,
-        });
+        let sub;
+
+        try {
+          sub = subscribeToProbeForRoute({
+            mtokens,
+            cltv_delta: args.cltv_delta,
+            destination: args.destination,
+            features: args.features,
+            ignore: args.ignore,
+            incoming_peer: args.in_through,
+            lnd: args.lnd,
+            max_fee_mtokens: strictMaxFee || undefined,
+            max_timeout_height: args.max_timeout_height,
+            messages: args.messages,
+            outgoing_channel: args.outgoing_channel,
+            path_timeout_ms: pathTimeoutMs,
+            paths: args.paths,
+            payment: args.payment,
+            probe_timeout_ms: timeoutMinutes || undefined,
+            routes: args.routes,
+            tokens: args.tokens,
+            total_mtokens: !!args.payment ? mtokens : undefined,
+          });
+        } catch (err) {
+          return cbk([400, 'FailedToStartProbeForRoute', {err}]);
+        }
 
         const finished = (err, res) => {
           sub.removeAllListeners();

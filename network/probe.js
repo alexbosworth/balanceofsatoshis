@@ -30,6 +30,7 @@ const pathTimeoutMs = 1000 * 60 * 90;
 const singlePath = 1;
 const uniq = arr => Array.from(new Set(arr));
 const unsupported = 501;
+const withTotalFee = ({fee, ...res}) => ({total_fee: fee, ...res});
 
 /** Probe a destination, looking for multiple non-overlapping paths
 
@@ -54,10 +55,12 @@ const unsupported = 501;
 
   @returns via cbk or Promise
   {
+    [blinded_path_fee]: <Blinded Path Fee Tokens Number>
     [fee]: <Total Fee Tokens To Destination Number>
     [latency_ms]: <Latency Milliseconds Number>
     [relays]: [[<Relaying Public Key Hex String>]]
     [routes_maximum]: <Maximum Sendable Tokens on Paths Number>
+    [total_fee]: <Total Fee Tokens Including Blinded Path Fee Number>
   }
 */
 module.exports = (args, cbk) => {
@@ -109,6 +112,7 @@ module.exports = (args, cbk) => {
           cltv_delta: decoded.cltv_delta,
           destination: decoded.destination,
           features: decoded.features,
+          paths: decoded.paths,
           routes: decoded.routes,
         });
       }],
@@ -319,6 +323,11 @@ module.exports = (args, cbk) => {
           return cbk([501, 'StrictMaxFeeNotSupportedWithMultiPathProbes']);
         }
 
+        // Multi-path probing looks for paths to a destination, not to paths
+        if (!!decodeRequest.paths) {
+          return cbk([501, 'MultiPathProbeNotSupportedWithBlindedPaths']);
+        }
+
         // Exit with error when the backing LND is below 0.10.0
         if (!!isLegacy) {
           return cbk([501, 'BackingLndDoesNotSupportMultiPathPayments']);
@@ -433,7 +442,18 @@ module.exports = (args, cbk) => {
 
         return cbk();
       }],
+
+      // Final probe result
+      result: ['checkFee', 'probe', ({probe}, cbk) => {
+        // Exit early when the probe was not through a blinded path
+        if (!probe || probe.blinded_path_fee === undefined) {
+          return cbk(null, probe);
+        }
+
+        // The fee of a blinded path probe is a total that includes the path fee
+        return cbk(null, withTotalFee(probe));
+      }],
     },
-    returnResult({reject, resolve, of: 'probe'}, cbk));
+    returnResult({reject, resolve, of: 'result'}, cbk));
   });
 };

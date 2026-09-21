@@ -1,5 +1,15 @@
 # Versions
 
+## 23.2.0
+
+- `invoice`: Add `--encrypted-hints` to hide the node behind blinded paths in
+    the payment request
+- `invoice`: Add `--select-hints` with `--encrypted-hints` to choose the
+    blinded path outwards from a peer to an introduction node
+- `invoice`: Add `--virtual-fee-rate` with selected `--encrypted-hints` to
+    charge a receiver fee on the blinded path
+- `pay`, `probe`: Add support for payment requests with blinded paths
+
 ## 23.1.12
 
 - Add support for LND 0.21.3
