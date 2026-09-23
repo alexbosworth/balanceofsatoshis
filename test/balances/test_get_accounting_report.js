@@ -56,6 +56,11 @@ const tests = [
     error: [400, 'ExpectedKnownAccountingRecordsCategory'],
   },
   {
+    args: makeArgs({date: '1'}),
+    description: 'A month is required when specifying a date',
+    error: [400, 'ExpectedMonthForDateToGetAccountingReport'],
+  },
+  {
     args: makeArgs({lnd: undefined}),
     description: 'LND is required',
     error: [400, 'ExpectedAuthenticatedLndToGetAccountingReport'],
@@ -64,6 +69,11 @@ const tests = [
     args: makeArgs({request: undefined}),
     description: 'Request function is required',
     error: [400, 'ExpectedRequestFunctionToGetAccountingReport'],
+  },
+  {
+    args: makeArgs({year: Symbol()}),
+    description: 'A valid date range is required',
+    error: [400, 'Cannot convert a Symbol value to a number'],
   },
   {
     args: makeArgs({}),
@@ -105,6 +115,52 @@ const tests = [
     args: makeArgs({is_csv: true}),
     description: 'Get accounting report CSV',
     expected: `"Amount","Asset","Date & Time","Fiat Amount","From ID","Network ID","Notes","To ID","Transaction ID","Type"\n1,"BTC","1970-01-01T00:00:01.000Z",1.234e-7,"0x0x1","","2","0x0x2","","income"`,
+  },
+  {
+    args: makeArgs({
+      currency: 'BTC',
+      fiat: 'USD',
+      is_csv: true,
+      rate_provider: 'coingecko',
+    }),
+    description: 'Get accounting report CSV with specified options',
+    expected: `"Amount","Asset","Date & Time","Fiat Amount","From ID","Network ID","Notes","To ID","Transaction ID","Type"\n1,"BTC","1970-01-01T00:00:01.000Z",1.234e-7,"0x0x1","","2","0x0x2","","income"`,
+  },
+  {
+    args: makeArgs({is_fiat_disabled: true}),
+    description: 'Get accounting report without fiat conversion',
+    expected: {
+      rows: [
+        [
+          'Amount',
+          'Asset',
+          'Date & Time',
+          'Fiat Amount',
+          'From ID',
+          'Network ID',
+          'Notes',
+          'To ID',
+          'Transaction ID',
+          'Type',
+        ],
+        [
+          '1',
+          'BTC',
+          '1970-01-01T00:00:01.000Z',
+          '',
+          '0x0x1',
+          '',
+          '2',
+          '0x0x2',
+          '',
+          'income',
+        ],
+      ],
+      rows_summary: [
+        ['Total', 'Asset', 'Report Date', 'Total Fiat'],
+        [1, 'BTC', '', ''],
+      ],
+    },
   },
 ];
 

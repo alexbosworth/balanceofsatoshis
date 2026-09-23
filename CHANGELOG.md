@@ -1,5 +1,9 @@
 # Versions
 
+## 23.3.0
+
+- `call`: Add `subscribeToMessages` to listen for received onion messages
+
 ## 23.2.0
 
 - `invoice`: Add `--encrypted-hints` to hide the node behind blinded paths in

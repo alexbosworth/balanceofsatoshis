@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const {broadcastTransaction} = require('ln-sync');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {formatTokens} = require('ln-sync');
 const {fundPsbt} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
@@ -10,7 +11,7 @@ const {getUtxos} = require('ln-service');
 const {parseAmount} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
 const {signPsbt} = require('ln-service');
-const {Transaction} = require('bitcoinjs-lib');
+const {sizeOfTransaction} = require('@alexbosworth/blockchain');
 const {unlockUtxo} = require('ln-service');
 
 const allowUnconfirmed = 0;
@@ -18,19 +19,14 @@ const asBigUnit = n => (n / 1e8).toFixed(8);
 const asOutpoint = utxo => `${utxo.transaction_id}:${utxo.transaction_vout}`;
 const asInput = n => ({transaction_id: n.id, transaction_vout: n.vout});
 const asUtxo = n => ({id: n.slice(0, 64), vout: Number(n.slice(65))});
-const bufferAsHex = buffer => buffer.toString('hex');
 const dustValue = 293;
 const formattedFeeRate = n => n.toFixed(2);
-const {fromHex} = Transaction;
 const hasMaxAmount = amounts => !!amounts.find(n => !!n && !!/max/gim.test(n));
 const {isArray} = Array;
 const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const isValidFeeRate = n => !n || Number.isInteger(Number(n));
-const minConfs = 1;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
-const taprootAddressVersion = 1;
-const txHashAsTxId = hash => hash.reverse().toString('hex');
 
 /** Fund and sign a transaction
 
@@ -332,13 +328,13 @@ module.exports = (args, cbk) => {
       // Final funded transaction
       funded: ['getUtxos', 'sign', ({getUtxos, sign}, cbk) => {
         // Match the inputs of the tx up to the wallet outputs
-        const tx = fromHex(sign.transaction);
+        const tx = componentsOfTransaction({transaction: sign.transaction});
 
         // Find the UTXOs that are being spent in the final transaction
-        const spending = tx.ins.map(input => {
+        const spending = tx.inputs.map(input => {
           const outpoint = asOutpoint({
-            transaction_id: txHashAsTxId(input.hash),
-            transaction_vout: input.index,
+            transaction_id: input.id,
+            transaction_vout: input.vout,
           });
 
           return getUtxos.utxos.find(n => asOutpoint(n) === outpoint);
@@ -350,12 +346,14 @@ module.exports = (args, cbk) => {
         }
 
         const inputsValue = sumOf(spending.map(n => n.tokens));
-        const outputsValue = sumOf(tx.outs.map(n => n.value));
+        const outputsValue = sumOf(tx.outputs.map(n => n.tokens));
 
         const feeTotal = inputsValue - outputsValue;
 
+        const {vsize} = sizeOfTransaction({transaction: sign.transaction});
+
         return cbk(null, {
-          fee_tokens_per_vbyte: formattedFeeRate(feeTotal / tx.virtualSize()),
+          fee_tokens_per_vbyte: formattedFeeRate(feeTotal / vsize),
           signed_transaction: sign.transaction,
         });
       }],
