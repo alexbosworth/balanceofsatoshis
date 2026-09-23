@@ -1,7 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncRetry = require('async/retry');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {returnResult} = require('asyncjs-util');
-const {Transaction} = require('bitcoinjs-lib');
 
 const {endpoints} = require('./blockstream');
 
@@ -72,7 +72,7 @@ module.exports = ({id, interval, network, request, retries}, cbk) => {
             }
 
             try {
-              Transaction.fromHex(transaction);
+              componentsOfTransaction({transaction});
             } catch (err) {
               return cbk([503, 'ExpectedValidTransactionInResponse']);
             }

@@ -1,5 +1,11 @@
 # Versions
 
+## 24.0.0
+
+### Breaking Changes
+
+- Remove `change-channel-capacity`, `services`, `triggers`, and `use` commands
+
 ## 23.3.0
 
 - `call`: Add `subscribeToMessages` to listen for received onion messages

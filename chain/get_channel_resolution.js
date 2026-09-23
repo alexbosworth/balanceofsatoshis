@@ -1,8 +1,9 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
+const {idForTransaction} = require('@alexbosworth/blockchain');
 const {resolutionType} = require('bolt03');
 const {returnResult} = require('asyncjs-util');
-const {Transaction} = require('bitcoinjs-lib');
 
 const {endpoints} = require('./blockstream');
 
@@ -90,12 +91,10 @@ module.exports = (args, cbk) => {
       // Decode transactions to derive spends
       spends: ['validate', ({}, cbk) => {
         const spends = args.transactions.map(({id, transaction}) => {
-          return Transaction.fromHex(transaction).ins.map(({hash}, index) => {
-            return {
-              id: hash.reverse().toString('hex'),
-              spent_by: id,
-              vin: index,
-            };
+          const {inputs} = componentsOfTransaction({transaction});
+
+          return inputs.map((input, index) => {
+            return {id: input.id, spent_by: id, vin: index};
           });
         });
 
@@ -219,11 +218,13 @@ module.exports = (args, cbk) => {
           return cbk(null, {});
         }
 
-        const tx = Transaction.fromHex(getCommitmentTransaction);
+        const tx = componentsOfTransaction({
+          transaction: getCommitmentTransaction,
+        });
 
         const resolutions = getCloseSpends.map(({txid, vin}, i) => {
-          const {transaction} = getTransactions.find(n => txid === n.id) || {};
-          const {value} = tx.outs[i];
+          const {transaction} = getTransactions.find(n => txid === n.id);
+          const value = tx.outputs[i].tokens;
 
           if (!transaction) {
             return {value, type: 'unspent'};
@@ -231,7 +232,7 @@ module.exports = (args, cbk) => {
 
           return {
             value,
-            transaction_id: Transaction.fromHex(transaction).getId(),
+            transaction_id: idForTransaction({transaction}).id,
             type: resolutionType({vin, transaction}).type,
           };
         });

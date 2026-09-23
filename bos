@@ -46,7 +46,6 @@ const services = importLazy('./services');
 const {swapTypes} = commandConstants;
 const swaps = importLazy('./swaps');
 const telegram = importLazy('./telegram');
-const triggers = importLazy('./triggers');
 const wallets = importLazy('./wallets');
 const {version} = importLazy('./package');
 
@@ -317,48 +316,6 @@ prog
           file: options.file,
           write: writeFile,
         }));
-      } catch (err) {
-        return logger.error({err}) && reject();
-      }
-    });
-  })
-
-  // Change the capacity of an existing channel
-  .command('change-channel-capacity', 'Change the capacity of a channel')
-  .visible(false)
-  .help('Remote node must be prepared to receive this type of request')
-  .help('The remote node should also run this same command after you propose')
-  .option('--node <node_name>', 'Use saved node details instead of local node')
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const {lnd} = await lndForNode(logger, options.node);
-
-        const saved = await nodes.manageSavedNodes({
-          logger,
-          spawn,
-          ask: await commands.interrogate({}),
-          fs: {
-            writeFile,
-            getDirectoryFiles: readdir,
-            getFile: readFile,
-            getFileStatus: lstat,
-            makeDirectory: mkdir,
-            removeDirectory: rmdir,
-            removeFile: unlink,
-          },
-          is_including_lnd_api: true,
-          lock_credentials_to: [],
-          network: (await lnSync.getNetwork({lnd})).network,
-        });
-
-        return paidServices.changeChannelCapacity({
-          lnd,
-          logger,
-          ask: await commands.interrogate({}),
-          nodes: saved.nodes,
-        },
-        responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {
         return logger.error({err}) && reject();
       }
@@ -1948,59 +1905,6 @@ prog
     });
   })
 
-  // Offer paid services
-  .command('services', 'Run a KeySend paid services server')
-  .visible(false)
-  .help('KeySend services are paid native Lightning Network services')
-  .option('--activity-fees', 'Share routing fees earned vs num fwds')
-  .option('--activity-volume', 'Share routing total volume amount')
-  .option('--connect', 'Enable requesting an inbound peer connection')
-  .option('--inbox-email-from', 'Inbox service email from address')
-  .option('--inbox-email-postmark-auth', 'Inbox service email to address')
-  .option('--inbox-email-to', 'Inbox service to email')
-  .option('--inbox-price', 'Required payment amount for inbox')
-  .option('--inbox-sms-from', 'Inbox service sms from number')
-  .option('--inbox-sms-to', 'Inbox service sms to number')
-  .option('--inbox-sms-twilio-sid', 'Inbox service Twilio account sid')
-  .option('--inbox-sms-twilio-auth', 'Inbox service Twilio auth token')
-  .option('--invoice', 'Enable creating custom invoices on demand')
-  .option('--node <node_name>', 'Saved node')
-  .option('--payer <pay_with_node_name>', 'Node to pay request responses with')
-  .option('--profile <profile>', 'Share a profile with info about your node')
-  .option('--profile-link <link>', 'Add a link to your profile', REPEATABLE)
-  .option('--network <public_key>', 'Share other service node key', REPEATABLE)
-  .option('--relay', 'Enable payments relay service', BOOL)
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        services.servicePaidRequests({
-          fetch,
-          logger,
-          activity_fees: options.activityFees,
-          activity_volume: options.activityVolume,
-          inbox_email_from: options.inboxEmailFrom,
-          inbox_email_to: options.inboxEmailTo,
-          inbox_postmark_api_key: options.inboxEmailPostmarkAuth,
-          inbox_price: options.inboxPrice,
-          inbox_sms_from_number: options.inboxSmsFrom,
-          inbox_sms_to_number: options.inboxSmsTo,
-          inbox_twilio_account_sid: options.inboxSmsTwilioSid,
-          inbox_twilio_auth_token: options.inboxSmsTwilioAuth,
-          is_connect_enabled: !!options.connect || undefined,
-          is_invoice_enabled: !!options.invoice || undefined,
-          is_relay_enabled: !!options.relay || undefined,
-          network_nodes: flatten([options.network].filter(n => !!n)),
-          node: options.node,
-          payer: options.payer || options.node,
-          profile: options.profile,
-          profile_urls: flatten([options.profileLink].filter(n => !!n)),
-        });
-      } catch (err) {
-        return logger.error({err}) && reject();
-      }
-    });
-  })
-
   // Get a swap API key or inspect an existing one
   .command('swap-api-key', 'Purchase a swap API key or inspect a swap API key')
   .visible(false)
@@ -2226,25 +2130,6 @@ prog
     });
   })
 
-  // Manage triggers
-  .command('triggers', 'Manage event triggers')
-  .option('--node <name>', 'Node to manage triggers on')
-  .visible(false)
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        return triggers.manageTriggers({
-          logger,
-          ask: await commands.interrogate({}),
-          lnd: (await lndForNode(logger, options.node)).lnd,
-        },
-        responses.returnObject({exit, logger, reject, resolve}));
-      } catch (err) {
-        return logger.error({err}) && reject();
-      }
-    });
-  })
-
   // Unlock wallet
   .command('unlock', 'Unlock wallet if locked')
   .help('Check if the wallet is locked, if so use a password file to unlock')
@@ -2258,33 +2143,6 @@ prog
         path_to_password_file: args.pathToPasswordFile,
       },
       responses.returnObject({logger, reject, resolve}));
-    });
-  })
-
-  // Use a paid service
-  .command('use', 'Use a paid KeySend service from a services provider')
-  .visible(false)
-  .help('KeySend services are paid native Lightning Network services')
-  .help('All communication with these services uses LN payments')
-  .help('Run services using the services command')
-  .argument('<server_id>', 'Public key of services-offering node')
-  .option('--node <node_name>', 'Saved node')
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const {lnd} = await lndForNode(logger, options.node);
-
-        return await services.usePaidService({
-          lnd,
-          logger,
-          ask: await commands.interrogate({}),
-          fs: {getFile: readFile},
-          network: (await lnSync.getNetwork({lnd})).network,
-          node: args.serverId,
-        });
-      } catch (err) {
-        return logger.error({err}) && reject();
-      }
     });
   })
 

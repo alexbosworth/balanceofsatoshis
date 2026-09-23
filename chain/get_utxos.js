@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {formatTokens} = require('ln-sync');
 const {getChainTransactions} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -10,12 +11,10 @@ const {getTransactionRecord} = require('ln-sync');
 const {getUtxos} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
-const {Transaction} = require('bitcoinjs-lib');
 
 const describeChan = n => `${n.action} with ${(n.node || '' + n.with).trim()}`;
 const expiresAt = n => !!n ? moment(n).calendar() : undefined;
 const flatten = arr => [].concat(...arr);
-const {fromHex} = Transaction;
 const none = 0;
 const uniq = arr => Array.from(new Set(arr));
 
@@ -119,7 +118,11 @@ module.exports = (args, cbk) => {
             return;
           }
 
-          const output = fromHex(tx.transaction).outs[locked.transaction_vout];
+          const {outputs} = componentsOfTransaction({
+            transaction: tx.transaction,
+          });
+
+          const output = outputs[locked.transaction_vout];
 
           // Exit early when the output is not found in the transaction
           if (!output) {
@@ -130,7 +133,7 @@ module.exports = (args, cbk) => {
             confirmation_count: tx.confirmation_count,
             lock_expires_at: locked.lock_expires_at,
             lock_id: locked.lock_id,
-            tokens: output.value,
+            tokens: output.tokens,
             transaction_id: locked.transaction_id,
             transaction_vout: locked.transaction_vout,
           };

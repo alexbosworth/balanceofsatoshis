@@ -2,12 +2,12 @@ const {equal} = require('node:assert').strict;
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
-const {Transaction} = require('bitcoinjs-lib');
-
 const {getRawTransaction} = require('./../../chain');
 
-const makeRequest = ({err, tx}) => {
-  return ({}, cbk) => cbk(err, null, tx || new Transaction().toHex());
+const emptyTx = '01000000000000000000';
+
+const makeRequest = ({err, res, tx}) => {
+  return ({}, cbk) => cbk(err, res || null, tx || emptyTx);
 };
 
 const makeArgs = overrides => {
@@ -50,6 +50,16 @@ const tests = [
     error: [503, 'FailedToGetRawTransaction', {err: 'err'}],
   },
   {
+    args: makeArgs({request: makeRequest({res: {statusCode: 404}})}),
+    description: 'A missing transaction returns not found',
+    error: [404, 'TransactionNotFound'],
+  },
+  {
+    args: makeArgs({request: makeRequest({res: {statusCode: 200}})}),
+    description: 'Got raw transaction with a response status code',
+    expected: {transaction: emptyTx},
+  },
+  {
     args: makeArgs({request: makeRequest({tx: 'invalid_tx'})}),
     description: 'A hex transaction is expected',
     error: [503, 'ExpectedTransactionInResponse'],
@@ -66,12 +76,12 @@ const tests = [
   {
     args: makeArgs({}),
     description: 'Got raw transaction',
-    expected: {transaction: '01000000000000000000'},
+    expected: {transaction: emptyTx},
   },
   {
     args: makeArgs({interval: undefined}),
     description: 'Got raw transaction with no retry interval',
-    expected: {transaction: '01000000000000000000'},
+    expected: {transaction: emptyTx},
   },
 ];
 
