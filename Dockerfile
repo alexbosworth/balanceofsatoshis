@@ -15,7 +15,7 @@ RUN chown -R $USER_ID:$GROUP_ID /app/
 
 USER $USER_ID:$GROUP_ID
 
-COPY . /app/
+COPY --chown=$USER_ID:$GROUP_ID . /app/
 
 RUN npm ci
 
