@@ -8,6 +8,7 @@ const getIgnores = require('./get_ignores');
 const getPastForwards = require('./get_past_forwards');
 const giftRoute = require('./gift_route');
 const ignoreFromAvoid = require('./ignore_from_avoid');
+const manageFees = require('./manage_fees');
 
 module.exports = {
   adjustFees,
@@ -20,4 +21,5 @@ module.exports = {
   getPastForwards,
   giftRoute,
   ignoreFromAvoid,
+  manageFees,
 };

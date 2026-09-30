@@ -1,5 +1,13 @@
 # Versions
 
+## 24.1.0
+
+- `fees`: Add `--repeat-interval-ms` to show or set the fees again each time an
+    interval elapses, such as `5*min` to keep formula fee rates up to date
+- `rebalance`: Add `--repeat-interval-ms` to run the rebalance again each time
+    an interval elapses, such as `30*min`, `1*h * (0.5 + RAND())` for a random
+    interval, or `1*min * 2^FAILURES_COUNT` to back off on failures in a row
+
 ## 24.0.1
 
 ### Breaking Changes

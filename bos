@@ -731,7 +731,9 @@ prog
   .help('You can use INBOUND_FEE_RATE to mirror an inbound fee')
   .help('You can use FEE_RATE_OF_<PUBKEY> to reference other node rates')
   .help('--set-inbound-discount-rate is total discount on traffic from peer')
+  .help('--repeat-interval-ms vars: s, min, h, d, w: 1*h repeats hourly')
   .option('--node <node_name>', 'Saved node (not peer to set fees on)')
+  .option('--repeat-interval-ms <interval>', 'Repeat fees after interval')
   .option('--set-cltv-delta <count>', 'Set the number of blocks for CLTV', INT)
   .option('--set-fee-rate <rate>', 'Fee in parts per million or use a formula')
   .option('--set-inbound-rate-discount <rate>', 'Source discount rate in PPM')
@@ -739,13 +741,14 @@ prog
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
-        return routing.adjustFees({
+        return routing.manageFees({
           logger,
           cltv_delta: options.setCltvDelta,
           fee_rate: options.setFeeRate,
           fs: {getFile: readFile},
           inbound_rate_discount: options.setInboundRateDiscount,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          repeat_interval_ms: options.repeatIntervalMs || undefined,
           to: flatten([options.to].filter(n => !!n)),
         },
         responses.returnObject({logger, reject, resolve, table: 'rows'}));
@@ -1693,6 +1696,8 @@ prog
   .help('--in-filter/--out-filter vars: OUTBOUND_LIQUIDITY/PENDING_PAYMENTS')
   .help('--in-filter/--out-filter vars: INBOUND_BASE_FEE/INBOUND_FEE_RATE')
   .help('--out increases the inbound liquidity with a specific peer/tag')
+  .help('--repeat-interval-ms vars: s, min, h, d, w: 1*h repeats hourly')
+  .help('--repeat-interval-ms var FAILURES_COUNT: count of failures in a row')
   .option('--amount <amount>', 'Maximum amount to rebalance')
   .option('--avoid <pubkey_or_chanid>', 'Avoid forwarding through', REPEATABLE)
   .option('--avoid-append', 'Formula for appending failing edges to list')
@@ -1709,6 +1714,7 @@ prog
   .option('--out <pubkey_or_alias>', 'Route out through a specific peer')
   .option('--out-filter <out_filter>', 'Filter outbound peer/tag', REPEATABLE)
   .option('--out-target-inbound <amount>', 'Balance up to inbound amount')
+  .option('--repeat-interval-ms <interval>', 'Repeat rebalance after interval')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1729,6 +1735,7 @@ prog
           out_filters: flatten([options.outFilter].filter(n => !!n)),
           out_inbound: options.outTargetInbound,
           out_through: options.out || undefined,
+          repeat_interval_ms: options.repeatIntervalMs || undefined,
           timeout_minutes: options.minutes || undefined,
         },
         responses.returnObject({exit, logger, reject, resolve}));

@@ -2,6 +2,7 @@ const chartAliasForPeer = require('./chart_alias_for_peer');
 const describeConfidence = require('./describe_confidence');
 const describeRoute = require('./describe_route');
 const describeRoutingFailure = require('./describe_routing_failure');
+const formatDuration = require('./format_duration');
 const formatFeeRate = require('./format_fee_rate');
 const getIcons = require('./get_icons');
 const isMatchingFilters = require('./is_matching_filters');
@@ -13,6 +14,7 @@ module.exports = {
   describeConfidence,
   describeRoute,
   describeRoutingFailure,
+  formatDuration,
   formatFeeRate,
   getIcons,
   isMatchingFilters,

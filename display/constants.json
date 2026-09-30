@@ -1,4 +1,10 @@
 {
+  "durationUnits": [
+    {"ms": 86400000, "unit": "day"},
+    {"ms": 3600000, "unit": "hour"},
+    {"ms": 60000, "unit": "minute"},
+    {"ms": 1000, "unit": "second"}
+  ],
   "parseErrors": {
     "#DIV/0!": "CannotDivideByZeroInFormula",
     "#ERROR!":  "FailedToParseFormula",

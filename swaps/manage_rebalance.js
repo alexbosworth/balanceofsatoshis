@@ -1,19 +1,14 @@
 const asyncAuto = require('async/auto');
-const asyncFilter = require('async/filter');
-const asyncRetry = require('async/retry');
-const {getChannel} = require('ln-service');
-const {getWalletInfo} = require('ln-service');
+const asyncForever = require('async/forever');
+const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
-const appendFailingEdge = require('./append_failing_edge');
-const getAvoidList = require('./get_avoid_list');
-const rebalance = require('./rebalance');
-const writeAvoidList = require('./write_avoid_list');
+const executeRebalance = require('./execute_rebalance');
+const {formatDuration} = require('./../display');
+const parseIntervalFormula = require('./parse_interval_formula');
 
-const channelFromEdge = edge => edge.slice(0, -2);
-const codeMissingChannel = 404;
+const calendarFormats = {sameElse: 'L [at] LT'};
 const {isArray} = Array;
-const isEdge = n => /^\d*x\d*x\d*x(0|1)*$/.test(n);
 
 /** Manage rebalance attempts
 
@@ -40,6 +35,7 @@ const isEdge = n => /^\d*x\d*x\d*x(0|1)*$/.test(n);
     [out_filters]: [<Outbound Filter Formula String>]
     [out_inbound]: <Outbound Target Inbound Liquidity Tokens Number>
     [out_through]: <Pay Out Through Peer String>
+    [repeat_interval_ms]: <Repeat After Interval Milliseconds Formula String>
     [timeout_minutes]: <Deadline To Stop Rebalance Minutes Number>
   }
 
@@ -74,197 +70,93 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLndToManageRebalance']);
         }
 
+        if (isArray(args.repeat_interval_ms)) {
+          return cbk([400, 'ExpectedSingleRepeatIntervalValue']);
+        }
+
         return cbk();
       },
 
-      // Get the avoid directives from the avoid list file
-      getAvoids: ['validate', ({}, cbk) => {
-        // Exit early when there is no ignore list
-        if (!args.avoid_list) {
-          return cbk(null, {lines: []});
-        }
-
-        return getAvoidList({
-          fs: {getFile: args.fs.getFile},
-          path: args.avoid_list,
-        },
-        cbk);
-      }],
-
-      // Get the graph sync status to know if missing channels are reliable
-      getGraphSyncStatus: ['validate', ({}, cbk) => {
-        // Exit early when there is no ignore list to clean
-        if (!args.avoid_list) {
+      // Check that the repeat interval formula is valid before starting
+      interval: ['validate', ({}, cbk) => {
+        // Exit early when the rebalance is not repeated
+        if (args.repeat_interval_ms === undefined) {
           return cbk();
         }
 
-        return getWalletInfo({lnd: args.lnd}, cbk);
-      }],
-
-      // Create failing edge logger for avoid appending
-      logFail: ['validate', ({}, cbk) => {
-        // Exit early when there is no avoid appending
-        if (!args.avoid_append) {
-          return cbk();
-        }
-
-        return cbk(null, (err, failure) => {
-          return appendFailingEdge({
-            failure,
-            avoid: args.avoid_append,
-            fs: args.fs,
-            list: args.avoid_list
-          },
-          (err, res) => {
-            if (!!err) {
-              return args.logger.error({append_failure_error: err});
-            }
-
-            // Exit early when there was no append
-            if (!res.edge) {
-              return;
-            }
-
-            return args.logger.info({appended_failing_edge: res.edge});
-          });
+        const {failure} = parseIntervalFormula({
+          failures: Number(),
+          formula: args.repeat_interval_ms,
         });
-      }],
 
-      // Look at all of the lines in the file and clean them up
-      getCleanAvoids: [
-        'getAvoids',
-        'getGraphSyncStatus',
-        ({getAvoids, getGraphSyncStatus}, cbk) =>
-      {
-        // Exit early with no info when missing channels may be resurrected
-        if (!!getGraphSyncStatus && !getGraphSyncStatus.is_synced_to_graph) {
-          return cbk();
+        if (!!failure) {
+          return cbk([400, 'FailedToParseRepeatIntervalFormula', {failure}]);
         }
 
-        return asyncFilter(getAvoids.lines, (line, cbk) => {
-          // Exit early when not looking at an edge
-          if (!isEdge(line)) {
-            return cbk(null, true);
-          }
-
-          const id = channelFromEdge(line);
-
-          return getChannel({id, lnd: args.lnd}, err => {
-            const [code] = err || [];
-
-            if (code === codeMissingChannel) {
-              args.logger.info({deleting_missing_channel: id});
-            }
-
-            return cbk(null, code !== codeMissingChannel);
-          });
-        },
-        cbk);
+        return cbk();
       }],
 
       // Run the rebalance
-      rebalance: ['getAvoids', 'logFail', ({getAvoids, logFail}, cbk) => {
-        const start = new Date().toISOString();
-
-        return asyncRetry({
-          errorFilter: err => {
-            // Do not retry on invalid errors
-            if (!isArray(err)) {
-              return false;
-            }
-
-            const [code, type] = err;
-
-            // Do not retry on client errors
-            if (code >= 400 && code < 500) {
-              return false;
-            }
-
-            // Do not retry on timeout errors
-            if (code === 503 && type === 'ProbeTimeout') {
-              return false;
-            }
-
-            args.logger.error({err});
-
-            return true;
-          },
-        },
-        cbk => {
-          return rebalance({
-            start,
-            avoid: getAvoids.lines.concat(args.avoid || []),
-            fs: args.fs,
-            in_filters: args.in_filters,
-            in_outbound: args.in_outbound,
-            in_through: args.in_through,
-            is_strict_max_fee_rate: args.is_strict_max_fee_rate,
-            lnd: args.lnd,
-            log_failure: logFail || undefined,
-            logger: args.logger,
-            max_fee: Number(args.max_fee) || undefined,
-            max_fee_rate: Number(args.max_fee_rate) || undefined,
-            max_rebalance: args.max_rebalance,
-            out_filters: args.out_filters,
-            out_inbound: args.out_inbound,
-            out_through: args.out_through,
-            timeout_minutes: args.timeout_minutes,
-          },
-          cbk);
+      rebalance: ['interval', ({}, cbk) => {
+        const execute = cbk => executeRebalance({
+          avoid: args.avoid,
+          avoid_append: args.avoid_append,
+          avoid_list: args.avoid_list,
+          fs: args.fs,
+          in_filters: args.in_filters,
+          in_outbound: args.in_outbound,
+          in_through: args.in_through,
+          is_strict_max_fee_rate: args.is_strict_max_fee_rate,
+          lnd: args.lnd,
+          logger: args.logger,
+          max_fee: args.max_fee,
+          max_fee_rate: args.max_fee_rate,
+          max_rebalance: args.max_rebalance,
+          out_filters: args.out_filters,
+          out_inbound: args.out_inbound,
+          out_through: args.out_through,
+          timeout_minutes: args.timeout_minutes,
         },
         cbk);
-      }],
 
-      // Determine which lines should be removed from the avoid list
-      removals: [
-        'getAvoids',
-        'getCleanAvoids',
-        ({getAvoids, getCleanAvoids}, cbk) =>
-      {
-        // Exit early with no removals when the clean check had no answer
-        if (!getCleanAvoids) {
-          return cbk(null, []);
+        // Exit early when the rebalance is only run once
+        if (args.repeat_interval_ms === undefined) {
+          return execute(cbk);
         }
 
-        // The clean avoids are the original lines minus missing channels
-        const keeping = new Set(getCleanAvoids);
+        let failures = Number();
 
-        // A line that was not kept refers to a channel absent from the graph
-        return cbk(null, getAvoids.lines.filter(n => !keeping.has(n)));
-      }],
+        // Run the rebalance again every time the interval elapses
+        return asyncForever(cbk => {
+          return execute((err, res) => {
+            if (!!err) {
+              args.logger.error({err});
+            } else {
+              args.logger.info(res);
+            }
 
-      // Get the avoid list again to preserve concurrently appended lines
-      getCurrentAvoids: ['removals', ({removals}, cbk) => {
-        // Exit early when no lines were cleaned out of the avoid list
-        if (!removals.length) {
-          return cbk();
-        }
+            // Count failed attempts in a row for the interval formula
+            failures = !!err ? failures + 1 : Number();
 
-        return getAvoidList({
-          fs: {getFile: args.fs.getFile},
-          path: args.avoid_list,
-        },
-        cbk);
-      }],
+            // The interval formula is evaluated again after every attempt
+            const {failure, ms} = parseIntervalFormula({
+              failures,
+              formula: args.repeat_interval_ms,
+            });
 
-      // Write a cleaned up avoid list
-      writeCleanAvoidList: [
-        'getCurrentAvoids',
-        'removals',
-        ({getCurrentAvoids, removals}, cbk) =>
-      {
-        // Exit early when there is no cleaned avoid list to write out
-        if (!getCurrentAvoids) {
-          return cbk();
-        }
+            if (!!failure) {
+              return cbk([400, 'FailedToEvaluateRepeatInterval', {failure}]);
+            }
 
-        const removing = new Set(removals);
+            const next = moment().add(ms, 'ms');
 
-        // Atomically write the avoid list without the cleaned out lines
-        return writeAvoidList({
-          fs: {renameFile: args.fs.renameFile, writeFile: args.fs.writeFile},
-          lines: getCurrentAvoids.lines.filter(n => !removing.has(n)),
-          path: args.avoid_list,
+            args.logger.info({
+              repeat_interval: formatDuration({ms}).display,
+              repeating_rebalance_at: next.calendar(null, calendarFormats),
+            });
+
+            return setTimeout(cbk, ms);
+          });
         },
         cbk);
       }],

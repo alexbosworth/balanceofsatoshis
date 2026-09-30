@@ -327,18 +327,17 @@ expr $(bos balance --node=savedNode1) + $(bos balance --node=savedNode2)
 
 ### Auto Adjust Fees
 
-```
-# Cron every 5 minutes adjust fees
-*/5 * * * * /bin/timeout -s 2 30 /home/ubuntu/update-fees.sh
+Repeat the `fees` command on an interval to keep a fee rate formula up to date
+
+```shell
+# Every 5 minutes, raise the outbound fees to a public key when inbound increases
+bos fees --to PUBLIC_KEY --set-fee-rate="IF(INBOUND>10000000,1000,500)" --repeat-interval-ms="5*min"
 ```
 
-update-fees.sh:
-
-```
-#!/bin/bash
-# Raise the outbound fees to a public key when inbound increases
-/home/ubuntu/.npm-global/bin/bos fees --to PUBLIC_KEY --set-fee-rate="IF(INBOUND>10000000,1000,500)"
-```
+The interval is a formula in milliseconds that can use `s`, `min`, `h`, `d` and
+`w` units, so `"5*min * (0.5 + RAND())"` repeats at a random interval between
+2.5 and 7.5 minutes. See "Persist Long-Running Commands" below to keep the
+command running.
 
 ### Auto Balance Liquidity Between Two Nodes
 
@@ -431,13 +430,11 @@ Docker example:
 docker run -d --restart always -v $HOME/.bos:/home/node/.bos alexbosworth/balanceofsatoshis telegram --connect CONNECT_CODE
 ```
 
-You can also create a shell-script.sh to run a command repeatedly, with a delay
+Commands like `fees` and `rebalance` can also repeat themselves, with a delay
 
-```bash
-while true;
-do bos rebalance;
-sleep 2000;
-done
+```shell
+# Rebalance again 30 minutes after each attempt, or 1 hour when it failed
+bos rebalance --repeat-interval-ms="IF(FAILURES_COUNT > 0, 1*h, 30*min)"
 ```
 
 ## Docker

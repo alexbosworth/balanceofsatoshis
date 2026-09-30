@@ -9,12 +9,12 @@ const {getNodeAlias} = require('ln-sync');
 const {getPublicKey} = require('ln-service');
 const moment = require('moment');
 const {networks} = require('bitcoinjs-lib');
+const {outputScriptForAddress} = require('@alexbosworth/blockchain');
 const {returnResult} = require('asyncjs-util');
 
 const acceptBalancedChannel = require('./accept_balanced_channel');
 const getBalancedOpens = require('./get_balanced_opens');
 const initiateBalancedChannel = require('./initiate_balanced_channel');
-const {outputScriptForAddress} = require('./../chain');
 const recoverTransitFunds = require('./recover_transit_funds');
 
 const bufferAsHex = buffer => buffer.toString('hex');

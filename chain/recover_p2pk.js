@@ -1,40 +1,39 @@
 const {createHash} = require('crypto');
 
 const asyncAuto = require('async/auto');
-const bitcoinjsLib = require('bitcoinjs-lib');
 const {broadcastChainTransaction} = require('ln-service');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {createChainAddress} = require('ln-service');
-const {decode} = require('bip66');
 const {getChainFeeRate} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNetwork} = require('ln-sync');
+const {idForTransaction} = require('@alexbosworth/blockchain');
+const {outputScriptForAddress} = require('@alexbosworth/blockchain');
 const {returnResult} = require('asyncjs-util');
+const {scriptElementsAsScript} = require('@alexbosworth/blockchain');
 const {signBytes} = require('ln-service');
+const {sizeOfTransaction} = require('@alexbosworth/blockchain');
+const {transactionFromComponents} = require('@alexbosworth/blockchain');
 
 const getRawTransaction = require('./get_raw_transaction');
 
 const {ceil} = Math;
-const {compile} = bitcoinjsLib.script;
 const {concat} = Buffer;
 const description = 'bos recover p2pk node identity key funds';
-const {encode} = bitcoinjsLib.script.signature;
 const estimatedSignatureSize = 73;
 const format = 'p2wpkh';
-const {fromHex} = bitcoinjsLib.Transaction;
 const hashFlag = Buffer.from('01000000', 'hex');
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
-const inputIndex = 0;
 const inputSequence = 0;
 const isHash = n => !!n && /^[0-9A-F]{64}$/i.test(n);
-const networkNames = {btc: 'bitcoin', btctestnet: 'testnet'};
-const {networks} = bitcoinjsLib;
+const locktime = 0;
 const nodeIdentityKeyFamily = 6;
 const nodeIdentityKeyIndex = 0;
 const OP_CHECKSIG = 172;
 const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
-const slicePoint = r => r.length === 33 ? r.slice(1) : r;
-const {toOutputScript} = bitcoinjsLib.address;
-const {Transaction} = bitcoinjsLib;
+const sigHashType = Buffer.from('01', 'hex');
+const unsignedScript = '';
+const version = 1;
 
 /** Recover funds sent to a P2PK using the node identity key
 
@@ -97,14 +96,16 @@ module.exports = ({id, lnd, request, vout}, cbk) => {
 
       // Derive the transaction details
       output: ['getIdentity', 'getTx', ({getIdentity, getTx}, cbk) => {
-        const tx = fromHex(getTx.transaction);
+        const {transaction} = getTx;
 
         // Make sure the tx data matches the input id
-        if (tx.getId() !== id) {
+        if (idForTransaction({transaction}).id !== id) {
           return cbk([503, 'ExpectedTransactionIdToMatchTxDataHashToRecover']);
         }
 
-        const output = tx.outs[vout];
+        const {outputs} = componentsOfTransaction({transaction});
+
+        const output = outputs[vout];
 
         // Make sure the output exists
         if (!output) {
@@ -113,14 +114,16 @@ module.exports = ({id, lnd, request, vout}, cbk) => {
 
         const identityKey = hexAsBuffer(getIdentity.public_key);
 
-        const expectedScript = compile([identityKey, OP_CHECKSIG]);
+        const expected = scriptElementsAsScript({
+          elements: [identityKey, OP_CHECKSIG],
+        });
 
         // Make sure that the output pays to the node identity key
-        if (!output.script.equals(expectedScript)) {
+        if (output.script !== expected.script) {
           return cbk([503, 'ExpectedOutputPayingToNodeIdentityPublicKey']);
         }
 
-        return cbk(null, {script: output.script, tokens: output.value});
+        return cbk(null, {script: output.script, tokens: output.tokens});
       }],
 
       // Create a recovery address
@@ -128,45 +131,73 @@ module.exports = ({id, lnd, request, vout}, cbk) => {
         return createChainAddress({format, lnd}, cbk);
       }],
 
-      // Make the transaction to sign
-      txToSign: [
+      // Derive the output script of the recovery address
+      recoveryScript: [
         'createAddress',
-        'getFee',
         'getNetwork',
-        'output',
-        ({createAddress, getFee, getNetwork, output}, cbk) =>
+        ({createAddress, getNetwork}, cbk) =>
       {
-        const network = networks[networkNames[getNetwork.network]];
-        const tx = new Transaction();
+        try {
+          const {script} = outputScriptForAddress({
+            address: createAddress.address,
+            network: getNetwork.network,
+          });
 
-        const scriptPubKey = toOutputScript(createAddress.address, network);
+          return cbk(null, {script});
+        } catch (err) {
+          return cbk([503, 'FailedToParseRecoveryAddress', {err}]);
+        }
+      }],
 
-        tx.addInput(hexAsBuffer(id).reverse(), vout, inputSequence);
-        tx.addOutput(scriptPubKey, output.tokens);
+      // Derive the sweep output, less the amount needed to pay for chain fees
+      sweep: [
+        'getFee',
+        'output',
+        'recoveryScript',
+        ({getFee, output, recoveryScript}, cbk) =>
+      {
+        const {script} = recoveryScript;
 
-        // There is only one output on the sweep transaction
-        const [out] = tx.outs;
+        const unsigned = transactionFromComponents({
+          locktime,
+          version,
+          inputs: [{
+            id,
+            vout,
+            script: unsignedScript,
+            sequence: inputSequence,
+          }],
+          outputs: [{script, tokens: output.tokens}],
+        });
+
+        const {vsize} = sizeOfTransaction(unsigned);
 
         // Include the prospective signature in the tx total weight
-        const vbytes = tx.virtualSize() + estimatedSignatureSize;
+        const vbytes = vsize + estimatedSignatureSize;
 
         // Reduce the sweep value by the amount needed to pay for chain fees
-        out.value -= ceil(vbytes * getFee.tokens_per_vbyte);
+        const tokens = output.tokens - ceil(vbytes * getFee.tokens_per_vbyte);
 
-        return cbk(null, tx);
+        return cbk(null, {script, tokens});
       }],
 
       // Derive the preimage to use for signing
-      preimage: ['output', 'txToSign', ({output, txToSign}, cbk) => {
-        const cloneTx = txToSign.clone();
-
-        const [input] = cloneTx.ins;
-
+      preimage: ['output', 'sweep', ({output, sweep}, cbk) => {
         // When signing, the input to sign is set to the previous output script
-        input.script = output.script;
+        const {transaction} = transactionFromComponents({
+          locktime,
+          version,
+          inputs: [{
+            id,
+            vout,
+            script: output.script,
+            sequence: inputSequence,
+          }],
+          outputs: [sweep],
+        });
 
         // The bytes to sign are the tx itself plus the signature hash flag
-        return cbk(null, concat([cloneTx.toBuffer(), hashFlag]));
+        return cbk(null, concat([hexAsBuffer(transaction), hashFlag]));
       }],
 
       // Give the preimage to signer, hashed once - signBytes does 2nd SHA hash
@@ -181,17 +212,18 @@ module.exports = ({id, lnd, request, vout}, cbk) => {
       }],
 
       // Put together the signature with the transaction
-      signedTx: ['getSig', 'txToSign', ({getSig, txToSign}, cbk) => {
-        const {r, s} = decode(hexAsBuffer(getSig.signature));
+      signedTx: ['getSig', 'sweep', ({getSig, sweep}, cbk) => {
+        // A chain signature is the DER signature followed by the sighash type
+        const signature = concat([hexAsBuffer(getSig.signature), sigHashType]);
 
-        const rValue = slicePoint(r);
+        const {script} = scriptElementsAsScript({elements: [signature]});
 
-        // Convert the signature from sign bytes to a chain signature
-        const scriptSig = encode(concat([rValue, s]), Transaction.SIGHASH_ALL);
-
-        txToSign.setInputScript(inputIndex, compile([scriptSig]));
-
-        return cbk(null, txToSign);
+        return cbk(null, transactionFromComponents({
+          locktime,
+          version,
+          inputs: [{id, script, vout, sequence: inputSequence}],
+          outputs: [sweep],
+        }));
       }],
 
       // Broadcast the signed transaction
@@ -199,7 +231,7 @@ module.exports = ({id, lnd, request, vout}, cbk) => {
         return broadcastChainTransaction({
           description,
           lnd,
-          transaction: signedTx.toHex(),
+          transaction: signedTx.transaction,
         },
         cbk);
       }],
@@ -214,7 +246,7 @@ module.exports = ({id, lnd, request, vout}, cbk) => {
         return cbk(null, {
           recovering: output.tokens,
           recovering_to: createAddress.address,
-          transaction_id: signedTx.getId(),
+          transaction_id: idForTransaction(signedTx).id,
         });
       }],
     },
