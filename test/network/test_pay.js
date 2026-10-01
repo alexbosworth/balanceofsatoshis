@@ -1,4 +1,4 @@
-const {equal} = require('node:assert').strict;
+const {deepEqual} = require('node:assert').strict;
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
@@ -9,10 +9,13 @@ const {paymentPathFromChannels} = require('bolt04');
 const {pay} = require('./../../network');
 const {getInfoResponse} = require('./../fixtures');
 const {getNodeInfoResponse} = require('./../fixtures');
+const {listChannelsResponse} = require('./../fixtures');
 const {versionInfoResponse} = require('./../fixtures');
 
+const alice = Buffer.alloc(33, 2).toString('hex');
 const bob = '0324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d23' +
   '53dc0ab1c';
+const carol = Buffer.alloc(33, 4).toString('hex');
 const dave = '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e6' +
   '68680991';
 
@@ -25,7 +28,17 @@ const policy = key => ({
   public_key: key,
 });
 
-// A request paying Dave through a blinded path with Bob as introduction node
+// A blinded path to Dave with Bob as the introduction node
+const path = paymentPathFromChannels({
+  channels: [{id: '700000x1x0', policies: [policy(bob), policy(dave)]}],
+  cltv_delta: 80,
+  current_block_height: 900000,
+  destination: dave,
+  id: Buffer.alloc(32, 1).toString('hex'),
+  max_mtokens: '1000000',
+});
+
+// A request paying Dave through the blinded path
 const {request} = (() => {
   const {hrp, tags} = createUnsignedRequest({
     cltv_delta: 80,
@@ -34,14 +47,7 @@ const {request} = (() => {
     expires_at: '2100-01-01T00:00:00.000Z',
     id: Buffer.alloc(32, 2).toString('hex'),
     network: 'bitcoin',
-    paths: [paymentPathFromChannels({
-      channels: [{id: '700000x1x0', policies: [policy(bob), policy(dave)]}],
-      cltv_delta: 80,
-      current_block_height: 900000,
-      destination: dave,
-      id: Buffer.alloc(32, 1).toString('hex'),
-      max_mtokens: '1000000',
-    })],
+    paths: [path],
     tokens: 1000,
   });
 
@@ -65,6 +71,13 @@ const introductionRoute = {
   total_time_lock: 900200,
 };
 
+// Channels with peers, the route to the introduction node goes out with Bob
+const channels = [
+  {id: '1', key: bob},
+  {id: '2', key: carol},
+  {id: '3', key: alice},
+];
+
 const makeLnd = ({}) => {
   return {
     default: {
@@ -85,9 +98,25 @@ const makeLnd = ({}) => {
           num_channels: '0',
         });
       },
-      queryRoutes: ({pub_key}, cbk) => {
+      listChannels: ({}, cbk) => cbk(null, {
+        channels: channels.map(({id, key}) => ({
+          ...listChannelsResponse.channels[0],
+          active: true,
+          capacity: '2000000',
+          chan_id: id,
+          local_balance: '1000000',
+          remote_balance: '1000000',
+          remote_pubkey: key,
+        })),
+      }),
+      queryRoutes: ({outgoing_chan_ids, pub_key}, cbk) => {
         // Only the introduction node is routable
         if (pub_key !== bob) {
+          return cbk(null, {routes: []});
+        }
+
+        // The route to the introduction node goes out through Bob
+        if (!!outgoing_chan_ids && !outgoing_chan_ids.includes('1')) {
           return cbk(null, {routes: []});
         }
 
@@ -132,31 +161,62 @@ const makeArgs = overrides => {
   return args;
 };
 
+// Paying the request pays Bob, who forwards through the blinded path to Dave
+const paid = {
+  blinded_path_fee: 2,
+  id: Buffer.alloc(32, 2).toString('hex'),
+  paid: 1002,
+  preimage: Buffer.alloc(32, 7).toString('hex'),
+  probed: undefined,
+  relays: [bob, path.hops[1].relay_key],
+  route_maximum: undefined,
+  success: ['0x0x1', 'blinded'],
+  total_fee: 2,
+};
+
 const tests = [
+  {
+    args: makeArgs({out_filters: ['outbound_liquidity > 0']}),
+    description: 'Out filters require out peers to filter',
+    error: [400, 'NoPeerMatchesFoundToSatisfyOutboundFilter'],
+  },
   {
     args: makeArgs({max_paths: 2}),
     description: 'Multi-path payments are not supported to blinded paths',
     error: [501, 'MultiPathPayNotSupportedWithBlindedPaths'],
   },
+  {
+    args: makeArgs({}),
+    description: 'A blinded path request is paid',
+    expected: paid,
+  },
+  {
+    args: makeArgs({out: [bob]}),
+    description: 'A blinded path request is paid out through a peer',
+    expected: paid,
+  },
+  {
+    args: makeArgs({out: [bob, carol]}),
+    description: 'A blinded path request is paid out through any out peer',
+    expected: paid,
+  },
+  {
+    args: makeArgs({out: [alice, carol]}),
+    description: 'A request is not paid when out peers have no route',
+    expected: {attempted_paths: 0, is_failed: true},
+  },
 ];
 
-tests.forEach(({args, description, error}) => {
+tests.forEach(({args, description, error, expected}) => {
   return test(description, async () => {
-    await rejects(pay(args), error, 'Got expected error');
+    if (!!error) {
+      await rejects(pay(args), error, 'Got expected error');
+    } else {
+      const {latency_ms, ...res} = await pay(args);
+
+      deepEqual(res, expected, 'Got expected payment');
+    }
 
     return;
   });
-});
-
-// Paying a blinded path request reports the total fee and the path fee
-test('A blinded path request is paid', async () => {
-  const res = await pay(makeArgs({}));
-
-  equal(res.fee, undefined, 'The fee is shown as the total fee');
-  equal(res.total_fee, 2, 'The total fee includes the blinded path fee');
-  equal(res.blinded_path_fee, 2, 'The blinded path fee is the path cost');
-  equal(res.paid, 1002, 'The amount plus the total fee was paid');
-  equal(res.preimage, Buffer.alloc(32, 7).toString('hex'), 'Got preimage');
-
-  return;
 });

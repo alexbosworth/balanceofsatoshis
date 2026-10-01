@@ -166,6 +166,16 @@ const tests = [
     description: 'The maximum cannot be found through blinded paths',
     error: [501, 'FindMaxNotSupportedWithBlindedPaths'],
   },
+  {
+    args: makeArgs({out_through: bob}),
+    description: 'Out through peers must be an array',
+    error: [400, 'ExpectedArrayOfOutThroughPeersToProbe'],
+  },
+  {
+    args: makeArgs({find_max: 16777215, out_through: [bob, carol]}),
+    description: 'The maximum cannot be found through multiple out peers',
+    error: [501, 'FindMaxNotSupportedWithMultipleOutThroughPeers'],
+  },
 ];
 
 tests.forEach(({args, description, error}) => {

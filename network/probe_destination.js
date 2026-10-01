@@ -36,6 +36,7 @@ const feeBuffer = fees => fees * 2;
 const {floor} = Math;
 const fromKeyType = '34349339';
 const htlcOutputSize = 43;
+const {isArray} = Array;
 const isBlindedHop = hop => !!hop.encrypted_data && !hop.path_key;
 const keySendPreimageType = '5482373484';
 const makeNonce = () => randomBytes(32).toString('hex');
@@ -49,6 +50,7 @@ const {now} = Date;
 const pathChannel = hop => isBlindedHop(hop) ? blinded : hop.channel;
 const rate = n => n.commit_transaction_fee / (n.commit_transaction_weight / 4);
 const signatureType = '34349337';
+const singlePeer = 1;
 const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
 
 /** Determine if a destination can be paid by probing it
@@ -78,7 +80,7 @@ const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
       type: <Additional Message To Final Destination Type Number String>
       value: <Message To Final Destination Raw Value Hex Encoded String>
     }]
-    [out_through]: <Out Through Peer With Public Key Hex String>
+    [out_through]: [<Out Through Any Peer With Public Key Hex String>]
     [request]: <Payment Request String>
     [timeout_minutes]: <Stop Searching For Route After N Minutes Number>
     [tokens]: <Tokens Number>
@@ -109,13 +111,24 @@ module.exports = (args, cbk) => {
           return cbk([400, "ExpectedLoggerToProbeDestination"]);
         }
 
+        if (!!args.out_through && !isArray(args.out_through)) {
+          return cbk([400, 'ExpectedArrayOfOutThroughPeersToProbe']);
+        }
+
+        const outPeers = args.out_through || [];
+
+        // Finding the maximum is limited by a single outgoing channel
+        if (!!args.find_max && outPeers.length > singlePeer) {
+          return cbk([501, 'FindMaxNotSupportedWithMultipleOutThroughPeers']);
+        }
+
         return cbk();
       },
 
       // Get channels to determine an outgoing channel id restriction
       getChannels: ['validate', ({}, cbk) => {
         // Exit early when there is no need to add an outgoing channel id
-        if (!args.out_through) {
+        if (!args.out_through || !args.out_through.length) {
           return cbk();
         }
 
@@ -395,12 +408,12 @@ module.exports = (args, cbk) => {
         }
 
         const {channels} = getChannels;
-        const outPeer = args.out_through;
+        const outPeers = args.out_through;
         const tokens = args.tokens || to.tokens || defaultTokens;
 
         const withPeer = channels
           .filter(n => !!n.is_active)
-          .filter(n => n.partner_public_key === outPeer);
+          .filter(n => outPeers.includes(n.partner_public_key));
 
         if (!withPeer.length) {
           return cbk([404, 'NoActiveChannelWithOutgoingPeer']);
@@ -417,6 +430,12 @@ module.exports = (args, cbk) => {
           return cbk([404, 'NoOutboundPeerWithSufficientBalance']);
         }
 
+        // Exit early when going out through any channel of multiple peers
+        if (outPeers.length > singlePeer) {
+          return cbk(null, {ids: withBalance.map(n => n.id)});
+        }
+
+        // A single peer goes out through one channel with enough balance
         const attribute = 'local_balance';
 
         const [channel] = sortBy({attribute, array: withBalance}).sorted;
@@ -427,9 +446,9 @@ module.exports = (args, cbk) => {
         const fees = channel.commit_transaction_fee + bufferFees;
         const spendable = channel.local_balance - reserve;
 
-        const maxPayable = floor(spendable - feeBuffer(fees));
+        const maxPayable = floor(spendable - feeBuffer(fees)) || args.find_max;
 
-        return cbk(null, {id: channel.id, max: maxPayable || args.find_max});
+        return cbk(null, {ids: [channel.id], max: maxPayable});
       }],
 
       // Log sending towards destination
@@ -502,7 +521,7 @@ module.exports = (args, cbk) => {
           max_fee: args.max_fee,
           max_fee_mtokens: args.max_fee_mtokens,
           mtokens: !BigInt(to.mtokens) ? tokAsMtok(defaultTokens) : to.mtokens,
-          outgoing_channel: !!outId ? outId.id : undefined,
+          outgoing_channels: !!outId ? outId.ids : undefined,
           paths: to.paths || undefined,
           payment: to.payment,
           routes: to.routes,

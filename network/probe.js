@@ -1,7 +1,5 @@
 const asyncAuto = require('async/auto');
-const asyncMap = require('async/map');
 const asyncWhilst = require('async/whilst');
-const {findKey} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -19,6 +17,7 @@ const {describeRoutingFailure} = require('./../display');
 const {getIcons} = require('./../display');
 const {getIgnores} = require('./../routing');
 const {getTags} = require('./../tags');
+const getOutPeers = require('./get_out_peers');
 const probeDestination = require('./probe_destination');
 
 const defaultFinalCltvDelta = 144;
@@ -47,7 +46,8 @@ const withTotalFee = ({fee, ...res}) => ({total_fee: fee, ...res});
     logger: <Winston Logger Object>
     max_fee: <Max Fee Tokens Number>
     [max_paths]: <Maximum Probe Paths Number>
-    out: [<Out Through Peer With Public Key Hex String>]
+    out: [<Out Through Peer With Public Key, Alias, or Tag String>]
+    [out_filters]: [<Out Through Peer Filter Formula String>]
     [request]: <BOLT 11 Encoded Payment Request String>
     [timeout_minutes]: <Stop Searching For Routes After N Minutes Number>
     [tokens]: <Tokens Amount String>
@@ -148,8 +148,11 @@ module.exports = (args, cbk) => {
 
       // Find public keys to pay out through
       getOuts: ['validate', ({}, cbk) => {
-        return asyncMap(args.out, (query, cbk) => {
-          return findKey({query, lnd: args.lnd}, cbk);
+        return getOutPeers({
+          filters: args.out_filters,
+          fs: args.fs,
+          lnd: args.lnd,
+          out: args.out,
         },
         cbk);
       }],
@@ -197,15 +200,16 @@ module.exports = (args, cbk) => {
       getBaseIgnores: [
         'getChannels',
         'getIdentity',
+        'getOuts',
         'getTags',
-        ({getChannels, getIdentity, getTags}, cbk) =>
+        ({getChannels, getIdentity, getOuts, getTags}, cbk) =>
       {
         // Exit early when there are no avoids
         if (!args.avoid.length) {
           return cbk(null, {ignore: []});
         }
 
-        const [out] = args.out || [];
+        const [out, ...otherOuts] = getOuts.public_keys;
 
         return getIgnores({
           avoid: args.avoid,
@@ -213,7 +217,7 @@ module.exports = (args, cbk) => {
           in_through: args.in_through,
           lnd: args.lnd,
           logger: args.logger,
-          out_through: out,
+          out_through: !otherOuts.length ? out : undefined,
           public_key: getIdentity.public_key,
           tags: getTags.tags,
         },
@@ -232,14 +236,14 @@ module.exports = (args, cbk) => {
         }
 
         // Exit early when there is no outbound restriction
-        if (!getOuts.length) {
+        if (!getOuts.public_keys.length) {
           return cbk(null, {ignore: getBaseIgnores.ignore});
         }
 
         return getSyntheticOutIgnores({
           ignore: getBaseIgnores.ignore,
           lnd: args.lnd,
-          out: getOuts.map(n => n.public_key),
+          out: getOuts.public_keys,
         },
         cbk);
       }],
@@ -256,13 +260,6 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        // Exit early when probing on a single path
-        if (getOuts.length > singlePath) {
-          return cbk([501, 'MultipleOutPeersNotSupportedWithSinglePath']);
-        }
-
-        const [outThrough] = getOuts.map(n => n.public_key);
-
         return probeDestination({
           tokens,
           destination: args.destination,
@@ -273,7 +270,7 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           logger: args.logger,
           max_fee: args.max_fee,
-          out_through: outThrough,
+          out_through: getOuts.public_keys,
           request: args.request,
         },
         cbk);

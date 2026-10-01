@@ -1,6 +1,5 @@
 const {encode} = require('cbor');
 const {equal} = require('node:assert').strict;
-const fetch = require('node-fetch');
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 

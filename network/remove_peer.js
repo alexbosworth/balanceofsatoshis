@@ -1,6 +1,7 @@
 const asyncAuto = require('async/auto');
 const asyncMapSeries = require('async/mapSeries');
 const {closeChannel} = require('ln-service');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {decodeChanId} = require('bolt07');
 const {getChainFeeRate} = require('ln-service');
 const {getChainTransactions} = require('ln-service');
@@ -9,7 +10,7 @@ const {getHeight} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getPendingChannels} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
-const {Transaction} = require('bitcoinjs-lib');
+const {sizeOfTransaction} = require('@alexbosworth/blockchain');
 
 const {getMempoolSize} = require('./../chain');
 const getPeers = require('./get_peers');
@@ -21,7 +22,6 @@ const defaultDays = 365 * 2;
 const estimateDisk = n => Math.round(n * 500 / 1e6 * 10) / 10;
 const fastConf = 6;
 const {floor} = Math;
-const {fromHex} = Transaction;
 const getMempoolRetries = 10;
 const iconDisabled = channel => !channel.is_active ? '💀 ' : '';
 const iconPending = channel => channel.pending_payments.length ? '💸 ' : ''
@@ -528,15 +528,18 @@ module.exports = (args, cbk) => {
             return;
           }
 
-          const tx = fromHex(matching.transaction);
+          const {transaction} = matching;
 
-          const fee = channel.capacity - sumOf(tx.outs.map(n => n.value));
+          const {outputs} = componentsOfTransaction({transaction});
+          const {vsize} = sizeOfTransaction({transaction});
+
+          const fee = channel.capacity - sumOf(outputs.map(n => n.tokens));
 
           return {
             close_transaction_id: matching.id,
             peer_pays_closing_fee: channel.is_partner_initiated === true,
             transaction_fee: tokensAsBigUnit(fee),
-            transaction_fee_rate: asRate(fee / tx.virtualSize()),
+            transaction_fee_rate: asRate(fee / vsize),
           };
         });
 

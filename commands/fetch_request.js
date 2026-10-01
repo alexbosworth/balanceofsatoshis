@@ -1,14 +1,12 @@
 const {stringify} = require('querystring');
 
-const {AbortController} = require('abort-controller');
-
 const encodeQs = qs => !qs ? '' : '?' + stringify(qs);
 const timeoutSignals = new WeakMap();
 
 /** Derive a request function that uses fetch to simulate request behavior
 
   {
-    fetch: <Node Fetch Function>
+    fetch: <Fetch Function>
   }
 
   @returns

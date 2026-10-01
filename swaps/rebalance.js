@@ -593,7 +593,7 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           log_failure: args.log_failure,
           max_fee_mtokens: maxFeeMtokens,
-          out_through: getOutbound.public_key,
+          out_through: [getOutbound.public_key],
           timeout_minutes: args.timeout_minutes,
         },
         cbk);

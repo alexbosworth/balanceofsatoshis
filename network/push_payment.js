@@ -465,7 +465,7 @@ module.exports = (args, cbk) => {
             type: (quizStart + i).toString(),
             value: utf8AsHex(answer),
           })),
-          out_through: getOutKey,
+          out_through: [getOutKey].filter(n => !!n),
           request: send.request,
           timeout_minutes: args.timeout_minutes,
           tokens: send.tokens,

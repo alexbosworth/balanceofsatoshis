@@ -729,7 +729,7 @@ module.exports = (args, cbk) => {
           logger: args.logger,
           max_fee: maxExecutionFeeTokens,
           mtokens: decodeExecutionRequest.mtokens,
-          outgoing_channel: !!channel ? channel.id : undefined,
+          outgoing_channels: !!channel ? [channel.id] : undefined,
           payment: decodeExecutionRequest.payment,
           routes: decodeExecutionRequest.routes,
           tagged: !!getIcons ? getIcons.nodes : undefined,

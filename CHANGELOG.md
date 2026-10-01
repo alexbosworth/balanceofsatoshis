@@ -1,5 +1,10 @@
 # Versions
 
+## 24.2.0
+
+- Add support for LND 0.21.4 and LND 0.20.5
+- `pay`, `probe`: Add support for tags in `--out`, `--out-filter`
+
 ## 24.1.0
 
 - `fees`: Add `--repeat-interval-ms` to show or set the fees again each time an

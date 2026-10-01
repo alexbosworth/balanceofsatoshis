@@ -14,7 +14,6 @@ const {writeFile} = require('fs');
 const importLazy = require('import-lazy')(require);
 
 const accounting = importLazy('ln-accounting');
-const fetch = importLazy('@alexbosworth/node-fetch');
 const fiat = importLazy('@alexbosworth/fiat');
 const lnService = importLazy('ln-service');
 const lnSync = importLazy('ln-sync');
@@ -1517,6 +1516,10 @@ prog
   // Pay a payment request, probing first
   .command('pay', 'Pay a payment request, probing first')
   .help('Blinded path requests are probed to the introduction node, 1 path')
+  .help('--out can take a tag to make the first hop through any tagged peer')
+  .help('--out-filter vars: CAPACITY/HEIGHTS/INBOUND_LIQUIDITY')
+  .help('--out-filter vars: OUTBOUND_LIQUIDITY/PENDING_PAYMENTS')
+  .help('--out-filter vars: INBOUND_BASE_FEE/INBOUND_FEE_RATE')
   .argument('<request>', 'Payment Request')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
   .option('--avoid-high-fee-routes', 'Avoid evaluating too-high fee routes')
@@ -1526,7 +1529,8 @@ prog
   .option('--message <message>', 'Attach text message to payment')
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use to pay payment request')
-  .option('--out <public_key>', 'Make first hop through peer', REPEATABLE)
+  .option('--out <peer_or_tag>', 'Make first hop through peer/tag', REPEATABLE)
+  .option('--out-filter <out_filter>', 'Filter outbound peer/tag', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1545,6 +1549,7 @@ prog
           max_paths: options.maxPaths,
           message: options.message,
           out: flatten([options.out].filter(n => !!n)),
+          out_filters: flatten([options.outFilter].filter(n => !!n)),
           request: args.request,
         },
         responses.returnObject({logger, reject, resolve}));
@@ -1637,6 +1642,10 @@ prog
   .command('probe', 'Check if a payment request is sendable')
   .help('Simulate paying a payment request without actually paying it')
   .help('Blinded path requests are probed to the introduction node, 1 path')
+  .help('--out can take a tag to make the first hop through any tagged peer')
+  .help('--out-filter vars: CAPACITY/HEIGHTS/INBOUND_LIQUIDITY')
+  .help('--out-filter vars: OUTBOUND_LIQUIDITY/PENDING_PAYMENTS')
+  .help('--out-filter vars: INBOUND_BASE_FEE/INBOUND_FEE_RATE')
   .argument('<to>', 'Payment request or node public key')
   .argument('[amount]', 'Amount to probe, default: request amount')
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
@@ -1647,7 +1656,8 @@ prog
   .option('--max-paths <max>', 'Maximum paths to use for find-max', INT, 1)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to use for payment request check')
-  .option('--out <public_key>', 'Make first hop through peer', REPEATABLE)
+  .option('--out <peer_or_tag>', 'Make first hop through peer/tag', REPEATABLE)
+  .option('--out-filter <out_filter>', 'Filter outbound peer/tag', REPEATABLE)
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -1667,6 +1677,7 @@ prog
           max_fee: options.maxFee,
           max_paths: options.maxPaths,
           out: flatten([options.out].filter(n => !!n)),
+          out_filters: flatten([options.outFilter].filter(n => !!n)),
           request: args.to.length !== 66 ? args.to : undefined,
           tokens: args.amount || undefined,
         },

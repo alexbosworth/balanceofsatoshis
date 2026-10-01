@@ -40,7 +40,7 @@ const tokensAsMillitokens = tok => (BigInt(tok) * BigInt(1e3)).toString();
       type: <Message To Final Destination Type Number String>
       value: <Message To Final Destination Raw Value Hex Encoded String>
     }]
-    [outgoing_channel]: <Outgoing Channel Id String>
+    [outgoing_channels]: [<Outgoing Channel Id String>]
     [paths]: [{
       base_fee_mtokens: <Accumulated Base Fee Millitokens String>
       cltv_delta: <Accumulated CLTV Expiry Delta Number>
@@ -176,7 +176,7 @@ module.exports = (args, cbk) => {
             max_fee_mtokens: strictMaxFee || undefined,
             max_timeout_height: args.max_timeout_height,
             messages: args.messages,
-            outgoing_channel: args.outgoing_channel,
+            outgoing_channels: args.outgoing_channels,
             path_timeout_ms: pathTimeoutMs,
             paths: args.paths,
             payment: args.payment,

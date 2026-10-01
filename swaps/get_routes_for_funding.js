@@ -123,6 +123,8 @@ module.exports = (args, cbk) => {
 
       // Get single path
       getSinglePath: ['validate', ({}, cbk) => {
+        const channel = args.outgoing_channel;
+
         return executeProbe({
           cltv_delta: args.cltv_delta,
           destination: args.destination,
@@ -131,7 +133,7 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           logger: args.logger,
           max_fee: args.max_fee,
-          outgoing_channel: args.outgoing_channel,
+          outgoing_channels: !!channel ? [channel] : undefined,
           payment: args.payment,
           routes: args.routes,
           tokens: args.tokens,

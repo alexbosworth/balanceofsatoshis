@@ -121,7 +121,7 @@ module.exports = (args, cbk) => {
           in_through: args.in_through,
           lnd: args.lnd,
           logger: args.logger,
-          out_through: args.out_through,
+          out_through: [args.out_through].filter(n => !!n),
           request: args.request,
           timeout_minutes: args.timeout_minutes,
           tokens: args.tokens,
