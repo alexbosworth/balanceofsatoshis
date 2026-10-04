@@ -1,5 +1,9 @@
 # Versions
 
+## 24.2.1
+
+- `open`: Adhere to BIP 69 when ordering funding outputs with equal amounts
+
 ## 24.2.0
 
 - Add support for LND 0.21.4 and LND 0.20.5

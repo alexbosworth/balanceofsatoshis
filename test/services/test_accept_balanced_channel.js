@@ -3,35 +3,37 @@ const EventEmitter = require('node:events');
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
-const {address} = require('bitcoinjs-lib');
-const {networks} = require('bitcoinjs-lib');
-const {Transaction} = require('bitcoinjs-lib');
+const {transactionFromComponents} = require('@alexbosworth/blockchain');
 
 const accept = require('./../../services/accept_balanced_channel');
 const {getInfoResponse} = require('./../fixtures');
 const {listPeersResponse} = require('./../fixtures');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
+const maxSequence = 4294967295;
 const request = 'lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w';
-const {toOutputScript} = address;
 const transitAddress = 'bc1q6x8d58yysr8xpv0m4qm4vk8h72rzmx4vsznplm';
 
 const makeArgs = overrides => {
   const args = {
     accept_request: request,
     ask: ({}, cbk) => {
-      const tx = new Transaction();
+      const {transaction} = transactionFromComponents({
+        inputs: [{
+          id: Buffer.alloc(32).toString('hex'),
+          script: String(),
+          sequence: maxSequence,
+          vout: 0,
+        }],
+        locktime: 0,
+        outputs: [{
+          script: '001451814f108670aced2d77c1805ddd6634bc9d4731',
+          tokens: 10095,
+        }],
+        version: 1,
+      });
 
-      const script = toOutputScript(transitAddress, networks.mainnet);
-
-      tx.addInput(Buffer.alloc(32), 0);
-
-      tx.addOutput(
-        Buffer.from('001451814f108670aced2d77c1805ddd6634bc9d4731', 'hex'),
-        10095
-      );
-
-      return cbk({fund: tx.toHex()});
+      return cbk({fund: transaction});
     },
     capacity: 20000,
     fee_rate: 1,

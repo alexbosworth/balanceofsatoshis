@@ -2,7 +2,6 @@ const {randomBytes} = require('crypto');
 
 const {acceptsChannelOpen} = require('ln-sync');
 const {addPeer} = require('ln-service');
-const {address} = require('bitcoinjs-lib');
 const {askForFeeRate} = require('ln-sync');
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
@@ -14,6 +13,7 @@ const asyncReflect = require('async/reflect');
 const asyncRetry = require('async/retry');
 const {broadcastChainTransaction} = require('ln-service');
 const {cancelPendingChannel} = require('ln-service');
+const {decodeBech32Address} = require('@alexbosworth/blockchain');
 const {fundPendingChannels} = require('ln-service');
 const {getChainBalance} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -23,12 +23,13 @@ const {getNode} = require('ln-service');
 const {getPeers} = require('ln-service');
 const {getPsbtFromTransaction} = require('goldengate');
 const {getWalletVersion} = require('ln-service');
+const {idForTransaction} = require('@alexbosworth/blockchain');
 const {openChannels} = require('ln-service');
 const {maintainUtxoLocks} = require('ln-sync');
 const moment = require('moment');
 const {parseAmount} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
-const {Transaction} = require('bitcoinjs-lib');
+const {scriptElementsAsScript} = require('@alexbosworth/blockchain');
 const {unlockUtxo} = require('ln-service');
 
 const adjustFees = require('./../routing/adjust_fees');
@@ -38,13 +39,14 @@ const {getAddressUtxo} = require('./../chain');
 const getChannelOutpoints = require('./get_channel_outpoints');
 const getPeersForNodes = require('./get_peers_for_nodes');
 
-const bech32AsData = bech32 => address.fromBech32(bech32).data;
 const description = 'bos open';
 const detectNetworks = ['btc', 'btctestnet'];
+const encodeVersion = version => 80 + version;
 const featureAnchors = 'anchor_zero_fee_htlc_tx';
 const flatten = arr => [].concat(...arr);
 const format = 'p2wpkh';
-const {fromHex} = Transaction;
+const hexAsBuffer = hex => Buffer.from(hex, 'hex');
+const idOf = transaction => idForTransaction({transaction}).id;
 const interval = 1000;
 const {isArray} = Array;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
@@ -623,15 +625,28 @@ module.exports = (args, cbk) => {
           return pending.map(n => ({address: n.address, tokens: n.tokens}));
         }));
 
+        // Map a bech32 address to its output script: OP_n then a data push
+        const scriptOf = address => {
+          const {program, version} = decodeBech32Address({address});
+
+          // Encode the version as a script number
+          const op = !version ? version : encodeVersion(version);
+
+          const {script} = scriptElementsAsScript({elements: [op, program]});
+
+          return hexAsBuffer(script);
+        };
+
         // Sort all the outputs using BIP 69
         try {
-            pending.sort((a, b) => {
+          pending.sort((a, b) => {
             // Sort by tokens ascending when no tie breaker needed
             if (a.tokens !== b.tokens) {
               return a.tokens - b.tokens;
             }
 
-            return bech32AsData(a.address).compare(bech32AsData(b.address));
+            // Break ties by comparing the output scripts as bytes
+            return scriptOf(a.address).compare(scriptOf(b.address));
           });
         } catch (err) {}
 
@@ -690,9 +705,7 @@ module.exports = (args, cbk) => {
                 return cbk();
               }
 
-              args.logger.info({
-                funding_detected: Transaction.fromHex(foundTx).getId(),
-              });
+              args.logger.info({funding_detected: idOf(foundTx)});
 
               return asyncEach(openChannels, ({lnd, node, pending}, cbk) => {
                 return fundPendingChannels({
@@ -817,7 +830,7 @@ module.exports = (args, cbk) => {
         }
 
         const toOpen = flatten(openChannels.map(n => n.pending));
-        const txId = fromHex(getFunding.value.transaction).getId();
+        const txId = idOf(getFunding.value.transaction);
 
         args.logger.info({confirming_pending_open: true});
 

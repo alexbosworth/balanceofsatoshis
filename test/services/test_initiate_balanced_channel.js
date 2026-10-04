@@ -3,8 +3,7 @@ const EventEmitter = require('node:events');
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
-const {payments} = require('bitcoinjs-lib');
-const {Transaction} = require('bitcoinjs-lib');
+const {transactionFromComponents} = require('@alexbosworth/blockchain');
 
 const {getInfoResponse} = require('./../fixtures');
 const {getNodeInfoResponse} = require('./../fixtures');
@@ -23,18 +22,20 @@ const makeArgs = overrides => {
   const args = {
     ask: ({}, cbk) => cbk({
       capacity: 384,
-      fund: (() => {
-        const tx = new Transaction();
-
-        tx.addInput(Buffer.alloc(32), 0, 0, Buffer.alloc(32));
-
-        tx.addOutput(
-          Buffer.from('001451814f108670aced2d77c1805ddd6634bc9d4731', 'hex'),
-          382
-        );
-
-        return tx.toHex();
-      })(),
+      fund: transactionFromComponents({
+        inputs: [{
+          id: Buffer.alloc(32).toString('hex'),
+          script: Buffer.alloc(32).toString('hex'),
+          sequence: 0,
+          vout: 0,
+        }],
+        locktime: 0,
+        outputs: [{
+          script: '001451814f108670aced2d77c1805ddd6634bc9d4731',
+          tokens: 382,
+        }],
+        version: 1,
+      }).transaction,
       rate: 2,
     }),
     lnd: {

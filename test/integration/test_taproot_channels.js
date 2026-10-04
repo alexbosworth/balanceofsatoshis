@@ -13,7 +13,6 @@ const {getWalletInfo} = require('ln-service');
 const {openChannel} = require('ln-service');
 const {signPsbt} = require('ln-service');
 const {spawnLightningCluster} = require('ln-docker-daemons');
-const {Transaction} = require('bitcoinjs-lib');
 
 const {openChannels} = require('./../../peers');
 

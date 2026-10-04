@@ -16,6 +16,7 @@ const {payViaRoutes} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {routeFromChannels} = require('ln-service');
 
+const channelForReceive = require('./channel_for_receive');
 const findRebalancePeer = require('./find_rebalance_peer');
 const {formatFeeRate} = require('./../display');
 const {getIgnores} = require('./../routing');
@@ -599,10 +600,9 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Get channels for the rebalance route
-      channels: [
+      // Get channels for the probed rebalance route
+      getRouteChannels: [
         'findRoute',
-        'getInitialLiquidity',
         'getPublicKey',
         'lnd',
         ({findRoute, getPublicKey, lnd}, cbk) =>
@@ -633,13 +633,116 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Get the current channels with the inbound peer
+      getInboundChannels: [
+        'getInbound',
+        'getRouteChannels',
+        'lnd',
+        ({getInbound, lnd}, cbk) =>
+      {
+        return getChannels({
+          lnd,
+          is_active: true,
+          partner_public_key: getInbound.public_key,
+        },
+        cbk);
+      }],
+
+      // Get the inbound peer channels together with their routing policies
+      inboundChannels: [
+        'getInboundChannels',
+        'lnd',
+        ({getInboundChannels, lnd}, cbk) =>
+      {
+        return asyncMap(getInboundChannels.channels, (channel, cbk) => {
+          return getChannel({lnd, id: channel.id}, (err, res) => {
+            // Policies are unknown when the channel is not found in the graph
+            const policies = !!err ? [] : res.policies;
+
+            return cbk(null, {
+              policies,
+              capacity: channel.capacity,
+              commit_transaction_fee: channel.commit_transaction_fee,
+              commit_transaction_weight: channel.commit_transaction_weight,
+              id: channel.id,
+              is_active: channel.is_active,
+              is_partner_initiated: channel.is_partner_initiated,
+              partner_public_key: channel.partner_public_key,
+              remote_balance: channel.remote_balance,
+              remote_reserve: channel.remote_reserve,
+            });
+          });
+        },
+        cbk);
+      }],
+
+      // Choose the final hop channel that has the inbound to receive the amount
+      finalHop: [
+        'findRoute',
+        'getInbound',
+        'getPublicKey',
+        'getRouteChannels',
+        'inboundChannels',
+        ({
+          findRoute,
+          getInbound,
+          getPublicKey,
+          getRouteChannels,
+          inboundChannels,
+        },
+        cbk) =>
+      {
+        const [probed] = getRouteChannels.slice().reverse();
+        const inPeer = getInbound.public_key;
+        const maximum = findRoute.route_maximum;
+
+        const fromInPeer = probed.policies.find(n => n.public_key === inPeer);
+
+        // Exit early when the route does not end with the inbound peer to self
+        if (!fromInPeer || probed.destination !== getPublicKey.public_key) {
+          return cbk(null, {maximum, channel: probed});
+        }
+
+        // LND picks the final hop channel without regard to the peer balance
+        const {id, receivable} = channelForReceive({
+          channels: inboundChannels,
+          id: probed.id,
+          peer: inPeer,
+          tokens: maximum,
+        });
+
+        // Exit early when the probed final hop channel is used to receive
+        if (!id || id === probed.id) {
+          return cbk(null, {maximum, channel: probed});
+        }
+
+        const {capacity, policies} = inboundChannels.find(n => n.id === id);
+
+        // The amount is limited to what the switched channel can receive
+        return cbk(null, {
+          channel: {capacity, id, policies, destination: probed.destination},
+          maximum: min(maximum, receivable),
+        });
+      }],
+
+      // Channels for the rebalance route, ending with the chosen final hop
+      channels: [
+        'finalHop',
+        'getRouteChannels',
+        ({finalHop, getRouteChannels}, cbk) =>
+      {
+        const hops = getRouteChannels.slice(Number(), -1);
+
+        return cbk(null, hops.concat(finalHop.channel));
+      }],
+
       // Create local invoice
-      invoice: ['channels', 'findRoute', 'lnd', ({findRoute, lnd}, cbk) => {
+      invoice: ['channels', 'finalHop', 'lnd', ({finalHop, lnd}, cbk) => {
         return createInvoice({
           lnd,
           cltv_delta: defaultCltvDelta,
           description: 'Rebalance',
-          tokens: findRoute.route_maximum,
+          tokens: finalHop.maximum,
         },
         cbk);
       }],
