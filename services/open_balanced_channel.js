@@ -8,7 +8,6 @@ const {getNetwork} = require('ln-sync');
 const {getNodeAlias} = require('ln-sync');
 const {getPublicKey} = require('ln-service');
 const moment = require('moment');
-const {networks} = require('bitcoinjs-lib');
 const {outputScriptForAddress} = require('@alexbosworth/blockchain');
 const {returnResult} = require('asyncjs-util');
 

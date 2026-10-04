@@ -27,6 +27,7 @@ const {getPayment} = require('ln-service');
 const {getSwapOutQuote} = require('goldengate');
 const {getSwapOutTerms} = require('goldengate');
 const {getSyntheticOutIgnores} = require('probing');
+const {idForTransaction} = require('@alexbosworth/blockchain');
 const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
 const {payViaRoutes} = require('ln-service');
@@ -38,7 +39,6 @@ const {subscribeToMultiPathProbe} = require('probing');
 const {subscribeToPastPayment} = require('ln-service');
 const {subscribeToPayViaRequest} = require('ln-service');
 const {subscribeToSwapOutStatus} = require('goldengate');
-const {Transaction} = require('bitcoinjs-lib');
 
 const {authenticatedLnd} = require('./../lnd');
 const {chains} = require('./../network/networks');
@@ -1521,7 +1521,7 @@ module.exports = (args, cbk) => {
 
               args.logger.info({
                 attempting_sweep_fee_rate: res.fee_rate,
-                attempt_tx_id: Transaction.fromHex(res.transaction).getId(),
+                attempt_tx_id: idForTransaction({transaction: res.transaction}).id,
               });
 
               createInvoice({

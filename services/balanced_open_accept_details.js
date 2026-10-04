@@ -1,5 +1,4 @@
 const {balancedChannelKeyTypes} = require('./service_key_types');
-const {Transaction} = require('bitcoinjs-lib');
 
 const bufferAsHex = buffer => buffer.toString('hex');
 const hashHexLength = 64;
@@ -9,7 +8,7 @@ const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const maxSignatureLength = 150;
 const multiSigType = balancedChannelKeyTypes.multisig_public_key;
 const parseHexNumber = hex => parseInt(hex, 16);
-const sigHashAll = Buffer.from([Transaction.SIGHASH_ALL]);
+const sigHashAll = Buffer.from([1]);
 
 /** Derive open accept details
 

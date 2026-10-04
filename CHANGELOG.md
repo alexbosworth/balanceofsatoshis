@@ -1,6 +1,6 @@
 # Versions
 
-## 24.2.1
+## 24.2.2
 
 - `open`: Adhere to BIP 69 when ordering funding outputs with equal amounts
 
