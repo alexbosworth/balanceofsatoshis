@@ -1,5 +1,13 @@
 # Versions
 
+## 25.0.0
+
+- `pending`: Add command to show pending channels and in-flight HTLCs
+
+### Breaking Changes
+
+- Remove `price` command
+
 ## 24.2.2
 
 - `open`: Adhere to BIP 69 when ordering funding outputs with equal amounts

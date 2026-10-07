@@ -3,6 +3,7 @@ const executeProbe = require('./execute_probe');
 const getForwards = require('./get_forwards');
 const getGraphEntry = require('./get_graph_entry');
 const getPeers = require('./get_peers');
+const getPending = require('./get_pending');
 const multiPathPayment = require('./multi_path_payment');
 const multiPathProbe = require('./multi_path_probe');
 const networks = require('./networks');
@@ -24,6 +25,7 @@ module.exports = {
   getForwards,
   getGraphEntry,
   getPeers,
+  getPending,
   multiPathPayment,
   multiPathProbe,
   networks,

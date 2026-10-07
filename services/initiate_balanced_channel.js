@@ -6,14 +6,17 @@ const {addPeer} = require('ln-service');
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
 const {cancelHodlInvoice} = require('ln-service');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {connectPeer} = require('ln-sync');
 const {createInvoice} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getPublicKey} = require('ln-service');
+const {idForTransaction} = require('@alexbosworth/blockchain');
 const {maintainUtxoLocks} = require('ln-sync');
+const {p2msScript} = require('@alexbosworth/blockchain');
+const {p2wshOutputScript} = require('@alexbosworth/blockchain');
 const {payViaRoutes} = require('ln-service');
-const {payments} = require('bitcoinjs-lib');
 const {proposeChannel} = require('ln-service');
 const {reserveTransitFunds} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
@@ -22,7 +25,7 @@ const {servicePeerRequests} = require('paid-services');
 const {signTransaction} = require('ln-service');
 const {subscribeToInvoice} = require('ln-service');
 const {subscribeToProbeForRoute} = require('ln-service');
-const {Transaction} = require('bitcoinjs-lib');
+const {transactionFromComponents} = require('@alexbosworth/blockchain');
 
 const {balancedChannelKeyTypes} = require('./service_key_types');
 const balancedOpenAcceptDetails = require('./balanced_open_accept_details');
@@ -33,7 +36,6 @@ const acceptTokens = 1;
 const bufferAsHex = buffer => buffer.toString('hex');
 const defaultChannelDescription = 'bos open-balanced-channel';
 const defaultMaxFeeMtokens = '9000';
-const {fromHex} = Transaction;
 const fundingAmount = (capacity, rate) => (capacity + (190 * rate)) / 2;
 const fundingFee = rate => Math.ceil(190 / 2 * rate);
 const giveTokens = capacity => Math.ceil(capacity / 2);
@@ -41,6 +43,7 @@ const hasInbound = channels => !!channels.find(n => !!n.remote_balance);
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const idAsHash = id => Buffer.from(id, 'hex').reverse();
 const {isInteger} = Number;
+const isSameId = (a, b) => a.toLowerCase() === b.toLowerCase();
 const isNumber = n => !isNaN(n);
 const isOdd = n => n % 2;
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
@@ -53,16 +56,16 @@ const multiSigType = balancedChannelKeyTypes.multisig_public_key;
 const numAsHex = num => num.toString(16);
 const paddedHexNumber = n => n.length % 2 ? `0${n}` : n;
 const peerFailure = (fail, cbk, err) => { fail(err); return cbk(err); };
-const {p2ms} = payments;
-const {p2wsh} = payments;
 const relockIntervalMs = 1000 * 20;
 const {round} = Math;
 const sendChannelRequestMtokens = '10000';
 const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
-const sigHashAll = Buffer.from([Transaction.SIGHASH_ALL]);
+const sighashAll = 1;
 const testMessage = '00';
 const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const transitKeyFamily = 805;
+const txLocktime = 0;
+const txVersion = 1;
 const utf8AsHex = utf8 => Buffer.from(utf8).toString('hex');
 
 /** Initiate a balanced channel
@@ -543,16 +546,16 @@ module.exports = (args, cbk) => {
           waitForAccept.multisig_public_key,
         ];
 
-        const funding = p2wsh({
-          redeem: p2ms({
-            m: publicKeys.length,
-            pubkeys: publicKeys.sort().map(hexAsBuffer),
-          }),
+        const redeem = p2msScript({
+          keys: publicKeys.sort().map(hexAsBuffer),
+          required: publicKeys.length,
         });
 
+        const {script} = p2wshOutputScript({hash: redeem.hash});
+
         return cbk(null, {
-          hash: bufferAsHex(funding.hash),
-          script: bufferAsHex(funding.output),
+          hash: bufferAsHex(redeem.hash),
+          script: bufferAsHex(script),
         });
       }],
 
@@ -570,8 +573,6 @@ module.exports = (args, cbk) => {
         },
         cbk) =>
       {
-        const tx = new Transaction();
-
         const utxos = [
           {
             transaction_id: askForFunding.id,
@@ -581,39 +582,43 @@ module.exports = (args, cbk) => {
         ];
 
         const inputs = utxos.map(utxo => ({
-          hash: idAsHash(utxo.transaction_id),
-          index: utxo.transaction_vout,
+          id: utxo.transaction_id,
+          script: String(),
           sequence: Number(),
+          vout: utxo.transaction_vout,
         }));
 
         // Sort the inputs for BIP 69 deterministic encoding
         inputs.sort((a, b) => {
-          const aHash = bufferAsHex(a.hash);
-          const bHash = bufferAsHex(b.hash);
+          const aHash = bufferAsHex(idAsHash(a.id));
+          const bHash = bufferAsHex(idAsHash(b.id));
 
-          return aHash.localeCompare(bHash) || a.index - b.index;
+          return aHash.localeCompare(bHash) || a.vout - b.vout;
         });
 
-        inputs.forEach(n => tx.addInput(n.hash, n.index, n.sequence));
-
-        const partnersVin = tx.ins.findIndex(input => {
-          if (input.index !== waitForAccept.transaction_vout) {
+        const partnersVin = inputs.findIndex(input => {
+          if (input.vout !== waitForAccept.transaction_vout) {
             return false;
           }
 
-          return input.hash.equals(idAsHash(waitForAccept.transaction_id));
+          return isSameId(input.id, waitForAccept.transaction_id);
         });
 
-        const partnerWitnessStack = [
+        // Add the partner's signature to their transit spend
+        inputs[partnersVin].witness = [
           waitForAccept.funding_signature,
           waitForAccept.transit_public_key,
         ];
 
-        tx.setWitness(partnersVin, partnerWitnessStack.map(hexAsBuffer));
-
-        tx.addOutput(hexAsBuffer(deriveFundingAddress.script), askForCapacity);
-
-        return cbk(null, tx);
+        return cbk(null, {
+          inputs,
+          locktime: txLocktime,
+          outputs: [{
+            script: deriveFundingAddress.script,
+            tokens: askForCapacity,
+          }],
+          version: txVersion,
+        });
       }],
 
       // Get a signature to funds the channel funding transaction
@@ -634,12 +639,12 @@ module.exports = (args, cbk) => {
         const feeRate = askForFeeRate;
 
         // Find the input index where the funding outpoint is being spent
-        const fundingVin = halfSign.ins.findIndex(input => {
-          if (input.index !== askForFunding.vout) {
+        const fundingVin = halfSign.inputs.findIndex(input => {
+          if (input.vout !== askForFunding.vout) {
             return false;
           }
 
-          return input.hash.equals(idAsHash(askForFunding.id));
+          return isSameId(input.id, askForFunding.id);
         });
 
         // Sign the channel funding transaction
@@ -650,11 +655,11 @@ module.exports = (args, cbk) => {
             key_index: askForFunding.index,
             output_script: askForFunding.output,
             output_tokens: giveTokens(askForCapacity) + fundingFee(feeRate),
-            sighash: Transaction.SIGHASH_ALL,
+            sighash: sighashAll,
             vin: fundingVin,
             witness_script: askForFunding.script,
           }],
-          transaction: halfSign.toHex(),
+          transaction: transactionFromComponents(halfSign).transaction,
         },
         cbk);
       }],
@@ -677,38 +682,48 @@ module.exports = (args, cbk) => {
         },
         cbk) =>
       {
-        const publicKey = hexAsBuffer(askForFunding.key);
         const [signature] = signChannelFunding.signatures;
-        const tx = halfSign;
 
         // Add the signature hash flag to the end of the signature
         const fundingSignature = Buffer.concat([
           hexAsBuffer(signature),
-          sigHashAll,
+          Buffer.from([sighashAll]),
         ]);
 
         // Find the transits input associated with the peer
-        const fundingVin = tx.ins.findIndex(input => {
-          if (input.index !== askForFunding.vout) {
+        const fundingVin = halfSign.inputs.findIndex(input => {
+          if (input.vout !== askForFunding.vout) {
             return false;
           }
 
-          return input.hash.equals(idAsHash(askForFunding.id));
+          return isSameId(input.id, askForFunding.id);
         });
 
-        tx.setWitness(fundingVin, [fundingSignature, publicKey]);
+        // Add the signature to the transit spend
+        const inputs = halfSign.inputs.map((input, vin) => {
+          if (vin !== fundingVin) {
+            return input;
+          }
 
-        const txVout = tx.outs.findIndex(({script, value}) => {
-          if (value !== askForCapacity) {
+          return {
+            ...input,
+            witness: [bufferAsHex(fundingSignature), askForFunding.key],
+          };
+        });
+
+        const {transaction} = transactionFromComponents({...halfSign, inputs});
+
+        const txVout = halfSign.outputs.findIndex(({script, tokens}) => {
+          if (tokens !== askForCapacity) {
             return false;
           }
 
-          return script.equals(hexAsBuffer(deriveFundingAddress.script));
+          return script === deriveFundingAddress.script;
         });
 
         return cbk(null, {
-          transaction: tx.toHex(),
-          transaction_id: tx.getId(),
+          transaction,
+          transaction_id: idForTransaction({transaction}).id,
           transaction_vout: txVout,
         });
       }],
@@ -727,14 +742,16 @@ module.exports = (args, cbk) => {
         },
         cbk) =>
       {
-        const tx = fromHex(fullySignedFunding.transaction);
+        const {transaction} = fullySignedFunding;
 
-        const txVout = tx.outs.findIndex(({script, value}) => {
-          if (value !== askForCapacity) {
+        const {outputs} = componentsOfTransaction({transaction});
+
+        const txVout = outputs.findIndex(({script, tokens}) => {
+          if (tokens !== askForCapacity) {
             return false;
           }
 
-          return script.equals(hexAsBuffer(deriveFundingAddress.script));
+          return script === deriveFundingAddress.script;
         });
 
         return proposeChannel({
@@ -747,7 +764,7 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           partner_public_key: args.partner_public_key,
           remote_key: waitForAccept.multisig_public_key,
-          transaction_id: tx.getId(),
+          transaction_id: idForTransaction({transaction}).id,
           transaction_vout: txVout,
         },
         cbk);

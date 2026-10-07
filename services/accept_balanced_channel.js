@@ -1,20 +1,21 @@
-const {address} = require('bitcoinjs-lib');
 const asyncAuto = require('async/auto');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {connectPeer} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getPeers} = require('ln-service');
 const {getPublicKey} = require('ln-service');
+const {idForTransaction} = require('@alexbosworth/blockchain');
 const {maintainUtxoLocks} = require('ln-sync');
 const {makePeerRequest} = require('paid-services');
-const {networks} = require('bitcoinjs-lib');
+const {p2msScript} = require('@alexbosworth/blockchain');
+const {p2wshOutputScript} = require('@alexbosworth/blockchain');
 const {parsePaymentRequest} = require('ln-service');
 const {pay} = require('ln-service');
-const {payments} = require('bitcoinjs-lib');
 const {prepareForChannelProposal} = require('ln-service');
 const {reserveTransitFunds} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 const {signTransaction} = require('ln-service');
-const {Transaction} = require('bitcoinjs-lib');
+const {transactionFromComponents} = require('@alexbosworth/blockchain');
 const {waitForPendingOpen} = require('ln-sync');
 
 const {balancedChannelKeyTypes} = require('./service_key_types');
@@ -22,29 +23,28 @@ const {balancedChannelKeyTypes} = require('./service_key_types');
 const acceptRequestIdType = '0';
 const bufferAsHex = buffer => buffer.toString('hex');
 const defaultMaxFeeMtokens = '9000';
-const {fromBech32} = address;
-const {fromHex} = Transaction;
 const fundingAmount = (capacity, rate) => (capacity + (190 * rate)) / 2;
 const fundingFee = rate => Math.ceil(190 / 2 * rate);
 const giveTokens = capacity => Math.ceil(capacity / 2);
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const idAsHash = id => Buffer.from(id, 'hex').reverse();
+const inputsOf = tx => componentsOfTransaction({transaction: tx}).inputs;
 const interval = 1000 * 15;
 const {isArray} = Array;
+const isSameId = (a, b) => a.toLowerCase() === b.toLowerCase();
 const multiSigKeyFamily = 0;
 const networkBitcoin = 'btc';
 const networkRegtest = 'btcregtest';
 const networkTestnet = 'btctestnet';
 const numAsHex = num => num.toString(16);
 const paddedHexNumber = n => n.length % 2 ? `0${n}` : n;
-const {p2ms} = payments;
-const {p2pkh} = payments;
 const p2pTimeoutMs = 1000 * 90;
-const {p2wsh} = payments;
 const relockIntervalMs = 1000 * 20;
+const sighashAll = 1;
 const times = 60 * 6;
-const {toOutputScript} = address;
 const transitKeyFamily = 805;
+const txLocktime = 0;
+const txVersion = 1;
 
 /** Accept a balanced channel
 
@@ -133,17 +133,13 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // BitcoinJS Network
+      // Make sure the network is supported
       network: ['validate', ({}, cbk) => {
         switch (args.network) {
         case networkBitcoin:
-          return cbk(null, networks.bitcoin);
-
         case networkRegtest:
-          return cbk(null, networks.regtest);
-
         case networkTestnet:
-          return cbk(null, networks.testnet);
+          return cbk(null, args.network);
 
         default:
           return cbk([400, 'UnsupportedNetworkForAcceptingBalancedChannel']);
@@ -200,11 +196,10 @@ module.exports = (args, cbk) => {
         args.logger.info({refund_transaction: askForTransit.refund});
 
         const keys = [getMultiSigKey.public_key, args.remote_multisig_key];
-        const tx = new Transaction();
 
-        const redeem = p2ms({
-          m: keys.length,
-          pubkeys: keys.sort().map(hexAsBuffer),
+        const redeem = p2msScript({
+          keys: keys.sort().map(hexAsBuffer),
+          required: keys.length,
         });
 
         const remoteFunding = {
@@ -212,41 +207,48 @@ module.exports = (args, cbk) => {
           vout: args.remote_tx_vout,
         };
 
-        const multiSig = p2wsh({redeem});
-
-        const script = multiSig.output;
+        const {script} = p2wshOutputScript({hash: redeem.hash});
 
         // The inputs to the funding tx are the transit transactions
         const inputs = [askForTransit, remoteFunding].map(({id, vout}) => ({
-          hash: idAsHash(id),
-          index: vout,
+          id,
+          vout,
+          script: String(),
           sequence: Number(),
         }));
 
         // Sort the inputs for BIP 69 deterministic encoding
         inputs.sort((a, b) => {
-          const aHash = bufferAsHex(a.hash);
-          const bHash = bufferAsHex(b.hash);
+          const aHash = bufferAsHex(idAsHash(a.id));
+          const bHash = bufferAsHex(idAsHash(b.id));
 
-          return aHash.localeCompare(bHash) || a.index - b.index;
+          return aHash.localeCompare(bHash) || a.vout - b.vout;
         });
 
-        // Add the inputs to the channel funding transaction
-        inputs.forEach(n => tx.addInput(n.hash, n.index, n.sequence));
-
         // The output to the channel funding is capacity paid to the 2:2 addr
-        tx.addOutput(script, args.capacity);
+        const outputs = [{script: bufferAsHex(script), tokens: args.capacity}];
+
+        const {transaction} = transactionFromComponents({
+          inputs,
+          outputs,
+          locktime: txLocktime,
+          version: txVersion,
+        });
+
+        const {id} = idForTransaction({transaction});
 
         args.logger.info({
-          funding_tx_id: tx.getId(),
+          funding_tx_id: id,
           waiting_for_full_channel_proposal: true,
         });
 
         return cbk(null, {
-          pending_channel_id: bufferAsHex(multiSig.hash),
-          transaction: tx.toHex(),
-          transaction_id: tx.getId(),
-          transaction_vout: tx.outs.findIndex(n => n.script.equals(script)),
+          transaction,
+          pending_channel_id: bufferAsHex(redeem.hash),
+          transaction_id: id,
+          transaction_vout: outputs.findIndex(n => {
+            return n.script === bufferAsHex(script);
+          }),
         });
       }],
 
@@ -255,19 +257,18 @@ module.exports = (args, cbk) => {
         'askForTransit',
         'fundingTx',
         'network',
-        ({askForTransit, fundingTx, network}, cbk) =>
+        ({askForTransit, fundingTx}, cbk) =>
       {
-        const feeRate = args.fee_rate;
+        const inputs = inputsOf(fundingTx.transaction);
         const tokens = giveTokens(args.capacity) + fundingFee(args.fee_rate);
-        const tx = fromHex(fundingTx.transaction);
 
         // Find the input index where the funding outpoint is being spent
-        const fundingVin = tx.ins.findIndex(input => {
-          if (input.index !== askForTransit.vout) {
+        const fundingVin = inputs.findIndex(input => {
+          if (input.vout !== askForTransit.vout) {
             return false;
           }
 
-          return input.hash.equals(idAsHash(askForTransit.id));
+          return isSameId(input.id, askForTransit.id);
         });
 
         // Sign the channel funding transaction
@@ -278,7 +279,7 @@ module.exports = (args, cbk) => {
             key_index: askForTransit.index,
             output_script: askForTransit.output,
             output_tokens: tokens,
-            sighash: Transaction.SIGHASH_ALL,
+            sighash: sighashAll,
             vin: fundingVin,
             witness_script: askForTransit.script,
           }],

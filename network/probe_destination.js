@@ -419,12 +419,17 @@ module.exports = (args, cbk) => {
           return cbk([404, 'NoActiveChannelWithOutgoingPeer']);
         }
 
-        const withBalance = withPeer.filter(n => {
-          const fees = n.commit_transaction_fee + (htlcOutputSize * rate(n));
-          const reserve = channelReserve(n);
+        // The balance that can be sent after the reserve and a buffer for fees
+        const spendable = channel => {
+          const htlcFee = htlcOutputSize * rate(channel);
+          const reserve = channelReserve(channel);
 
-          return n.local_balance - tokens > reserve + feeBuffer(fees);
-        });
+          const fees = channel.commit_transaction_fee + htlcFee;
+
+          return floor(channel.local_balance - reserve - feeBuffer(fees));
+        };
+
+        const withBalance = withPeer.filter(n => spendable(n) > tokens);
 
         if (!withBalance.length) {
           return cbk([404, 'NoOutboundPeerWithSufficientBalance']);
@@ -435,20 +440,20 @@ module.exports = (args, cbk) => {
           return cbk(null, {ids: withBalance.map(n => n.id)});
         }
 
-        // A single peer goes out through one channel with enough balance
         const attribute = 'local_balance';
+        const required = args.find_max || tokens;
 
-        const [channel] = sortBy({attribute, array: withBalance}).sorted;
+        const {sorted} = sortBy({attribute, array: withBalance});
 
-        const bufferFees = htlcOutputSize * rate(channel);
-        const reserve = channelReserve(channel);
+        const [largest] = sorted.slice().reverse();
 
-        const fees = channel.commit_transaction_fee + bufferFees;
-        const spendable = channel.local_balance - reserve;
+        // Use the smallest channel that can send the amount, or the largest
+        const channel = sorted.find(n => spendable(n) >= required) || largest;
 
-        const maxPayable = floor(spendable - feeBuffer(fees)) || args.find_max;
-
-        return cbk(null, {ids: [channel.id], max: maxPayable});
+        return cbk(null, {
+          ids: [channel.id],
+          max: spendable(channel) || args.find_max,
+        });
       }],
 
       // Log sending towards destination

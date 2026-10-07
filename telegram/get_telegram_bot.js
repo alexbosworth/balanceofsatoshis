@@ -49,7 +49,16 @@ module.exports = ({fs, proxy}, cbk) => {
           if (!!err || !res || !res.toString() || !!fs.is_reset_state) {
             const token = interaction.api_token_prompt;
 
-            inquirer.prompt([token]).then(({key}) => cbk(null, {key}));
+            inquirer.prompt([token])
+              .then(({key}) => cbk(null, {key}))
+              .catch(err => {
+                // Exit quietly when the user presses ctrl+c
+                if (!!err && err.name === 'ExitPromptError') {
+                  return process.exit(130);
+                }
+
+                return cbk([503, 'UnexpectedErrorPromptingForApiKey', {err}]);
+              });
 
             return;
           }

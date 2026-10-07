@@ -1,15 +1,19 @@
 const {deepEqual} = require('node:assert').strict;
-const {equal} = require('node:assert').strict;
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
 const {createSignedRequest} = require('ln-service');
 const {createUnsignedRequest} = require('ln-service');
+const {gray} = require('colorette');
+const {greenBright} = require('colorette');
+const moment = require('moment');
 const {paymentPathFromChannels} = require('bolt04');
 
 const probeDestination = require('./../../network/probe_destination');
 const {getInfoResponse} = require('./../fixtures');
 const {getNodeInfoResponse} = require('./../fixtures');
+const {listChannelsResponse} = require('./../fixtures');
+const {listPeersResponse} = require('./../fixtures');
 const {versionInfoResponse} = require('./../fixtures');
 
 const bob = '0324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d23' +
@@ -19,7 +23,9 @@ const carol = '027f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa2971' +
 const dave = '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e6' +
   '68680991';
 
+const expiresAt = '2100-01-01T00:00:00.000Z';
 const height = 900000;
+const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const id = Buffer.alloc(32, 2).toString('hex');
 const secret = Buffer.alloc(32, 7);
 const tokens = 1000;
@@ -51,7 +57,7 @@ const {request} = (() => {
     cltv_delta: 80,
     created_at: '2026-01-01T00:00:00.000Z',
     description: 'blinded',
-    expires_at: '2100-01-01T00:00:00.000Z',
+    expires_at: expiresAt,
     features: [{bit: 8}, {bit: 17}, {bit: 262}],
     id,
     network: 'bitcoin',
@@ -86,10 +92,142 @@ const introductionRoute = {
   total_time_lock: height + 200,
 };
 
-const makeLnd = ({}) => {
+// The amount delivered to the introduction node includes the path fee
+const introductionMtokens = BigInt(tokens * 1e3) + pathFeeMtokens;
+
+// Logs for the request, the probe check, and the route evaluation
+const decodedLog = {
+  info: {
+    id,
+    tokens,
+    description: 'blinded',
+    destination: 'blinded',
+    expires: moment(expiresAt).fromNow(),
+  },
+};
+
+const checkingLog = {
+  info: {
+    blinded_path_fee: pathFee,
+    checking_for_path_to_introduction: `bob ${bob}`,
+  },
+};
+
+const evaluatingLog = {
+  info: {
+    evaluating: [
+      `${gray('0x0x1')} ★ ★ ★ ★`,
+      `${greenBright('bob')} ${bob}. Fee rate: 0.00% (0)`,
+    ],
+  },
+};
+
+const payingLog = {info: {paying: ['0x0x1', 'blinded', 'blinded']}};
+
+// A probe route goes to the introduction node and carries the path fee
+const probeRoute = {
+  hops: [{
+    amt_to_forward: (tokens + pathFee).toString(),
+    amt_to_forward_msat: introductionMtokens.toString(),
+    chan_id: '1',
+    expiry: height + 200,
+    fee: '0',
+    fee_msat: '0',
+    pub_key: bob,
+    tlv_payload: true,
+  }],
+  total_amt: (tokens + pathFee).toString(),
+  total_amt_msat: introductionMtokens.toString(),
+  total_fees: '0',
+  total_fees_msat: '0',
+  total_time_lock: height + 200,
+};
+
+// A payment route continues from the introduction node into the blinded path
+const paymentRoute = {
+  hops: [
+    {
+      amt_to_forward: '0',
+      amt_to_forward_msat: '0',
+      blinding_point: hexAsBuffer(path.key),
+      chan_id: '1',
+      encrypted_data: hexAsBuffer(path.hops[0].encrypted_data),
+      expiry: 0,
+      fee: pathFee.toString(),
+      fee_msat: pathFeeMtokens.toString(),
+      pub_key: bob,
+      tlv_payload: true,
+    },
+    {
+      amt_to_forward: '0',
+      amt_to_forward_msat: '0',
+      chan_id: '0',
+      encrypted_data: hexAsBuffer(path.hops[1].encrypted_data),
+      expiry: 0,
+      fee: '0',
+      fee_msat: '0',
+      pub_key: path.hops[1].relay_key,
+      tlv_payload: true,
+    },
+    {
+      amt_to_forward: tokens.toString(),
+      amt_to_forward_msat: (tokens * 1e3).toString(),
+      chan_id: '0',
+      encrypted_data: hexAsBuffer(path.hops[2].encrypted_data),
+      expiry: height + 40,
+      fee: '0',
+      fee_msat: '0',
+      pub_key: path.hops[2].relay_key,
+      tlv_payload: true,
+      total_amt_msat: (tokens * 1e3).toString(),
+    },
+  ],
+  total_amt: (tokens + pathFee).toString(),
+  total_amt_msat: introductionMtokens.toString(),
+  total_fees: pathFee.toString(),
+  total_fees_msat: pathFeeMtokens.toString(),
+  total_time_lock: height + 200,
+};
+
+// The result of reaching the destination through the blinded path
+const reached = {
+  blinded_path_fee: pathFee,
+  fee: pathFee,
+  id: undefined,
+  route_maximum: undefined,
+  paid: undefined,
+  preimage: undefined,
+  probed: tokens,
+  relays: [bob, path.hops[1].relay_key, path.hops[2].relay_key],
+  success: ['0x0x1', 'blinded', 'blinded'],
+};
+
+const [channel] = listChannelsResponse.channels;
+
+// Out channels for a single peer: 1 is small, 2 is medium, 3 is large
+const outChannels = [
+  {...channel, chan_id: '1', local_balance: '1000000'},
+  {...channel, chan_id: '2', local_balance: '3000000'},
+  {...channel, chan_id: '3', local_balance: '5000000'},
+].map(n => ({...n, active: true, remote_pubkey: bob}));
+
+// A logger that keeps a record of everything logged, in order
+const makeLogger = () => {
+  const logs = [];
+
+  return {
+    logs,
+    error: error => logs.push({error}),
+    info: info => logs.push({info}),
+  };
+};
+
+const makeLnd = ({channels, routes}) => {
+  const queried = [];
   const sent = [];
 
   return {
+    queried,
     sent,
     default: {
       deletePayment: ({}, cbk) => cbk(),
@@ -109,13 +247,20 @@ const makeLnd = ({}) => {
           num_channels: '0',
         });
       },
-      queryRoutes: ({pub_key}, cbk) => {
+      listChannels: ({}, cbk) => cbk(null, {channels: channels || []}),
+      listPeers: ({}, cbk) => cbk(null, listPeersResponse),
+      queryRoutes: ({outgoing_chan_ids, pub_key}, cbk) => {
+        queried.push(outgoing_chan_ids);
+
         // Only the introduction node is routable
         if (pub_key !== bob) {
           return cbk(null, {routes: []});
         }
 
-        return cbk(null, {routes: [introductionRoute], success_prob: 1});
+        return cbk(null, {
+          routes: routes || [introductionRoute],
+          success_prob: 1,
+        });
       },
     },
     router: {
@@ -146,9 +291,24 @@ const makeArgs = overrides => {
   const args = {
     request,
     lnd: makeLnd({}),
-    logger: {error: () => {}, info: () => {}},
+    logger: makeLogger(),
     max_fee: 1337,
   };
+
+  Object.keys(overrides).forEach(k => args[k] = overrides[k]);
+
+  return args;
+};
+
+// Probe out through the single peer that has the small, medium, large channels
+const makeOutArgs = overrides => {
+  const args = makeArgs({
+    tokens,
+    destination: bob,
+    lnd: makeLnd({channels: outChannels, routes: []}),
+    out_through: [bob],
+    request: undefined,
+  });
 
   Object.keys(overrides).forEach(k => args[k] = overrides[k]);
 
@@ -176,85 +336,68 @@ const tests = [
     description: 'The maximum cannot be found through multiple out peers',
     error: [501, 'FindMaxNotSupportedWithMultipleOutThroughPeers'],
   },
+  {
+    args: makeArgs({}),
+    description: 'A blinded path request is probed to the introduction node',
+    expected: reached,
+    logs: [decodedLog, checkingLog, evaluatingLog],
+    sent: [probeRoute],
+  },
+  {
+    args: makeArgs({is_real_payment: true}),
+    description: 'A blinded path request is paid along the extended route',
+    expected: {
+      ...reached,
+      id,
+      paid: tokens + pathFee,
+      preimage: secret.toString('hex'),
+      probed: undefined,
+    },
+    logs: [decodedLog, checkingLog, payingLog, evaluatingLog],
+    sent: [probeRoute, paymentRoute],
+  },
+  {
+    args: makeOutArgs({}),
+    description: 'Without a maximum, the smallest channel that fits is used',
+    expected: {attempted_paths: 0, is_failed: true},
+    queried: [['1']],
+  },
+  {
+    args: makeOutArgs({find_max: 2000000}),
+    description: 'The smallest channel that can send the maximum is used',
+    expected: {attempted_paths: 0, is_failed: true},
+    queried: [['2']],
+  },
+  {
+    args: makeOutArgs({find_max: 10000000}),
+    description: 'The largest channel is used when none can send the maximum',
+    expected: {attempted_paths: 0, is_failed: true},
+    queried: [['3']],
+  },
 ];
 
-tests.forEach(({args, description, error}) => {
+tests.forEach(({args, description, error, expected, logs, queried, sent}) => {
   return test(description, async () => {
-    await rejects(probeDestination(args), error, 'Got expected error');
+    if (!!error) {
+      await rejects(probeDestination(args), error, 'Got expected error');
+    } else {
+      const {latency_ms, ...res} = await probeDestination(args);
+
+      deepEqual(res, expected, 'Got expected probe result');
+    }
+
+    if (!!logs) {
+      deepEqual(args.logger.logs, logs, 'Got expected logs');
+    }
+
+    if (!!queried) {
+      deepEqual(args.lnd.queried, queried, 'Got expected out channels');
+    }
+
+    if (!!sent) {
+      deepEqual(args.lnd.sent, sent, 'Got expected routes sent');
+    }
 
     return;
   });
-});
-
-// Probing a request with blinded paths probes to the introduction node
-test('A blinded path request is probed', async () => {
-  const logs = [];
-  const lnd = makeLnd({});
-
-  const res = await probeDestination(makeArgs({
-    lnd,
-    logger: {error: () => {}, info: log => logs.push(log)},
-  }));
-
-  const [decoded, checking] = logs;
-
-  equal(decoded.destination, 'blinded', 'The destination is not known');
-  equal(decoded.tokens, tokens, 'Request amount is logged');
-
-  deepEqual(
-    checking,
-    {
-      blinded_path_fee: pathFee,
-      checking_for_path_to_introduction: `bob ${bob}`,
-    },
-    'The probe is described as going to the introduction node with the fee'
-  );
-
-  equal(lnd.sent.length, 1, 'A single probe route was attempted');
-  equal(lnd.sent[0].hops.length, 1, 'The probe went to the introduction');
-  equal(lnd.sent[0].hops[0].pub_key, bob, 'The probe hop is Bob');
-
-  equal(res.fee, pathFee, 'Fee to the destination includes the path fee');
-  equal(res.blinded_path_fee, pathFee, 'The blinded path fee is reported');
-  equal(res.probed, tokens, 'The probe delivered the invoice amount');
-  equal(res.latency_ms !== undefined, true, 'Latency is reported');
-  equal(res.paid, undefined, 'Nothing was paid');
-
-  deepEqual(res.relays, [bob, path.hops[1].relay_key, path.hops[2].relay_key],
-    'The route continues into the blinded hops');
-
-  deepEqual(res.success, ['0x0x1', 'blinded', 'blinded'], 'Blinded hops');
-
-  return;
-});
-
-// Paying a request with blinded paths pays the extended route
-test('A blinded path request is paid', async () => {
-  const lnd = makeLnd({});
-
-  const res = await probeDestination(makeArgs({lnd, is_real_payment: true}));
-
-  const [probe, payment] = lnd.sent;
-
-  equal(lnd.sent.length, 2, 'A probe and then a payment were sent');
-  equal(probe.hops.length, 1, 'The probe went to the introduction node');
-  equal(payment.hops.length, 3, 'The payment went into the blinded path');
-
-  const [introduction, relay, final] = payment.hops;
-
-  equal(introduction.pub_key, bob, 'Payment first hop is the introduction');
-  equal(!!introduction.blinding_point, true, 'Introduction gets path key');
-  equal(!!introduction.encrypted_data, true, 'Introduction gets its data');
-  equal(!!relay.encrypted_data, true, 'Relay gets encrypted data');
-  equal(relay.blinding_point, undefined, 'Relay gets no path key');
-  equal(final.total_amt_msat, '1000000', 'Final hop gets the total amount');
-  equal(final.mpp_record, undefined, 'Final hop has no payment identifier');
-
-  equal(res.id, id, 'Payment hash is returned');
-  equal(res.paid, tokens + pathFee, 'The amount plus the path fee was paid');
-  equal(res.preimage, secret.toString('hex'), 'The preimage is returned');
-  equal(res.fee, pathFee, 'The fee includes the blinded path fee');
-  equal(res.blinded_path_fee, pathFee, 'The blinded path fee is reported');
-
-  return;
 });

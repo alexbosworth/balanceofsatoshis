@@ -23,6 +23,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Logic like ternary operators should not extend beyond a single line
 - Don't let any lines linger when they don't do anything
 - Use single '' quotes not double "" quotes, except when `` is required
+- Use American English spelling, like `canceled` and not `cancelled`
 - Avoid double specifying an attribute and value, `{type: type}` vs `{type}`
 - Always use {} with if, else, etc statements
 - Document the top of methods with what the arguments are and what is returned
@@ -56,10 +57,14 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Reduce the usage of . property access, like isArray instead of Array.isArray
 - When there is a newline in an object, always put a comma at the end of a line
 - Short properties always go first in objects: `{short, longer: type}`
+- Alphabetize short properties and longer properties as separate groups
 - If a statement relies on a statement above it, it should have a newline above
 - Avoid including scalar values such as strings or numbers in the code itself
 - Prefer hex serialization over base64 or Buffers in arguments or output
 - Avoid any function arguments that are multiple data types
+- Short names like `n` are only for one-liners, longer closures name arguments
+- Name variables for what they hold, like `candidates`, not for their type
+- Avoid names that mean something else in other contexts, like `self`
 
 ### JS Features
 
@@ -70,6 +75,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Do not import more methods from an import than you actually use
 - Try to avoid passing objects in arguments as much as possible
 - Prefer using function iteration like map and forEach over for and while
+- Prefer the `sortBy` method in `arrays` over writing sort comparator functions
 - Use arrow functions and not `function` functions whenever possible
 - Functions should only take and return a single object as argument, result
 - Use the || flags to select between truthy variable options

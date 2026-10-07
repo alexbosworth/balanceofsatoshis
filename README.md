@@ -147,8 +147,8 @@ bos pay "payment_request"
 # Show channel-connected peers
 bos peers
 
-# Output the price of BTC
-bos price
+# Show pending channels and in-flight HTLCs
+bos pending
 
 # Test if funds can be sent to a destination
 bos probe "payment_request/public_key"

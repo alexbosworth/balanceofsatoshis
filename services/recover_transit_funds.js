@@ -1,27 +1,28 @@
-const {address} = require('bitcoinjs-lib');
+const {createHash} = require('crypto');
+
 const asyncAuto = require('async/auto');
 const asyncDetectSeries = require('async/detectSeries');
 const {broadcastChainTransaction} = require('ln-service');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {createChainAddress} = require('ln-service');
+const {decodeBech32Address} = require('@alexbosworth/blockchain');
 const {getPublicKey} = require('ln-service');
 const {getTransitRefund} = require('ln-sync');
-const {networks} = require('bitcoinjs-lib');
-const {payments} = require('bitcoinjs-lib');
+const {idForTransaction} = require('@alexbosworth/blockchain');
+const {outputScriptForAddress} = require('@alexbosworth/blockchain');
+const {p2wpkhOutputScript} = require('@alexbosworth/blockchain');
 const {returnResult} = require('asyncjs-util');
-const {Transaction} = require('bitcoinjs-lib');
 
+const bufferAsHex = buffer => buffer.toString('hex');
 const defaultMaxIndex = 20000;
 const description = 'BalancedChannelOpenFundsRecovery';
 const family = 805;
 const format = 'p2wpkh';
-const {fromBech32} = address;
-const {fromHex} = Transaction;
+const hash160 = n => createHash('ripemd160').update(sha256(n)).digest();
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
-const nets = {btc: networks.bitcoin, btctestnet: networks.testnet};
 const notFoundIndex = -1;
-const {p2wpkh} = payments;
 const range = size => [...Array(size).keys()];
-const {toOutputScript} = address;
+const sha256 = n => createHash('sha256').update(n).digest();
 
 /** Recover funds that were sent to a transit address by mistake
 
@@ -59,7 +60,9 @@ module.exports = ({ask, lnd, logger, network, recover}, cbk) => {
         }
 
         try {
-          fromBech32(recover);
+          decodeBech32Address({address: recover});
+
+          outputScriptForAddress({network, address: recover});
         } catch (err) {
           return cbk([400, 'FailedToParseChainAddressToRecover', {err}]);
         }
@@ -79,7 +82,7 @@ module.exports = ({ask, lnd, logger, network, recover}, cbk) => {
       // Confirm that the transaction spends to the address to recover
       checkTransaction: ['getTransaction', ({getTransaction}, cbk) => {
         try {
-          fromHex(getTransaction);
+          componentsOfTransaction({transaction: getTransaction});
         } catch (err) {
           return cbk([400, 'FailedToParseTransaction', {err}]);
         }
@@ -89,17 +92,19 @@ module.exports = ({ask, lnd, logger, network, recover}, cbk) => {
 
       // Find the key index that matches the address
       findIndex: ['checkTransaction', ({}, cbk) => {
+        const {script} = outputScriptForAddress({network, address: recover});
+
         return asyncDetectSeries(range(defaultMaxIndex), (index, cbk) => {
           return getPublicKey({family, index, lnd}, (err, res) => {
             if (!!err) {
               return cbk(err);
             }
 
-            const pubkey = hexAsBuffer(res.public_key);
+            const hash = hash160(hexAsBuffer(res.public_key));
 
-            const {address} = p2wpkh({pubkey, network: nets[network]});
+            const output = p2wpkhOutputScript({hash}).script;
 
-            return cbk(null, address === recover);
+            return cbk(null, bufferAsHex(output) === script);
           });
         },
         cbk);
@@ -126,11 +131,13 @@ module.exports = ({ask, lnd, logger, network, recover}, cbk) => {
         'getTransaction',
         ({createRefundAddress, getTransitKey, getTransaction}, cbk) =>
       {
-        const outputScript = toOutputScript(recover, nets[network]);
+        const {script} = outputScriptForAddress({network, address: recover});
 
-        const outputIndex = fromHex(getTransaction).outs.findIndex(out => {
-          return out.script.equals(outputScript);
+        const {outputs} = componentsOfTransaction({
+          transaction: getTransaction,
         });
+
+        const outputIndex = outputs.findIndex(out => out.script === script);
 
         if (outputIndex === notFoundIndex) {
           return cbk([400, 'AddressNotFoundInSuppliedTransaction']);
@@ -139,12 +146,12 @@ module.exports = ({ask, lnd, logger, network, recover}, cbk) => {
         return getTransitRefund({
           lnd,
           network,
-          funded_tokens: fromHex(getTransaction).outs[outputIndex].value,
+          funded_tokens: outputs[outputIndex].tokens,
           refund_address: createRefundAddress.address,
           transit_address: recover,
           transit_key_index: getTransitKey.index,
           transit_public_key: getTransitKey.public_key,
-          transaction_id: fromHex(getTransaction).getId(),
+          transaction_id: idForTransaction({transaction: getTransaction}).id,
           transaction_vout: outputIndex,
         },
         cbk);
@@ -153,7 +160,7 @@ module.exports = ({ask, lnd, logger, network, recover}, cbk) => {
       // Broadcast the recovery transaction
       broadcast: ['recoveryTx', ({recoveryTx}, cbk) => {
         logger.info({
-          recovery_tx_id: fromHex(recoveryTx.refund).getId(),
+          recovery_tx_id: idForTransaction({transaction: recoveryTx.refund}).id,
           recovery_transaction: recoveryTx.refund,
         });
 
