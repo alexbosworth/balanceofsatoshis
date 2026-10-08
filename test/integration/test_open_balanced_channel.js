@@ -1,16 +1,12 @@
 const {deepEqual} = require('node:assert').strict;
 const {equal} = require('node:assert').strict;
-const {exit} = require('node:process');
 const test = require('node:test');
 
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncRetry = require('async/retry');
-const {addPeer} = require('ln-service');
 const {createChainAddress} = require('ln-service');
 const {fundPsbt} = require('ln-service');
-const {getChainBalance} = require('ln-service');
-const {getChainTransactions} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getHeight} = require('ln-service');
 const {getInvoices} = require('ln-service');
@@ -18,19 +14,17 @@ const {getNetworkGraph} = require('ln-service');
 const {getPendingChannels} = require('ln-service');
 const {getUtxos} = require('ln-service');
 const {getWalletInfo} = require('ln-service');
-const {openChannel} = require('ln-service');
-const {removePeer} = require('ln-service');
+const {setupChannel} = require('ln-docker-daemons');
 const {signPsbt} = require('ln-service');
 const {spawnLightningCluster} = require('ln-docker-daemons');
-const {stopDaemon} = require('ln-service');
 
 const {openBalancedChannel} = require('./../../services');
 
 const capacity = 1e6;
 const findAddress = n => n.match(/to\ (.*)\ or/)[1];
 const giveTokens = 1e6 / 2;
-const info = () => {};
 const interval = 10;
+const log = () => {};
 const many = 20000;
 const maturityBlocks = 100;
 const rate = 1;
@@ -40,46 +34,58 @@ const times = 2000;
 const tokens = 500095;
 
 // Opening a balanced channel with a peer should open a balanced channel
-test(`Open balanced channel`, async t => {
-  t.after(() => exit());
-
+test(`Open balanced channel`, async () => {
   const {kill, nodes} = await spawnLightningCluster({size});
 
   const [{generate, lnd}, target] = nodes;
 
+  // Polling in the background stops once the test is finished
+  let isFinished = false;
+
+  const errorFilter = () => !isFinished;
+
   // Do the open balanced channel dance
   try {
-    // Generate some coins for each side
-    await asyncEach([generate, target.generate], async generate => {
-      return await generate({count: maturityBlocks});
-    });
-
     const {address} = await createChainAddress({lnd});
 
     // Create a channel between the two nodes so they can communicate over LN
-    await openChannel({
+    await setupChannel({
+      capacity,
+      generate,
       lnd,
       give_tokens: giveTokens,
-      local_tokens: capacity,
-      partner_public_key: target.id,
-      partner_socket: target.socket,
+      to: target,
     });
 
-    // Make sure the channel is open and the wallet is sync'ed to chain
-    await asyncEach([lnd, target.lnd], async lnd => {
-      await asyncRetry(({interval, times}), async () => {
-        await generate({});
-        await target.generate({});
+    // Mine coins for the target on the same chain node to avoid a chain reorg
+    await generate({
+      address: (await createChainAddress({lnd: target.lnd})).address,
+      count: maturityBlocks,
+    });
 
-        const {channels} = await getChannels({lnd});
+    // Make sure the nodes are synced up with each other before starting
+    await asyncRetry({interval: slow, times}, async () => {
+      const graph = await getNetworkGraph({lnd});
+
+      // Nodes need to see each other in the graph to see TLV support
+      if (graph.nodes.length < [lnd, target].length) {
+        await generate({});
+
+        throw new Error('ExpectedGraphNodes');
+      }
+
+      const controlChain = await getHeight({lnd});
+      const targetChain = await getHeight({lnd: target.lnd});
+
+      if (controlChain.current_block_hash !== targetChain.current_block_hash) {
+        throw new Error('ExpectedSyncChain');
+      }
+
+      // Make sure the channel is active and the wallet is synced to chain
+      await asyncEach([lnd, target.lnd], async lnd => {
+        const {channels} = await getChannels({is_active: true, lnd});
 
         if (!channels.length) {
-          throw new Error('ExpectedChannel');
-        }
-
-        const [channel] = channels;
-
-        if (!channel.is_active) {
           throw new Error('ExpectedActiveChannel');
         }
 
@@ -89,39 +95,10 @@ test(`Open balanced channel`, async t => {
           throw new Error('ExpectedWalletSyncToChain');
         }
       });
-    });
 
-    // Make sure that the nodes see each other in the graph to see TLV support
-    await asyncRetry(({interval, times}), async () => {
-      const graph = await getNetworkGraph({lnd});
-
-      // Force graph resync in case it gets stuck
-      try {
-        await removePeer({lnd, public_key: target.id});
-      } catch (err) {}
-
-      await addPeer({lnd, public_key: target.id, socket: target.socket});
-
-      if (graph.nodes.length < [lnd, target].length) {
-        throw new Error('ExpectedGraphNodes');
-      }
-    });
-
-    // Make sure nodes are on the same chain hash and the channels are active
-    await asyncRetry(({interval, times}), async () => {
-      const controlChain = await getHeight({lnd});
-      const targetChain = await getHeight({lnd: target.lnd});
-
-      if (controlChain.current_block_hash !== targetChain.current_block_hash) {
-        throw new Error('ExpectedSyncChain');
-      }
-
-      await addPeer({lnd, public_key: target.id, socket: target.socket});
-
-      const [channel] = (await getChannels({lnd: target.lnd})).channels;
-
-      if (!channel.is_active) {
-        throw new Error('ExpectedActiveChannelForSetup');
+      // The target needs coins to fund its side of the channel
+      if (!(await getUtxos({lnd: target.lnd})).utxos.length) {
+        throw new Error('ExpectedTargetUtxos');
       }
     });
 
@@ -187,14 +164,14 @@ test(`Open balanced channel`, async t => {
 
             throw new Error('UnknownAskQuery');
           },
-          logger: {info, error: err => { throw err; }},
+          logger: {error: log, info: log},
         });
       },
 
       // Wait for an incoming request on target
       waitForRequest: async () => {
         // The request will appear as a push invoice
-        return await asyncRetry(({interval, times}), async () => {
+        return await asyncRetry({errorFilter, interval, times}, async () => {
           const {invoices} = await getInvoices({lnd: target.lnd});
 
           if (!invoices.length) {
@@ -241,13 +218,18 @@ test(`Open balanced channel`, async t => {
 
             throw new Error('UnknownAskQuery');
           },
-          logger: {info, error: err => { throw err; }},
+          logger: {error: log, info: log},
         });
       }],
 
       // Drive the chain forward so that the channel confirms
       waitForChannel: ['waitForRequest', async () => {
-        return await asyncRetry(({interval: slow, times: many}), async () => {
+        return await asyncRetry({
+          errorFilter,
+          interval: slow,
+          times: many,
+        },
+        async () => {
           const {channels} = await getChannels({lnd});
           const opening = (await getPendingChannels({lnd})).pending_channels;
 
@@ -276,6 +258,8 @@ test(`Open balanced channel`, async t => {
   } catch (err) {
     equal(err, null, 'Expected no error opening a balanced channel');
   } finally {
+    isFinished = true;
+
     await kill({});
   }
 
