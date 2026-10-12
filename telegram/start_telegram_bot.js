@@ -622,6 +622,7 @@ module.exports = (args, cbk) => {
                 is_breach_close: update.is_breach_close,
                 is_cooperative_close: update.is_cooperative_close,
                 is_local_force_close: update.is_local_force_close,
+                is_partner_closed: update.is_partner_closed,
                 is_remote_force_close: update.is_remote_force_close,
                 partner_public_key: update.partner_public_key,
                 send: (id, msg, opt) => args.bot.api.sendMessage(id, msg, opt),

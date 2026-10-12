@@ -1,5 +1,9 @@
 # Versions
 
+## 25.2.0
+
+- `telegram`: Indicate when a cooperative close was initiated by the peer
+
 ## 25.1.0
 
 - `pay`, `probe`: Add support for sending to BOLT 12 offers
