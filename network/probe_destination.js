@@ -38,11 +38,14 @@ const fromKeyType = '34349339';
 const htlcOutputSize = 43;
 const {isArray} = Array;
 const isBlindedHop = hop => !!hop.encrypted_data && !hop.path_key;
+const isMppRequired = features => features.some(n => n.bit === mppRequiredBit);
+const isPast = date => new Date(date).getTime() <= now();
 const keySendPreimageType = '5482373484';
 const makeNonce = () => randomBytes(32).toString('hex');
 const {max} = Math;
 const messageType = '34349334';
 const {min} = Math;
+const mppRequiredBit = 16;
 const mtokensAsTokens = mtokens => Number(BigInt(mtokens) / BigInt(1e3));
 const nodeKeyFamily = 6;
 const preimageByteLength = 32;
@@ -66,6 +69,28 @@ const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
       [to_public_key]: <Avoid Routing To Node With Public Key Hex String>
     }]
     [in_through]: <Pay In Through Public Key Hex String>
+    [invoice]: {
+      [description]: <Invoice Description String>
+      expires_at: <Invoice Expires At ISO 8601 Date String>
+      [features]: [{
+        bit: <BOLT 09 Feature Bit Number>
+      }]
+      id: <Payment Hash Hex String>
+      mtokens: <Invoice Amount Millitokens String>
+      paths: [{
+        base_fee_mtokens: <Accumulated Base Fee Millitokens String>
+        cltv_delta: <Accumulated CLTV Expiry Delta Number>
+        fee_rate: <Accumulated Fee Rate Millitokens Per Million Number>
+        hops: [{
+          encrypted_data: <Encrypted Recipient Data Hex String>
+          relay_key: <Blinded Relaying Node Public Key Hex String>
+        }]
+        introduction_node: <Introduction Node Public Key Hex String>
+        key: <First Hop Path Key Public Key Hex String>
+        max_htlc_mtokens: <Maximum HTLC Millitokens String>
+        min_htlc_mtokens: <Minimum HTLC Millitokens String>
+      }]
+    }
     [is_omitting_message_from]: <Omit Message From Fields Bool>
     [is_push]: <Is Push Payment Bool>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
@@ -122,6 +147,25 @@ module.exports = (args, cbk) => {
           return cbk([501, 'FindMaxNotSupportedWithMultipleOutThroughPeers']);
         }
 
+        if (!!args.invoice && !isArray(args.invoice.paths)) {
+          return cbk([400, 'ExpectedArrayOfPaymentPathsToPayInvoice']);
+        }
+
+        // An invoice is paid over its blinded payment paths
+        if (!!args.invoice && !args.invoice.paths.length) {
+          return cbk([400, 'ExpectedPaymentPathsToPayInvoice']);
+        }
+
+        // An invoice is paid the amount that it is for
+        if (!!args.invoice && !!args.tokens) {
+          return cbk([400, 'UnexpectedTokensToPayInvoice']);
+        }
+
+        // An invoice that requires multiple parts can't be paid over one path
+        if (!!args.invoice && isMppRequired(args.invoice.features || [])) {
+          return cbk([501, 'RequiredMultiPathNotSupportedWithBlindedPaths']);
+        }
+
         return cbk();
       },
 
@@ -160,6 +204,31 @@ module.exports = (args, cbk) => {
             destination: args.destination,
             id: createHash('sha256').update(secret).digest().toString('hex'),
             mtokens: !args.tokens ? '0': tokAsMtok(args.tokens),
+          });
+        }
+
+        // Exit early when paying an invoice over its payment paths
+        if (!!args.invoice) {
+          const {invoice} = args;
+
+          if (isPast(invoice.expires_at)) {
+            return cbk([400, 'InvoiceIsExpired']);
+          }
+
+          // The destination of an invoice is hidden behind its payment paths
+          args.logger.info({
+            description: invoice.description || undefined,
+            destination: blinded,
+            expires: moment(invoice.expires_at).fromNow(),
+            id: invoice.id,
+            tokens: mtokensAsTokens(invoice.mtokens),
+          });
+
+          return cbk(null, {
+            id: invoice.id,
+            mtokens: invoice.mtokens,
+            paths: invoice.paths,
+            tokens: mtokensAsTokens(invoice.mtokens),
           });
         }
 
@@ -286,6 +355,11 @@ module.exports = (args, cbk) => {
       {
         // Exit early when features are specified or known already
         if (!!to.features || !!(getDestinationNode.features || []).length) {
+          return cbk();
+        }
+
+        // Exit early when the destination is hidden behind blinded paths
+        if (!!to.paths) {
           return cbk();
         }
 
@@ -466,21 +540,41 @@ module.exports = (args, cbk) => {
       {
         // Exit early when the path is found to a blinded path introduction node
         if (!!to.paths) {
-          const [node] = getIntroductionNodes;
-          const isSingle = getIntroductionNodes.length === [node].length;
+          const ownKey = getIdentity.public_key;
+
+          const isOwn = path => path.introduction_node === ownKey;
+
+          // A path that starts at this node is entered from this node, and the
+          // fee of its own hop is not paid, so no path fee is shown for it
+          if (to.paths.some(isOwn)) {
+            args.logger.info({blinded_path_starts_at_this_node: true});
+          }
+
+          // Other paths are probed through a route to their introduction node
+          const others = to.paths
+            .map((path, i) => ({path, node: getIntroductionNodes[i]}))
+            .filter(n => !isOwn(n.path));
+
+          // Exit early when every path starts at this node
+          if (!others.length) {
+            return cbk();
+          }
+
+          const nodes = others.map(n => n.node);
+
+          const [node] = nodes;
+          const isSingle = nodes.length === [node].length;
 
           // The probe amount is what the paths must deliver to the destination
           const mtokens = !BigInt(to.mtokens) ? tokAsMtok(defaultTokens) :
             to.mtokens;
 
           // The fee of a blinded path is what relaying through it costs
-          const fees = to.paths.map(path => {
+          const fees = others.map(({path}) => {
             return mtokensAsTokens(blindedPathFee({mtokens, path}).fee_mtokens);
           });
 
           const [fee] = fees;
-
-          const nodes = getIntroductionNodes;
 
           // A request may have a single path or multiple paths to choose from
           args.logger.info({

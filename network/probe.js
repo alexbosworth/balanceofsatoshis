@@ -5,6 +5,7 @@ const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
+const {getOfferInvoice} = require('paid-services');
 const {getSyntheticOutIgnores} = require('probing');
 const {getWalletVersion} = require('ln-service');
 const {parseAmount} = require('ln-accounting');
@@ -25,13 +26,19 @@ const defaultMaxPaths = 5;
 const effectiveFeeRate = (n, m) => Number(BigInt(1e6) * BigInt(n) / BigInt(m));
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
+const isOffer = n => !!n && /^lno1/i.test(n);
+const isPositive = n => isSafeInteger(n) && n > 0;
+const {isSafeInteger} = Number;
 const pathTimeoutMs = 1000 * 60 * 90;
 const singlePath = 1;
+const tokensAsMtokens = tokens => (BigInt(tokens) * BigInt(1e3)).toString();
 const uniq = arr => Array.from(new Set(arr));
 const unsupported = 501;
 const withTotalFee = ({fee, ...res}) => ({total_fee: fee, ...res});
 
 /** Probe a destination, looking for multiple non-overlapping paths
+
+  An offer is probed with an invoice that is requested from the offer
 
   {
     avoid: [<Avoid Forwarding Through String>]
@@ -48,7 +55,7 @@ const withTotalFee = ({fee, ...res}) => ({total_fee: fee, ...res});
     [max_paths]: <Maximum Probe Paths Number>
     out: [<Out Through Peer With Public Key, Alias, or Tag String>]
     [out_filters]: [<Out Through Peer Filter Formula String>]
-    [request]: <BOLT 11 Encoded Payment Request String>
+    [request]: <BOLT 11 Encoded Payment Request or BOLT 12 Offer String>
     [timeout_minutes]: <Stop Searching For Routes After N Minutes Number>
     [tokens]: <Tokens Amount String>
   }
@@ -88,7 +95,14 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedArrayOfOutPeersToStartProbe']);
         }
 
-        if (!!args.request) {
+        const isMultiPath = !!args.find_max || args.max_paths !== singlePath;
+
+        // An offer is paid over blinded paths, which are probed on one path
+        if (isOffer(args.request) && isMultiPath) {
+          return cbk([501, 'MultiPathProbeNotSupportedWithBlindedPaths']);
+        }
+
+        if (!!args.request && !isOffer(args.request)) {
           try {
             parsePaymentRequest({request: args.request});
           } catch (err) {
@@ -101,8 +115,8 @@ module.exports = (args, cbk) => {
 
       // Decode payment request
       decodeRequest: ['validate', ({}, cbk) => {
-        // Exit early when there is no request to decode
-        if (!args.request) {
+        // Exit early when there is no payment request to decode
+        if (!args.request || isOffer(args.request)) {
           return cbk(null, {});
         }
 
@@ -190,10 +204,19 @@ module.exports = (args, cbk) => {
         }
 
         try {
-          return cbk(null, parseAmount({amount: args.tokens}).tokens);
+          parseAmount({amount: args.tokens});
         } catch (err) {
           return cbk([400, err.message]);
         }
+
+        const {tokens} = parseAmount({amount: args.tokens});
+
+        // The amount for an offer is in its invoice, so it is a whole amount
+        if (isOffer(args.request) && !isPositive(tokens)) {
+          return cbk([400, 'ExpectedPositiveAmountToProbeOffer']);
+        }
+
+        return cbk(null, tokens);
       }],
 
       // Get base ignores
@@ -248,30 +271,57 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
-      // Probe just through a single path
-      singleProbe: [
+      // Get an invoice to probe for an offer
+      getOfferInvoice: [
         'getBaseIgnores',
         'getOuts',
         'tokens',
-        ({getBaseIgnores, getOuts, tokens}, cbk) =>
+        ({tokens}, cbk) =>
+      {
+        // Exit early when not probing an offer
+        if (!isOffer(args.request)) {
+          return cbk();
+        }
+
+        args.logger.info({requesting_invoice_for_offer: true});
+
+        return getOfferInvoice({
+          lnd: args.lnd,
+          mtokens: !tokens ? undefined : tokensAsMtokens(tokens),
+          offer: args.request,
+        },
+        cbk);
+      }],
+
+      // Probe just through a single path
+      singleProbe: [
+        'getBaseIgnores',
+        'getOfferInvoice',
+        'getOuts',
+        'tokens',
+        ({getBaseIgnores, getOfferInvoice, getOuts, tokens}, cbk) =>
       {
         // Exit early when not finding max
         if (!!args.find_max || args.max_paths !== singlePath) {
           return cbk();
         }
 
+        // An offer is probed with its invoice, which is for the amount
+        const isInvoice = !!getOfferInvoice;
+
         return probeDestination({
-          tokens,
           destination: args.destination,
           fs: args.fs,
           ignore: getBaseIgnores.ignore,
           in_through: args.in_through,
+          invoice: getOfferInvoice,
           is_strict_max_fee: args.is_strict_max_fee,
           lnd: args.lnd,
           logger: args.logger,
           max_fee: args.max_fee,
           out_through: getOuts.public_keys,
-          request: args.request,
+          request: isInvoice ? undefined : args.request,
+          tokens: isInvoice ? undefined : tokens,
         },
         cbk);
       }],
@@ -279,6 +329,11 @@ module.exports = (args, cbk) => {
       // Get probe destination name
       getDestination: ['decodeRequest', ({decodeRequest}, cbk) => {
         const publicKey = decodeRequest.destination || args.destination;
+
+        // Exit early when there is no destination, like for an offer
+        if (!publicKey) {
+          return cbk();
+        }
 
         return getNode({
           is_omitting_channels: true,

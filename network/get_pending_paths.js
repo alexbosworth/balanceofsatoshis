@@ -29,20 +29,20 @@ const notFound = 404;
     }]
   }
 */
-module.exports = ({id, lnd, timeout_ms}, cbk) => {
+module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!isHash(id)) {
+        if (!isHash(args.id)) {
           return cbk([400, 'ExpectedPaymentHashToGetPendingPaths']);
         }
 
-        if (!lnd) {
+        if (!args.lnd) {
           return cbk([400, 'ExpectedAuthenticatedLndToGetPendingPaths']);
         }
 
-        if (!timeout_ms) {
+        if (!args.timeout_ms) {
           return cbk([400, 'ExpectedTimeoutMillisecondsToGetPendingPaths']);
         }
 
@@ -51,7 +51,7 @@ module.exports = ({id, lnd, timeout_ms}, cbk) => {
 
       // Subscribe to the payment to get its current state
       getPaths: ['validate', ({}, cbk) => {
-        const sub = subscribeToPastPayment({id, lnd});
+        const sub = subscribeToPastPayment({id: args.id, lnd: args.lnd});
 
         // Removing the listeners cancels the subscription to the payment
         const finished = (err, res) => {
@@ -63,9 +63,9 @@ module.exports = ({id, lnd, timeout_ms}, cbk) => {
         };
 
         // Payments that are not in flight have no pending paths
-        const noPaths = () => finished(null, {id, paths: []});
+        const noPaths = () => finished(null, {id: args.id, paths: []});
 
-        const timeout = setTimeout(noPaths, timeout_ms);
+        const timeout = setTimeout(noPaths, args.timeout_ms);
 
         sub.once('confirmed', noPaths);
         sub.once('end', noPaths);
@@ -82,8 +82,8 @@ module.exports = ({id, lnd, timeout_ms}, cbk) => {
 
         sub.once('paying', pending => {
           return finished(null, {
-            id,
             created_at: pending.created_at,
+            id: args.id,
             paths: pending.paths,
           });
         });

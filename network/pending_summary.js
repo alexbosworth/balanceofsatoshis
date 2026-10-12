@@ -64,10 +64,15 @@ const shortKey = key => key.substring(0, 8);
     summary: <Pending Items Summary String>
   }
 */
-module.exports = ({is_monochrome, max_relays, nodes, tagged}) => {
+module.exports = args => {
   // Zero or absent tokens have no amount to display
   const amount = tokens => {
-    return formatTokens({is_monochrome, tokens}).display.trim();
+    const {display} = formatTokens({
+      tokens,
+      is_monochrome: args.is_monochrome,
+    });
+
+    return display.trim();
   };
 
   // Paths may collapse their relaying peers to keep the path short
@@ -79,15 +84,15 @@ module.exports = ({is_monochrome, max_relays, nodes, tagged}) => {
     const relays = reversedRelays.reverse();
 
     // Exit early when there is no limit or the relays are within the limit
-    if (max_relays === undefined || !others.length) {
+    if (args.max_relays === undefined || !others.length) {
       return joinPath(hops);
     }
 
-    if (relays.length <= max_relays) {
+    if (relays.length <= args.max_relays) {
       return joinPath(hops);
     }
 
-    const shown = relays.slice(Number(), max_relays);
+    const shown = relays.slice(Number(), args.max_relays);
 
     const hidden = [moreHops(relays.length - shown.length)];
 
@@ -102,14 +107,14 @@ module.exports = ({is_monochrome, max_relays, nodes, tagged}) => {
   // Other nodes are named with their tag icons and no emojis of their own
   const peer = (alias, key) => {
     const regularAlias = (alias || String()).replace(isEmoji, String()).trim();
-    const tags = (tagged || []).find(n => n.public_key === key);
+    const tags = (args.tagged || []).find(n => n.public_key === key);
 
     const icons = !tags ? [] : tags.icons;
 
     return [].concat(icons).concat(named(regularAlias, key)).join(' ');
   };
 
-  const sections = nodes.map(node => {
+  const sections = args.nodes.map(node => {
     // Channels that are waiting for their funding transaction to confirm
     const opening = node.opening.map(channel => {
       const direction = !channel.is_partner_initiated ? 'outbound' : 'inbound';
@@ -188,14 +193,14 @@ module.exports = ({is_monochrome, max_relays, nodes, tagged}) => {
   }
 
   // Exit early when there is a single node, there is no need for a title
-  if (nodes.length === [nodes].length) {
+  if (args.nodes.length === [args.nodes].length) {
     const [node] = pending;
 
     return {summary: joinLines(node.lines)};
   }
 
   const titled = pending.map(node => {
-    const title = !!is_monochrome ? node.title : bold(node.title);
+    const title = !!args.is_monochrome ? node.title : bold(node.title);
 
     return joinLines([title].concat(node.lines));
   });

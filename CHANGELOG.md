@@ -1,5 +1,10 @@
 # Versions
 
+## 25.1.0
+
+- `pay`, `probe`: Add support for sending to BOLT 12 offers
+- `server`: Add new command to run a BOLT 12 service to receive funds
+
 ## 25.0.0
 
 - `pending`: Add command to show pending channels and in-flight HTLCs

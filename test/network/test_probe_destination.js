@@ -68,6 +68,15 @@ const {request} = (() => {
   return createSignedRequest({hrp, tags});
 })();
 
+// An invoice for an offer from Dave, to be paid over the blinded path
+const invoice = {
+  id,
+  description: 'offer',
+  expires_at: expiresAt,
+  mtokens: (tokens * 1e3).toString(),
+  paths: [path],
+};
+
 // The path fee for the amount: 2001 base plus 201 ppm of 1000000 mtokens
 const pathFeeMtokens = BigInt(path.base_fee_mtokens) +
   BigInt(path.fee_rate) * BigInt(tokens * 1e3) / BigInt(1e6);
@@ -106,6 +115,17 @@ const decodedLog = {
   },
 };
 
+// The log for the invoice, which is described by its offer
+const invoiceLog = {
+  info: {
+    id,
+    tokens,
+    description: 'offer',
+    destination: 'blinded',
+    expires: moment(expiresAt).fromNow(),
+  },
+};
+
 const checkingLog = {
   info: {
     blinded_path_fee: pathFee,
@@ -123,6 +143,9 @@ const evaluatingLog = {
 };
 
 const payingLog = {info: {paying: ['0x0x1', 'blinded', 'blinded']}};
+
+// The log for a path that starts at this node, entered from this node
+const ownPathLog = {info: {blinded_path_starts_at_this_node: true}};
 
 // A probe route goes to the introduction node and carries the path fee
 const probeRoute = {
@@ -355,6 +378,82 @@ const tests = [
     },
     logs: [decodedLog, checkingLog, payingLog, evaluatingLog],
     sent: [probeRoute, paymentRoute],
+  },
+  {
+    args: makeArgs({
+      invoice: {...invoice, paths: undefined},
+      request: undefined,
+    }),
+    description: 'An invoice has an array of payment paths',
+    error: [400, 'ExpectedArrayOfPaymentPathsToPayInvoice'],
+  },
+  {
+    args: makeArgs({invoice: {...invoice, paths: []}, request: undefined}),
+    description: 'An invoice is paid over its payment paths',
+    error: [400, 'ExpectedPaymentPathsToPayInvoice'],
+  },
+  {
+    args: makeArgs({invoice, tokens, request: undefined}),
+    description: 'An invoice is paid the amount that it is for',
+    error: [400, 'UnexpectedTokensToPayInvoice'],
+  },
+  {
+    args: makeArgs({
+      invoice: {...invoice, features: [{bit: 16, is_required: true}]},
+      request: undefined,
+    }),
+    description: 'An invoice that requires multiple parts is not paid',
+    error: [501, 'RequiredMultiPathNotSupportedWithBlindedPaths'],
+  },
+  {
+    args: makeArgs({
+      invoice: {...invoice, expires_at: '2020-01-01T00:00:00.000Z'},
+      request: undefined,
+    }),
+    description: 'An expired invoice is not paid',
+    error: [400, 'InvoiceIsExpired'],
+  },
+  {
+    args: makeArgs({invoice, request: undefined}),
+    description: 'An invoice is probed to the introduction node of its path',
+    expected: reached,
+    logs: [invoiceLog, checkingLog, evaluatingLog],
+    sent: [probeRoute],
+  },
+  {
+    args: makeArgs({
+      invoice: {...invoice, features: [{bit: 17, is_required: false}]},
+      request: undefined,
+    }),
+    description: 'An invoice that allows multiple parts is paid in one part',
+    expected: reached,
+    logs: [invoiceLog, checkingLog, evaluatingLog],
+    sent: [probeRoute],
+  },
+  {
+    args: makeArgs({invoice, is_real_payment: true, request: undefined}),
+    description: 'An invoice is paid along the route into its path',
+    expected: {
+      ...reached,
+      id,
+      paid: tokens + pathFee,
+      preimage: secret.toString('hex'),
+      probed: undefined,
+    },
+    logs: [invoiceLog, checkingLog, payingLog, evaluatingLog],
+    sent: [probeRoute, paymentRoute],
+  },
+  {
+    args: makeArgs({
+      invoice: {
+        ...invoice,
+        paths: [{...path, introduction_node: getInfoResponse.identity_pubkey}],
+      },
+      request: undefined,
+    }),
+    description: 'A path that starts at this node has no path fee shown',
+    error: [400, 'ExpectedAuthenticatedLndToComputeSharedSecret'],
+    logs: [invoiceLog, ownPathLog],
   },
   {
     args: makeOutArgs({}),

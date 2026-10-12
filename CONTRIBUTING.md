@@ -13,6 +13,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 
 - Arguments to methods are snake_case
 - Regular variables are camelCase
+- Don't destructure snake_case arguments, read them from args: `args.max_fee`
 - Returned attributes are snake_case
 - A single line should contain max 80 characters including the newline
 - If a top level scalar would go over 80 characters in a line, that's ok

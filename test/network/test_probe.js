@@ -2,6 +2,7 @@ const {deepEqual} = require('node:assert').strict;
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
+const {createOffer} = require('invoices');
 const {createSignedRequest} = require('ln-service');
 const {createUnsignedRequest} = require('ln-service');
 const {paymentPathFromChannels} = require('bolt04');
@@ -10,6 +11,7 @@ const {probe} = require('./../../network');
 const {getInfoResponse} = require('./../fixtures');
 const {getNodeInfoResponse} = require('./../fixtures');
 const {listChannelsResponse} = require('./../fixtures');
+const {listPeersResponse} = require('./../fixtures');
 const {versionInfoResponse} = require('./../fixtures');
 
 const alice = Buffer.alloc(33, 2).toString('hex');
@@ -18,6 +20,7 @@ const bob = '0324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d23' +
 const carol = Buffer.alloc(33, 4).toString('hex');
 const dave = '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e6' +
   '68680991';
+const nodeKeyFamily = 6;
 
 const policy = key => ({
   base_fee_mtokens: '1000',
@@ -53,6 +56,24 @@ const {request} = (() => {
 
   return createSignedRequest({hrp, tags});
 })();
+
+// Make an offer from Dave, requests for it go over the path
+const makeOffer = ({amount, currency, network}) => {
+  const {offer} = createOffer({
+    amount,
+    currency,
+    description: 'offer',
+    issuer_id: dave,
+    networks: [network],
+    paths: [{
+      hops: path.hops,
+      introduction_node: path.introduction_node,
+      key: path.key,
+    }],
+  });
+
+  return offer;
+};
 
 // A route from the payer to Bob, the introduction node, delivering path fees
 const introductionRoute = {
@@ -109,6 +130,7 @@ const makeLnd = ({}) => {
           remote_pubkey: key,
         })),
       }),
+      listPeers: ({}, cbk) => cbk(null, listPeersResponse),
       queryRoutes: ({outgoing_chan_ids, pub_key}, cbk) => {
         // Only the introduction node is routable
         if (pub_key !== bob) {
@@ -142,6 +164,23 @@ const makeLnd = ({}) => {
       },
     },
     version: {getVersion: ({}, cbk) => cbk(null, versionInfoResponse)},
+    wallet: {
+      // The node identity is the key in the node info, other keys are Bob's
+      deriveKey: (args, cbk) => {
+        const isNodeKey = args.key_family === nodeKeyFamily;
+
+        const key = isNodeKey ? getInfoResponse.identity_pubkey : bob;
+
+        return cbk(null, {
+          key_loc: {key_index: 1},
+          raw_key_bytes: Buffer.from(key, 'hex'),
+        });
+      },
+      deriveNextKey: ({}, cbk) => cbk(null, {
+        key_loc: {key_index: 1},
+        raw_key_bytes: Buffer.from(bob, 'hex'),
+      }),
+    },
   };
 };
 
@@ -189,6 +228,42 @@ const tests = [
     args: makeArgs({max_paths: 2}),
     description: 'Multi-path probes are not supported to blinded paths',
     error: [501, 'MultiPathProbeNotSupportedWithBlindedPaths'],
+  },
+  {
+    args: makeArgs({
+      find_max: 16777215,
+      request: makeOffer({network: 'bitcoin'}),
+    }),
+    description: 'Finding the maximum is not supported to offers',
+    error: [501, 'MultiPathProbeNotSupportedWithBlindedPaths'],
+  },
+  {
+    args: makeArgs({max_paths: 2, request: makeOffer({network: 'bitcoin'})}),
+    description: 'Multi-path probes are not supported to offers',
+    error: [501, 'MultiPathProbeNotSupportedWithBlindedPaths'],
+  },
+  {
+    args: makeArgs({request: makeOffer({network: 'bitcoin'}), tokens: '0'}),
+    description: 'An offer is probed with a positive amount',
+    error: [400, 'ExpectedPositiveAmountToProbeOffer'],
+  },
+  {
+    args: makeArgs({request: makeOffer({network: 'bitcoin'})}),
+    description: 'An offer without an amount is probed with the given amount',
+    error: [400, 'ExpectedMillitokensToPayOfferWithoutAmount'],
+  },
+  {
+    args: makeArgs({
+      request: makeOffer({amount: '100', currency: 'USD', network: 'bitcoin'}),
+      tokens: '1000',
+    }),
+    description: 'An offer with an amount in a currency is not probed',
+    error: [400, 'UnsupportedCurrencyAmountInOfferToPay'],
+  },
+  {
+    args: makeArgs({request: makeOffer({network: 'testnet'}), tokens: '1'}),
+    description: 'An invoice is requested from an offer to probe',
+    error: [400, 'ExpectedOfferForNetworkToPay'],
   },
   {
     args: makeArgs({}),

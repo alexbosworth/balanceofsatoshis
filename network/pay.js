@@ -3,7 +3,9 @@ const asyncMap = require('async/map');
 const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
 const {getIdentity} = require('ln-service');
+const {getOfferInvoice} = require('paid-services');
 const {getSyntheticOutIgnores} = require('probing');
+const {parseAmount} = require('ln-accounting');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 const {subscribeToMultiPathPay} = require('probing');
@@ -18,12 +20,19 @@ const probeDestination = require('./probe_destination');
 
 const cltvDeltaBuffer = 3;
 const {isArray} = Array;
+const isOffer = n => !!n && /^lno1/i.test(n);
+const isPositive = n => isSafeInteger(n) && n > 0;
+const {isSafeInteger} = Number;
 const mtokensAsTokens = mtokens => Number(mtokens / BigInt(1e3));
 const pathTimeoutMs = 1000 * 60 * 5;
 const singlePath = 1;
+const tokensAsMtokens = tokens => (BigInt(tokens) * BigInt(1e3)).toString();
 const withTotalFee = ({fee, ...res}) => ({total_fee: fee, ...res});
 
 /** Make a payment
+
+  An offer is paid with an invoice that is requested from the offer, and a
+  message is sent as the payer note of the invoice request
 
   {
     avoid: [<Avoid Forwarding Through String>]
@@ -36,10 +45,11 @@ const withTotalFee = ({fee, ...res}) => ({total_fee: fee, ...res});
     logger: <Winston Logger Object>
     max_fee: <Max Fee Tokens Number>
     max_paths: <Maximum Paths Number>
-    [message]: <Message String>
+    [message]: <Message or Offer Payer Note String>
     out: [<Out Through Peer With Public Key, Alias, or Tag String>]
     [out_filters]: [<Out Through Peer Filter Formula String>]
-    request: <BOLT 11 Payment Request String>
+    request: <BOLT 11 Payment Request or BOLT 12 Offer String>
+    [tokens]: <Amount To Pay An Offer String>
   }
 */
 module.exports = (args, cbk) => {
@@ -73,6 +83,21 @@ module.exports = (args, cbk) => {
 
         if (!args.request) {
           return cbk([400, 'ExpectedBolt11PaymentRequestToPayPaymentRequest']);
+        }
+
+        // Exit early when paying an offer, which is checked getting an invoice
+        if (isOffer(args.request)) {
+          // An offer is paid over blinded paths, so a single path is used
+          if (args.max_paths !== singlePath) {
+            return cbk([501, 'MultiPathPayNotSupportedWithBlindedPaths']);
+          }
+
+          return cbk();
+        }
+
+        // A payment request has its amount, an amount is only for an offer
+        if (!!args.tokens) {
+          return cbk([400, 'UnexpectedAmountToPayPaymentRequest']);
         }
 
         try {
@@ -133,6 +158,28 @@ module.exports = (args, cbk) => {
         return getTags({fs: args.fs}, cbk);
       }],
 
+      // Parse the amount to pay an offer
+      tokens: ['validate', ({}, cbk) => {
+        // Exit early when there is no amount to pay
+        if (!args.tokens) {
+          return cbk();
+        }
+
+        try {
+          parseAmount({amount: args.tokens});
+        } catch (err) {
+          return cbk([400, err.message]);
+        }
+
+        const {tokens} = parseAmount({amount: args.tokens});
+
+        if (!isPositive(tokens)) {
+          return cbk([400, 'ExpectedPositiveAmountToPayOffer']);
+        }
+
+        return cbk(null, tokens);
+      }],
+
       // Get base ignores
       getBaseIgnores: [
         'getChannels',
@@ -185,29 +232,57 @@ module.exports = (args, cbk) => {
         cbk);
       }],
 
+      // Get an invoice to pay for an offer
+      getOfferInvoice: [
+        'getBaseIgnores',
+        'getOuts',
+        'tokens',
+        ({tokens}, cbk) =>
+      {
+        // Exit early when paying a payment request
+        if (!isOffer(args.request)) {
+          return cbk();
+        }
+
+        args.logger.info({requesting_invoice_for_offer: true});
+
+        return getOfferInvoice({
+          lnd: args.lnd,
+          mtokens: !tokens ? undefined : tokensAsMtokens(tokens),
+          offer: args.request,
+          payer_note: args.message,
+        },
+        cbk);
+      }],
+
       // Make single-path payment
       singlePathPay: [
         'getBaseIgnores',
+        'getOfferInvoice',
         'getOuts',
-        ({getBaseIgnores, getOuts}, cbk) =>
+        ({getBaseIgnores, getOfferInvoice, getOuts}, cbk) =>
       {
         // Exit early when doing a multi-path
         if (args.max_paths !== singlePath) {
           return cbk();
         }
 
+        // An offer is paid with its invoice, which has the message as a note
+        const isInvoice = !!getOfferInvoice;
+
         return probeDestination({
           fs: args.fs,
           ignore: getBaseIgnores.ignore,
           in_through: args.in_through,
+          invoice: getOfferInvoice,
           is_real_payment: true,
           is_strict_max_fee: args.is_strict_max_fee,
           logger: args.logger,
           lnd: args.lnd,
           max_fee: args.max_fee,
-          message: args.message,
+          message: isInvoice ? undefined : args.message,
           out_through: getOuts.public_keys,
-          request: args.request,
+          request: isInvoice ? undefined : args.request,
         },
         cbk);
       }],
@@ -401,9 +476,10 @@ module.exports = (args, cbk) => {
 
       // Final payment details
       payment: [
+        'getOfferInvoice',
         'multiPathPay',
         'singlePathPay',
-        ({multiPathPay, singlePathPay}, cbk) =>
+        ({getOfferInvoice, multiPathPay, singlePathPay}, cbk) =>
       {
         const payment = singlePathPay || multiPathPay;
 
@@ -413,7 +489,19 @@ module.exports = (args, cbk) => {
         }
 
         // The fee of a blinded path payment is a total including the path fee
-        return cbk(null, withTotalFee(payment));
+        const paid = withTotalFee(payment);
+
+        // Exit early when the payment was not for an offer
+        if (!getOfferInvoice) {
+          return cbk(null, paid);
+        }
+
+        // The invoice and payer key of a paid offer are kept to prove payment
+        return cbk(null, {
+          ...paid,
+          invoice: getOfferInvoice.invoice,
+          payer_key_index: getOfferInvoice.payer_key_index,
+        });
       }],
     },
     returnResult({reject, resolve, of: 'payment'}, cbk));

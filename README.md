@@ -141,8 +141,8 @@ bos open-balanced-channel
 # Outputs the sum total of local channel liquidity
 bos outbound-liquidity
 
-# Pay a payment request (invoice), probing first
-bos pay "payment_request"
+# Pay a payment request (invoice) or offer, probing first
+bos pay "payment_request/offer"
 
 # Show channel-connected peers
 bos peers
@@ -151,7 +151,7 @@ bos peers
 bos pending
 
 # Test if funds can be sent to a destination
-bos probe "payment_request/public_key"
+bos probe "payment_request/offer/public_key"
 
 # Rebalance funds between peers
 bos rebalance
@@ -164,6 +164,9 @@ bos report
 
 # Send funds using keysend and an optional message to a node
 bos send
+
+# Run a server of paid services
+bos server
 
 # Connect up to a Telegram bot
 bos telegram
