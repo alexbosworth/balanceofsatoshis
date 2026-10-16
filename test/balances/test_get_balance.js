@@ -48,6 +48,31 @@ const tests = [
     description: 'Get balances confirmed',
     expected: {balance: 4, channel_balance: 2},
   },
+  {
+    args: {is_onchain_only: true, lnd: makeLnd({})},
+    description: 'Get balances onchain',
+    expected: {balance: 2, channel_balance: 2},
+  },
+  {
+    args: {is_confirmed: true, lnd: makeLnd({})},
+    description: 'Get only confirmed balances',
+    expected: {balance: 3, channel_balance: 2},
+  },
+  {
+    args: {is_confirmed: true, is_onchain_only: true, lnd: makeLnd({})},
+    description: 'Get only confirmed onchain balances',
+    expected: {balance: 1, channel_balance: 2},
+  },
+  {
+    args: {above: 1, lnd: makeLnd({})},
+    description: 'Get balance above an amount',
+    expected: {balance: 4, channel_balance: 2},
+  },
+  {
+    args: {below: 10, lnd: makeLnd({})},
+    description: 'Get balance below an amount',
+    expected: {balance: 5, channel_balance: 2},
+  },
 ];
 
 tests.forEach(({args, description, error, expected}) => {

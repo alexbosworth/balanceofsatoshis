@@ -1,6 +1,6 @@
 # Versions
 
-## 25.2.2
+## 25.2.3
 
 - `telegram`: Indicate when a cooperative close was initiated by the peer
 

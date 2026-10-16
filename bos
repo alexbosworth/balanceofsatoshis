@@ -995,7 +995,6 @@ prog
           is_top: options.top || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           max_fee_rate: options.maxFeeRate || undefined,
-          request: commands.simpleRequest,
           with: options.with,
         },
         responses.returnNumber({logger, reject, resolve, number: 'balance'}));

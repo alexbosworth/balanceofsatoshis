@@ -1,18 +1,11 @@
 const asyncAuto = require('async/auto');
-const {getChannels} = require('ln-service');
 const {getLiquidity} = require('ln-sync');
-const {getNode} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const balanceFromTokens = require('./balance_from_tokens');
 const {getTags} = require('./../tags');
 
-const {round} = Math;
-const topPercentile = 0.9;
-
 /** Get the channel available liquidity
-
-  A request function is required when min_node_score is specified
 
   {
     [above]: <Tokens Above Tokens Number>
@@ -24,7 +17,6 @@ const topPercentile = 0.9;
     [is_top]: <Return Top Liquidity Bool>
     lnd: <Authenticated LND API Object>
     [max_fee_rate]: <Max Inbound Fee Rate Parts Per Million Number>
-    [request]: <Request Function>
     [with]: <Liquidity With Public Key Hex or Tag Alias or Id String>
   }
 
@@ -48,10 +40,6 @@ module.exports = (args, cbk) => {
 
         if (!args.lnd) {
           return cbk([400, 'ExpectedLndToGetLiquidity']);
-        }
-
-        if (!!args.min_node_score && !args.request) {
-          return cbk([400, 'ExpectedRequestFunctionToFilterByNodeScore']);
         }
 
         return cbk();
@@ -107,7 +95,7 @@ module.exports = (args, cbk) => {
           is_outbound: args.is_outbound,
           is_top: args.is_top,
           lnd: args.lnd,
-          request: args.request,
+          max_fee_rate: args.max_fee_rate,
           with: withNodes,
         },
         cbk);
