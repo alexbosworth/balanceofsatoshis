@@ -4,12 +4,15 @@ const {shuffle} = require('./../arrays');
 const {isMatchingFilters} = require('./../display');
 
 const channelHeight = channel => decodeChanId({channel}).block_height;
+const isFeeFilter = n => /\binbound_(base_fee|fee_rate)\b/i.test(n);
 const {max} = Math;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 const tok = n => Number(BigInt(n) / BigInt(1e3));
 const uniq = arr => Array.from(new Set(arr));
 
 /** Find a peer that matches filters
+
+  A peer with no known remote fee policy does not match fee filters.
 
   {
     channels: [{
@@ -71,6 +74,11 @@ module.exports = ({channels, filters, nodes, policies}) => {
         outbound_liquidity: sumOf(withPeer.map(n => n.local_balance)),
         pending_payments: sumOf(pendingPayments),
       };
+
+      // Exit early when fees are unknown but fee filters are specified
+      if (!feeRates.length && !!filters.find(isFeeFilter)) {
+        return;
+      }
 
       if (!!feeRates.length) {
         variables.inbound_base_fee = maxBaseFee;

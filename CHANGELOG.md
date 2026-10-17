@@ -1,6 +1,6 @@
 # Versions
 
-## 25.3.0
+## 25.3.1
 
 - `closed`: Avoid using external chain data lookups to derive resolution info
 - `closed`: Include anchor and HTLC resolution fees in closing fees paid
