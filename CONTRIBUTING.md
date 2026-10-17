@@ -13,9 +13,9 @@ If you want to help with style, here are some rough guidelines on style ideas:
 
 - Arguments to methods are snake_case
 - Regular variables are camelCase
-- Don't destructure snake_case arguments, read them from args: `args.max_fee`
+- Never make snake_case variables, even when destructuring: use `args.max_fee`
 - Returned attributes are snake_case
-- A single line should contain max 80 characters including the newline
+- A line has at most 79 characters, 80 including the newline
 - If a top level scalar would go over 80 characters in a line, that's ok
 - Don't bother with () in functions when not needed: `const a = b => c`
 - If there are multiple things together, alphabetize them
@@ -33,6 +33,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 
 - Spaces not tabs, 2 spaces
 - Minimize function nesting, make new files if nesting is required
+- Top of file helpers outside of tests are one-liners, otherwise use a new file
 - No extraneous whitespace
 - A single newline should appear at the end of a file
 - Tightly space objects, like `{attribute: value}` not `{ attribute : value }`
@@ -65,7 +66,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Avoid any function arguments that are multiple data types
 - Short names like `n` are only for one-liners, longer closures name arguments
 - Name variables for what they hold, like `candidates`, not for their type
-- Avoid names that mean something else in other contexts, like `self`
+- Avoid names that mean something else in other contexts: `close`, `self`
 
 ### JS Features
 
@@ -98,5 +99,6 @@ If you want to help with style, here are some rough guidelines on style ideas:
 
 - Ideally there is a tap unit test that has 100% coverage, using mock-lnd
 - Also good is a ln-docker-daemons integration test for common scenarios
+- Integration tests have a single test per file
 - Design methods so that they can easily tested with self-contained unit tests
 - Avoid breaking existing tests, changes should also change relevant tests

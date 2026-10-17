@@ -1,5 +1,12 @@
 # Versions
 
+## 25.3.0
+
+- `closed`: Avoid using external chain data lookups to derive resolution info
+- `closed`: Include anchor and HTLC resolution fees in closing fees paid
+- `closed`: Pro-rate the fees of sweeps that are shared with other channels
+- `closed`: Count the value of an anchor output that was not swept as a fee
+
 ## 25.2.3
 
 - `telegram`: Indicate when a cooperative close was initiated by the peer

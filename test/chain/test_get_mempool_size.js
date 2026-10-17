@@ -21,6 +21,21 @@ const tests = [
     error: [503, 'FailedToGetMempoolSizeInfo', {err: 'err'}],
   },
   {
+    args: {
+      network: 'btc',
+      request: (() => {
+        let attempts = 0;
+
+        return ({}, cbk) => {
+          return !attempts++ ? cbk('err') : cbk(null, null, {vsize: 2});
+        };
+      })(),
+      retries: 2,
+    },
+    description: 'Request errors are retried',
+    expected: {vbytes: 2},
+  },
+  {
     args: {network: 'btc', request: ({}, cbk) => cbk(), retries: 1},
     description: 'Mempool information is expected',
     error: [503, 'ExpectedMempoolInfoInResponse'],

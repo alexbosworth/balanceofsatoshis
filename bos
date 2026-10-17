@@ -490,8 +490,7 @@ prog
 
   // Determine the outcomes of channel closings
   .command('closed', 'Get the status of a channel closings')
-  .help('Channel closes with chain-transaction derived resolution details')
-  .help('Privacy note: this requests tx data from third parties')
+  .help('Channel closes with resolution details of the closing outputs')
   .option('--limit [limit]', 'Limit of closings to get', INT, 20)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Get channel closes from saved node')
@@ -501,7 +500,6 @@ prog
         return chain.getChannelCloses({
           limit: options.limit,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          request: commands.simpleRequest,
         },
         responses.returnObject({logger, reject, resolve}));
       } catch (err) {
