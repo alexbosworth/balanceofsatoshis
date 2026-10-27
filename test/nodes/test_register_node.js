@@ -1,9 +1,10 @@
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
-const {encode} = require('cbor');
-
+const {encodeAsCbor} = require('./../../encryption');
 const registerNode = require('./../../nodes/register_node');
+
+const cbor = value => encodeAsCbor({value}).cbor;
 
 const tests = [
   {
@@ -84,7 +85,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({}),
+        credentials: cbor({}),
         start: true,
       }),
       cryptography: {generateKeyPair: ({}, {}, cbk) => cbk(null, '1', '2')},
@@ -98,7 +99,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({cert: 'cert'}),
+        credentials: cbor({cert: 'cert'}),
         start: true,
       }),
       cryptography: {generateKeyPair: ({}, {}, cbk) => cbk(null, '1', '2')},
@@ -112,7 +113,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({
+        credentials: cbor({
           cert: 'cert',
           encrypted_macaroon: 'macaroon',
           socket: '::::::::',
@@ -130,7 +131,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({
+        credentials: cbor({
           cert: 'cert',
           encrypted_macaroon: 'macaroon',
           socket: 'localhost:10009',
@@ -153,7 +154,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({
+        credentials: cbor({
           cert: 'cert',
           encrypted_macaroon: 'macaroon',
         }),
@@ -173,7 +174,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({
+        credentials: cbor({
           cert: 'cert',
           encrypted_macaroon: 'macaroon',
         }),
@@ -194,7 +195,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({
+        credentials: cbor({
           cert: 'cert',
           encrypted_macaroon: 'macaroon',
         }),
@@ -216,7 +217,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({
+        credentials: cbor({
           cert: 'cert',
           encrypted_macaroon: 'macaroon',
         }),
@@ -241,7 +242,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({
+        credentials: cbor({
           cert: 'cert',
           encrypted_macaroon: 'macaroon',
         }),
@@ -267,7 +268,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({
+        credentials: cbor({
           cert: 'cert',
           encrypted_macaroon: 'macaroon',
           socket: 'localhost',
@@ -294,7 +295,7 @@ const tests = [
     args: {
       ask: ({}, cbk) => cbk({
         copied: true,
-        credentials: encode({
+        credentials: cbor({
           cert: 'cert',
           encrypted_macaroon: 'macaroon',
         }),

@@ -25,6 +25,6 @@
   ],
   "priceProviders": ["coinbase", "coindesk", "coingecko"],
   "process": "bos",
-  "rateProviders": ["coindesk", "coingecko"],
+  "rateProviders": ["coinbase", "coindesk", "coingecko"],
   "swapTypes": ["inbound", "outbound"]
 }

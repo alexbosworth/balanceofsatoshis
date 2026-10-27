@@ -3,11 +3,11 @@ const {randomBytes} = require('crypto');
 const {scrypt} = require('crypto');
 
 const asyncAuto = require('async/auto');
-const {encode} = require('cbor');
 const {returnResult} = require('asyncjs-util');
 
+const encodeAsCbor = require('./encode_as_cbor');
+
 const algorithm = 'aes-256-gcm';
-const cbor = n => encode(n).toString('hex');
 const derivation = 'scrypt';
 const digest = 'sha512';
 const fromHex = n => Buffer.from(n, 'hex');
@@ -37,7 +37,7 @@ module.exports = ({encoding, from, plain, secret, to}, cbk) => {
       // Check arguments
       validate: cbk => {
         if (!plain) {
-          return cbk([400, 'ExectedDataToEncryptToSecret']);
+          return cbk([400, 'ExpectedDataToEncryptToSecret']);
         }
 
         if (!secret) {
@@ -90,7 +90,9 @@ module.exports = ({encoding, from, plain, secret, to}, cbk) => {
         const encrypted = Buffer.concat(updated);
         const tag = cipher.getAuthTag();
 
-        return cbk(null, {cipher: cbor({encrypted, iv, salt, settings, tag})});
+        const value = {encrypted, iv, salt, settings, tag};
+
+        return cbk(null, {cipher: encodeAsCbor({value}).cbor});
       }],
     },
     returnResult({reject, resolve, of: 'encrypt'}, cbk));

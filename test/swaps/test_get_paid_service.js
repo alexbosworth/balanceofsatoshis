@@ -1,23 +1,29 @@
-const {encode} = require('cbor');
 const {equal} = require('node:assert').strict;
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
+const {encodeAsCbor} = require('./../../encryption');
 const {getInfoResponse} = require('./../fixtures');
 const getPaidService = require('./../../swaps/get_paid_service');
 
 const macaroon = 'AgEEbHNhdAJCAADXNkGQ+faRDM3Ey4M6YGALyTwqnLqDTNVgCBckgnpSZ4vd9z8+Ndr1+zLD6i/AmJIbDVuEAvBwgZBezq2hcys5AAIPc2VydmljZXM9bG9vcDowAAISbG9vcF9jYXBhYmlsaXRpZXM9AAAGIDPTqKe/hckryPR6hINTa7Dg8/bbxqVqq02/eBMpmt7Z';
-const makeToken = (m, p) => encode({macaroon: m, preimage: p}).toString('hex');
+const preimage = Buffer.alloc(1, 1);
+
+// A token encodes the macaroon and then the preimage
+const token = encodeAsCbor({
+  value: {macaroon: Buffer.from(macaroon, 'base64'), preimage},
+})
+.cbor;
 
 const makeArgs = override => {
   const args = {
     fetch,
+    token,
     lnd: {
       default: {
         getInfo: ({}, cbk) => cbk(null, getInfoResponse),
       },
     },
-    token: makeToken(Buffer.from(macaroon, 'base64'), Buffer.alloc(1, 1)),
   };
 
   Object.keys(override).forEach(key => args[key] = override[key]);
@@ -35,9 +41,9 @@ const tests = [
     args: makeArgs({}),
     description: 'A paid service object is returned',
     expected: {
+      token,
       metadata: {get: () => [Buffer.alloc(1, 1).toString('hex')]},
       service: {},
-      token: makeToken(Buffer.from(macaroon, 'base64'), Buffer.alloc(1, 1)),
     },
   },
 ];

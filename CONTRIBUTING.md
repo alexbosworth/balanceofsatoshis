@@ -28,16 +28,21 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Avoid double specifying an attribute and value, `{type: type}` vs `{type}`
 - Always use {} with if, else, etc statements
 - Document the top of methods with what the arguments are and what is returned
+- Use helpers for hex conversion, like `bufferAsHex` and `hexAsBuffer`,
+    rather than calling `.toString('hex')` or `Buffer.from(hex, 'hex')` inline
 
 ### White Space
 
 - Spaces not tabs, 2 spaces
 - Minimize function nesting, make new files if nesting is required
 - Top of file helpers outside of tests are one-liners, otherwise use a new file
+- Top of file constants are one-liners too, longer values go in constants.json
 - No extraneous whitespace
 - A single newline should appear at the end of a file
 - Tightly space objects, like `{attribute: value}` not `{ attribute : value }`
 - If conditions should avoid spanning multiple lines
+- Avoid directories with tons of files, group them into subdirectories that
+    each have an `index.js`
 
 ### Control Flow
 
@@ -50,6 +55,12 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Callbacks should generally be named cbk even when redefinining in inner scope
 - Avoid mixing non-async complex logic and async control flows in the same file
 - Minimize async nesting in returned attributes and in method arguments
+- Let callback results flow through async auto, and pick out what is needed
+    in a later task rather than intercepting a result in the task that gets it
+- Pass `cbk` directly to an async method rather than wrapping it, as in
+    `err => cbk(err)`, unless the error or the result has to change
+- Wrap only the call that can throw, and call back after the try rather than
+    in it, so that an error thrown later in the callback chain is not caught
 - Methods should always document their arguments and their output
 
 ### Variables
@@ -61,18 +72,22 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Short properties always go first in objects: `{short, longer: type}`
 - Alphabetize short properties and longer properties as separate groups
 - If a statement relies on a statement above it, it should have a newline above
+- Variables declared together in a block should not reference each other, a
+    helper can call a builtin directly, like `Number.isInteger`
 - Avoid including scalar values such as strings or numbers in the code itself
 - Prefer hex serialization over base64 or Buffers in arguments or output
 - Avoid any function arguments that are multiple data types
 - Short names like `n` are only for one-liners, longer closures name arguments
 - Name variables for what they hold, like `candidates`, not for their type
-- Avoid names that mean something else in other contexts: `close`, `self`
+- Avoid names that mean something else in other contexts: `close`, `open`,
+    `self`, `top`
 
 ### JS Features
 
 - Limit usage of `let` and never use `var`, prefer `const`
 - Limit use of npm dependencies when possible, only use good dependencies
 - Target support of the oldest node.js LTS release still being supported
+- Don't add fallbacks for LND versions older than the supported range
 - Never use class or prototype
 - Do not import more methods from an import than you actually use
 - Try to avoid passing objects in arguments as much as possible

@@ -1,5 +1,4 @@
 const asyncAuto = require('async/auto');
-const {encode} = require('cbor');
 const {genericSwapAuth} = require('goldengate');
 const {genericSwapService} = require('goldengate');
 const {getNetwork} = require('ln-sync');
@@ -14,13 +13,13 @@ const {returnResult} = require('asyncjs-util');
 const {swapUserId} = require('goldengate');
 
 const decodeSwapApiKey = require('./decode_swap_api_key');
+const {encodeAsCbor} = require('./../encryption');
 
 const bitcoinNetwork = 'btc';
 const bitcoinTestnetNetwork = 'btctestnet';
 const bufferFromBase64 = base64 => Buffer.from(base64, 'base64');
 const bufferFromHex = hex => Buffer.from(hex, 'hex');
 const connectError = 'FailedToConnectToService';
-const encodeCbor = json => encode(json).toString('hex');
 const httpMatch = /^https?:\/\//;
 const {isArray} = Array;
 const mainnetSocket = 'https://balanceofsatoshis.com:11011';
@@ -222,10 +221,13 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
         const paid = payForMacaroon.tokens;
         const {service} = remote;
 
-        const token = encodeCbor({
-          macaroon: bufferFromBase64(getUnpaidMacaroon.macaroon),
-          preimage: bufferFromHex(payForMacaroon.secret),
-        });
+        const token = encodeAsCbor({
+          value: {
+            macaroon: bufferFromBase64(getUnpaidMacaroon.macaroon),
+            preimage: bufferFromHex(payForMacaroon.secret),
+          },
+        })
+        .cbor;
 
         return cbk(null, {id, metadata, paid, service, token});
       }],

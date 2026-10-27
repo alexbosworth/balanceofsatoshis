@@ -1,5 +1,11 @@
 # Versions
 
+## 25.4.0
+
+- `accounting`: After 2021-10-19 derive USD prices from chain payments data
+- `accounting`: Add `--rate-provider coinbase`
+- `telegram`: Reduce telegram linkification in messages
+
 ## 25.3.1
 
 - `closed`: Avoid using external chain data lookups to derive resolution info

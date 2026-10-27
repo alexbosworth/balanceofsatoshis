@@ -1,9 +1,9 @@
 const asyncAuto = require('async/auto');
-const {encode} = require('cbor');
 const {grantAccess} = require('ln-service');
 const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
+const {encodeAsCbor} = require('./../encryption');
 const lndCredentials = require('./lnd_credentials');
 const {pemAsDer} = require('./../encryption');
 
@@ -112,7 +112,7 @@ module.exports = (args, cbk) => {
         };
 
         return cbk(null, {
-          exported_credentials: encode(credentials).toString('hex'),
+          exported_credentials: encodeAsCbor({value: credentials}).cbor,
         });
       }],
     },

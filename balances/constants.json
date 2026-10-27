@@ -1,6 +1,11 @@
 {
+  "chainPricesFile": "chain_prices.json",
+  "coinbaseProvider": "coinbase",
   "defaultCurrency": "BTC",
   "defaultFiat": "USD",
+  "failedRequestErrors": ["UnexpectedErrorGettingCoinbaseCandles"],
+  "fsMethods": ["getFile", "makeDirectory", "renameFile", "writeFile"],
+  "mainnet": "btc",
   "notFoundIndex": -1,
   "monthNumbers": [
     "01",
@@ -25,5 +30,13 @@
     "11",
     "12"
   ],
-  "monthOffset": 1
+  "monthOffset": 1,
+  "pricesFileErrors": [
+    "ExpectedPricesObjectInPricesFile",
+    "FailedToParsePricesFile",
+    "FailedToReadPricesFile",
+    "FailedToReplacePricesFile",
+    "FailedToWritePricesFile",
+    "UnsupportedPricesFileVersion"
+  ]
 }

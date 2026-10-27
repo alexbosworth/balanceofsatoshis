@@ -70,6 +70,7 @@ prog
   .argument('<category>', 'Report category', keys(accountingCategories))
   .help(`Categories: ${keys(accountingCategories).join(', ')}`)
   .help(`Rate providers: ${rateProviders.join(', ')}`)
+  .help('By default fiat rates after 2021-10-19 use chain data derived rates')
   .help('Privacy note: this requests tx related data from third parties')
   .option('--csv', 'Output a CSV')
   .option('--date <day>', 'Show only records for specific date')
@@ -84,8 +85,15 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return balances.getAccountingReport({
+          logger,
           category: args.category,
           date: options.date,
+          fs: {
+            writeFile,
+            getFile: readFile,
+            makeDirectory: mkdir,
+            renameFile: rename,
+          },
           is_csv: !!options.csv,
           is_fiat_disabled: options.disableFiat,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,

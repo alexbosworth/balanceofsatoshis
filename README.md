@@ -7,8 +7,8 @@ Commands for working with LND balances.
 
 Supported LND versions:
 
-- v0.21.0-beta to v0.21.4-beta
-- v0.20.0-beta to v0.20.5-beta
+- v0.21.0-beta to v0.21.5-beta
+- v0.20.0-beta to v0.20.6-beta
 
 ## Install
 
@@ -297,6 +297,20 @@ If that is set, it will use that node if no node is specified.
 
 You can also add a JSON file to your .bos directory: config.json, add
 `{"default_saved_node": "nodename"}` to set the default via a file instead
+
+## Files in `~/.bos`
+
+`bos` keeps its files in `~/.bos`, or in `BOS_DATA_PATH` when that is set:
+
+- `chain_prices.json`: USD prices of BTC that `bos accounting` derived from
+    chain data, kept so that a day is only derived once. Prices are derived
+    this way when no `--rate-provider` is given, and the prices of the days
+    up to the release of `bos` come with it rather than being written here.
+    The file can be deleted, prices are then derived again when needed
+- `config.json`: settings you add, like a default saved node
+- `tags.json`: the tags made with `bos tags`
+- `telegram_bot_api_key`: the bot API key that `bos telegram` asked for
+- `YOUR_NODE_NAME/credentials.json`: the credentials of a saved node
 
 ## Linux Fu
 

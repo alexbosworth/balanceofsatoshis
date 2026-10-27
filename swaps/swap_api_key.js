@@ -1,9 +1,9 @@
 const asyncAuto = require('async/auto');
-const {encode} = require('cbor');
 const {returnResult} = require('asyncjs-util');
 const {swapUserId} = require('goldengate');
 
 const decodeSwapApiKey = require('./decode_swap_api_key');
+const {encodeAsCbor} = require('./../encryption');
 const getPaidService = require('./get_paid_service');
 
 /** Purchase or inspect a swap API key
@@ -75,7 +75,7 @@ module.exports = (args, cbk) => {
         const preimage = Buffer.from(args.preimage, 'hex');
 
         return cbk(null, {
-          api_key: encode({macaroon, preimage}).toString('hex'),
+          api_key: encodeAsCbor({value: {macaroon, preimage}}).cbor,
           id: swapUserId({macaroon: macaroon.toString('base64')}),
         });
       }],

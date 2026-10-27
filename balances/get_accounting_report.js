@@ -1,11 +1,19 @@
 const asyncAuto = require('async/auto');
+const {chainRates} = require('@alexbosworth/fiat');
 const {getAccountingReport} = require('ln-accounting');
 const {getNetwork} = require('ln-sync');
 const {returnResult} = require('asyncjs-util');
 
 const categories = require('./accounting_categories');
+const {chainPricesFile} = require('./constants');
+const {coinbaseProvider} = require('./constants');
 const {defaultCurrency} = require('./constants');
 const {defaultFiat} = require('./constants');
+const {fsMethods} = require('./constants');
+const getRecordRate = require('./get_record_rate');
+const guardChainRate = require('./guard_chain_rate');
+const {homePath} = require('./../storage');
+const {mainnet} = require('./constants');
 const {monthNumbers} = require('./constants');
 const {monthOffset} = require('./constants');
 const {notFoundIndex} = require('./constants');
@@ -26,9 +34,16 @@ const summaryHeadings = ['Total', 'Asset', 'Report Date', 'Total Fiat'];
     [currency]: <Currency Label String>
     [date]: <Day of Month String>
     [fiat]: <Fiat Type String>
+    [fs]: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+      makeDirectory: <Make Directory Function> (path, cbk) => {}
+      renameFile: <Rename File Function> (from, to, cbk) => {}
+      writeFile: <Write File Contents Function> (path, contents, cbk) => {}
+    }
     [is_csv]: <Return CSV Output Bool>
     [is_fiat_disabled]: <Omit Fiat Conversion Bool>
     lnd: <Authenticated LND API Object>
+    [logger]: <Winston Logger Object>
     [month]: <Month for Report String>
     [node]: <Node Name String>
     [rate_provider]: <Rate Provider String>
@@ -47,12 +62,18 @@ module.exports = (args, cbk) => {
     return asyncAuto({
       // Validate
       validate: cbk => {
+        const {fs} = args;
+
         if (!args.category || !categories[args.category]) {
           return cbk([400, 'ExpectedKnownAccountingRecordsCategory']);
         }
 
         if (!!args.date && !args.month) {
           return cbk([400, 'ExpectedMonthForDateToGetAccountingReport']);
+        }
+
+        if (!!fs && !fsMethods.every(n => typeof fs[n] === 'function')) {
+          return cbk([400, 'ExpectedFileSystemMethodsToGetAccountingReport']);
         }
 
         if (!args.lnd) {
@@ -68,25 +89,88 @@ module.exports = (args, cbk) => {
 
       // Get date range
       dateRange: ['validate', ({}, cbk) => {
-        try {
-          return cbk(null, rangeForDate({
-            date: args.date,
-            month: args.month,
-            year: args.year,
-          }));
-        } catch (err) {
-          return cbk([400, err.message]);
+        const range = (() => {
+          try {
+            return {
+              value: rangeForDate({
+                date: args.date,
+                month: args.month,
+                year: args.year,
+              }),
+            };
+          } catch (err) {
+            return {err};
+          }
+        })();
+
+        // Exit early when the date range cannot be determined
+        if (!!range.err) {
+          return cbk([400, range.err.message]);
         }
+
+        return cbk(null, range.value);
       }],
 
       // Get the network name
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
+      // Make the method that gets chain prices, used without a rate provider
+      chain: ['getNetwork', ({getNetwork}, cbk) => {
+        // Exit early when fiat is disabled or a rate provider is specified
+        if (!!args.is_fiat_disabled || !!args.rate_provider) {
+          return cbk();
+        }
+
+        // Exit early when there are no chain prices for the network or no
+        // file system to keep them in
+        if (!args.fs || getNetwork.network !== mainnet) {
+          return cbk();
+        }
+
+        // Progress is only logged when it cannot end up in CSV output
+        const logger = !args.is_csv ? args.logger : undefined;
+
+        const {getChainRate} = chainRates({
+          logger,
+          fs: args.fs,
+          lnd: args.lnd,
+          path: homePath({file: chainPricesFile}).path,
+        });
+
+        return cbk(null, guardChainRate({getChainRate}));
+      }],
+
+      // Without a rate provider, records are valued with chain prices, and
+      // at their hour on Coinbase Exchange when chain prices cannot value them
+      rate: ['chain', ({chain}, cbk) => {
+        // Exit early when fiat is disabled
+        if (!!args.is_fiat_disabled) {
+          return cbk();
+        }
+
+        // Exit early when a rate provider other than Coinbase is specified
+        if (!!args.rate_provider && args.rate_provider !== coinbaseProvider) {
+          return cbk();
+        }
+
+        return cbk(null, {
+          rate: (record, cbk) => getRecordRate({
+            currency: record.currency,
+            date: record.date,
+            fiat: record.fiat,
+            get_chain_rate: !!chain ? chain.getChainRate : undefined,
+            request: args.request,
+          },
+          cbk),
+        });
+      }],
+
       // Get accounting info
       getAccounting: [
         'dateRange',
         'getNetwork',
-        ({dateRange, getNetwork}, cbk) =>
+        'rate',
+        ({dateRange, getNetwork, rate}, cbk) =>
       {
         return getAccountingReport({
           after: dateRange.after,
@@ -96,7 +180,8 @@ module.exports = (args, cbk) => {
           fiat: !args.is_fiat_disabled ? (args.fiat || defaultFiat) : null,
           lnd: args.lnd,
           network: getNetwork.network,
-          rate_provider: args.rate_provider || undefined,
+          rate: !!rate ? rate.rate : undefined,
+          rate_provider: !rate ? args.rate_provider : undefined,
           request: args.request,
         },
         cbk);
