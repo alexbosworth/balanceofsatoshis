@@ -77,25 +77,30 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Get the nodes
-      getNodes: ['validate', async () => {
-        const {nodes} = args;
+      // Get associated LNDs
+      getLnds: ['validate', ({}, cbk) => {
+        return getLnds({logger: args.logger, nodes: args.nodes}, cbk);
+      }],
 
-        const {lnds} = await getLnds({nodes, logger: args.logger});
+      // Get the nodes
+      getNodes: ['getLnds', ({getLnds}, cbk) => {
+        const {lnds} = getLnds;
+        const {nodes} = args;
 
         const withName = lnds.map((lnd, i) => ({lnd, node: (nodes || [])[i]}));
 
-        return asyncMap(withName, async ({lnd, node}) => {
-          try {
-            const wallet = await getWalletInfo({lnd});
+        return asyncMap(withName, ({lnd, node}, cbk) => {
+          return getWalletInfo({lnd}, (err, res) => {
+            if (!!err) {
+              args.logger.error({node, err: 'failed_to_connect'});
 
-            return {node, alias: wallet.alias, id: wallet.public_key};
-          } catch (err) {
-            args.logger.error({node, err: 'failed_to_connect'});
+              return cbk(err);
+            }
 
-            throw err;
-          }
-        });
+            return cbk(null, {node, alias: res.alias, id: res.public_key});
+          });
+        },
+        cbk);
       }],
 
       // Get the telegram bot

@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {bech32} = require('bech32');
 const {returnResult} = require('asyncjs-util');
 const {signMessage} = require('ln-service');
@@ -108,7 +109,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Derive keys and get signatures
-      sign: ['parse', 'seed', ({parse, seed}, cbk) => {
+      sign: ['parse', 'seed', asyncify(({parse, seed}) => {
         try {
           const sign = signAuthChallenge({
             hostname: parse.hostname,
@@ -116,14 +117,14 @@ module.exports = (args, cbk) => {
             seed: seed.signature,
           });
 
-          return cbk(null, {
+          return {
             public_key: sign.public_key,
             signature: sign.signature,
-          });
+          };
         } catch (err) {
-          return cbk([500, 'UnexpectedErrorSigningAuthChallenge', {err}]);
+          throw [500, 'UnexpectedErrorSigningAuthChallenge', {err}];
         }
-      }],
+      })],
 
       // Display confirmation dialog with domain name and action
       ok: ['parse', 'sign', ({parse, sign}, cbk) => {

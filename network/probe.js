@@ -48,6 +48,7 @@ const withTotalFee = ({fee, ...res}) => ({total_fee: fee, ...res});
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
     [in_through]: <Pay In Through Public Key Hex String>
+    [is_ignoring_expiry]: <Probe Even When the Request Is Expired Bool>
     [is_strict_max_fee]: <Avoid Probing Too-High Fee Routes Bool>
     lnd: <Authenticated LND API Object>
     logger: <Winston Logger Object>
@@ -315,6 +316,7 @@ module.exports = (args, cbk) => {
           ignore: getBaseIgnores.ignore,
           in_through: args.in_through,
           invoice: getOfferInvoice,
+          is_ignoring_expiry: args.is_ignoring_expiry,
           is_strict_max_fee: args.is_strict_max_fee,
           lnd: args.lnd,
           logger: args.logger,

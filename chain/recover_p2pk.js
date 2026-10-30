@@ -1,6 +1,7 @@
 const {createHash} = require('crypto');
 
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {broadcastChainTransaction} = require('ln-service');
 const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {createChainAddress} = require('ln-service');
@@ -135,7 +136,7 @@ module.exports = ({id, lnd, request, vout}, cbk) => {
       recoveryScript: [
         'createAddress',
         'getNetwork',
-        ({createAddress, getNetwork}, cbk) =>
+        asyncify(({createAddress, getNetwork}) =>
       {
         try {
           const {script} = outputScriptForAddress({
@@ -143,11 +144,11 @@ module.exports = ({id, lnd, request, vout}, cbk) => {
             network: getNetwork.network,
           });
 
-          return cbk(null, {script});
+          return {script};
         } catch (err) {
-          return cbk([503, 'FailedToParseRecoveryAddress', {err}]);
+          throw [503, 'FailedToParseRecoveryAddress', {err}];
         }
-      }],
+      })],
 
       // Derive the sweep output, less the amount needed to pay for chain fees
       sweep: [

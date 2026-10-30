@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {createInvoice} = require('ln-service');
 const {getChannel} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -48,17 +49,17 @@ module.exports = ({lnd, to, tokens}, cbk) => {
       getChannels: ['validate', ({}, cbk) => getChannels({lnd}, cbk)],
 
       // Peer channel
-      peerChannel: ['getChannels', ({getChannels}, cbk) => {
+      peerChannel: ['getChannels', asyncify(({getChannels}) => {
         try {
           const {channels} = getChannels;
 
           const {id} = channelForGift({channels, to, tokens});
 
-          return cbk(null, id);
+          return id;
         } catch (err) {
-          return cbk(giftCallbackError({err}));
+          throw giftCallbackError({err});
         }
-      }],
+      })],
 
       // Get channel policy info
       getChannel: ['peerChannel', ({peerChannel}, cbk) => {
@@ -76,7 +77,7 @@ module.exports = ({lnd, to, tokens}, cbk) => {
         'createInvoice',
         'getChannel',
         'getWallet',
-        ({createInvoice, getChannel, getWallet}, cbk) =>
+        asyncify(({createInvoice, getChannel, getWallet}) =>
       {
         const {request} = createInvoice;
 
@@ -90,7 +91,7 @@ module.exports = ({lnd, to, tokens}, cbk) => {
             payment: createInvoice.payment,
           });
 
-          return cbk(null, route);
+          return route;
         } catch (err) {
           const {message} = err;
 
@@ -98,13 +99,13 @@ module.exports = ({lnd, to, tokens}, cbk) => {
           case 'GiftAmountTooLowToSend':
           case 'OwnPolicyTooLowToCompleteForward':
           case 'PeerPolicyTooLowToCompleteForward':
-            return cbk([400, 'AmountTooLowToCompleteGiftSend']);
+            throw [400, 'AmountTooLowToCompleteGiftSend'];
 
           default:
-            return cbk([500, 'FailedToConstructGiftRoute', {err}]);
+            throw [500, 'FailedToConstructGiftRoute', {err}];
           }
         }
-      }],
+      })],
 
       // Send the gift
       pay: ['createInvoice', 'route', ({createInvoice, route}, cbk) => {

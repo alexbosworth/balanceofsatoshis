@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {returnResult} = require('asyncjs-util');
 
 const {parse} = JSON;
@@ -33,14 +34,8 @@ module.exports = ({fs, path}, cbk) => {
       },
 
       // Import socks-proxy-agent as ESM
-      getSocksAgent: ['validate', async ({}) => {
-        try {
-          const {SocksProxyAgent} = await import('socks-proxy-agent');
-
-          return SocksProxyAgent;
-        } catch (err) {
-          throw([503, 'FailedToImportSocksProxyAgent', {err}]);
-        }
+      getSocksAgent: ['validate', async () => {
+        return (await import('socks-proxy-agent')).SocksProxyAgent;
       }],
 
       // Get the configuration file
@@ -59,11 +54,15 @@ module.exports = ({fs, path}, cbk) => {
       }],
 
       // Construct the SOCKS proxy agent
-      agent: ['getFile', 'getSocksAgent', ({getFile, getSocksAgent}, cbk) => {
+      agent: [
+        'getFile',
+        'getSocksAgent',
+        asyncify(({getFile, getSocksAgent}) =>
+      {
         try {
           parse(getFile);
         } catch (err) {
-          return cbk([400, 'ExpectedValidJsonConfigFileForProxy', {err}]);
+          throw [400, 'ExpectedValidJsonConfigFileForProxy', {err}];
         }
 
         const {host, password, port, userId} = parse(getFile);
@@ -89,11 +88,11 @@ module.exports = ({fs, path}, cbk) => {
 
           const agent = new getSocksAgent(url.toString());
 
-          return cbk(null, {agent});
+          return {agent};
         } catch (err) {
-          return cbk([503, 'FailedToCreateSocksProxyAgent', {err}]);
+          throw [503, 'FailedToCreateSocksProxyAgent', {err}];
         }
-      }],
+      })],
     },
     returnResult({reject, resolve, of: 'agent'}, cbk));
   });

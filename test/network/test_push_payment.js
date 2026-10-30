@@ -1,11 +1,41 @@
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
+const {createSignedRequest} = require('ln-service');
+const {createUnsignedRequest} = require('ln-service');
+const {pointFromScalar} = require('tiny-secp256k1');
+const {sign} = require('tiny-secp256k1');
+
 const {getInfoResponse} = require('./../fixtures');
 const {listChannelsResponse} = require('./../fixtures');
 const pushPayment = require('./../../network/push_payment');
 
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
+const key = Buffer.alloc(32, 1);
+
+// Make a signed payment request
+const makeRequest = ({tokens}) => {
+  const publicKey = pointFromScalar(key, true);
+  const destination = Buffer.from(publicKey).toString('hex');
+
+  const unsigned = createUnsignedRequest({
+    destination,
+    tokens,
+    cltv_delta: 80,
+    description: 'description',
+    id: Buffer.alloc(32).toString('hex'),
+    network: 'bitcoin',
+  });
+
+  const signature = sign(Buffer.from(unsigned.hash, 'hex'), key);
+
+  return createSignedRequest({
+    destination,
+    hrp: unsigned.hrp,
+    signature: Buffer.from(signature).toString('hex'),
+    tags: unsigned.tags,
+  });
+};
 
 const makeLnd = ({}) => {
   return {
@@ -68,6 +98,11 @@ const tests = [
     args: makeArgs({}),
     description: 'Payment dry run results in error',
     error: [400, 'PushPaymentDryRun'],
+  },
+  {
+    args: makeArgs({destination: makeRequest({tokens: 5}).request}),
+    description: 'A payment request with an amount cannot be pushed to',
+    error: [400, 'ExpectedZeroAmountPayRequestToSendFunds'],
   },
 ];
 

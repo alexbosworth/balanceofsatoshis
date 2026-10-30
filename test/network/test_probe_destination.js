@@ -23,6 +23,7 @@ const carol = '027f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa2971' +
 const dave = '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e6' +
   '68680991';
 
+const expiredAt = '2020-01-01T00:00:00.000Z';
 const expiresAt = '2100-01-01T00:00:00.000Z';
 const height = 900000;
 const hexAsBuffer = hex => Buffer.from(hex, 'hex');
@@ -52,12 +53,13 @@ const path = paymentPathFromChannels({
   max_mtokens: '1000000',
 });
 
-const {request} = (() => {
+// Make a signed request to pay over the blinded path
+const makeRequest = ({created, expires}) => {
   const {hrp, tags} = createUnsignedRequest({
     cltv_delta: 80,
-    created_at: '2026-01-01T00:00:00.000Z',
+    created_at: created,
     description: 'blinded',
-    expires_at: expiresAt,
+    expires_at: expires,
     features: [{bit: 8}, {bit: 17}, {bit: 262}],
     id,
     network: 'bitcoin',
@@ -65,8 +67,18 @@ const {request} = (() => {
     tokens,
   });
 
-  return createSignedRequest({hrp, tags});
-})();
+  return createSignedRequest({hrp, tags}).request;
+};
+
+const request = makeRequest({
+  created: '2026-01-01T00:00:00.000Z',
+  expires: expiresAt,
+});
+
+const expiredRequest = makeRequest({
+  created: '2019-12-31T00:00:00.000Z',
+  expires: expiredAt,
+});
 
 // An invoice for an offer from Dave, to be paid over the blinded path
 const invoice = {
@@ -115,6 +127,11 @@ const decodedLog = {
   },
 };
 
+// The log for an expired request says how long ago it expired
+const expiredDecodedLog = {
+  info: {...decodedLog.info, expires: moment(expiredAt).fromNow()},
+};
+
 // The log for the invoice, which is described by its offer
 const invoiceLog = {
   info: {
@@ -124,6 +141,11 @@ const invoiceLog = {
     destination: 'blinded',
     expires: moment(expiresAt).fromNow(),
   },
+};
+
+// The log for an expired invoice says how long ago it expired
+const expiredInvoiceLog = {
+  info: {...invoiceLog.info, expires: moment(expiredAt).fromNow()},
 };
 
 const checkingLog = {
@@ -406,12 +428,35 @@ const tests = [
     error: [501, 'RequiredMultiPathNotSupportedWithBlindedPaths'],
   },
   {
+    args: makeArgs({request: expiredRequest}),
+    description: 'An expired request is not probed',
+    error: [400, 'InvoiceIsExpired'],
+  },
+  {
+    args: makeArgs({is_ignoring_expiry: true, request: expiredRequest}),
+    description: 'An expired request is probed when ignoring expiry',
+    expected: reached,
+    logs: [expiredDecodedLog, checkingLog, evaluatingLog],
+    sent: [probeRoute],
+  },
+  {
     args: makeArgs({
-      invoice: {...invoice, expires_at: '2020-01-01T00:00:00.000Z'},
+      invoice: {...invoice, expires_at: expiredAt},
       request: undefined,
     }),
     description: 'An expired invoice is not paid',
     error: [400, 'InvoiceIsExpired'],
+  },
+  {
+    args: makeArgs({
+      invoice: {...invoice, expires_at: expiredAt},
+      is_ignoring_expiry: true,
+      request: undefined,
+    }),
+    description: 'An expired invoice is probed when ignoring expiry',
+    expected: reached,
+    logs: [expiredInvoiceLog, checkingLog, evaluatingLog],
+    sent: [probeRoute],
   },
   {
     args: makeArgs({invoice, request: undefined}),

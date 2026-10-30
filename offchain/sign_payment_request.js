@@ -1,6 +1,7 @@
 const {randomBytes} = require('crypto');
 
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const asyncRetry = require('async/retry');
 const {createSignedRequest} = require('ln-service');
 const {createUnsignedRequest} = require('ln-service');
@@ -206,7 +207,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Create the unsigned payment request
-      unsigned: ['hints', ({hints}, cbk) => {
+      unsigned: ['hints', asyncify(({hints}) => {
         const [destination] = hints.slice().reverse();
 
         try {
@@ -224,16 +225,16 @@ module.exports = (args, cbk) => {
             tokens: args.tokens,
           });
 
-          return cbk(null, unsigned);
+          return unsigned;
         } catch (err) {
           // Exit early when a blinded path is too long for a request field
           if (err.message === tooLong) {
-            return cbk([400, 'BlindedPathTooLongToEncodeInPaymentRequest']);
+            throw [400, 'BlindedPathTooLongToEncodeInPaymentRequest'];
           }
 
-          return cbk([500, 'UnexpectedErrorCreatingUnsignedRequest', {err}]);
+          throw [500, 'UnexpectedErrorCreatingUnsignedRequest', {err}];
         }
-      }],
+      })],
 
       // Sign the unsigned payment request
       sign: ['getKeyPair', 'unsigned', ({getKeyPair, unsigned}, cbk) => {
@@ -278,7 +279,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Assemble the full signed request
-      request: ['sign', 'unsigned', ({sign, unsigned}, cbk) => {
+      request: ['sign', 'unsigned', asyncify(({sign, unsigned}) => {
         try {
           // A request without a signature is signed with an ephemeral key
           const {request} = createSignedRequest({
@@ -288,11 +289,11 @@ module.exports = (args, cbk) => {
             tags: unsigned.tags,
           });
 
-          return cbk(null, {request, tokens: args.tokens});
+          return {request, tokens: args.tokens};
         } catch (err) {
-          return cbk([503, 'UnexpectedErrorSigningRequest', {err}]);
+          throw [503, 'UnexpectedErrorSigningRequest', {err}];
         }
-      }],
+      })],
     },
     returnResult({reject, resolve, of: 'request'}, cbk));
   });

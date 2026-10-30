@@ -565,22 +565,40 @@ module.exports = (args, cbk) => {
         return cbk(null, `${duration} ${since}${to}. Total: ${paid}`);
       }],
 
-      // Title for fees paid
-      title: [
-        'validate',
-        'getInKey',
-        'getOutKey',
-        async ({getInKey, getOutKey}) =>
-      {
+      // Get the alias of the inbound peer
+      getInAlias: ['getInKey', ({getInKey}, cbk) => {
+        // Exit early when no in query is specified
+        if (!args.in) {
+          return cbk();
+        }
+
         const [lnd] = args.lnds;
 
-        const into = !args.in ? {} : await getNodeAlias({lnd, id: getInKey});
-        const out = !args.out ? {} : await getNodeAlias({lnd, id: getOutKey});
+        return getNodeAlias({lnd, id: getInKey}, cbk);
+      }],
 
-        const inPeer = !!args.in ? `in ${niceAlias(into)}` : '';
-        const outPeer = !!args.out ? `out ${niceAlias(out)}` : '';
+      // Get the alias of the outbound peer
+      getOutAlias: ['getOutKey', ({getOutKey}, cbk) => {
+        // Exit early when no out query is specified
+        if (!args.out) {
+          return cbk();
+        }
 
-        return [title, outPeer, inPeer].filter(n => !!n).join(' ');
+        const [lnd] = args.lnds;
+
+        return getNodeAlias({lnd, id: getOutKey}, cbk);
+      }],
+
+      // Title for fees paid
+      title: [
+        'getInAlias',
+        'getOutAlias',
+        ({getInAlias, getOutAlias}, cbk) =>
+      {
+        const inPeer = !!args.in ? `in ${niceAlias(getInAlias)}` : '';
+        const outPeer = !!args.out ? `out ${niceAlias(getOutAlias)}` : '';
+
+        return cbk(null, [title, outPeer, inPeer].filter(n => !!n).join(' '));
       }],
 
       // Fees paid

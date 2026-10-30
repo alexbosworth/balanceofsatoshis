@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {decodeChanId} = require('bolt07');
 const {getHeight} = require('ln-service');
 const {getNode} = require('ln-service');
@@ -116,11 +117,11 @@ module.exports = (args, cbk) => {
         'getNodeFees',
         'hasClearnet',
         'hasTor',
-        ({getHeight, getNodeFees, hasClearnet, hasTor}, cbk) =>
+        asyncify(({getHeight, getNodeFees, hasClearnet, hasTor}) =>
       {
         // Exit early when there are no rules to evaluate
         if (!args.rules.length) {
-          return cbk(null, {});
+          return {};
         }
 
         const key = args.partner_public_key;
@@ -155,11 +156,11 @@ module.exports = (args, cbk) => {
             rules: args.rules,
           });
 
-          return cbk(null, {rule});
+          return {rule};
         } catch (err) {
-          return cbk([503, 'UnexpectedFailureEvaluatingOpenRule', {err}]);
+          throw [503, 'UnexpectedFailureEvaluatingOpenRule', {err}];
         }
-      }],
+      })],
     },
     returnResult({reject, resolve, of: 'evaluate'}, cbk));
   });

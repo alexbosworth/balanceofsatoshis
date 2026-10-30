@@ -1,10 +1,11 @@
 const asyncAuto = require('async/auto');
-const {decodeFirst} = require('cbor');
+const asyncify = require('async/asyncify');
 const {diffieHellmanComputeSecret} = require('ln-service');
 const {getIdentity} = require('ln-service');
 const {getNode} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
+const decodeCbor = require('./decode_cbor');
 const decryptWithSecret = require('./decrypt_with_secret');
 
 const hexAsBuf = hex => Buffer.from(hex, 'hex');
@@ -41,27 +42,29 @@ module.exports = ({encrypted, lnd}, cbk) => {
       },
 
       // Decode encrypted CBOR
-      decode: ['validate', ({}, cbk) => {
-        return decodeFirst(encrypted, (err, details) => {
-          if (!!err) {
-            return cbk([400, 'ExpectedCborEncodedEncryptedData', {err}]);
-          }
+      decode: ['validate', asyncify(() => {
+        let details;
 
-          if (!details) {
-            return cbk([400, 'ExpectedDecodedDetailsToDecryptWithNode']);
-          }
+        try {
+          details = decodeCbor({cbor: encrypted}).value;
+        } catch (err) {
+          throw [400, 'ExpectedCborEncodedEncryptedData', {err}];
+        }
 
-          if (!details.settings) {
-            return cbk([400, 'ExpectedEncryptionSettingsToDecryptWithNode']);
-          }
+        if (!details) {
+          throw [400, 'ExpectedDecodedDetailsToDecryptWithNode'];
+        }
 
-          if (!isArray(details.settings.with)) {
-            return cbk([400, 'ExpectedWithNodesPublicKeyToDecrypt']);
-          }
+        if (!details.settings) {
+          throw [400, 'ExpectedEncryptionSettingsToDecryptWithNode'];
+        }
 
-          return cbk(null, details);
-        });
-      }],
+        if (!isArray(details.settings.with)) {
+          throw [400, 'ExpectedWithNodesPublicKeyToDecrypt'];
+        }
+
+        return details;
+      })],
 
       // Get node public key
       getPublicKey: ['decode', ({decode}, cbk) => getIdentity({lnd}, cbk)],

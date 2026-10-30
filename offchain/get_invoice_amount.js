@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {getPrices} = require('@alexbosworth/fiat');
 const {parseAmount} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
@@ -79,7 +80,7 @@ module.exports = ({amount, network, provider, request}, cbk) => {
       }],
 
       // Parse the amount
-      parseAmount: ['rates', ({rates}, cbk) => {
+      parseAmount: ['rates', asyncify(({rates}) => {
         const eur = !!rates ? rates.find(n => n.fiat === 'EUR') : null;
         const usd = !!rates ? rates.find(n => n.fiat === 'USD') : null;
 
@@ -96,11 +97,11 @@ module.exports = ({amount, network, provider, request}, cbk) => {
         }
 
         try {
-          return cbk(null, {tokens: parseAmount({amount, variables}).tokens});
+          return {tokens: parseAmount({amount, variables}).tokens};
         } catch (err) {
-          return cbk([400, 'FailedToParseAmount', {err}]);
+          throw [400, 'FailedToParseAmount', {err}];
         }
-      }],
+      })],
     },
     returnResult({reject, resolve, of: 'parseAmount'}, cbk));
   });

@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {createInvoice} = require('ln-service');
 const {findKey} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
@@ -165,15 +166,14 @@ module.exports = (args, cbk) => {
         'getRemoteChannels',
         'getToKey',
         'outPeer',
-        ({
+        asyncify(({
           getChannels,
           getInKey,
           getOutKey,
           getRemoteChannels,
           getToKey,
           outPeer,
-        },
-        cbk) =>
+        }) =>
       {
         // Calculate the inbound peer inbound liquidity
         const inInbound = getRemoteChannels.channels
@@ -247,11 +247,11 @@ module.exports = (args, cbk) => {
         }
 
         try {
-          return cbk(null, parseAmount({variables, amount: args.amount}));
+          return parseAmount({variables, amount: args.amount});
         } catch (err) {
-          return cbk([400, 'FailedToParseTransferAmount', err]);
+          throw [400, 'FailedToParseTransferAmount', err];
         }
-      }],
+      })],
 
       // Check if the amount can route to the destination
       probe: [

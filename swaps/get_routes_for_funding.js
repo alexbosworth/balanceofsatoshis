@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const asyncMap = require('async/map');
 const asyncWhilst = require('async/whilst');
 const {getChannel} = require('ln-service');
@@ -247,29 +248,69 @@ module.exports = (args, cbk) => {
         );
       }],
 
-      // Translate multiple limits into multiple routes
-      getMultiPaths: ['getMultiLimits', async ({getMultiLimits}) => {
+      // Get the channels from the hints of the request for multiple routes
+      getHintChannels: ['getMultiLimits', asyncify(({getMultiLimits}) => {
+        // Exit early when the limits are too low for multiple routes
         if (!getMultiLimits || getMultiLimits.routes_max < args.tokens) {
           return;
         }
 
-        const hintChans = channelsFromHints({request: args.request}).channels;
+        return channelsFromHints({request: args.request}).channels;
+      })],
+
+      // Get the current block height for multiple routes
+      getMultiHeight: ['getHintChannels', ({getHintChannels}, cbk) => {
+        // Exit early when not making multiple routes
+        if (!getHintChannels) {
+          return cbk();
+        }
+
+        return getHeight({lnd: args.lnd}, cbk);
+      }],
+
+      // Get the channels that multiple routes go through
+      getMultiChannels: [
+        'getHintChannels',
+        'getMultiLimits',
+        ({getHintChannels, getMultiLimits}, cbk) =>
+      {
+        // Exit early when not making multiple routes
+        if (!getHintChannels) {
+          return cbk();
+        }
+
         const ids = flatten(getMultiLimits.probes.map(n => n.channels));
 
-        const channels = await asyncMap(uniq(ids), async id => {
+        return asyncMap(uniq(ids), (id, cbk) => {
+          const hintChannel = getHintChannels.find(n => n.id === id);
+
           // Exit early when channel is known from hints
-          if (!!hintChans.find(n => n.id === id)) {
-            return hintChans.find(n => n.id === id);
+          if (!!hintChannel) {
+            return cbk(null, hintChannel);
           }
 
-          return await getChannel({id, lnd: args.lnd});
-        });
+          return getChannel({id, lnd: args.lnd}, cbk);
+        },
+        cbk);
+      }],
+
+      // Translate multiple limits into multiple routes
+      getMultiPaths: [
+        'getMultiChannels',
+        'getMultiHeight',
+        'getMultiLimits',
+        asyncify(({getMultiChannels, getMultiHeight, getMultiLimits}) =>
+      {
+        // Exit early when not making multiple routes
+        if (!getMultiChannels) {
+          return;
+        }
 
         const {routes} = multiPathPayment({
-          channels,
+          channels: getMultiChannels,
           cltv_delta: args.cltv_delta,
           destination: args.destination,
-          height: (await getHeight({lnd: args.lnd})).current_block_height,
+          height: getMultiHeight.current_block_height,
           max: getMultiLimits.routes_max,
           mtokens: tokensAsMtokens(args.tokens),
           payment: args.payment,
@@ -277,7 +318,7 @@ module.exports = (args, cbk) => {
         });
 
         return routes;
-      }],
+      })],
 
       // Result of pathfinding
       result: [

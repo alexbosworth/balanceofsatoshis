@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {evaluateFormula} = require('@alexbosworth/formulas');
 const {returnResult} = require('asyncjs-util');
 
@@ -63,7 +64,7 @@ module.exports = ({avoid, failure, fs, list}, cbk) => {
       }],
 
       // Determine if there is a formula matching edge
-      failing: ['edges', ({edges}, cbk) => {
+      failing: ['edges', asyncify(({edges}) => {
         const edge = edges[failure.index];
 
         try {
@@ -78,14 +79,14 @@ module.exports = ({avoid, failure, fs, list}, cbk) => {
 
           // Exit early when there is no append edge formula match
           if (!result) {
-            return cbk(null, {});
+            return {};
           }
 
-          return cbk(null, {edge});
+          return {edge};
         } catch (err) {
-          return cbk([400, 'ExpectedValidAppendEdgeFormula', err.message]);
+          throw [400, 'ExpectedValidAppendEdgeFormula', err.message];
         }
-      }],
+      })],
 
       // Append the failing edge to the avoid list
       append: ['failing', ({failing}, cbk) => {

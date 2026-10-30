@@ -2,6 +2,7 @@ const {createHash} = require('crypto');
 
 const {addressForScript} = require('goldengate');
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {broadcastTransaction} = require('ln-sync');
 const {cancelHodlInvoice} = require('ln-service');
 const {createChainAddress} = require('ln-service');
@@ -170,15 +171,13 @@ module.exports = (args, cbk) => {
     createInvoice: ['getLimits', 'getQuote', ({getLimits, getQuote}, cbk) => {
       // Exit early when we're recovering an existing swap
       if (!!args.recovery) {
-        return (async () => {
-          try {
-            const {id} = await decodeSwapRecovery({recovery: args.recovery});
-
-            return getInvoice({id, lnd: args.lnd}, cbk);
-          } catch (err) {
+        return decodeSwapRecovery({recovery: args.recovery}, (err, res) => {
+          if (!!err) {
             return cbk([400, 'FailedToDecodeSwapRecovery', {err}]);
           }
-        })();
+
+          return getInvoice({id: res.id, lnd: args.lnd}, cbk);
+        });
       }
 
       if (args.tokens > getLimits.max_tokens) {
@@ -294,36 +293,47 @@ module.exports = (args, cbk) => {
       cbk);
     }],
 
+    // Decode the details of the swap being recovered
+    decodeRecovery: ['createSwap', ({}, cbk) => {
+      // Exit early when not recovering a swap
+      if (!args.recovery) {
+        return cbk();
+      }
+
+      return decodeSwapRecovery({recovery: args.recovery}, cbk);
+    }],
+
     // Swap details
     swap: [
       'createSwap',
+      'decodeRecovery',
       'getInfo',
       'getNetwork',
-      async ({createSwap, getInfo, getNetwork}) =>
+      asyncify(({createSwap, decodeRecovery, getInfo, getNetwork}) =>
     {
       // Exit early when no swap is taking place
-      if (!args.recovery && !createSwap) {
+      if (!decodeRecovery && !createSwap) {
         return;
       }
 
       const {network} = getNetwork;
 
       // Exit early when recovery details are specified
-      if (!!args.recovery) {
-        const recovery = await decodeSwapRecovery({recovery: args.recovery});
+      if (!!decodeRecovery) {
+        const {script} = decodeRecovery;
 
-        const {address} = addressForScript({network, script: recovery.script});
+        const {address} = addressForScript({network, script});
 
         return {
           address,
-          claim_public_key: recovery.claim_public_key,
-          id: recovery.id,
-          refund_private_key: recovery.refund_private_key,
-          script: recovery.script,
-          start_height: recovery.start_height,
-          timeout: recovery.timeout,
-          tokens: recovery.tokens,
-          version: recovery.version,
+          claim_public_key: decodeRecovery.claim_public_key,
+          id: decodeRecovery.id,
+          refund_private_key: decodeRecovery.refund_private_key,
+          script: decodeRecovery.script,
+          start_height: decodeRecovery.start_height,
+          timeout: decodeRecovery.timeout,
+          tokens: decodeRecovery.tokens,
+          version: decodeRecovery.version,
         };
       }
 
@@ -342,7 +352,7 @@ module.exports = (args, cbk) => {
         tokens: createSwap.tokens,
         version: createSwap.version,
       };
-    }],
+    })],
 
     // Create a regular address
     chainAddress: ['swap', ({swap}, cbk) => {
@@ -355,9 +365,9 @@ module.exports = (args, cbk) => {
     }],
 
     // Recovery
-    recovery: ['getInfo', 'swap', ({getInfo, swap}, cbk) => {
+    recovery: ['getInfo', 'swap', asyncify(({getInfo, swap}) => {
       if (!!args.recovery || !swap) {
-        return cbk();
+        return;
       }
 
       try {
@@ -371,11 +381,11 @@ module.exports = (args, cbk) => {
           version: swap.version,
         });
 
-        return cbk(null, recovery);
+        return recovery;
       } catch (err) {
-        return cbk([500, 'FailedToGenerateSwapRecovery', {err}])
+        throw [500, 'FailedToGenerateSwapRecovery', {err}];
       }
-    }],
+    })],
 
     // Find in deposit in mempool
     findDepositInMempool: [

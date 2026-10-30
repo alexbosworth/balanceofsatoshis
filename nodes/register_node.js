@@ -1,8 +1,9 @@
 const asyncAuto = require('async/auto');
-const {decodeFirst} = require('cbor');
+const asyncify = require('async/asyncify');
 const {returnResult} = require('asyncjs-util');
 const sanitize = require('sanitize-filename');
 
+const {decodeCbor} = require('./../encryption');
 const {derAsPem} = require('./../encryption');
 const {homePath} = require('../storage');
 const putSavedCredentials = require('./put_saved_credentials');
@@ -138,46 +139,49 @@ module.exports = ({ask, cryptography, fs, logger, node}, cbk) => {
       }],
 
       // Decode credentials
-      decodeCredentials: ['enterCredentials', ({enterCredentials}, cbk) => {
-        const encoded = Buffer.from(enterCredentials, 'hex');
+      decodeCredentials: [
+        'enterCredentials',
+        asyncify(({enterCredentials}) =>
+      {
+        let node;
 
-        return decodeFirst(encoded, (err, node) => {
-          if (!!err) {
-            return cbk([400, 'ExpectedValidEncodedCredentials', {err}]);
-          }
+        try {
+          node = decodeCbor({cbor: enterCredentials}).value;
+        } catch (err) {
+          throw [400, 'ExpectedValidEncodedCredentials', {err}];
+        }
 
-          if (!node.cert) {
-            return cbk([400, 'ExpectedTlsCertInCredentials']);
-          }
+        if (!node.cert) {
+          throw [400, 'ExpectedTlsCertInCredentials'];
+        }
 
-          if (!node.encrypted_macaroon) {
-            return cbk([400, 'ExpectedEncryptedMacaroonInCredentials']);
-          }
+        if (!node.encrypted_macaroon) {
+          throw [400, 'ExpectedEncryptedMacaroonInCredentials'];
+        }
 
-          const {pem} = derAsPem({cert: node.cert});
+        const {pem} = derAsPem({cert: node.cert});
 
-          return cbk(null, {
-            cert: Buffer.from(pem).toString('base64'),
-            encrypted_macaroon: node.encrypted_macaroon,
-            socket: node.socket || undefined,
-          });
-        });
-      }],
+        return {
+          cert: Buffer.from(pem).toString('base64'),
+          encrypted_macaroon: node.encrypted_macaroon,
+          socket: node.socket || undefined,
+        };
+      })],
 
       // Socket details
-      socket: ['decodeCredentials', ({decodeCredentials}, cbk) => {
+      socket: ['decodeCredentials', asyncify(({decodeCredentials}) => {
         if (!decodeCredentials.socket) {
-          return cbk(null, {host: defaultHost, port: defaultRpcPort});
+          return {host: defaultHost, port: defaultRpcPort};
         }
 
         try {
           const url = new URL(`rpc://${decodeCredentials.socket}`);
 
-          return cbk(null, {host: url.hostname, port: Number(url.port)});
+          return {host: url.hostname, port: Number(url.port)};
         } catch (err) {
-          return cbk([400, 'ExpectedStandardSocketInCredentials', {err}]);
+          throw [400, 'ExpectedStandardSocketInCredentials', {err}];
         }
-      }],
+      })],
 
       // Enter Host
       enterHost: ['socket', ({socket}, cbk) => {
@@ -221,7 +225,7 @@ module.exports = ({ask, cryptography, fs, logger, node}, cbk) => {
       decryptMacaroon: [
         'decodeCredentials',
         'transferKey',
-        ({decodeCredentials, transferKey}, cbk) =>
+        asyncify(({decodeCredentials, transferKey}) =>
       {
         const encryptedMacaroon = decodeCredentials.encrypted_macaroon;
         const privateKey = transferKey.private_key;
@@ -229,11 +233,11 @@ module.exports = ({ask, cryptography, fs, logger, node}, cbk) => {
         const cipher = Buffer.from(encryptedMacaroon, 'base64');
 
         try {
-          return cbk(null, cryptography.privateDecrypt(privateKey, cipher));
+          return cryptography.privateDecrypt(privateKey, cipher);
         } catch (err) {
-          return cbk([400, 'FailedToDecryptNodeMacaroon', {err}]);
+          throw [400, 'FailedToDecryptNodeMacaroon', {err}];
         }
-      }],
+      })],
 
       // Node details
       details: [

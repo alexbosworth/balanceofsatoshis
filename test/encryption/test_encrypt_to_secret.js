@@ -2,13 +2,11 @@ const {equal} = require('node:assert').strict;
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
-const {decodeFirstSync} = require('cbor');
-
+const {decodeCbor} = require('./../../encryption');
 const decryptWithSecret = require('./../../encryption/decrypt_with_secret');
 const encryptToSecret = require('./../../encryption/encrypt_to_secret');
 
 const bufferAsHex = buffer => buffer.toString('hex');
-const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 
 const makeArgs = overrides => {
   const args = {
@@ -47,7 +45,7 @@ tests.forEach(({args, description, error, expected}) => {
       const {cipher} = await encryptToSecret(args);
 
       // The cipher is the CBOR encoded encryption
-      const encryption = decodeFirstSync(hexAsBuffer(cipher));
+      const encryption = decodeCbor({cbor: cipher}).value;
 
       const {plain} = await decryptWithSecret({
         encrypted: encryption.encrypted,

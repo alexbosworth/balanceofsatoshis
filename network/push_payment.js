@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {findKey} = require('ln-sync');
 const {formatTokens} = require('ln-sync');
 const {getChannels} = require('ln-service');
@@ -153,28 +154,46 @@ module.exports = (args, cbk) => {
       // Get tags for figuring out avoid flags
       getTags: ['validate', ({}, cbk) => getTags({fs: args.fs}, cbk)],
 
-      // Payment details
-      payment: ['validate', ({}, cbk) => {
+      // Parse the destination as a LNURL or as a BOLT 11 payment request
+      parseDestination: ['validate', asyncify(() => {
         try {
-          const {url} = parseUrl({url: args.destination});
+          parseUrl({url: args.destination});
 
-          return cbk(null, {lnurl: args.destination});
+          return {lnurl: args.destination};
         } catch (err) {
           // Ignore errors, destination isn't a LNURL
         }
 
         try {
-          const details = parsePaymentRequest({request: args.destination});
+          const {destination, mtokens} = parsePaymentRequest({
+            request: args.destination,
+          });
 
-          const {destination, mtokens} = details;
-
-          if (!!BigInt(mtokens)) {
-            return cbk([400, 'ExpectedZeroAmountPayRequestToSendFunds']);
-          }
-
-          return cbk(null, {destination, request: args.destination});
+          return {destination, mtokens, request: args.destination};
         } catch (err) {
           // Ignore errors, destination isn't BOLT 11
+        }
+
+        // The destination is a node to find
+        return {};
+      })],
+
+      // Payment details
+      payment: ['parseDestination', ({parseDestination}, cbk) => {
+        const {destination, lnurl, mtokens, request} = parseDestination;
+
+        // Exit early when the destination is a LNURL
+        if (!!lnurl) {
+          return cbk(null, {lnurl});
+        }
+
+        if (!!request && !!BigInt(mtokens)) {
+          return cbk([400, 'ExpectedZeroAmountPayRequestToSendFunds']);
+        }
+
+        // Exit early when the destination is a payment request
+        if (!!request) {
+          return cbk(null, {destination, request});
         }
 
         // Find the key to send to
@@ -283,7 +302,13 @@ module.exports = (args, cbk) => {
         'getNetwork',
         'getOutKey',
         'payment',
-        ({fiatRates, getChannels, getNetwork, getOutKey, payment}, cbk) =>
+        asyncify(({
+          fiatRates,
+          getChannels,
+          getNetwork,
+          getOutKey,
+          payment,
+        }) =>
       {
         // Total remote balance including pending if pending fails
         const inbound = getChannels.channels
@@ -374,18 +399,18 @@ module.exports = (args, cbk) => {
 
           // Exit early when there is no max fee rate to compute max fee for
           if (args.max_fee_rate === undefined) {
-            return cbk(null, {tokens, max_fee: args.max_fee});
+            return {tokens, max_fee: args.max_fee};
           }
 
           // Compute the max potential fee given the max fee rate constraint
           const maxFeeByRate = feeTokensForFeeRate(tokens, args.max_fee_rate);
 
           // The maximum fee to pay is the lower of the fee limit, fee by rate
-          return cbk(null, {tokens, max_fee: min(args.max_fee, maxFeeByRate)});
+          return {tokens, max_fee: min(args.max_fee, maxFeeByRate)};
         } catch (err) {
-          return cbk([400, 'FailedToParsePushAmount', err]);
+          throw [400, 'FailedToParsePushAmount', err];
         }
-      }],
+      })],
 
       // Get LNURL payment request
       getLnurlRequest: [

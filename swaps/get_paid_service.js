@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {genericSwapAuth} = require('goldengate');
 const {genericSwapService} = require('goldengate');
 const {getNetwork} = require('ln-sync');
@@ -116,25 +117,29 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
       }],
 
       // Make a service object for the remote swap service
-      remote: ['endpoint', 'getNetwork', ({endpoint, getNetwork}, cbk) => {
+      remote: [
+        'endpoint',
+        'getNetwork',
+        asyncify(({endpoint, getNetwork}) =>
+      {
         // Exit early when using a generic service
         if (!!endpoint && httpMatch.test(endpoint)) {
           try {
-            return cbk(null, genericSwapService({fetch, socket: endpoint}));
+            return genericSwapService({fetch, socket: endpoint});
           } catch (err) {
-            return cbk([500, 'UnexpectedErrorInitiatingSwapService', {err}]);
+            throw [500, 'UnexpectedErrorInitiatingSwapService', {err}];
           }
         }
 
         try {
-          return cbk(null, lightningLabsSwapService({
+          return lightningLabsSwapService({
             network: getNetwork.network,
             socket: endpoint,
-          }));
+          });
         } catch (err) {
-          return cbk([500, 'UnexpectedErrorInitiatingSwapService', {err}]);
+          throw [500, 'UnexpectedErrorInitiatingSwapService', {err}];
         }
-      }],
+      })],
 
       // Get an unpaid swap macaroon
       getUnpaidMacaroon: [
@@ -153,11 +158,32 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
         return getSwapMacaroon({service: remote.service}, cbk);
       }],
 
+      // Parse the service token payment request
+      parseRequest: [
+        'decodeToken',
+        'getUnpaidMacaroon',
+        asyncify(({decodeToken, getUnpaidMacaroon}) =>
+      {
+        // Exit early when there is already a paid service token
+        if (!!decodeToken) {
+          return;
+        }
+
+        const {request} = getUnpaidMacaroon;
+
+        try {
+          return parsePaymentRequest({request});
+        } catch (err) {
+          throw [503, 'FailedToParseServicePaymentRequest', {err}];
+        }
+      })],
+
       // Pay for the macaroon
       payForMacaroon: [
         'decodeToken',
         'getUnpaidMacaroon',
-        ({decodeToken, getUnpaidMacaroon}, cbk) =>
+        'parseRequest',
+        ({decodeToken, getUnpaidMacaroon, parseRequest}, cbk) =>
       {
         // Exit early when there is already a paid service token
         if (!!decodeToken) {
@@ -165,16 +191,11 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
         }
 
         const {request} = getUnpaidMacaroon;
+        const {tokens} = parseRequest;
 
-        // Validate the service token payment request
-        try {
-          const {tokens} = parsePaymentRequest({request});
-
-          if (tokens > maxServiceFee) {
-            return cbk([503, 'UnexpectedlyHighServiceFee', {fee: tokens}]);
-          }
-        } catch (err) {
-          return cbk([503, 'FailedToParseServicePaymentRequest', {err}]);
+        // Exit early when the service token costs too much
+        if (tokens > maxServiceFee) {
+          return cbk([503, 'UnexpectedlyHighServiceFee', {fee: tokens}]);
         }
 
         // Pay the service token payment request to purchase the macaroon

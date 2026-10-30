@@ -2,6 +2,7 @@ const {createDecipheriv} = require('crypto');
 const {scrypt} = require('crypto');
 
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {returnResult} = require('asyncjs-util');
 
 const algorithm = 'aes-256-gcm';
@@ -94,7 +95,7 @@ module.exports = ({encrypted, iv, salt, secret, settings, tag}, cbk) => {
       }],
 
       // Decrypt data with the derived key
-      decrypt: ['key', ({key}, cbk) => {
+      decrypt: ['key', asyncify(({key}) => {
         const decipher = createDecipheriv(settings.algorithm, key, iv);
 
         decipher.setAuthTag(tag);
@@ -102,11 +103,11 @@ module.exports = ({encrypted, iv, salt, secret, settings, tag}, cbk) => {
         try {
           const elements = [decipher.update(encrypted), decipher.final()];
 
-          return cbk(null, {plain: bufAsHex(Buffer.concat(elements))});
+          return {plain: bufAsHex(Buffer.concat(elements))};
         } catch (err) {
-          return cbk([503, 'FailedToDecryptMessage', {err}]);
+          throw [503, 'FailedToDecryptMessage', {err}];
         }
-      }],
+      })],
     },
     returnResult({reject, resolve, of: 'decrypt'}, cbk));
   });

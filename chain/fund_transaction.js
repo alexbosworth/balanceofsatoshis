@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
+const asyncify = require('async/asyncify');
 const {broadcastTransaction} = require('ln-sync');
 const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {formatTokens} = require('ln-sync');
@@ -112,10 +113,10 @@ module.exports = (args, cbk) => {
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
       // Derive a list of outputs to guide input selection
-      outputs: ['validate', ({}, cbk) => {
+      outputs: ['validate', asyncify(() => {
         // Exit early when the amount is open ended and thus depends on inputs
         if (hasMaxAmount(args.amounts)) {
-          return cbk();
+          return;
         }
 
         try {
@@ -125,11 +126,11 @@ module.exports = (args, cbk) => {
             return {address, tokens};
           });
 
-          return cbk(null, outputs);
+          return outputs;
         } catch (err) {
-          return cbk([400, err.message]);
+          throw [400, err.message];
         }
-      }],
+      })],
 
       // Get UTXOs to use for input selection and final fee rate calculation
       getUtxos: ['validate', ({}, cbk) => getUtxos({lnd: args.lnd}, cbk)],
@@ -238,7 +239,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Parse amounts and put together the final set of outputs
-      finalOutputs: ['getMax', ({getMax}, cbk) => {
+      finalOutputs: ['getMax', asyncify(({getMax}) => {
         try {
           const outputs = args.addresses.map((address, i) => {
             const amount = args.amounts[i];
@@ -252,11 +253,11 @@ module.exports = (args, cbk) => {
             return {address, tokens: parseAmount({amount, variables}).tokens};
           });
 
-          return cbk(null, outputs);
+          return outputs;
         } catch (err) {
-          return cbk([400, err.message]);
+          throw [400, err.message];
         }
-      }],
+      })],
 
       // Create a funded PSBT
       fund: [

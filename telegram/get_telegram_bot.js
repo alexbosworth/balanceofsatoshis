@@ -49,9 +49,9 @@ module.exports = ({fs, proxy}, cbk) => {
           if (!!err || !res || !res.toString() || !!fs.is_reset_state) {
             const token = interaction.api_token_prompt;
 
+            // The failure handler only sees prompt failures, not later throws
             inquirer.prompt([token])
-              .then(({key}) => cbk(null, {key}))
-              .catch(err => {
+              .then(({key}) => cbk(null, {key}), err => {
                 // Exit quietly when the user presses ctrl+c
                 if (!!err && err.name === 'ExitPromptError') {
                   return process.exit(130);

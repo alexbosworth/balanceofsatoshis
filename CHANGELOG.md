@@ -1,5 +1,9 @@
 # Versions
 
+## 25.5.0
+
+- `probe`: Add `--ignore-expiry` to probe expired payment requests
+
 ## 25.4.0
 
 - `accounting`: After 2021-10-19 derive USD prices from chain payments data

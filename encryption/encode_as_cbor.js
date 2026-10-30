@@ -1,4 +1,4 @@
-const {Encoder} = require('cbor');
+const encodeCborItem = require('./encode_cbor_item');
 
 const bufferAsHex = buffer => buffer.toString('hex');
 
@@ -8,21 +8,14 @@ const bufferAsHex = buffer => buffer.toString('hex');
     value: <Value to Encode Object>
   }
 
+  @throws
+  <Error>
+
   @returns
   {
     cbor: <CBOR Encoded Hex String>
   }
 */
 module.exports = ({value}) => {
-  const chunks = [];
-  const encoder = new Encoder();
-
-  // Gather the encoding as it is emitted, reading it later can cut it short
-  encoder.on('data', chunk => chunks.push(chunk));
-
-  encoder.pushAny(value);
-
-  encoder.end();
-
-  return {cbor: bufferAsHex(Buffer.concat(chunks))};
+  return {cbor: bufferAsHex(encodeCborItem({value}).encoded)};
 };

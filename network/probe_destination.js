@@ -2,6 +2,7 @@ const {createHash} = require('crypto');
 const {randomBytes} = require('crypto');
 
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const asyncMap = require('async/map');
 const {decodePaymentRequest} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -91,6 +92,7 @@ const tokAsMtok = tokens => (BigInt(tokens || 0) * BigInt(1e3)).toString();
         min_htlc_mtokens: <Minimum HTLC Millitokens String>
       }]
     }
+    [is_ignoring_expiry]: <Probe Even When the Request Is Expired Bool>
     [is_omitting_message_from]: <Omit Message From Fields Bool>
     [is_push]: <Is Push Payment Bool>
     [is_real_payment]: <Pay the Request after Probing Bool> // default: false
@@ -194,25 +196,25 @@ module.exports = (args, cbk) => {
       }],
 
       // Destination to pay
-      to: ['validate', ({}, cbk) => {
+      to: ['validate', asyncify(() => {
         // Exit early when sending a push payment
         if (!!args.is_push) {
           const secret = randomBytes(preimageByteLength);
 
-          return cbk(null, {
+          return {
             secret,
             destination: args.destination,
             id: createHash('sha256').update(secret).digest().toString('hex'),
             mtokens: !args.tokens ? '0': tokAsMtok(args.tokens),
-          });
+          };
         }
 
         // Exit early when paying an invoice over its payment paths
         if (!!args.invoice) {
           const {invoice} = args;
 
-          if (isPast(invoice.expires_at)) {
-            return cbk([400, 'InvoiceIsExpired']);
+          if (!args.is_ignoring_expiry && isPast(invoice.expires_at)) {
+            throw [400, 'InvoiceIsExpired'];
           }
 
           // The destination of an invoice is hidden behind its payment paths
@@ -224,74 +226,76 @@ module.exports = (args, cbk) => {
             tokens: mtokensAsTokens(invoice.mtokens),
           });
 
-          return cbk(null, {
+          return {
             id: invoice.id,
             mtokens: invoice.mtokens,
             paths: invoice.paths,
             tokens: mtokensAsTokens(invoice.mtokens),
-          });
+          };
         }
 
         // Exit early when probing a destination
         if (!args.request && !!args.destination) {
-          return cbk(null, {
+          return {
             destination: args.destination,
             mtokens: !args.tokens ? '0': tokAsMtok(args.tokens),
             payment: makeNonce(),
             routes: [],
-          });
+          };
         }
 
         if (!args.request) {
-          return cbk([400, 'PayRequestOrDestinationRequiredToInitiateProbe']);
+          throw [400, 'PayRequestOrDestinationRequiredToInitiateProbe'];
         }
 
+        let details;
+
         try {
-          const details = parsePaymentRequest({request: args.request});
+          details = parsePaymentRequest({request: args.request});
+        } catch (err) {
+          throw [400, 'FailedToDecodePaymentRequest', {err}];
+        }
 
-          if (details.is_expired) {
-            return cbk([400, 'InvoiceIsExpired']);
-          }
+        if (!args.is_ignoring_expiry && details.is_expired) {
+          throw [400, 'InvoiceIsExpired'];
+        }
 
-          // Exit early when tokens are specified for a request
-          if (!!args.tokens) {
-            return cbk(null, {
-              cltv_delta: details.cltv_delta,
-              destination: details.destination,
-              features: details.features,
-              id: details.id,
-              mtokens: tokAsMtok(args.tokens),
-              paths: details.paths,
-              payment: details.payment,
-              routes: details.routes,
-              tokens: args.tokens,
-            });
-          }
-
-          // The destination of a blinded paths request is not known
-          args.logger.info({
-            description: details.description || undefined,
-            destination: !details.paths ? details.destination : blinded,
-            expires: moment(details.expires_at).fromNow(),
-            id: details.id,
-            tokens: details.tokens,
-          });
-
-          return cbk(null, {
+        // Exit early when tokens are specified for a request
+        if (!!args.tokens) {
+          return {
             cltv_delta: details.cltv_delta,
             destination: details.destination,
             features: details.features,
             id: details.id,
-            mtokens: details.mtokens || '0',
+            mtokens: tokAsMtok(args.tokens),
             paths: details.paths,
             payment: details.payment,
             routes: details.routes,
-            tokens: details.tokens,
-          });
-        } catch (err) {
-          return cbk([400, 'FailedToDecodePaymentRequest', {err}]);
+            tokens: args.tokens,
+          };
         }
-      }],
+
+        // The destination of a blinded paths request is not known
+        args.logger.info({
+          description: details.description || undefined,
+          destination: !details.paths ? details.destination : blinded,
+          expires: moment(details.expires_at).fromNow(),
+          id: details.id,
+          tokens: details.tokens,
+        });
+
+        return {
+          cltv_delta: details.cltv_delta,
+          destination: details.destination,
+          features: details.features,
+          id: details.id,
+          mtokens: details.mtokens || '0',
+          paths: details.paths,
+          payment: details.payment,
+          routes: details.routes,
+          tokens: details.tokens,
+        };
+      })],
 
       // Tokens
       tokens: ['to', ({to}, cbk) => {
@@ -420,23 +424,63 @@ module.exports = (args, cbk) => {
         return cbk();
       }],
 
+      // Sign the message as from this node
+      signMessage: [
+        'checkMessages',
+        'getFeatures',
+        'getIdentity',
+        'to',
+        ({getIdentity, to}, cbk) =>
+      {
+        // Exit early when there is no message to sign as from this node
+        if (!args.message || !!args.is_omitting_message_from) {
+          return cbk();
+        }
+
+        const date = Buffer.alloc(dateBytesLength);
+
+        date.writeUIntBE(now(), Number(), datePrecisionLength);
+
+        const preimage = Buffer.concat([
+          bufFromHex(getIdentity.public_key),
+          bufFromHex(to.destination),
+          date,
+          Buffer.from(args.message),
+        ]);
+
+        return signBytes({
+          preimage: preimage.toString('hex'),
+          key_family: nodeKeyFamily,
+          key_index: Number(),
+          lnd: args.lnd,
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          return cbk(null, {
+            date: date.toString('hex'),
+            signature: res.signature,
+          });
+        });
+      }],
+
       // Determine messages to attach
       messages: [
         'checkMessages',
         'getFeatures',
         'getIdentity',
+        'signMessage',
         'to',
-        async ({getFeatures, getIdentity, to}, cbk) =>
+        asyncify(({getIdentity, signMessage, to}) =>
       {
         // Exit early when there are no messages
         if (!args.message && !args.messages && !args.is_push) {
           return;
         }
 
-        const date = Buffer.alloc(dateBytesLength);
         const messages = [].concat(args.messages || []);
-
-        date.writeUIntBE(now(), Number(), datePrecisionLength);
 
         // Add message
         if (!!args.message) {
@@ -447,25 +491,10 @@ module.exports = (args, cbk) => {
         }
 
         // Add message from fields
-        if (!!args.message && !args.is_omitting_message_from) {
-          messages.push({type: dateType, value: date.toString('hex')});
+        if (!!signMessage) {
+          messages.push({type: dateType, value: signMessage.date});
           messages.push({type: fromKeyType, value: getIdentity.public_key});
-
-          const preimage = Buffer.concat([
-            bufFromHex(getIdentity.public_key),
-            bufFromHex(to.destination),
-            date,
-            Buffer.from(args.message),
-          ]);
-
-          const {signature} = await signBytes({
-            preimage: preimage.toString('hex'),
-            key_family: nodeKeyFamily,
-            key_index: Number(),
-            lnd: args.lnd,
-          });
-
-          messages.push({type: signatureType, value: signature});
+          messages.push({type: signatureType, value: signMessage.signature});
         }
 
         if (!!args.is_push) {
@@ -473,7 +502,7 @@ module.exports = (args, cbk) => {
         }
 
         return messages;
-      }],
+      })],
 
       // Outgoing channel id
       outId: ['getChannels', 'to', ({getChannels, to}, cbk) => {

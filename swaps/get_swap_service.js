@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {getNetwork} = require('ln-sync');
 const {lightningLabsSwapService} = require('goldengate');
 const {returnResult} = require('asyncjs-util');
@@ -30,15 +31,15 @@ module.exports = ({logger, node}, cbk) => {
       getNetwork: ['lnd', ({lnd}, cbk) => getNetwork({lnd}, cbk)],
 
       // Swap service
-      service: ['getNetwork', ({getNetwork}, cbk) => {
+      service: ['getNetwork', asyncify(({getNetwork}) => {
         const {network} = getNetwork;
 
         try {
-          return cbk(null, lightningLabsSwapService({network}));
+          return lightningLabsSwapService({network});
         } catch (err) {
-          return cbk([400, 'FailedToFindSupportedSwapService', {err}]);
+          throw [400, 'FailedToFindSupportedSwapService', {err}];
         }
-      }],
+      })],
     },
     returnResult({reject, resolve, of: 'service'}));
   });

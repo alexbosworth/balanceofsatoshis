@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
+const asyncify = require('async/asyncify');
 const asyncMapSeries = require('async/mapSeries');
 const asyncReflect = require('async/reflect');
 const {broadcastChainTransaction} = require('ln-service');
@@ -85,7 +86,7 @@ module.exports = (args, cbk) => {
     getUtxos: ['validate', ({}, cbk) => getUtxos({lnd: args.lnd}, cbk)],
 
     // Select the inputs and the count of outputs that reach the count
-    plan: ['feeRate', 'getUtxos', ({feeRate, getUtxos}, cbk) => {
+    plan: ['feeRate', 'getUtxos', asyncify(({feeRate, getUtxos}) => {
       try {
         const plan = utxoSplitPlan({
           count: args.count,
@@ -95,11 +96,11 @@ module.exports = (args, cbk) => {
           utxos: getUtxos.utxos,
         });
 
-        return cbk(null, plan);
+        return plan;
       } catch (err) {
-        return cbk([400, err.message]);
+        throw [400, err.message];
       }
-    }],
+    })],
 
     // Generate addresses
     getAddresses: ['plan', ({plan}, cbk) => {

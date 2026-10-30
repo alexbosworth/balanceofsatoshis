@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {returnResult} = require('asyncjs-util');
 
 const {homePath} = require('../storage');
@@ -38,38 +39,48 @@ module.exports = ({fs}, cbk) => {
         return cbk();
       },
 
-      // Get icons from the tags file
-      getIcons: ['validate', ({}, cbk) => {
+      // Get the tags file
+      getFile: ['validate', ({}, cbk) => {
         return fs.getFile(tagFilePath(), (err, res) => {
           // Exit early when there is no tag file
           if (!!err || !res) {
-            return cbk(null, {nodes: []});
+            return cbk();
           }
 
-          try {
-            const file = parse(res.toString());
-
-            const keys = uniq(flatten(file.tags.map(n => n.nodes)));
-
-            const nodes = keys.map(key => {
-              // Only tags this node is included in
-              const meta = file.tags.filter(tag => {
-                return isArray(tag.nodes) && tag.nodes.includes(key);
-              });
-
-              return {
-                aliases: uniq(meta.map(n => n.alias)),
-                icons: uniq(meta.map(n => n.icon)),
-                public_key: key,
-              };
-            });
-
-            return cbk(null, {nodes});
-          } catch (err) {
-            return cbk(null, {nodes: []});
-          }
+          return cbk(null, res.toString());
         });
       }],
+
+      // Get icons from the tags file
+      getIcons: ['getFile', asyncify(({getFile}) => {
+        // Exit early when there is no tag file
+        if (!getFile) {
+          return {nodes: []};
+        }
+
+        try {
+          const file = parse(getFile);
+
+          const keys = uniq(flatten(file.tags.map(n => n.nodes)));
+
+          const nodes = keys.map(key => {
+            // Only tags this node is included in
+            const meta = file.tags.filter(tag => {
+              return isArray(tag.nodes) && tag.nodes.includes(key);
+            });
+
+            return {
+              aliases: uniq(meta.map(n => n.alias)),
+              icons: uniq(meta.map(n => n.icon)),
+              public_key: key,
+            };
+          });
+
+          return {nodes};
+        } catch (err) {
+          return {nodes: []};
+        }
+      })],
     },
     returnResult({reject, resolve, of: 'getIcons'}, cbk));
   });

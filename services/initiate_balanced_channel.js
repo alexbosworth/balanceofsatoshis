@@ -479,17 +479,19 @@ module.exports = (args, cbk) => {
 
           const {records} = req;
 
+          let acceptance;
+
           try {
-            const acceptance = balancedOpenAcceptDetails({records});
-
-            // Respond to the peer accept request
-            res.success({});
-
-            return cbk(null, acceptance);
+            acceptance = balancedOpenAcceptDetails({records});
           } catch (err) {
             // Tell the peer there was a failure
             return peerFailure(res.failure, cbk, [503, err.message]);
           }
+
+          // Respond to the peer accept request
+          res.success({});
+
+          return cbk(null, acceptance);
         });
 
         sub.on('error', err => {
@@ -527,11 +529,15 @@ module.exports = (args, cbk) => {
 
           const {messages} = acceptDetailsPayment;
 
+          let acceptance;
+
           try {
-            return cbk(null, balancedOpenAcceptDetails({records: messages}));
+            acceptance = balancedOpenAcceptDetails({records: messages});
           } catch (err) {
             return cbk([503, err.message]);
           }
+
+          return cbk(null, acceptance);
         });
       }],
 

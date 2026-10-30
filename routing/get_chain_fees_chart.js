@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const asyncMap = require('async/map');
 const {formatTokens} = require('ln-sync');
 const {getChainTransactions} = require('ln-accounting');
@@ -245,7 +246,7 @@ module.exports = (args, cbk) => {
         'start',
         'sum',
         'total',
-        async ({end, measure, start, sum, total}) =>
+        asyncify(({end, measure, start, sum, total}) =>
       {
         const duration = `Chain fees paid in ${sum.fees.length} ${measure}s`;
         const since = `from ${start.calendar().toLowerCase()}`;
@@ -257,7 +258,7 @@ module.exports = (args, cbk) => {
         });
 
         return `${duration} ${since}${to}. Total: ${display}`;
-      }],
+      })],
 
       // Fees paid
       data: ['description', 'sum', ({description, sum}, cbk) => {

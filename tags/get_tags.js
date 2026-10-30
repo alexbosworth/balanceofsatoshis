@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {returnResult} = require('asyncjs-util');
 
 const {homePath} = require('../storage');
@@ -38,28 +39,38 @@ module.exports = ({fs}, cbk) => {
         return cbk();
       },
 
-      // Fetch the tags
-      getTags: ['validate', ({}, cbk) => {
+      // Fetch the tags file
+      getFile: ['validate', ({}, cbk) => {
         return fs.getFile(tagFilePath(), (err, res) => {
-          // Fail back to no tags when there is an error
+          // Exit early when there is no tags file
           if (!!err || !res) {
-            return cbk(null, defaultTags);
+            return cbk();
           }
 
-          try {
-            const {tags} = parse(res.toString());
-
-            // Exit early when tags are not well formed
-            if (!isArray(tags) || !!tags.filter(n => !n).length) {
-              return cbk(null, defaultTags);
-            }
-
-            return cbk(null, {tags});
-          } catch (err) {
-            return cbk(null, defaultTags);
-          }
+          return cbk(null, res.toString());
         });
       }],
+
+      // Parse the tags out of the tags file
+      getTags: ['getFile', asyncify(({getFile}) => {
+        // Fail back to no tags when there is no tags file
+        if (!getFile) {
+          return defaultTags;
+        }
+
+        try {
+          const {tags} = parse(getFile);
+
+          // Exit early when tags are not well formed
+          if (!isArray(tags) || !!tags.filter(n => !n).length) {
+            return defaultTags;
+          }
+
+          return {tags};
+        } catch (err) {
+          return defaultTags;
+        }
+      })],
     },
     returnResult({reject, resolve, of: 'getTags'}, cbk));
   });

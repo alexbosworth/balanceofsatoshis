@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const asyncMap = require('async/map');
 const asyncMapSeries = require('async/mapSeries');
 const asyncRetry = require('async/retry');
@@ -130,24 +131,26 @@ module.exports = (args, cbk) => {
       },
 
       // Determine the maximum rebalance
-      maximum: ['validate', ({}, cbk) => {
+      maximum: ['validate', asyncify(() => {
         // Exit early when there is no maximum rebalance target
         if (!args.max_rebalance) {
-          return cbk();
+          return;
         }
+
+        let tokens;
 
         try {
-          const {tokens} = parseAmount({amount: args.max_rebalance});
-
-          if (tokens < minRebalanceAmount) {
-            return cbk([400, 'LowRebalanceAmount', {min: minRebalanceAmount}]);
-          }
-
-          return cbk(null, tokens);
+          tokens = parseAmount({amount: args.max_rebalance}).tokens;
         } catch (err) {
-          return cbk([400, err.message]);
+          throw [400, err.message];
         }
-      }],
+
+        if (tokens < minRebalanceAmount) {
+          throw [400, 'LowRebalanceAmount', {min: minRebalanceAmount}];
+        }
+
+        return tokens;
+      })],
 
       // Starting tokens to rebalance
       tokens: ['maximum', ({maximum}, cbk) => {
@@ -161,24 +164,35 @@ module.exports = (args, cbk) => {
       // Lnd by itself
       lnd: ['validate', ({}, cbk) => cbk(null, args.lnd)],
 
-      // Get the set of tags
-      getTags: ['validate', ({}, cbk) => {
-        const defaultTags = {tags: []};
-
+      // Get the tags file
+      getTagsFile: ['validate', ({}, cbk) => {
         return args.fs.getFile(tagFilePath(), (err, res) => {
+          // Exit early when there is no tags file
           if (!!err || !res) {
-            return cbk(null, defaultTags);
+            return cbk();
           }
 
-          try {
-            const {tags} = parse(res.toString());
-
-            return cbk(null, {tags});
-          } catch (err) {
-            return cbk(null, defaultTags);
-          }
+          return cbk(null, res.toString());
         });
       }],
+
+      // Get the set of tags
+      getTags: ['getTagsFile', asyncify(({getTagsFile}) => {
+        const defaultTags = {tags: []};
+
+        // Exit early when there is no tags file
+        if (!getTagsFile) {
+          return defaultTags;
+        }
+
+        try {
+          const {tags} = parse(getTagsFile);
+
+          return {tags};
+        } catch (err) {
+          return defaultTags;
+        }
+      })],
 
       // Get initial liquidity
       getInitialLiquidity: ['lnd', ({lnd}, cbk) => getChannels({lnd}, cbk)],
@@ -757,17 +771,18 @@ module.exports = (args, cbk) => {
         'getPublicKey',
         'invoice',
         'tokens',
-        ({
+        asyncify(({
           channels,
           getHeight,
           getPublicKey,
           invoice,
           tokens,
-        },
-        cbk) =>
+        }) =>
       {
+        let route;
+
         try {
-          const {route} = routeFromChannels({
+          route = routeFromChannels({
             channels,
             cltv_delta: cltvDelta,
             destination: getPublicKey.public_key,
@@ -775,48 +790,48 @@ module.exports = (args, cbk) => {
             mtokens: (BigInt(invoice.tokens) * mtokensPerToken).toString(),
             payment: invoice.payment,
             total_mtokens: !!invoice.payment ? invoice.mtokens : undefined,
-          });
-
-          const maxFee = args.max_fee || defaultMaxFee;
-          const maxFeeRate = args.max_fee_rate || defaultMaxFeeRate;
-
-          if (route.tokens < minRebalanceAmount) {
-            return cbk([503, 'EncounteredUnexpectedRouteLiquidityFailure']);
-          }
-
-          const [highFeeAt] = sortBy({
-            array: route.hops.map(hop => ({
-              to: hop.public_key,
-              fee: hop.fee,
-            })),
-            attribute: 'fee',
-          }).sorted.reverse().map(n => n.to);
-
-          // Exit early when a max fee is specified and exceeded
-          if (!!maxFee && route.fee > maxFee) {
-            return cbk([
-              400,
-              'RebalanceTotalFeeTooHigh',
-              {needed_max_fee: route.fee.toString(), high_fee: highFeeAt},
-            ]);
-          }
-
-          const feeRate = ceil(route.fee / route.tokens * rateDivisor);
-
-          // Exit early when the max fee rate is specified and exceeded
-          if (!!maxFeeRate && feeRate > maxFeeRate) {
-            return cbk([
-              400,
-              'RebalanceFeeRateTooHigh',
-              {needed_max_fee_rate: feeRate.toString(), high_fee: highFeeAt},
-            ]);
-          }
-
-          return cbk(null, [route]);
+          }).route;
         } catch (err) {
-          return cbk([500, 'FailedToConstructRebalanceRoute', {err}]);
+          throw [500, 'FailedToConstructRebalanceRoute', {err}];
         }
-      }],
+
+        const maxFee = args.max_fee || defaultMaxFee;
+        const maxFeeRate = args.max_fee_rate || defaultMaxFeeRate;
+
+        if (route.tokens < minRebalanceAmount) {
+          throw [503, 'EncounteredUnexpectedRouteLiquidityFailure'];
+        }
+
+        const [highFeeAt] = sortBy({
+          array: route.hops.map(hop => ({
+            to: hop.public_key,
+            fee: hop.fee,
+          })),
+          attribute: 'fee',
+        }).sorted.reverse().map(n => n.to);
+
+        // Exit early when a max fee is specified and exceeded
+        if (!!maxFee && route.fee > maxFee) {
+          throw [
+            400,
+            'RebalanceTotalFeeTooHigh',
+            {needed_max_fee: route.fee.toString(), high_fee: highFeeAt},
+          ];
+        }
+
+        const feeRate = ceil(route.fee / route.tokens * rateDivisor);
+
+        // Exit early when the max fee rate is specified and exceeded
+        if (!!maxFeeRate && feeRate > maxFeeRate) {
+          throw [
+            400,
+            'RebalanceFeeRateTooHigh',
+            {needed_max_fee_rate: feeRate.toString(), high_fee: highFeeAt},
+          ];
+        }
+
+        return [route];
+      })],
 
       // Calculate the total inbound fee discount
       discount: [

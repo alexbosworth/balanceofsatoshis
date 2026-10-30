@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {getBlock} = require('ln-service');
 const {queryTransactions} = require('@alexbosworth/blockchain');
 const {returnResult} = require('asyncjs-util');
@@ -77,10 +78,10 @@ module.exports = (args, cbk) => {
       }],
 
       // Find the transactions in the block
-      transactions: ['getBlock', ({getBlock}, cbk) => {
+      transactions: ['getBlock', asyncify(({getBlock}) => {
         // Exit early when there is no block to look through
         if (!getBlock.block) {
-          return cbk(null, {transactions: []});
+          return {transactions: []};
         }
 
         try {
@@ -89,11 +90,11 @@ module.exports = (args, cbk) => {
             ids: args.ids,
           });
 
-          return cbk(null, {transactions});
+          return {transactions};
         } catch (err) {
-          return cbk([503, 'UnexpectedErrorParsingBlockTransactions', {err}]);
+          throw [503, 'UnexpectedErrorParsingBlockTransactions', {err}];
         }
-      }],
+      })],
     },
     returnResult({reject, resolve, of: 'transactions'}, cbk));
   });

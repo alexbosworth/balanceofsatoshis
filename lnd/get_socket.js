@@ -2,6 +2,7 @@ const {join} = require('path');
 const {URL} = require('url');
 
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const {parse} = require('ini');
 const {returnResult} = require('asyncjs-util');
 
@@ -65,10 +66,10 @@ module.exports = ({fs, node, os, path}, cbk) => {
       }],
 
       // Parse configuration file
-      parseConf: ['getConfFile', ({getConfFile}, cbk) => {
+      parseConf: ['getConfFile', asyncify(({getConfFile}) => {
         // Exit early when there is nothing to parse
         if (!getConfFile) {
-          return cbk();
+          return;
         }
 
         try {
@@ -78,12 +79,12 @@ module.exports = ({fs, node, os, path}, cbk) => {
             throw new Error('ExpectedConfigurationInfoFromConfigFile');
           }
 
-          return cbk(null, conf);
+          return conf;
         } catch (err) {
           // Ignore errors in configuration parsing
-          return cbk();
+          return;
         }
-      }],
+      })],
 
       // Derive the RPC host
       deriveHost: ['parseConf', ({parseConf}, cbk) => {
@@ -109,11 +110,11 @@ module.exports = ({fs, node, os, path}, cbk) => {
       deriveSocket: [
         'deriveHost',
         'parseConf',
-        ({deriveHost, parseConf}, cbk) =>
+        asyncify(({deriveHost, parseConf}) =>
       {
         // Exit early when there is no conf settings or TLS host
         if (!deriveHost || !parseConf) {
-          return cbk();
+          return;
         }
 
         const url = `${scheme}${parseConf[applicationOptions].rpclisten}`;
@@ -125,12 +126,12 @@ module.exports = ({fs, node, os, path}, cbk) => {
             throw new Error('FailedToDerivePortFromApplicationOptions');
           }
 
-          return cbk(null, `${deriveHost}:${port}`);
+          return `${deriveHost}:${port}`;
         } catch (err) {
           // Ignore errors
-          return cbk();
+          return;
         }
-      }],
+      })],
 
       // Socket
       socket: ['deriveSocket', ({deriveSocket}, cbk) => {

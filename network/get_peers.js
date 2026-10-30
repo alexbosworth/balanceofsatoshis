@@ -148,6 +148,9 @@ module.exports = (args, cbk) => {
         return getPastForwards({days, lnd: args.lnd}, cbk);
       }],
 
+      // Get the current block height
+      getHeight: ['validate', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
+
       // Get invoices
       getInvoices: ['validate', ({}, cbk) => {
         const invoices = [];
@@ -342,6 +345,7 @@ module.exports = (args, cbk) => {
         'allChannels',
         'forwards',
         'getChannels',
+        'getHeight',
         'getInvoices',
         'getNetwork',
         'getPayments',
@@ -352,6 +356,7 @@ module.exports = (args, cbk) => {
           allChannels,
           forwards,
           getChannels,
+          getHeight,
           getInvoices,
           getNetwork,
           getPayments,
@@ -415,7 +420,7 @@ module.exports = (args, cbk) => {
 
         const {network} = getNetwork.value || {};
         const peerKeys = getChannels.channels.map(n => n.partner_public_key);
-        const wallet = await getHeight({lnd: args.lnd});
+        const currentHeight = getHeight.current_block_height;
 
         const heights = allChannels.map(({id, key}) => {
           return {key, height: decodeChanId({channel: id}).block_height};
@@ -442,8 +447,8 @@ module.exports = (args, cbk) => {
           const [newest] = channelHeights.sorted.slice().reverse();
           const [oldest] = channelHeights.sorted;
 
-          const blocks = wallet.current_block_height - oldest.height;
-          const newBlocks = wallet.current_block_height - newest.height;
+          const blocks = currentHeight - oldest.height;
+          const newBlocks = currentHeight - newest.height;
 
           const active = getChannels.channels.filter(channel => {
             return channel.partner_public_key === publicKey;
@@ -453,7 +458,7 @@ module.exports = (args, cbk) => {
           const hasThawChannel = active
             .map(n => n.cooperative_close_delay_height)
             .filter(n => !!n)
-            .find(n => n > wallet.current_block_height);
+            .find(n => n > currentHeight);
 
           const hasHtlcChannel = active
             .find(n => !!n.pending_payments.length);

@@ -10,14 +10,12 @@ const timeoutSignals = new WeakMap();
   }
 
   @returns
-  {
-    request: <Request Function>
-  }
+  <Request Function> (args, cbk) => {}
 */
 module.exports = ({fetch}, cbk) => {
   return (options, cbk) => {
     (async () => {
-    	const controller = new AbortController();
+      const controller = new AbortController();
 
       // Setup the timeout controller
       if (!!options.timeout) {
@@ -28,30 +26,40 @@ module.exports = ({fetch}, cbk) => {
 
       const url = options.url + encodeQs(options.qs);
 
-      try {
-        // Make the request
-        const response = await fetch(url, {
-          body: options.body || undefined,
-          method: options.method || undefined,
-          signal: controller.signal,
-        });
+      // Only the request is guarded, so the callback is called once
+      const fetched = await (async () => {
+        try {
+          // Make the request
+          const response = await fetch(url, {
+            body: options.body || undefined,
+            method: options.method || undefined,
+            signal: controller.signal,
+          });
 
-        const res = {statusCode: response.status};
+          const res = {statusCode: response.status};
 
-        if (!!options.json) {
-          return cbk(null, res, await response.json());
-        } else {
-          return cbk(null, res, await response.text());
+          // Exit early when the response is JSON
+          if (!!options.json) {
+            return {res, body: await response.json()};
+          }
+
+          return {res, body: await response.text()};
+        } catch (err) {
+          return {err};
+        } finally {
+          // Reset the timeout since the request is over
+          if (!!options.timeout) {
+            clearTimeout(timeoutSignals.get(controller.signal));
+          }
         }
-      } catch (err) {
-        // Return request errors back
-        return cbk(err);
-      } finally {
-        // Reset the timeout since the request is over
-        if (!!options.timeout) {
-          clearTimeout(timeoutSignals.get(controller.signal));
-        }
+      })();
+
+      // Exit early when the request failed
+      if (!!fetched.err) {
+        return cbk(fetched.err);
       }
+
+      return cbk(null, fetched.res, fetched.body);
     })();
   };
 };

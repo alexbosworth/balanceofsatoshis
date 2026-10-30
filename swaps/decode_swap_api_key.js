@@ -1,6 +1,8 @@
 const asyncAuto = require('async/auto');
-const {decodeFirst} = require('cbor');
+const asyncify = require('async/asyncify');
 const {returnResult} = require('asyncjs-util');
+
+const {decodeCbor} = require('./../encryption');
 
 /** Decode Swap API Key
 
@@ -27,30 +29,32 @@ module.exports = ({key}, cbk) => {
       },
 
       // Decode the encoded key
-      decode: ['validate', ({}, cbk) => {
-        return decodeFirst(key, (err, decoded) => {
-          if (!!err) {
-            return cbk([400, 'FailedToDecodeServiceToken', {err}]);
-          }
+      decode: ['validate', asyncify(() => {
+        let decoded;
 
-          if (!decoded) {
-            return cbk([400, 'ExpectedEncodedServiceTokenData']);
-          }
+        try {
+          decoded = decodeCbor({cbor: key}).value;
+        } catch (err) {
+          throw [400, 'FailedToDecodeServiceToken', {err}];
+        }
 
-          if (!Buffer.isBuffer(decoded.macaroon)) {
-            return cbk([400, 'ExpectedEncodedServiceTokenMacaroon']);
-          }
+        if (!decoded) {
+          throw [400, 'ExpectedEncodedServiceTokenData'];
+        }
 
-          if (!Buffer.isBuffer(decoded.preimage)) {
-            return cbk([400, 'ExpectedEncodedServiceTokenPreimage']);
-          }
+        if (!Buffer.isBuffer(decoded.macaroon)) {
+          throw [400, 'ExpectedEncodedServiceTokenMacaroon'];
+        }
 
-          return cbk(null, {
-            macaroon: decoded.macaroon.toString('base64'),
-            preimage: decoded.preimage.toString('hex'),
-          });
-        });
-      }],
+        if (!Buffer.isBuffer(decoded.preimage)) {
+          throw [400, 'ExpectedEncodedServiceTokenPreimage'];
+        }
+
+        return {
+          macaroon: decoded.macaroon.toString('base64'),
+          preimage: decoded.preimage.toString('hex'),
+        };
+      })],
     },
     returnResult({reject, resolve, of: 'decode'}, cbk));
   });

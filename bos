@@ -1657,6 +1657,7 @@ prog
   .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
   .option('--avoid-high-fee-routes', 'Avoid evaluating too-high fee routes')
   .option('--find-max', 'Find the maximum routeable amount on success route')
+  .option('--ignore-expiry', 'Probe even when the request has expired')
   .option('--in <public_key>', 'Route through specific peer of destination')
   .option('--max-fee <max_fee>', 'Max expected fee for route', INT, 1337)
   .option('--max-paths <max>', 'Maximum paths to use for find-max', INT, 1)
@@ -1679,6 +1680,7 @@ prog
           find_max: !!options.findMax ? 16777215 : undefined,
           fs: {getFile: readFile},
           in_through: inThrough.public_key,
+          is_ignoring_expiry: !!options.ignoreExpiry,
           is_strict_max_fee: !!options.avoidHighFeeRoutes,
           max_fee: options.maxFee,
           max_paths: options.maxPaths,

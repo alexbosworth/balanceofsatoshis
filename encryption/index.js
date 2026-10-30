@@ -1,4 +1,5 @@
 const certExpiration = require('./cert_expiration');
+const decodeCbor = require('./decode_cbor');
 const decryptCiphertext = require('./decrypt_ciphertext');
 const decryptWithNode = require('./decrypt_with_node');
 const derAsPem = require('./der_as_pem');
@@ -9,6 +10,7 @@ const pemAsDer = require('./pem_as_der');
 
 module.exports = {
   certExpiration,
+  decodeCbor,
   decryptCiphertext,
   decryptWithNode,
   derAsPem,

@@ -1,4 +1,5 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const asyncMap = require('async/map');
 const asyncRetry = require('async/retry');
 const {createInvoice} = require('ln-service');
@@ -356,11 +357,11 @@ module.exports = (args, cbk) => {
         'getHeight',
         'getId',
         'selectPath',
-        ({addInvoice, getHeight, getId, selectPath}, cbk) =>
+        asyncify(({addInvoice, getHeight, getId, selectPath}) =>
       {
         // Exit early when there is no selected path to blind
         if (!selectPath) {
-          return cbk();
+          return;
         }
 
         // The real hops of the path are the channel forwarders and the node
@@ -382,11 +383,11 @@ module.exports = (args, cbk) => {
             receiver_fee_rate: args.virtual_fee_rate || undefined,
           });
 
-          return cbk(null, path);
+          return path;
         } catch (err) {
-          return cbk([503, 'FailedToCreateBlindedPathForHints', {err}]);
+          throw [503, 'FailedToCreateBlindedPathForHints', {err}];
         }
-      }],
+      })],
 
       // Intercept virtual invoice forwards
       interceptVirtualInvoice: [
@@ -449,25 +450,29 @@ module.exports = (args, cbk) => {
 
           // Check for optionality
           if (!!args.is_rejecting_option) {
+            let invoiceAmount;
+
             try {
-              const {tokens} = await getInvoiceAmount({
+              invoiceAmount = await getInvoiceAmount({
                 amount: args.amount,
                 network: getNetwork.network,
                 provider: args.rate_provider || defaultFiatRateProvider,
                 request: args.request,
               });
-
-              // Exit early and reject when the received tokens is too low
-              if (tokens > addInvoice.tokens) {
-                args.logger.error({
-                  rejected: true,
-                  invoice_acceptable_amount_increased: tokens,
-                });
-
-                return forward.reject({});
-              }
             } catch (err) {
               args.logger.error({failed_to_get_invoice_amount: err});
+
+              return forward.reject({});
+            }
+
+            const {tokens} = invoiceAmount;
+
+            // Exit early and reject when the received tokens is too low
+            if (tokens > addInvoice.tokens) {
+              args.logger.error({
+                rejected: true,
+                invoice_acceptable_amount_increased: tokens,
+              });
 
               return forward.reject({});
             }
