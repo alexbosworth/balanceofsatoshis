@@ -15,6 +15,7 @@ const payRequestTag = 'payRequest';
 const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
 const sslProtocol = 'https:';
 const textPlain = 'text/plain';
+const timeoutMs = 1000 * 60;
 const utf8AsBuffer = utf8 => Buffer.from(utf8, 'utf8');
 
 /** Get payment terms
@@ -51,7 +52,12 @@ module.exports = ({request, url}, cbk) => {
 
       // Get payment terms
       getTerms: ['validate', ({}, cbk) => {
-        return request({url, json: true}, (err, r, json) => {
+        return request({
+          url,
+          json: true,
+          timeout: timeoutMs,
+        },
+        (err, r, json) => {
           if (!!err) {
             return cbk([503, 'FailureGettingLnUrlDataFromUrl', {err}]);
           }
@@ -100,13 +106,16 @@ module.exports = ({request, url}, cbk) => {
             return cbk([503, 'ExpectedMetadataArrayInLnurlResponse', json]);
           }
 
-          const [, description] = parse(json.metadata)
+          const textEntry = parse(json.metadata)
             .filter(isArray)
             .find(([entry, text]) => entry === textPlain && !!text);
 
-          if (!description) {
+          // Exit early when there is no text/plain entry to describe the terms
+          if (!textEntry) {
             return cbk([503, 'ExpectedTextPlainEntryInLnurlResponse']);
           }
+
+          const [, description] = textEntry;
 
           if (!isNumber(json.minSendable)) {
             return cbk([503, 'ExpectedNumericValueForMinSendable']);

@@ -168,6 +168,9 @@ bos send
 # Run a server of paid services
 bos server
 
+# Stream a payment to a lnurl or lightning address in a series of payments
+bos stream "amount" --lnurl "lnurl/lightning_address"
+
 # Connect up to a Telegram bot
 bos telegram
 

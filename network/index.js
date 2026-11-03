@@ -17,6 +17,7 @@ const reconnect = require('./reconnect');
 const removePeer = require('./remove_peer');
 const sendGift = require('./send_gift');
 const setAutopilot = require('./set_autopilot');
+const streamPayment = require('./stream_payment');
 const transferFunds = require('./transfer_funds');
 
 module.exports = {
@@ -39,5 +40,6 @@ module.exports = {
   removePeer,
   sendGift,
   setAutopilot,
+  streamPayment,
   transferFunds,
 };

@@ -43,6 +43,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - If conditions should avoid spanning multiple lines
 - Avoid directories with tons of files, group them into subdirectories that
     each have an `index.js`
+- In Markdown lists, indent the continued lines of an item by 4 spaces
 
 ### Control Flow
 
@@ -66,6 +67,8 @@ If you want to help with style, here are some rough guidelines on style ideas:
 ### Variables
 
 - Generally use undefined rather than null when defining nil types
+- When a method has a lot of arguments, use `args.` rather than destructuring
+    them into a big const
 - Prefer variable assignments on new lines rather than on a single line
 - Reduce the usage of . property access, like isArray instead of Array.isArray
 - When there is a newline in an object, always put a comma at the end of a line
@@ -80,7 +83,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Short names like `n` are only for one-liners, longer closures name arguments
 - Name variables for what they hold, like `candidates`, not for their type
 - Avoid names that mean something else in other contexts: `close`, `open`,
-    `self`, `top`
+    `self`, `status`, `top`
 
 ### JS Features
 
@@ -117,3 +120,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Integration tests have a single test per file
 - Design methods so that they can easily tested with self-contained unit tests
 - Avoid breaking existing tests, changes should also change relevant tests
+- Keep the loop that runs a file's tests minimal: what differs between tests
+    goes in the tests array, not in branches of the loop
+- Make test arguments and expected results with `makeArgs` and `makeExpected`
+    that start from defaults and take what differs in a test as overrides

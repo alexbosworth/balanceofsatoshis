@@ -1,13 +1,10 @@
 const asyncAuto = require('async/auto');
-const asyncMapSeries = require('async/mapSeries');
-const {getNode} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
-const {subscribeToProbe} = require('ln-service');
 const {subscribeToProbeForRoute} = require('ln-service');
 
-const {describeConfidence} = require('./../display');
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
+const lineWriter = require('./line_writer');
 
 const {now} = Date;
 const minutesAsMs = minutes => 1000 * 60 * minutes;
@@ -189,10 +186,14 @@ module.exports = (args, cbk) => {
           return cbk([400, 'FailedToStartProbeForRoute', {err}]);
         }
 
+        // Lines are written in the order of events, and all before finishing
+        const lines = lineWriter({logger: args.logger});
+
         const finished = (err, res) => {
           sub.removeAllListeners();
 
-          return cbk(err, res);
+          // Wait for lines that are being written so that they are not lost
+          return lines.wait().then(() => cbk(err, res));
         };
 
         // Finish without success
@@ -204,12 +205,12 @@ module.exports = (args, cbk) => {
         sub.on('error', err => finished(err));
 
         // Log failures encountered while trying to find a route
-        sub.on('routing_failure', async failure => {
+        sub.on('routing_failure', failure => {
           if (!!args.log_failure) {
             args.log_failure(null, failure);
           }
 
-          const {description} = await describeRoutingFailure({
+          const described = describeRoutingFailure({
             index: failure.index,
             lnd: args.lnd,
             reason: failure.reason,
@@ -217,7 +218,7 @@ module.exports = (args, cbk) => {
             tagged: args.tagged,
           });
 
-          return args.logger.info({failure: description});
+          return lines.write(described.then(n => ({failure: n.description})));
         });
 
         // Finish with successful probe
@@ -233,16 +234,18 @@ module.exports = (args, cbk) => {
         });
 
         // Log probing attempts
-        sub.on('probing', async ({route}) => {
+        sub.on('probing', ({route}) => {
           attemptedPaths.push(route);
 
-          const {description} = await describeRoute({
+          const described = describeRoute({
             route,
             lnd: args.lnd,
             tagged: args.tagged || undefined,
           });
 
-          return args.logger.info({evaluating: description});
+          const line = described.then(n => ({evaluating: n.description}));
+
+          return lines.write(line);
         });
 
         return;

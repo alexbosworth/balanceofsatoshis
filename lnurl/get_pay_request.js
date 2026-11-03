@@ -3,6 +3,7 @@ const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const errorStatus = 'ERROR';
+const timeoutMs = 1000 * 60;
 
 /** Get a payment request for a LNURL
 
@@ -45,9 +46,13 @@ module.exports = ({hash, mtokens, request, url}, cbk) => {
 
       // Get the payment request
       getRequest: ['validate', ({}, cbk) => {
-        const qs = {amount: mtokens};
-
-        return request({qs, url, json: true}, (err, r, json) => {
+        return request({
+          url,
+          json: true,
+          qs: {amount: mtokens},
+          timeout: timeoutMs,
+        },
+        (err, r, json) => {
           if (!!err) {
             return cbk([503, 'FailedToGetPaymentRequestFromService', {err}]);
           }

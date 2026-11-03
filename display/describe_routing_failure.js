@@ -108,6 +108,7 @@ module.exports = ({index, lnd, reason, route, tagged}, cbk) => {
 
         const {display} = chartAliasForPeer({
           alias: getTo.alias,
+          icons: !!tag ? tag.icons : undefined,
           public_key: getTo.id,
         });
 
@@ -120,11 +121,14 @@ module.exports = ({index, lnd, reason, route, tagged}, cbk) => {
         'toName',
         ({fromName, toName}, cbk) =>
       {
-        const at = `on ${route.hops[index].channel}`;
+        const hop = route.hops[index];
+
+        // A failure at the destination is not on a channel out of it
+        const at = !hop ? '' : ` on ${hop.channel}`;
         const from = !fromName ? '' : `from ${fromName}`;
         const to = !toName ? '' : ` forwarding to ${toName}`;
 
-        return cbk(null, {description: `${reason} ${from} ${at}${to}`});
+        return cbk(null, {description: `${reason} ${from}${at}${to}`});
       }],
     },
     returnResult({reject, resolve, of: 'description'}, cbk));

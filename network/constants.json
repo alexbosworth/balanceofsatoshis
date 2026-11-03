@@ -2,6 +2,7 @@
   "emojiIcons": {
     "disabled": "🚫"
   },
+  "minStreamPaymentTokens": 100000,
   "peerSortOptions": [
     "alias",
     "fee_earnings",

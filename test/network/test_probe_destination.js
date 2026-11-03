@@ -398,7 +398,7 @@ const tests = [
       preimage: secret.toString('hex'),
       probed: undefined,
     },
-    logs: [decodedLog, checkingLog, payingLog, evaluatingLog],
+    logs: [decodedLog, checkingLog, evaluatingLog, payingLog],
     sent: [probeRoute, paymentRoute],
   },
   {
@@ -485,7 +485,7 @@ const tests = [
       preimage: secret.toString('hex'),
       probed: undefined,
     },
-    logs: [invoiceLog, checkingLog, payingLog, evaluatingLog],
+    logs: [invoiceLog, checkingLog, evaluatingLog, payingLog],
     sent: [probeRoute, paymentRoute],
   },
   {

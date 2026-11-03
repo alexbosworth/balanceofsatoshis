@@ -1,5 +1,9 @@
 # Versions
 
+## 25.6.0
+
+- `stream`: Add command to stream a payment to a lnurl or lightning address
+
 ## 25.5.0
 
 - `probe`: Add `--ignore-expiry` to probe expired payment requests

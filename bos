@@ -1954,6 +1954,53 @@ prog
     });
   })
 
+  // Stream a payment in a series of payments
+  .command('stream', 'Stream a payment in a series of payments')
+  .help('Each payment is sized to the most a single route can carry')
+  .help('--lnurl is required, it can stream above the max the service takes')
+  .help('--min-payment defaults to 100*k, a smaller remainder is not sent')
+  .help('--out can take a tag to make the first hop through any tagged peer')
+  .help('--out-filter is checked before every payment, skipping failing peers')
+  .help('--out-filter vars: CAPACITY/HEIGHTS/INBOUND_LIQUIDITY')
+  .help('--out-filter vars: OUTBOUND_LIQUIDITY/PENDING_PAYMENTS')
+  .help('--out-filter vars: INBOUND_BASE_FEE/INBOUND_FEE_RATE')
+  .help('Amounts can take m/k variables: 5*m for 5 million, 250*k = 0.0025')
+  .argument('<amount>', 'Total amount to stream')
+  .option('--avoid <avoid>', 'Avoid forwarding via node/chan/tag', REPEATABLE)
+  .option('--lnurl <url>', 'Lnurl/lightning address', STRING, undefined, true)
+  .option('--max-fee <max_fee>', 'Maximum total fee to pay', STRING, '1337')
+  .option('--max-fee-rate <ppm>', 'Max fee rate for all payments', INT, 1000)
+  .option('--max-payment <amount>', 'Largest single payment to make', STRING)
+  .option('--min-payment <amount>', 'Smallest single payment to make', STRING)
+  .option('--no-color', 'Mute all colors')
+  .option('--node <node_name>', 'Node to stream from')
+  .option('--out <peer_or_tag>', 'Make first hop through peer/tag', REPEATABLE)
+  .option('--out-filter <out_filter>', 'Filter outbound peer/tag', REPEATABLE)
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return network.streamPayment({
+          logger,
+          amount: args.amount,
+          avoid: flatten([options.avoid].filter(n => !!n)),
+          fs: {getFile: readFile},
+          lnd: (await lndForNode(logger, options.node)).lnd,
+          lnurl: options.lnurl,
+          max_fee: options.maxFee,
+          max_fee_rate: options.maxFeeRate,
+          max_payment: options.maxPayment,
+          min_payment: options.minPayment,
+          out: flatten([options.out].filter(n => !!n)),
+          out_filters: flatten([options.outFilter].filter(n => !!n)),
+          request: commands.simpleRequest,
+        },
+        responses.returnObject({logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
   // Get a swap API key or inspect an existing one
   .command('swap-api-key', 'Purchase a swap API key or inspect a swap API key')
   .visible(false)

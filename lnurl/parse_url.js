@@ -3,9 +3,9 @@ const {bech32} = require('bech32');
 const asLnurl = n => n.substring(n.startsWith('lightning:') ? 10 : 0);
 const bech32CharLimit = 2000;
 const {decode} = bech32;
-const isEmail = n => /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/.test(n);
+const isEmail = n => /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(n);
 const isOnion = n => /.onion$/.test(n);
-const isUsername = n => /^[a-z0-9_.]*$/.test(n);
+const isUsername = n => /^[a-z0-9_.-]*$/.test(n);
 const join = arr => arr.join('');
 const parseEmail = email => email.split('@');
 const prefix = 'lnurl';
@@ -46,7 +46,14 @@ module.exports = ({url}) => {
       throw new Error('LnurlOnionUrlsCurrentlyUnsupported');
     }
 
-    return {url: join([sslProtocol, domain, urlString, username])};
+    const addressUrl = join([sslProtocol, domain, urlString, username]);
+
+    // Exit with error when the lightning address does not make a valid URL
+    if (!URL.canParse(addressUrl)) {
+      throw new Error('ExpectedValidUrlForLightningAddress');
+    }
+
+    return {url: addressUrl};
   }
 
   if (decode(asLnurl(url), bech32CharLimit).prefix !== prefix) {
@@ -55,5 +62,12 @@ module.exports = ({url}) => {
 
   const {words} = decode(asLnurl(url), bech32CharLimit);
 
-  return {url: wordsAsUtf8(words)};
+  const decoded = wordsAsUtf8(words);
+
+  // Exit with error when the lnurl does not hold a valid URL
+  if (!URL.canParse(decoded)) {
+    throw new Error('ExpectedValidUrlInLnurl');
+  }
+
+  return {url: decoded};
 };
