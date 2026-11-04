@@ -729,6 +729,7 @@ module.exports = (args, cbk) => {
       // Subscribe to invoices
       invoices: ['getNodes', 'userId', ({getNodes}, cbk) => {
         return asyncEach(getNodes, (node, cbk) => {
+          const start = new Date().toISOString();
           const sub = subscribeToInvoices({lnd: node.lnd});
 
           subscriptions.push(sub);
@@ -736,6 +737,11 @@ module.exports = (args, cbk) => {
           sub.on('invoice_updated', invoice => {
             // Exit early when an invoice has no associated hash
             if (!isHash(invoice.id)) {
+              return;
+            }
+
+            // Exit early when the invoice was settled before subscribing
+            if (!!invoice.confirmed_at && invoice.confirmed_at < start) {
               return;
             }
 

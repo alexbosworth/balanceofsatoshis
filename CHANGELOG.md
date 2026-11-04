@@ -1,5 +1,9 @@
 # Versions
 
+## 25.6.2
+
+- `telegram`: Fix invoices settled before the bot started being reported as new
+
 ## 25.6.1
 
 - Add support for LND 0.21.6 and LND 0.20.7

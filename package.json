@@ -103,5 +103,5 @@
     "reinstall-dependencies": "rm -rf node_modules package-lock.json && npm i",
     "test": "node --experimental-test-coverage --test test/arrays/*.js test/balances/*.js test/chain/*.js test/commands/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/lnurl/*.js test/network/*.js test/nodes/*.js test/offchain/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "25.6.1"
+  "version": "25.6.2"
 }
