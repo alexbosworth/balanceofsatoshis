@@ -35,7 +35,7 @@
     "ini": "7.0.0",
     "inquirer": "14.2.5",
     "ln-accounting": "10.0.9",
-    "ln-service": "60.1.9",
+    "ln-service": "60.2.0",
     "ln-sync": "8.0.9",
     "ln-telegram": "8.2.0",
     "moment": "2.31.0",
@@ -44,7 +44,7 @@
     "qrcode-terminal": "0.12.0",
     "sanitize-filename": "1.6.4",
     "socks-proxy-agent": "10.1.0",
-    "table": "6.9.0",
+    "table": "6.10.1",
     "tiny-secp256k1": "2.2.5",
     "window-size": "1.1.1"
   },
@@ -100,7 +100,8 @@
     "integration-tests": "node test/integration",
     "postpack": "PACKAGE_VERSION=$(cat package.json | grep \\\"version\\\" | head -1 | awk -F: '{ print $2 }' | sed 's/[\",]//g' | tr -d '[[:space:]]') && git tag -s v$PACKAGE_VERSION -m v$PACKAGE_VERSION && git push github --tags",
     "postpublish": "docker buildx build --platform linux/amd64,linux/arm64 -t alexbosworth/balanceofsatoshis -t alexbosworth/balanceofsatoshis:$npm_package_version --push .",
+    "reinstall-dependencies": "rm -rf node_modules package-lock.json && npm i",
     "test": "node --experimental-test-coverage --test test/arrays/*.js test/balances/*.js test/chain/*.js test/commands/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/lnurl/*.js test/network/*.js test/nodes/*.js test/offchain/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "25.6.0"
+  "version": "25.6.1"
 }

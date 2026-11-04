@@ -1,5 +1,9 @@
 # Versions
 
+## 25.6.1
+
+- Add support for LND 0.21.6 and LND 0.20.7
+
 ## 25.6.0
 
 - `stream`: Add command to stream a payment to a lnurl or lightning address
