@@ -67,16 +67,17 @@ prog
 
   // Get accounting information
   .command('accounting', 'Get an accounting rundown')
-  .argument('<category>', 'Report category', keys(accountingCategories))
+  .argument('<category>', 'Report category')
   .help(`Categories: ${keys(accountingCategories).join(', ')}`)
   .help(`Rate providers: ${rateProviders.join(', ')}`)
   .help('By default fiat rates after 2021-10-19 use chain data derived rates')
+  .help('Multiple --node arguments are supported to report on nodes together')
   .help('Privacy note: this requests tx related data from third parties')
   .option('--csv', 'Output a CSV')
   .option('--date <day>', 'Show only records for specific date')
   .option('--disable-fiat', 'Avoid looking up fiat conversions for records')
   .option('--month <month>', 'Show only records for specific month', months)
-  .option('--node <node_name>', 'Get details from named node')
+  .option('--node <node_name>', 'Get details from saved node(s)', REPEATABLE)
   .option('--rate-provider <rate_provider>', 'Rate provider', rateProviders)
   .option('--year <year>', 'Show only records for specified year', yearMatch)
   .action((args, options, logger) => {
@@ -96,9 +97,8 @@ prog
           },
           is_csv: !!options.csv,
           is_fiat_disabled: options.disableFiat,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
           month: options.month,
-          node: options.node,
           rate_provider: options.rateProvider,
           request: commands.simpleRequest,
           year: options.year,
@@ -824,10 +824,12 @@ prog
   .help('Specify <address> <amount> <address> <amount> for addresses, amounts')
   .help('Amounts support formulas, use MAX to reference selected UTXOs total')
   .help('--utxo can be specified multiple times to spend multiple UTXOs')
+  .help('--fee-rate-precise is per 1000 vbytes, so 1500 is 1.5 per vbyte')
   .argument('<address_amount...>', 'Address and amount to send')
   .option('--broadcast', 'Broadcast the signed transaction')
   .option('--dryrun', 'Avoid locking up UTXOs')
   .option('--fee-rate <fee>', 'Per vbyte fee rate for on-chain tx fee')
+  .option('--fee-rate-precise <per_kvbyte>', 'Fee rate per 1000 vbytes', INT)
   .option('--node <node_name>', 'Node to spend coins')
   .option('--select-utxos', 'Specify UTXOs to spend interactively from a list')
   .option('--utxo <outpoint>', 'Spend a specific tx_id:vout', REPEATABLE)
@@ -839,6 +841,7 @@ prog
           addresses: args.addressAmount.filter((n, i) => !(i % 2)),
           amounts: args.addressAmount.filter((n, i) => i % 2),
           ask: await commands.interrogate({}),
+          fee_mtokens_per_vbyte: options.feeRatePrecise,
           fee_tokens_per_vbyte: options.feeRate,
           is_broadcast: options.broadcast,
           is_dry_run: !!options.dryrun,

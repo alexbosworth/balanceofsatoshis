@@ -1,4 +1,11 @@
 {
+  "chainBlocksFile": "chain_blocks.json",
+  "chainPriceFlagNotes": {
+    "is_provisional": "provisional, the day is not over yet",
+    "is_sample": "rough estimate from a sample of the blocks",
+    "is_unsettled": "the estimate was still shifting when refining stopped",
+    "is_widened": "found outside the expected price range"
+  },
   "chainPricesFile": "chain_prices.json",
   "coinbaseProvider": "coinbase",
   "defaultCurrency": "BTC",

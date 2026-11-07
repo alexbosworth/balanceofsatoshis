@@ -305,6 +305,9 @@ You can also add a JSON file to your .bos directory: config.json, add
 
 `bos` keeps its files in `~/.bos`, or in `BOS_DATA_PATH` when that is set:
 
+- `chain_blocks.json`: the payments in the last few days of blocks that
+    `bos accounting` derives prices from, kept so that later runs only fetch
+    the blocks that are new. The file can be deleted
 - `chain_prices.json`: USD prices of BTC that `bos accounting` derived from
     chain data, kept so that a day is only derived once. Prices are derived
     this way when no `--rate-provider` is given, and the prices of the days

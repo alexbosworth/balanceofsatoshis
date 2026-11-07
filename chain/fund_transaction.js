@@ -1,32 +1,40 @@
 const asyncAuto = require('async/auto');
 const asyncEach = require('async/each');
 const asyncify = require('async/asyncify');
+const asyncMap = require('async/map');
+const asyncReflect = require('async/reflect');
 const {broadcastTransaction} = require('ln-sync');
 const {componentsOfTransaction} = require('@alexbosworth/blockchain');
+const {createFundedPsbt} = require('ln-service');
 const {formatTokens} = require('ln-sync');
-const {fundPsbt} = require('ln-service');
 const {getChainFeeRate} = require('ln-service');
-const {getMaxFundAmount} = require('ln-sync');
+const {getMaxFundingValue} = require('ln-sync');
 const {getNetwork} = require('ln-sync');
 const {getUtxos} = require('ln-service');
+const {lockUtxo} = require('ln-service');
+const {outputScriptForAddress} = require('@alexbosworth/blockchain');
 const {parseAmount} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
 const {signPsbt} = require('ln-service');
 const {sizeOfTransaction} = require('@alexbosworth/blockchain');
 const {unlockUtxo} = require('ln-service');
 
-const allowUnconfirmed = 0;
 const asBigUnit = n => (n / 1e8).toFixed(8);
 const asOutpoint = utxo => `${utxo.transaction_id}:${utxo.transaction_vout}`;
 const asInput = n => ({transaction_id: n.id, transaction_vout: n.vout});
+const asMtokens = tokens => Math.round(Number(tokens) * 1e3);
 const asUtxo = n => ({id: n.slice(0, 64), vout: Number(n.slice(65))});
 const dustValue = 293;
 const formattedFeeRate = n => n.toFixed(2);
 const hasMaxAmount = amounts => !!amounts.find(n => !!n && !!/max/gim.test(n));
 const {isArray} = Array;
 const isOutpoint = n => !!n && /^[0-9A-F]{64}:[0-9]{1,6}$/i.test(n);
+const isPreciseFeeRate = n => !n || (Number.isSafeInteger(n) && n > 0);
 const isPublicKey = n => !!n && /^0[2-3][0-9A-F]{64}$/i.test(n);
 const isValidFeeRate = n => !n || Number.isInteger(Number(n));
+const mtokensPerToken = 1e3;
+const noCoinSelectionMinConfs = 2147483647;
+const placeholderTokens = 546;
 const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
 
 /** Fund and sign a transaction
@@ -35,7 +43,7 @@ const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
     addresses: [<Address String>]
     amounts: [<Amount String>]
     ask: <Ask Function>
-    spend: [<Coin Outpoint String>]
+    [fee_mtokens_per_vbyte]: <Fee Millitokens Per Virtual Byte Number>
     [fee_tokens_per_vbyte]: <Fee Tokens Per Virtual Byte Number>
     [is_broadcast]: <Broadcast Signed Transaction Bool>
     is_dry_run: <Release Locks on Transaction Bool>
@@ -85,6 +93,14 @@ module.exports = (args, cbk) => {
 
         if (!isValidFeeRate(args.fee_tokens_per_vbyte)) {
           return cbk([400, 'ExpectedIntegerFeeRateForFundingTransaction']);
+        }
+
+        if (!isPreciseFeeRate(args.fee_mtokens_per_vbyte)) {
+          return cbk([400, 'ExpectedIntegerPreciseFeeRateToFundTransaction']);
+        }
+
+        if (!!args.fee_mtokens_per_vbyte && !!args.fee_tokens_per_vbyte) {
+          return cbk([400, 'ExpectedEitherFeeRateOrPreciseFeeRateNotBoth']);
         }
 
         if (!!args.is_broadcast && !!args.is_dry_run) {
@@ -193,13 +209,38 @@ module.exports = (args, cbk) => {
         ({inputs}) => cbk(null, inputs));
       }],
 
+      // Get the fee rate to fund at in mtokens per vbyte
+      feeRate: ['getFee', ({getFee}, cbk) => {
+        // Exit early when the fee rate is already in mtokens
+        if (!!args.fee_mtokens_per_vbyte) {
+          return cbk(null, args.fee_mtokens_per_vbyte);
+        }
+
+        const rate = args.fee_tokens_per_vbyte || getFee.tokens_per_vbyte;
+
+        return cbk(null, asMtokens(rate));
+      }],
+
+      // Get the output scripts of the addresses to send to
+      scripts: ['getNetwork', asyncify(({getNetwork}) => {
+        const {network} = getNetwork;
+
+        try {
+          return args.addresses.map(address => {
+            return outputScriptForAddress({address, network}).script;
+          });
+        } catch (err) {
+          throw [400, err.message];
+        }
+      })],
+
       // Calculate the maximum possible amount to fund for selected inputs
       getMax: [
-        'getFee',
+        'feeRate',
         'getUtxos',
-        'outputs',
+        'scripts',
         'utxos',
-        ({getFee, getUtxos, outputs, utxos}, cbk) =>
+        ({feeRate, getUtxos, scripts, utxos}, cbk) =>
       {
         // Exit early when the amount is not open ended
         if (!hasMaxAmount(args.amounts)) {
@@ -210,8 +251,6 @@ module.exports = (args, cbk) => {
         if (!utxos.length) {
           return cbk([400, 'MaxAmountOnlySupportedWhenUtxosSpecified']);
         }
-
-        const feeRate = args.fee_tokens_per_vbyte || getFee.tokens_per_vbyte;
 
         // Find the local UTXOs in order to get the input values
         const spend = utxos.map(outpoint => {
@@ -225,32 +264,54 @@ module.exports = (args, cbk) => {
           return cbk([400, 'UnknownInputSelected', {known: knownUtxos}]);
         }
 
-        return getMaxFundAmount({
-          addresses: args.addresses,
-          fee_tokens_per_vbyte: feeRate,
+        const [script, ...others] = scripts;
+
+        // Size the max as the first output, with placeholders for the others
+        return getMaxFundingValue({
+          fee_mtokens_per_vbyte: feeRate,
           inputs: spend.map(utxo => ({
-            tokens: utxo.tokens,
             transaction_id: utxo.transaction_id,
             transaction_vout: utxo.transaction_vout,
           })),
           lnd: args.lnd,
+          output_script: script,
+          outputs: others.map(n => ({script: n, tokens: placeholderTokens})),
         },
         cbk);
       }],
 
+      // The value that the outputs can add up to when spending the max
+      maxTokens: ['getMax', 'scripts', ({getMax, scripts}, cbk) => {
+        // Exit early when there is no max amount
+        if (getMax.max_tokens === undefined) {
+          return cbk();
+        }
+
+        // Outputs after the first were sized with placeholder values
+        const placeholders = scripts.slice(1).map(() => placeholderTokens);
+
+        return cbk(null, getMax.max_tokens + sumOf(placeholders));
+      }],
+
       // Parse amounts and put together the final set of outputs
-      finalOutputs: ['getMax', asyncify(({getMax}) => {
+      finalOutputs: [
+        'maxTokens',
+        'scripts',
+        asyncify(({maxTokens, scripts}) =>
+      {
         try {
           const outputs = args.addresses.map((address, i) => {
             const amount = args.amounts[i];
             const variables = {};
 
             // The max variable is only defined when a maximum is calculated
-            if (getMax.max_tokens !== undefined) {
-              variables.max = getMax.max_tokens;
+            if (maxTokens !== undefined) {
+              variables.max = maxTokens;
             }
 
-            return {address, tokens: parseAmount({amount, variables}).tokens};
+            const {tokens} = parseAmount({amount, variables});
+
+            return {address, tokens, script: scripts[i]};
           });
 
           return outputs;
@@ -259,64 +320,135 @@ module.exports = (args, cbk) => {
         }
       })],
 
-      // Create a funded PSBT
-      fund: [
-        'finalOutputs',
-        'getFee',
-        'getNetwork',
-        'utxos',
-        ({finalOutputs, getFee, getNetwork, utxos}, cbk) =>
-      {
-        const inputs = utxos.map(asUtxo).map(asInput);
-        const feeRate = args.fee_tokens_per_vbyte || getFee.tokens_per_vbyte;
-
+      // Make sure that the outputs are not dust
+      checkDust: ['finalOutputs', ({finalOutputs}, cbk) => {
         if (!!finalOutputs.filter(n => n.tokens < dustValue).length) {
           return cbk([400, 'ExpectedNonDustAmountValueForFundingAmount']);
         }
+
+        return cbk();
+      }],
+
+      // Lock the inputs to spend, LND needs them locked before funding
+      lock: ['checkDust', 'utxos', ({utxos}, cbk) => {
+        return asyncMap(utxos.map(asUtxo), asyncReflect((utxo, cbk) => {
+          return lockUtxo({
+            lnd: args.lnd,
+            transaction_id: utxo.id,
+            transaction_vout: utxo.vout,
+          },
+          cbk);
+        }),
+        cbk);
+      }],
+
+      // The inputs that were locked, with the ids of their locks
+      locked: ['lock', 'utxos', ({lock, utxos}, cbk) => {
+        const inputs = utxos.map(asUtxo).map((utxo, i) => ({
+          id: !lock[i].error ? lock[i].value.id : undefined,
+          transaction_id: utxo.id,
+          transaction_vout: utxo.vout,
+        }));
+
+        return cbk(null, inputs.filter(n => !!n.id));
+      }],
+
+      // Create a funded PSBT, holding on to a failure to unlock inputs first
+      fund: [
+        'feeRate',
+        'finalOutputs',
+        'lock',
+        'locked',
+        asyncReflect(({feeRate, finalOutputs, lock, locked}, cbk) =>
+      {
+        const [failed] = lock.filter(n => !!n.error);
+
+        // Exit early when an input could not be locked
+        if (!!failed) {
+          return cbk(failed.error);
+        }
+
+        const minConfs = !!locked.length ? noCoinSelectionMinConfs : undefined;
 
         args.logger.info({
           send_to: finalOutputs.map(({address, tokens}) => ({
             [address]: formatTokens({tokens}).display,
           })),
-          requested_fee_rate: feeRate,
+          requested_fee_rate: feeRate / mtokensPerToken,
         });
 
-        return fundPsbt({
-          fee_tokens_per_vbyte: feeRate,
-          inputs: !!inputs.length ? inputs : undefined,
+        return createFundedPsbt({
+          fee_mtokens_per_vbyte: feeRate,
+          inputs: locked.map(input => ({
+            transaction_id: input.transaction_id,
+            transaction_vout: input.transaction_vout,
+          })),
           lnd: args.lnd,
-          min_confirmations: !!inputs.length ? allowUnconfirmed : undefined,
-          outputs: finalOutputs,
+          // No coins are added to inputs that are specified to be spent
+          min_confirmations: minConfs,
+          outputs: finalOutputs.map(({script, tokens}) => ({script, tokens})),
         },
         cbk);
+      })],
+
+      // The funded PSBT, the inputs are unlocked when it could not be funded
+      funding: ['fund', 'locked', ({fund, locked}, cbk) => {
+        // Exit early when the PSBT was funded
+        if (!fund.error) {
+          return cbk(null, fund.value);
+        }
+
+        return asyncEach(locked, (input, cbk) => {
+          return unlockUtxo({
+            id: input.id,
+            lnd: args.lnd,
+            transaction_id: input.transaction_id,
+            transaction_vout: input.transaction_vout,
+          },
+          () => {
+            // Ignore errors unlocking a UTXO, the lock will expire on its own
+            return cbk();
+          });
+        },
+        () => {
+          // Return the original error that stopped funding
+          return cbk(fund.error);
+        });
       }],
 
       // Sign the funded PSBT
-      sign: ['fund', ({fund}, cbk) => {
-        const [change] = fund.outputs.filter(n => !!n.is_change);
-        const total = sumOf(fund.outputs.map(n => n.tokens));
+      sign: ['funding', ({funding}, cbk) => {
+        const [change] = funding.outputs.filter(n => !!n.is_change);
+        const total = sumOf(funding.outputs.map(n => n.tokens));
 
         const tokens = !!change ? change.tokens : undefined;
 
         args.logger.info({
           change: !!tokens ? formatTokens({tokens}).display : undefined,
           sum_of_outputs: formatTokens({tokens: total}).display,
-          spending_utxos: fund.inputs.map(asOutpoint),
+          spending_utxos: funding.inputs.map(asOutpoint),
         });
 
-        return signPsbt({lnd: args.lnd, psbt: fund.psbt}, cbk);
+        return signPsbt({lnd: args.lnd, psbt: funding.psbt}, cbk);
       }],
 
       // Unlock the locked UTXOs in a dry run scenario
-      unlock: ['fund', 'sign', ({fund}, cbk) => {
+      unlock: ['funding', 'locked', 'sign', ({funding, locked}, cbk) => {
         // Exit early and keep UTXOs locked when not a dry run
         if (!args.is_dry_run) {
           return cbk();
         }
 
-        return asyncEach(fund.inputs, (input, cbk) => {
+        // LND locks the inputs that it adds to fund the PSBT
+        const added = funding.inputs.filter(n => !!n.lock_id).map(input => ({
+          id: input.lock_id,
+          transaction_id: input.transaction_id,
+          transaction_vout: input.transaction_vout,
+        }));
+
+        return asyncEach(locked.concat(added), (input, cbk) => {
           return unlockUtxo({
-            id: input.lock_id,
+            id: input.id,
             lnd: args.lnd,
             transaction_id: input.transaction_id,
             transaction_vout: input.transaction_vout,
@@ -380,7 +512,7 @@ module.exports = (args, cbk) => {
           transaction: funded.signed_transaction,
         },
         cbk);
-      }]
+      }],
     },
     returnResult({reject, resolve, of: 'broadcast'}, cbk));
   });

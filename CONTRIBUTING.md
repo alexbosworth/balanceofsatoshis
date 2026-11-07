@@ -14,6 +14,7 @@ If you want to help with style, here are some rough guidelines on style ideas:
 - Arguments to methods are snake_case
 - Regular variables are camelCase
 - Never make snake_case variables, even when destructuring: use `args.max_fee`
+- When a method takes `args`, use `args.lnd` rather than destructuring `args`
 - Returned attributes are snake_case
 - A line has at most 79 characters, 80 including the newline
 - If a top level scalar would go over 80 characters in a line, that's ok
@@ -62,6 +63,9 @@ If you want to help with style, here are some rough guidelines on style ideas:
     `err => cbk(err)`, unless the error or the result has to change
 - Wrap only the call that can throw, and call back after the try rather than
     in it, so that an error thrown later in the callback chain is not caught
+- Use `asyncify` and `asyncReflect` inline on the function they wrap, not as
+    top of file helpers, as in `parseFile: ['getFile', asyncify(() => {})]`
+- Return or throw in an `asyncify` task's try/catch rather than calling back
 - Methods should always document their arguments and their output
 
 ### Variables

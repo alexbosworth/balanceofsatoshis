@@ -4,7 +4,9 @@ const {monthNumbers} = require('./constants');
 const {monthOffset} = require('./constants');
 const {notFoundIndex} = require('./constants');
 
-/** Get a before and after range 
+const isDay = n => /^\d+$/.test(n) && Number(n) > 0;
+
+/** Get a before and after range
 
   {
     [date]: <Day of Month String>
@@ -17,8 +19,8 @@ const {notFoundIndex} = require('./constants');
 
   @returns
   {
-    [after]: <After ISO 8601 Date String>
-    [before]: <Before ISO 8601 Date String>
+    [after]: <Records Created On or After ISO 8601 Date String>
+    [before]: <Records Created Before ISO 8601 Date String>
   }
 */
 module.exports = ({date, month, year}) => {
@@ -32,12 +34,6 @@ module.exports = ({date, month, year}) => {
     after.year(year);
   }
 
-  try {
-    after.toISOString();
-  } catch (err) {
-    throw new Error('UnrecognizedFormatForAccountingYear');
-  }
-
   const end = after.clone();
 
   if (!!month && monthNumbers.indexOf(month) !== notFoundIndex) {
@@ -46,8 +42,12 @@ module.exports = ({date, month, year}) => {
     [after, end].forEach(n => n.month(month));
   }
 
+  if (!!date && (!isDay(date) || Number(date) > after.daysInMonth())) {
+    throw new Error('ExpectedDayInMonthForAccountingDate');
+  }
+
   if (!!date) {
-    [after, end].forEach(n => n.date(date));
+    [after, end].forEach(n => n.date(Number(date)));
   }
 
   if (!!date) {
@@ -57,14 +57,6 @@ module.exports = ({date, month, year}) => {
   } else {
     end.add([after].length, 'years');
   }
-
-  try {
-    after.toISOString();
-  } catch (err) {
-    throw new Error('UnrecognizedFormatForAccountingMonth');
-  }
-
-  after.subtract([after].length, 'millisecond');
 
   return {after: after.toISOString(), before: end.toISOString()};
 };

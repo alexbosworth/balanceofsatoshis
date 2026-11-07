@@ -3,6 +3,8 @@ const {deepEqual} = require('node:assert').strict;
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
+const {compactIntAsNumber} = require('@alexbosworth/blockchain');
+const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {numberAsCompactInt} = require('@alexbosworth/blockchain');
 const {transactionFromComponents} = require('@alexbosworth/blockchain');
 const {unsignedTxFromPsbt} = require('@alexbosworth/blockchain');
@@ -12,57 +14,127 @@ const {getInfoResponse} = require('./../fixtures');
 
 const address = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
 const addressScript = '0014e8df018c7e326cc253faac7e46cdc51e68542c42';
-const changeScript = Buffer.alloc(22, 1).toString('hex');
+const bufferAsHex = buffer => buffer.toString('hex');
+const changeScript = '0014' + '01'.repeat(20);
+const encodeCount = number => numberAsCompactInt({number}).encoded;
 const fee = 1000;
+const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const lockId = Buffer.alloc(32, 2);
 const maxSequence = 4294967295;
-const outpoint = `${Buffer.alloc(32).toString('hex')}:0`;
-const psbtMagic = Buffer.from('70736274ff', 'hex');
+const otherAddress = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4';
+const otherScript = '0014751e76e8199196d454941c45d1b3a323f1433bd6';
 const psbtMapSeparator = Buffer.alloc(1);
-const psbtUnsignedTxKey = Buffer.from('0100', 'hex');
-const spendTxId = Buffer.alloc(32).toString('hex');
-const unknownTxId = Buffer.alloc(32, 3).toString('hex');
+const spendTxId = '00'.repeat(32);
+const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
+const testnetAddress = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx';
+const unknownTxId = '03'.repeat(32);
 const utxoTokens = 100000;
+const versionByteLength = 4;
 
-// Build an unsigned transaction from funding outputs, adding change if any
-const makeTx = ({outputs, txId}) => {
-  const funding = Object.keys(outputs).map(address => ({
-    script: addressScript,
-    tokens: Number(outputs[address]),
-  }));
+const outpoint = `${spendTxId}:0`;
+const psbtMagic = hexAsBuffer('70736274ff');
+const psbtUnsignedTxKey = hexAsBuffer('0100');
+const psbtWitnessUtxoKey = hexAsBuffer('0101');
 
-  const spending = funding.reduce((sum, n) => sum + n.tokens, 0);
+// Decode the unsigned transaction of a PSBT, which can be without inputs
+const decodeTemplate = ({psbt}) => {
+  const start = psbtMagic.length + psbtUnsignedTxKey.length;
 
-  const change = utxoTokens - spending - fee;
+  const {bytes, number} = compactIntAsNumber({encoded: psbt, start});
 
-  const changeOutputs = [{script: changeScript, tokens: change}].filter(n => {
-    return n.tokens > 0;
+  const tx = psbt.subarray(start + bytes, start + bytes + number);
+
+  // Exit early when there are inputs, so the encoding is not ambiguous
+  if (!!tx[versionByteLength]) {
+    return componentsOfTransaction({transaction: bufferAsHex(tx)});
+  }
+
+  // Without inputs the encoding reads as SegWit, so read it with an input
+  const withInput = Buffer.concat([
+    tx.subarray(0, versionByteLength),
+    encodeCount(1),
+    Buffer.alloc(36),
+    encodeCount(0),
+    Buffer.alloc(4),
+    tx.subarray(versionByteLength + 1),
+  ]);
+
+  const {outputs} = componentsOfTransaction({
+    transaction: bufferAsHex(withInput),
   });
 
+  return {outputs, inputs: []};
+};
+
+// The witness UTXO of an input, the wallet output that the input spends
+const makeWitnessUtxo = ({}) => {
+  const script = hexAsBuffer(changeScript);
+  const value = Buffer.alloc(8);
+
+  value.writeBigUInt64LE(BigInt(utxoTokens));
+
+  return Buffer.concat([value, encodeCount(script.length), script]);
+};
+
+// Encode a PSBT of an unsigned transaction that spends wallet UTXOs
+const makePsbt = ({transaction}) => {
+  const tx = hexAsBuffer(transaction);
+  const utxo = makeWitnessUtxo({});
+
+  const {inputs, outputs} = componentsOfTransaction({transaction});
+
+  const inputMaps = inputs.map(() => Buffer.concat([
+    psbtWitnessUtxoKey,
+    encodeCount(utxo.length),
+    utxo,
+    psbtMapSeparator,
+  ]));
+
+  return Buffer.concat([
+    psbtMagic,
+    psbtUnsignedTxKey,
+    encodeCount(tx.length),
+    tx,
+    psbtMapSeparator,
+    ...inputMaps,
+    ...outputs.map(() => psbtMapSeparator),
+  ]);
+};
+
+// Fund outputs like LND does, adding value left over after the fee to change
+const fundTemplate = ({existing, inputs, outputs}) => {
+  const spending = utxoTokens * inputs.length;
+
+  const leftover = spending - sumOf(outputs.map(n => n.tokens)) - fee;
+
+  // Without a change output, LND adds a change output when there is value
+  const added = [{script: changeScript, tokens: leftover}].filter(n => {
+    return existing === undefined && n.tokens > 0;
+  });
+
+  const funded = outputs.map((output, i) => ({
+    script: output.script,
+    tokens: i === existing ? output.tokens + leftover : output.tokens,
+  }));
+
   const {transaction} = transactionFromComponents({
-    inputs: [{id: txId, script: '', sequence: maxSequence, vout: 0}],
+    inputs: inputs.map(input => ({
+      id: input.id,
+      script: '',
+      sequence: maxSequence,
+      vout: input.vout,
+    })),
     locktime: 0,
-    outputs: [].concat(funding).concat(changeOutputs),
+    outputs: funded.concat(added),
     version: 2,
   });
 
-  const tx = Buffer.from(transaction, 'hex');
-
-  // A minimal PSBT has the unsigned tx as its only global and empty in/outs
-  const psbt = Buffer.concat([
-    psbtMagic,
-    psbtUnsignedTxKey,
-    numberAsCompactInt({number: tx.length}).encoded,
-    tx,
-    psbtMapSeparator,
-    psbtMapSeparator,
-    ...funding.concat(changeOutputs).map(() => psbtMapSeparator),
-  ]);
+  const changeIndex = !!added.length ? outputs.length : -1;
 
   return {
-    change_output_index: change > 0 ? funding.length : -1,
-    psbt,
     transaction,
+    change_output_index: existing === undefined ? changeIndex : existing,
+    psbt: makePsbt({transaction}),
   };
 };
 
@@ -77,7 +149,7 @@ const makeStream = data => {
   return stream;
 };
 
-const makeLnd = ({txId}) => {
+const makeLnd = args => {
   let lastTx;
 
   const lnd = {
@@ -90,7 +162,7 @@ const makeLnd = ({txId}) => {
         conf: {
           block_hash: Buffer.alloc(32),
           block_height: 1001,
-          raw_tx: Buffer.from(lastTx, 'hex'),
+          raw_tx: hexAsBuffer(lastTx),
         },
       }),
     },
@@ -98,9 +170,71 @@ const makeLnd = ({txId}) => {
       getInfo: ({}, cbk) => cbk(null, getInfoResponse),
     },
     wallet: {
-      estimateFee: ({}, cbk) => cbk(null, {sat_per_kw: '2500'}),
+      estimateFee: ({}, cbk) => {
+        return cbk(null, {sat_per_kw: args.fee_rate || '1250'});
+      },
+      finalizePsbt: (req, cbk) => {
+        const psbt = bufferAsHex(req.funded_psbt);
+
+        lastTx = bufferAsHex(unsignedTxFromPsbt({psbt}).transaction);
+
+        return cbk(null, {
+          raw_final_tx: hexAsBuffer(lastTx),
+          signed_psbt: req.funded_psbt,
+        });
+      },
+      fundPsbt: (req, cbk) => {
+        deepEqual(
+          {sat_per_kw: req.sat_per_kw, sat_per_vbyte: req.sat_per_vbyte},
+          args.rate || {sat_per_kw: 1250, sat_per_vbyte: undefined},
+          'Got expected fee rate'
+        );
+
+        if (!!args.fund_error) {
+          return cbk(args.fund_error);
+        }
+
+        const template = decodeTemplate({psbt: req.coin_select.psbt});
+
+        // LND selects coins to spend when the template has no inputs
+        const isSelecting = !template.inputs.length;
+
+        const selected = [{id: args.tx_id || spendTxId, vout: 0}];
+
+        const inputs = isSelecting ? selected : template.inputs;
+
+        const funded = fundTemplate({
+          inputs,
+          existing: req.coin_select.existing_output_index,
+          outputs: template.outputs,
+        });
+
+        // LND locks the coins that it selects
+        const locks = selected.filter(() => isSelecting).map(input => ({
+          expiration: '1',
+          id: lockId,
+          outpoint: {
+            output_index: input.vout,
+            txid_bytes: hexAsBuffer(input.id).reverse(),
+          },
+        }));
+
+        return cbk(null, {
+          change_output_index: funded.change_output_index,
+          funded_psbt: funded.psbt,
+          locked_utxos: locks,
+        });
+      },
+      leaseOutput: ({outpoint}, cbk) => {
+        // Exit early when locking the second output of a transaction fails
+        if (!!args.is_locking_failing && !!outpoint.output_index) {
+          return cbk({details: 'locked'});
+        }
+
+        return cbk(null, {expiration: '1'});
+      },
       listUnspent: ({}, cbk) => cbk(null, {
-        utxos: [{
+        utxos: args.utxos || [{
           address,
           address_type: 'WITNESS_PUBKEY_HASH',
           amount_sat: String(utxoTokens),
@@ -109,34 +243,8 @@ const makeLnd = ({txId}) => {
           pk_script: changeScript,
         }],
       }),
-      finalizePsbt: ({funded_psbt}, cbk) => {
-        const psbt = funded_psbt.toString('hex');
-
-        lastTx = unsignedTxFromPsbt({psbt}).transaction.toString('hex');
-
-        return cbk(null, {
-          raw_final_tx: Buffer.from(lastTx, 'hex'),
-          signed_psbt: funded_psbt,
-        });
-      },
-      fundPsbt: ({raw}, cbk) => {
-        const funded = makeTx({outputs: raw.outputs, txId: txId || spendTxId});
-
-        return cbk(null, {
-          change_output_index: funded.change_output_index,
-          funded_psbt: funded.psbt,
-          locked_utxos: [{
-            expiration: '1',
-            id: lockId,
-            outpoint: {
-              output_index: 0,
-              txid_bytes: Buffer.from(spendTxId, 'hex').reverse(),
-            },
-          }],
-        });
-      },
       publishTransaction: ({}, cbk) => cbk(null, {}),
-      releaseOutput: ({}, cbk) => cbk(null, {}),
+      releaseOutput: ({}, cbk) => cbk(args.unlock_error || null, {}),
     },
   };
 
@@ -170,8 +278,33 @@ const makeArgs = overrides => {
   return args;
 };
 
-// The expected signed transaction for a set of outputs
-const expectedTx = outputs => makeTx({outputs, txId: spendTxId}).transaction;
+// The signed transaction spending the wallet UTXO to outputs and change
+const signedTx = ({outputs}) => {
+  const inputs = [{id: spendTxId, vout: 0}];
+
+  return fundTemplate({inputs, outputs}).transaction;
+};
+
+const makeExpected = overrides => {
+  const expected = {
+    fee_tokens_per_vbyte: '8.85',
+    signed_transaction: signedTx({
+      outputs: [{script: addressScript, tokens: 50000}],
+    }),
+  };
+
+  Object.keys(overrides).forEach(k => expected[k] = overrides[k]);
+
+  return expected;
+};
+
+// The expected result of spending the max amount to one address
+const maxExpected = makeExpected({
+  fee_tokens_per_vbyte: '12.20',
+  signed_transaction: signedTx({
+    outputs: [{script: addressScript, tokens: 99000}],
+  }),
+});
 
 const tests = [
   {
@@ -215,6 +348,16 @@ const tests = [
     error: [400, 'ExpectedIntegerFeeRateForFundingTransaction'],
   },
   {
+    args: makeArgs({fee_mtokens_per_vbyte: 1.5}),
+    description: 'An integer precise fee rate is required',
+    error: [400, 'ExpectedIntegerPreciseFeeRateToFundTransaction'],
+  },
+  {
+    args: makeArgs({fee_mtokens_per_vbyte: 1500, fee_tokens_per_vbyte: 2}),
+    description: 'Either a fee rate or a precise fee rate is used, not both',
+    error: [400, 'ExpectedEitherFeeRateOrPreciseFeeRateNotBoth'],
+  },
+  {
     args: makeArgs({is_broadcast: true, is_dry_run: true}),
     description: 'Broadcasting is not supported in a dry run',
     error: [400, 'BroadcastingSignedTxUnsupportedInDryRun'],
@@ -240,6 +383,11 @@ const tests = [
     error: [400, 'ExpectedCompleteFormulaForParsing'],
   },
   {
+    args: makeArgs({addresses: [testnetAddress]}),
+    description: 'Addresses must be for the network of the node',
+    error: [400, 'UnexpectedBech32AddressPrefixForNetwork'],
+  },
+  {
     args: makeArgs({
       addresses: [address, address],
       amounts: ['max', ''],
@@ -249,16 +397,7 @@ const tests = [
     error: [400, 'ExpectedCompleteFormulaForParsing'],
   },
   {
-    args: makeArgs({
-      is_selecting_utxos: true,
-      lnd: (() => {
-        const lnd = makeLnd({});
-
-        lnd.wallet.listUnspent = ({}, cbk) => cbk(null, {utxos: []});
-
-        return lnd;
-      })(),
-    }),
+    args: makeArgs({is_selecting_utxos: true, lnd: makeLnd({utxos: []})}),
     description: 'Selecting UTXOs requires confirmed UTXOs',
     error: [400, 'WalletHasZeroConfirmedUtxos'],
   },
@@ -278,45 +417,83 @@ const tests = [
     error: [400, 'ExpectedNonDustAmountValueForFundingAmount'],
   },
   {
-    args: makeArgs({lnd: makeLnd({txId: unknownTxId})}),
+    args: makeArgs({lnd: makeLnd({tx_id: unknownTxId})}),
     description: 'The funded transaction must spend known UTXOs',
     error: [503, 'ExpectedSpendingKnownUtxosForFundedTx'],
   },
   {
     args: makeArgs({}),
     description: 'Fund a transaction',
-    expected: {
-      fee_tokens_per_vbyte: '8.85',
-      signed_transaction: expectedTx({[address]: '50000'}),
-    },
+    expected: makeExpected({}),
   },
   {
-    args: makeArgs({fee_tokens_per_vbyte: 5, is_dry_run: true}),
+    args: makeArgs({
+      fee_tokens_per_vbyte: 3,
+      is_dry_run: true,
+      lnd: makeLnd({rate: {sat_per_kw: 750, sat_per_vbyte: undefined}}),
+    }),
     description: 'Fund a transaction in a dry run with a fee rate',
-    expected: {
-      fee_tokens_per_vbyte: '8.85',
-      signed_transaction: expectedTx({[address]: '50000'}),
-    },
+    expected: makeExpected({}),
+  },
+  {
+    args: makeArgs({
+      fee_mtokens_per_vbyte: 1500,
+      lnd: makeLnd({rate: {sat_per_kw: 375, sat_per_vbyte: undefined}}),
+    }),
+    description: 'Fund a transaction with a precise fee rate',
+    expected: makeExpected({}),
+  },
+  {
+    args: makeArgs({
+      lnd: makeLnd({
+        fee_rate: '253',
+        rate: {sat_per_kw: 253, sat_per_vbyte: undefined},
+      }),
+    }),
+    description: 'A fractional chain fee rate is used as it was estimated',
+    expected: makeExpected({}),
   },
   {
     args: makeArgs({amounts: ['max'], utxos: [outpoint]}),
     description: 'Fund a transaction spending the max amount',
-    expected: {
-      fee_tokens_per_vbyte: '12.20',
-      signed_transaction: expectedTx({[address]: '99000'}),
-    },
+    expected: maxExpected,
   },
   {
     args: makeArgs({
       amounts: ['max'],
-      fee_tokens_per_vbyte: 5,
+      fee_tokens_per_vbyte: 3,
+      lnd: makeLnd({rate: {sat_per_kw: 750, sat_per_vbyte: undefined}}),
       utxos: [outpoint],
     }),
     description: 'Fund a max amount transaction with a fee rate',
-    expected: {
-      fee_tokens_per_vbyte: '12.20',
-      signed_transaction: expectedTx({[address]: '99000'}),
-    },
+    expected: maxExpected,
+  },
+  {
+    args: makeArgs({
+      amounts: ['max'],
+      fee_mtokens_per_vbyte: 1500,
+      is_dry_run: true,
+      lnd: makeLnd({rate: {sat_per_kw: 375, sat_per_vbyte: undefined}}),
+      utxos: [outpoint],
+    }),
+    description: 'Fund a max amount transaction in a dry run, precise rate',
+    expected: maxExpected,
+  },
+  {
+    args: makeArgs({
+      addresses: [address, otherAddress],
+      amounts: ['max/2', 'max/2'],
+      utxos: [outpoint],
+    }),
+    description: 'Fund a max amount split across addresses',
+    expected: makeExpected({
+      signed_transaction: signedTx({
+        outputs: [
+          {script: addressScript, tokens: 49500},
+          {script: otherScript, tokens: 49500},
+        ],
+      }),
+    }),
   },
   {
     args: makeArgs({
@@ -328,20 +505,37 @@ const tests = [
       }),
       amounts: ['1000000'],
       is_selecting_utxos: true,
-      lnd: (() => {
-        const lnd = makeLnd({});
-
-        lnd.wallet.fundPsbt = ({}, cbk) => cbk({details: 'insufficient'});
-
-        return lnd;
-      })(),
+      lnd: makeLnd({fund_error: {details: 'insufficient'}}),
     }),
     description: 'Selecting UTXOs requires enough value to fund outputs',
     error: [
       503,
-      'UnexpectedErrorFundingTransaction',
+      'UnexpectedErrorCreatingFundedPsbt',
       {err: {details: 'insufficient'}},
     ],
+  },
+  {
+    args: makeArgs({
+      lnd: makeLnd({
+        fund_error: {details: 'insufficient'},
+        unlock_error: {details: 'unlock'},
+      }),
+      utxos: [outpoint],
+    }),
+    description: 'A funding failure is passed back after unlocking UTXOs',
+    error: [
+      503,
+      'UnexpectedErrorCreatingFundedPsbt',
+      {err: {details: 'insufficient'}},
+    ],
+  },
+  {
+    args: makeArgs({
+      lnd: makeLnd({is_locking_failing: true}),
+      utxos: [outpoint, `${spendTxId}:1`],
+    }),
+    description: 'Locked UTXOs are unlocked when another UTXO fails to lock',
+    error: [503, 'UnexpectedErrorLockingUtxo', {err: {details: 'locked'}}],
   },
   {
     args: makeArgs({
@@ -354,10 +548,7 @@ const tests = [
       is_selecting_utxos: true,
     }),
     description: 'Fund a transaction with selected UTXOs',
-    expected: {
-      fee_tokens_per_vbyte: '8.85',
-      signed_transaction: expectedTx({[address]: '50000'}),
-    },
+    expected: makeExpected({}),
   },
   {
     args: makeArgs({
@@ -366,10 +557,7 @@ const tests = [
       is_selecting_utxos: true,
     }),
     description: 'Fund a max amount transaction with selected UTXOs',
-    expected: {
-      fee_tokens_per_vbyte: '12.20',
-      signed_transaction: expectedTx({[address]: '99000'}),
-    },
+    expected: maxExpected,
   },
   {
     args: makeArgs({is_broadcast: true}),

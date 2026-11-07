@@ -1,11 +1,17 @@
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
+const asyncMap = require('async/map');
+const asyncMapSeries = require('async/mapSeries');
 const {chainRates} = require('@alexbosworth/fiat');
 const {getAccountingReport} = require('ln-accounting');
 const {getNetwork} = require('ln-sync');
+const {harmonize} = require('ln-accounting');
 const {returnResult} = require('asyncjs-util');
 
 const categories = require('./accounting_categories');
+const {chainBlocksFile} = require('./constants');
 const {chainPricesFile} = require('./constants');
+const chainPricesLogger = require('./chain_prices_logger');
 const {coinbaseProvider} = require('./constants');
 const {defaultCurrency} = require('./constants');
 const {defaultFiat} = require('./constants');
@@ -18,11 +24,14 @@ const {monthNumbers} = require('./constants');
 const {monthOffset} = require('./constants');
 const {notFoundIndex} = require('./constants');
 const rangeForDate = require('./range_for_date');
+const {sortBy} = require('./../arrays');
 const tableRowsFromCsv = require('./table_rows_from_csv');
 
 const assetType = 'BTC';
-const currentDate = new Date().toISOString();
 const empty = '';
+const flatten = arr => [].concat(...arr);
+const {isArray} = Array;
+const {keys} = Object;
 const round = n => parseFloat(n).toFixed(2);
 const sumOf = arr => arr.reduce((sum, n) => sum + n, 0);
 const summaryHeadings = ['Total', 'Asset', 'Report Date', 'Total Fiat'];
@@ -42,10 +51,9 @@ const summaryHeadings = ['Total', 'Asset', 'Report Date', 'Total Fiat'];
     }
     [is_csv]: <Return CSV Output Bool>
     [is_fiat_disabled]: <Omit Fiat Conversion Bool>
-    lnd: <Authenticated LND API Object>
+    lnds: [<Authenticated LND API Object>]
     [logger]: <Winston Logger Object>
     [month]: <Month for Report String>
-    [node]: <Node Name String>
     [rate_provider]: <Rate Provider String>
     request: <Request Function>
     [year]: <Year for Report String>
@@ -65,7 +73,9 @@ module.exports = (args, cbk) => {
         const {fs} = args;
 
         if (!args.category || !categories[args.category]) {
-          return cbk([400, 'ExpectedKnownAccountingRecordsCategory']);
+          return cbk([400, 'ExpectedKnownAccountingRecordsCategory', {
+            categories: keys(categories),
+          }]);
         }
 
         if (!!args.date && !args.month) {
@@ -76,8 +86,8 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedFileSystemMethodsToGetAccountingReport']);
         }
 
-        if (!args.lnd) {
-          return cbk([400, 'ExpectedAuthenticatedLndToGetAccountingReport']);
+        if (!isArray(args.lnds) || !args.lnds.length) {
+          return cbk([400, 'ExpectedAuthenticatedLndsToGetAccountingReport']);
         }
 
         if (!args.request) {
@@ -88,34 +98,37 @@ module.exports = (args, cbk) => {
       },
 
       // Get date range
-      dateRange: ['validate', ({}, cbk) => {
-        const range = (() => {
-          try {
-            return {
-              value: rangeForDate({
-                date: args.date,
-                month: args.month,
-                year: args.year,
-              }),
-            };
-          } catch (err) {
-            return {err};
-          }
-        })();
-
-        // Exit early when the date range cannot be determined
-        if (!!range.err) {
-          return cbk([400, range.err.message]);
+      dateRange: ['validate', asyncify(() => {
+        try {
+          return rangeForDate({
+            date: args.date,
+            month: args.month,
+            year: args.year,
+          });
+        } catch (err) {
+          throw [400, err.message];
         }
+      })],
 
-        return cbk(null, range.value);
+      // Get the network names of the nodes
+      getNetworks: ['validate', ({}, cbk) => {
+        return asyncMap(args.lnds, (lnd, cbk) => getNetwork({lnd}, cbk), cbk);
       }],
 
-      // Get the network name
-      getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
+      // The network that the nodes are on
+      network: ['getNetworks', ({getNetworks}, cbk) => {
+        const [{network}] = getNetworks;
+
+        // Exit early when the nodes are not all on the same network
+        if (getNetworks.some(n => n.network !== network)) {
+          return cbk([400, 'ExpectedSameNetworkNodesForAccountingReport']);
+        }
+
+        return cbk(null, network);
+      }],
 
       // Make the method that gets chain prices, used without a rate provider
-      chain: ['getNetwork', ({getNetwork}, cbk) => {
+      chain: ['network', ({network}, cbk) => {
         // Exit early when fiat is disabled or a rate provider is specified
         if (!!args.is_fiat_disabled || !!args.rate_provider) {
           return cbk();
@@ -123,17 +136,23 @@ module.exports = (args, cbk) => {
 
         // Exit early when there are no chain prices for the network or no
         // file system to keep them in
-        if (!args.fs || getNetwork.network !== mainnet) {
+        if (!args.fs || network !== mainnet) {
           return cbk();
         }
 
         // Progress is only logged when it cannot end up in CSV output
-        const logger = !args.is_csv ? args.logger : undefined;
+        const {logger} = chainPricesLogger({
+          logger: !args.is_csv ? args.logger : undefined,
+        });
+
+        // Chain prices are derived through the first node
+        const [lnd] = args.lnds;
 
         const {getChainRate} = chainRates({
+          lnd,
           logger,
+          blocks_path: homePath({file: chainBlocksFile}).path,
           fs: args.fs,
-          lnd: args.lnd,
           path: homePath({file: chainPricesFile}).path,
         });
 
@@ -165,51 +184,63 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Get accounting info
+      // Get the accounting records of each node, one node after another
       getAccounting: [
         'dateRange',
-        'getNetwork',
+        'network',
         'rate',
-        ({dateRange, getNetwork, rate}, cbk) =>
+        ({dateRange, network, rate}, cbk) =>
       {
-        return getAccountingReport({
-          after: dateRange.after,
-          before: dateRange.before,
-          category: categories[args.category],
-          currency: args.currency || defaultCurrency,
-          fiat: !args.is_fiat_disabled ? (args.fiat || defaultFiat) : null,
-          lnd: args.lnd,
-          network: getNetwork.network,
-          rate: !!rate ? rate.rate : undefined,
-          rate_provider: !rate ? args.rate_provider : undefined,
-          request: args.request,
+        return asyncMapSeries(args.lnds, (lnd, cbk) => {
+          return getAccountingReport({
+            lnd,
+            network,
+            after: dateRange.after,
+            before: dateRange.before,
+            category: categories[args.category],
+            currency: args.currency || defaultCurrency,
+            fiat: !args.is_fiat_disabled ? (args.fiat || defaultFiat) : null,
+            rate: !!rate ? rate.rate : undefined,
+            rate_provider: !rate ? args.rate_provider : undefined,
+            request: args.request,
+          },
+          cbk);
         },
         cbk);
       }],
 
-      // Convert the accounting CSV into rows for table display output
-      accounting: ['getAccounting', ({getAccounting}, cbk) => {
-        const csvType = `${categories[args.category]}_csv`;
+      // The records of all of the nodes in the category, in order of date
+      records: ['getAccounting', ({getAccounting}, cbk) => {
+        const category = categories[args.category];
+
+        const records = flatten(getAccounting.map(report => report[category]));
+
+        const {sorted} = sortBy({array: records, attribute: 'created_at'});
+
+        return cbk(null, sorted);
+      }],
+
+      // Convert the records into a CSV, or into rows for table display output
+      accounting: ['records', ({records}, cbk) => {
+        const {csv} = harmonize({records});
 
         // Exit early when a CSV dump is requested
         if (!!args.is_csv) {
-          return cbk(null, getAccounting[csvType]);
+          return cbk(null, csv);
         }
 
-        return tableRowsFromCsv({csv: getAccounting[csvType]}, cbk);
+        return tableRowsFromCsv({csv}, cbk);
       }],
 
       // Calculate total amounts
-      total: ['getAccounting', ({getAccounting}, cbk) => {
+      total: ['records', ({records}, cbk) => {
         // Exit early when a CSV dump is requested
         if (!!args.is_csv) {
           return cbk();
         }
 
-        const rows = getAccounting[categories[args.category]];
-
         // Token values are represented as amounts
-        const tokens = sumOf(rows.map(n => n.amount));
+        const tokens = sumOf(records.map(n => n.amount));
 
         // Exit early when there is no fiat data
         if (!!args.is_fiat_disabled) {
@@ -217,13 +248,13 @@ module.exports = (args, cbk) => {
         }
 
         // Fiat values are represented as fiat amounts
-        const fiat = round(sumOf(rows.map(n => n.fiat_amount)));
+        const fiat = round(sumOf(records.map(n => n.fiat_amount)));
 
         return cbk(null, {fiat, tokens});
       }],
 
       // Clean rows for display if necessary
-      report: ['accounting', 'total',({accounting, total}, cbk) => {
+      report: ['accounting', 'total', ({accounting, total}, cbk) => {
         // Exit early when there is no cleaning necessary
         if (!!args.is_csv) {
           return cbk(null, accounting);
@@ -249,7 +280,7 @@ module.exports = (args, cbk) => {
 
         const summary = [
           summaryHeadings,
-          [total.tokens, assetType, currentDate, total.fiat],
+          [total.tokens, assetType, new Date().toISOString(), total.fiat],
         ];
 
         return cbk(null, {rows, rows_summary: summary});

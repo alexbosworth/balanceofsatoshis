@@ -1,5 +1,16 @@
 # Versions
 
+## 25.7.0
+
+- `accounting`: Add `lightning-fees` category to report the routing fees paid
+    on payments
+- `accounting`: Keep the payments of recent blocks in `chain_blocks.json`, so
+    that later runs only fetch the blocks that are new
+- `accounting`: Pass `--node` more than once to get one report of several
+    nodes, with their records together in order of date
+- `fund`: Add `--fee-rate-precise` to set a fee rate per 1000 vbytes
+- `fund`: `MAX` amounts send as much as possible without overpaying the fee
+
 ## 25.6.2
 
 - `telegram`: Fix invoices settled before the bot started being reported as new

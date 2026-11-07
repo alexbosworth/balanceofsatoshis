@@ -4,5 +4,6 @@
   "chain-sends": "chain_sends",
   "forwards": "forwards",
   "invoices": "invoices",
+  "lightning-fees": "lightning_fees",
   "payments": "payments"
 }
