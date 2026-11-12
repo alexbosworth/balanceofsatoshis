@@ -1,20 +1,14 @@
-const {createHash} = require('crypto');
+const EventEmitter = require('events');
 
-const {addressForScript} = require('goldengate');
 const asyncAuto = require('async/auto');
+const asyncify = require('async/asyncify');
 const asyncMap = require('async/map');
-const asyncTimesSeries = require('async/timesSeries');
-const {attemptSweep} = require('goldengate');
 const {cancelSwapOut} = require('goldengate');
-const {checkSwapTiming} = require('goldengate');
-const {createChainAddress} = require('ln-service');
-const {createInvoice} = require('ln-service');
-const {createSwapOut} = require('goldengate');
-const {decodeSwapRecovery} = require('goldengate');
-const {encodeSwapRecovery} = require('goldengate');
+const {completeOffToOnSwap} = require('paid-services');
+const {decodeLoopResponse} = require('paid-services');
+const {decodeOffToOnRestart} = require('paid-services');
 const {decodePaymentRequest} = require('ln-service');
-const {findDeposit} = require('goldengate');
-const {findKey} = require('ln-sync');
+const {encodeOffToOnRestart} = require('paid-services');
 const {formatTokens} = require('ln-sync');
 const {getChainFeeRate} = require('ln-service');
 const {getChannels} = require('ln-service');
@@ -27,21 +21,15 @@ const {getPayment} = require('ln-service');
 const {getSwapOutQuote} = require('goldengate');
 const {getSwapOutTerms} = require('goldengate');
 const {getSyntheticOutIgnores} = require('probing');
-const {idForTransaction} = require('@alexbosworth/blockchain');
-const {lightningLabsSwapService} = require('goldengate');
 const moment = require('moment');
 const {payViaRoutes} = require('ln-service');
-const {releaseSwapOutSecret} = require('goldengate');
+const {requestLoopOut} = require('paid-services');
 const {returnResult} = require('asyncjs-util');
-const {subscribeToBlocks} = require('ln-service');
+const {startOffToOnSwap} = require('paid-services');
 const {subscribeToMultiPathPay} = require('probing');
 const {subscribeToMultiPathProbe} = require('probing');
-const {subscribeToPastPayment} = require('ln-service');
 const {subscribeToPayViaRequest} = require('ln-service');
-const {subscribeToSwapOutStatus} = require('goldengate');
 
-const {authenticatedLnd} = require('./../lnd');
-const {chains} = require('./../network/networks');
 const channelForSend = require('./channel_for_send');
 const {cltvDeltaBuffer} = require('./constants');
 const {currencySymbols} = require('./../network/networks');
@@ -49,47 +37,35 @@ const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
 const {estimatedSweepVbytes} = require('./constants');
 const {executeProbe} = require('./../network');
+const {externalPayUpdates} = require('./constants');
 const {fastDelayMinutes} = require('./constants');
-const {feeRateDenominator} = require('./constants');
-const {fuzzBlocks} = require('./constants');
+const findRebalancePeer = require('./find_rebalance_peer');
 const {getIcons} = require('./../display');
 const {getIgnores} = require('./../routing');
-const getRoutesForFunding = require('./get_routes_for_funding');
 const getPaidService = require('./get_paid_service');
-const getRawRecoveries = require('./get_raw_recoveries');
+const getRoutesForFunding = require('./get_routes_for_funding');
 const {getTags} = require('./../tags');
-const {maxCltvExpiration} = require('./constants');
+const {invoiceNetworks} = require('./constants');
 const {maxDepositTokens} = require('./constants');
 const {maxExecutionFeeTokens} = require('./constants');
-const {maxFeeMultiplier} = require('./constants');
 const {maxFeeRate} = require('./constants');
 const {maxPathfindingMs} = require('./constants');
-const {maxRouteFailProbability} = require('./constants');
 const {maxRoutingFeeDenominator} = require('./constants');
-const {minCltvDelta} = require('./constants');
 const {minConfs} = require('./constants');
-const {minSweepConfs} = require('./constants');
 const {minutesPerBlock} = require('./constants');
-const {requiredBufferBlocks} = require('./constants');
 const {slowDelayMinutes} = require('./constants');
-const {swappable} = require('./../network/networks');
-const {sweepProgressLogDelayMs} = require('./constants');
 
 const addressMatch = /\b((bc|tb)(0([ac-hj-np-z02-9]{39}|[ac-hj-np-z02-9]{59})|1[ac-hj-np-z02-9]{8,87})|([13]|[mn2])[a-km-zA-HJ-NP-Z1-9]{25,39})\b/i;
 const {ceil} = Math;
 const cltvBuffer = 3;
-const farFutureDate = () => moment().add(1, 'years').toISOString();
+const defaultMaxPaths = 1;
 const flatten = arr => [].concat(...arr);
-const {floor} = Math;
-const hexAsBase64 = hex => Buffer.from(hex, 'hex').toString('base64');
+const httpMatch = /^https?:\/\//;
 const {isArray} = Array;
-const {max} = Math;
-const maxCltvDelta = 144 * 30;
-const {min} = Math;
-const minSend = spendTokens => Number(spendTokens) + 1e4;
-const mtokPerTok = BigInt(1000);
+const isLimit = n => Number.isSafeInteger(n) && n > 0;
+const isPayUpdate = update => !!externalPayUpdates.find(n => !!update[n]);
 const {round} = Math;
-const sha256 = n => createHash('sha256').update(Buffer.from(n, 'hex'));
+const sumOf = tokens => tokens.reduce((sum, n) => sum + n, Number());
 const swapDelayMinutes = fast => !!fast ? fastDelayMinutes : slowDelayMinutes;
 const tokensAsBigUnit = tokens => ((tokens || 0) / 1e8).toFixed(8);
 const uniq = arr => Array.from(new Set(arr));
@@ -104,24 +80,19 @@ const uniq = arr => Array.from(new Set(arr));
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
     }
-    [is_fast]: <Execute Swap Immediately Bool>
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
-    [is_raw_recovery_shown]: <Show Raw Recovery Transactions Bool>
+    [is_fast]: <Execute Swap Immediately Bool>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
+    [max_api_key_fee]: <Maximum Tokens to Pay for a Service API Key Number>
     [max_deposit]: <Maximum Swap Deposit Tokens Number>
-    [max_fee]: <Maximum Fee Tokens Number>
-    [max_paths]: <Maximum Paths For Funding Number>
-    [max_wait_blocks]: <Maximum Wait Blocks Number>
-    [node]: <Node Name String>
+    max_fee: <Maximum Fee Tokens Number>
+    [max_paths]: <Maximum Paths For Funding Number> (default: 1)
     [out_address]: <Out Address String>
-    [peer]: <Peer Public Key Hex String>
+    [out_filters]: [<Out Peer Filter Formula String>]
+    [peer]: <Peer Public Key, Alias or Tag String>
     [recovery]: <Recover In-Progress Swap Hex String>
-    request: <Request Function>
     [socket]: <Custom Backing Service Host:Port String>
-    [spend_address]: <Attempt Spend Out To Address String>
-    [spend_tokens]: <Spend Address Exact Tokens Number>
-    timeout: <Wait for Deposit Timeout Milliseconds Number>
     tokens: <Tokens Number>
   }
 
@@ -156,36 +127,34 @@ module.exports = (args, cbk) => {
           return cbk([400, 'ExpectedLoggerForSwapProgressNotifications']);
         }
 
+        if (args.max_deposit !== undefined && !isLimit(args.max_deposit)) {
+          return cbk([400, 'ExpectedMaxDepositAboveZeroToInitiateSwapOut']);
+        }
+
+        if (args.max_fee === undefined) {
+          return cbk([400, 'ExpectedMaxFeeToIncreaseInboundLiquidity']);
+        }
+
+        if (!isLimit(args.max_fee)) {
+          return cbk([400, 'ExpectedMaxFeeAboveZeroToInitiateSwapOut']);
+        }
+
         if (!!args.out_address && !addressMatch.test(args.out_address)) {
           return cbk([400, 'UnrecognizedFormatOfOutAddress']);
         }
 
-        if (!args.request) {
-          return cbk([400, 'ExpectedRequestFunctionToInitiateSwapOut']);
+        if (!!args.out_filters && !isArray(args.out_filters)) {
+          return cbk([400, 'ExpectedArrayOfOutFiltersToInitiateSwapOut']);
         }
 
-        if (!!args.spend_address && !args.spend_tokens) {
-          return cbk([400, 'ExpectedSpendAmountWhenSpecifyingSpendAddress']);
+        // Filters select a peer from a tag or check the specified peer
+        if (!!args.out_filters && !!args.out_filters.length && !args.peer) {
+          return cbk([400, 'ExpectedPeerOrTagToApplyOutFiltersTo']);
         }
 
-        if (!!args.spend_tokens && !args.spend_address) {
-          return cbk([400, 'ExpectedSpendAddressWhenSpecifyingSpendTokens']);
-        }
-
-        if (args.spend_tokens > args.tokens) {
-          return cbk([400, 'ExpectedSpendTokensLessThanTotalTokens']);
-        }
-
-        if (!!args.spend_address && minSend(args.spend_tokens) > args.tokens) {
-          return cbk([
-            400,
-            'ExpectedSwapAmountGreaterThanSpendAmount',
-            {minimum: minSend(args.spend_tokens)},
-          ]);
-        }
-
-        if (!args.timeout) {
-          return cbk([400, 'ExpectedTimeoutToWaitForSwapDeposit']);
+        // A web service socket is for services without Taproot swaps
+        if (!!args.socket && httpMatch.test(args.socket)) {
+          return cbk([400, 'ExpectedHostAndPortSocketToInitiateSwapOut']);
         }
 
         if (!args.recovery && !args.tokens) {
@@ -195,9 +164,36 @@ module.exports = (args, cbk) => {
         return cbk();
       },
 
-      // Find peer
-      findPeer: ['validate', ({}, cbk) => {
-        return findKey({lnd: args.lnd, query: args.peer}, cbk);
+      // Deadline for the swap service to publish the swap funding on chain
+      deadline: ['validate', ({}, cbk) => {
+        const fundAt = moment().add(swapDelayMinutes(args.is_fast), 'minutes');
+
+        return cbk(null, fundAt.toISOString());
+      }],
+
+      // Find the peer to spend down a channel with to increase inbound
+      findPeer: [
+        'getChannels',
+        'getPolicies',
+        'getTags',
+        ({getChannels, getPolicies, getTags}, cbk) =>
+      {
+        // Exit early when there is no peer to select
+        if (!args.peer) {
+          return cbk(null, {});
+        }
+
+        return findRebalancePeer({
+          active_channels: getChannels.channels,
+          channels: getChannels.channels,
+          direction: 'out',
+          filters: args.out_filters,
+          lnd: args.lnd,
+          policies: getPolicies.policies,
+          query: args.peer,
+          tags: getTags.tags,
+        },
+        cbk);
       }],
 
       // Get current channel liquidity details
@@ -206,21 +202,22 @@ module.exports = (args, cbk) => {
       }],
 
       // Get the current block height
-      getHeight: ['validate', ({}, cbk) => getHeight({lnd: args.lnd}, cbk)],
-
-      // Get node icons
-      getIcons: ['validate', ({}, cbk) => {
-        if (!args.fs) {
+      getHeight: ['validate', ({}, cbk) => {
+        // Exit early when recovering an in-progress swap
+        if (!!args.recovery) {
           return cbk();
         }
 
-        return getIcons({fs: args.fs}, cbk);
+        return getHeight({lnd: args.lnd}, cbk);
       }],
+
+      // Get node icons
+      getIcons: ['validate', ({}, cbk) => getIcons({fs: args.fs}, cbk)],
 
       // Get the node public key
       getIdentity: ['validate', ({}, cbk) => {
-        // Exit early when there are no avoids
-        if (!args.avoid.length) {
+        // Exit early when there are no avoids and no peer to select
+        if (!args.avoid.length && !args.peer) {
           return cbk();
         }
 
@@ -230,74 +227,66 @@ module.exports = (args, cbk) => {
       // Get the network this swap is taking place on
       getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
-      // Get tags for figuring out avoid flags
+      // Get the policies of peers to apply filters to peer selection
+      getPolicies: ['getIdentity', ({getIdentity}, cbk) => {
+        // Exit early when there is no peer to select
+        if (!args.peer) {
+          return cbk();
+        }
+
+        const id = getIdentity.public_key;
+
+        return getNode({lnd: args.lnd, public_key: id}, (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          const policies = res.channels.map(channel => {
+            const policy = channel.policies.find(n => n.public_key !== id);
+
+            return {
+              base_fee_mtokens: policy.base_fee_mtokens,
+              fee_rate: policy.fee_rate,
+              public_key: policy.public_key,
+            };
+          });
+
+          return cbk(null, {policies});
+        });
+      }],
+
+      // Get tags for figuring out avoid flags and the peer to select
       getTags: ['validate', ({}, cbk) => {
-        // Exit early when there are no avoids
-        if (!args.avoid.length) {
+        // Exit early when there are no avoids and no peer to select
+        if (!args.avoid.length && !args.peer) {
           return cbk();
         }
 
         return getTags({fs: args.fs}, cbk);
       }],
 
+      // Decode the restart details of an in-progress swap
+      recover: ['validate', asyncify(() => {
+        // Exit early when there is no in-progress swap to recover
+        if (!args.recovery) {
+          return;
+        }
+
+        try {
+          return decodeOffToOnRestart({restart: args.recovery});
+        } catch (err) {
+          throw [400, 'FailedToDecodeSwapRecoveryDetails', {err}];
+        }
+      })],
+
       // Get peer details
       getPeerDetails: ['findPeer', ({findPeer}, cbk) => {
+        // Exit early when there is no peer to get details of
         if (!findPeer.public_key) {
           return cbk();
         }
 
         return getNodeAlias({id: findPeer.public_key, lnd: args.lnd}, cbk);
-      }],
-
-      // Decode the swap recovery if necessary
-      recover: ['validate', ({}, cbk) => {
-        if (!args.recovery) {
-          return cbk();
-        }
-
-        return decodeSwapRecovery({recovery: args.recovery}, cbk);
-      }],
-
-      // External sends
-      sends: ['validate', ({}, cbk) => {
-        if (!args.spend_address) {
-          return cbk();
-        }
-
-        return cbk(null, [{
-          address: args.spend_address,
-          tokens: Number(args.spend_tokens),
-        }]);
-      }],
-
-      // Create a sweep address
-      createAddress: ['recover', ({recover}, cbk) => {
-        // Exit early when there is a sweep address specified in recovery
-        if (!!recover && recover.sweep_address) {
-          return cbk(null, {address: recover.sweep_address});
-        }
-
-        // Exit early when the sweep out address is directly specified
-        if (!!args.out_address) {
-          return cbk(null, {address: args.out_address});
-        }
-
-        return createChainAddress({format: 'p2wpkh', lnd: args.lnd}, cbk);
-      }],
-
-      // Network for swap
-      network: ['getNetwork', ({getNetwork}, cbk) => {
-        return cbk(null, getNetwork.network);
-      }],
-
-      // The start height of the swap
-      startHeight: ['getHeight', 'recover', ({getHeight, recover}, cbk) => {
-        // Exit early when recovering from an in-progress swap
-        if (!!recover) {
-          return cbk(null, recover.start_height);
-        }
-
-        return cbk(null, getHeight.current_block_height);
       }],
 
       // Figure out which channel to use when swapping with a peer
@@ -364,47 +353,76 @@ module.exports = (args, cbk) => {
       }],
 
       // Currency of swap
-      currency: ['network', ({network}, cbk) => {
-        return cbk(null, currencySymbols[network]);
-      }],
-
-        // Derive recovery address for an in-progress swap
-      recoverAddress: ['network', 'recover', ({network, recover}, cbk) => {
-        if (!args.recovery) {
-          return cbk();
-        }
-
-        try {
-          addressForScript({network, script: recover.script})
-        } catch (err) {
-          return cbk([400, 'FailedToDeriveSwapAddress', {err}]);
-        }
-
-        const {address} = addressForScript({network, script: recover.script});
-
-        return cbk(null, address);
+      currency: ['getNetwork', ({getNetwork}, cbk) => {
+        return cbk(null, currencySymbols[getNetwork.network]);
       }],
 
       // Get a paid service object, or convert prepaid token to service object
-      getService: [
-        'network',
-        'recover',
-        'recoverAddress',
-        ({network}, cbk) =>
-      {
+      getService: ['validate', ({}, cbk) => {
         // Exit early when the swap is already initiated
         if (!!args.recovery) {
           return cbk();
         }
 
         return getPaidService({
-          network,
           fetch: args.fetch,
           lnd: args.lnd,
+          max_fee: args.max_api_key_fee,
           socket: args.socket,
           token: args.api_key,
         },
         cbk);
+      }],
+
+      // Check that a payment of a recovered swap was made, so it started
+      checkPayments: [
+        'getNetwork',
+        'recover',
+        ({getNetwork, recover}, cbk) =>
+      {
+        // Exit early when there is no swap service swap to recover
+        if (!args.recovery || !recover.is_loop_service) {
+          return cbk();
+        }
+
+        const network = invoiceNetworks[getNetwork.network];
+        const {response} = recover;
+
+        try {
+          decodeLoopResponse({network, response});
+        } catch (err) {
+          return cbk([400, 'FailedToDecodeSwapRecoveryResponse', {err}]);
+        }
+
+        const details = decodeLoopResponse({network, response});
+
+        return asyncMap([details.deposit_id, details.fund_id], (id, cbk) => {
+          return getPayment({id, lnd: args.lnd}, (err, res) => {
+            // Exit early when the payment was never made
+            if (isArray(err) && err.slice().shift() === 404) {
+              return cbk(null, {is_started: false});
+            }
+
+            if (!!err) {
+              return cbk(err);
+            }
+
+            // A payment that is paid or in flight started the swap
+            return cbk(null, {is_started: !res.is_failed});
+          });
+        },
+        (err, res) => {
+          if (!!err) {
+            return cbk(err);
+          }
+
+          // Exit early when a payment started the swap, the swap continues
+          if (res.some(n => n.is_started)) {
+            return cbk();
+          }
+
+          return cbk([404, 'SwapNeverStartedSwapPaymentsNotMade']);
+        });
       }],
 
       // Get swap out limits
@@ -423,10 +441,11 @@ module.exports = (args, cbk) => {
 
       // Get the quote for swaps
       getQuote: [
+        'deadline',
+        'getHeight',
         'getLimits',
         'getService',
-        'startHeight',
-        ({getLimits, getService, startHeight}, cbk) =>
+        ({deadline, getHeight, getLimits, getService}, cbk) =>
       {
         // Exit early when this is a recovery of an existing swap
         if (!!args.recovery) {
@@ -441,20 +460,19 @@ module.exports = (args, cbk) => {
           return cbk([400, 'SwapSizeTooSmall', {min: getLimits.min_tokens}]);
         }
 
-        const fundAt = moment().add(swapDelayMinutes(args.is_fast), 'minutes');
-
         return getSwapOutQuote({
-          delay: !args.is_fast ? fundAt.toISOString() : undefined,
+          delay: deadline,
           metadata: getService.metadata,
           service: getService.service,
-          timeout: getLimits.max_cltv_delta + startHeight,
+          timeout: getHeight.current_block_height + getLimits.max_cltv_delta,
           tokens: args.tokens,
         },
         cbk);
       }],
 
       // Check quote to validate parameters of the swap
-      checkQuote: ['getLimits', 'getQuote', ({getLimits, getQuote}, cbk) => {
+      checkQuote: ['getQuote', ({getQuote}, cbk) => {
+        // Exit early when this is a recovery of an existing swap
         if (!!args.recovery) {
           return cbk();
         }
@@ -467,71 +485,33 @@ module.exports = (args, cbk) => {
           return cbk([400, 'TotalFeeExceedsMaxFeeRate']);
         }
 
-        if (!!args.max_fee && getQuote.fee > args.max_fee) {
+        if (getQuote.fee > args.max_fee) {
           return cbk([400, 'FeeForSwapExceedsMaximumFeeLimit', getQuote]);
         }
 
-        const fundConfs = (args.confs || minConfs);
-        const swapDelayMin = swapDelayMinutes(args.is_fast);
-        const sweepConfs = (args.confs || minConfs);
-
-        const allFees = getQuote.fee;
-        const swapMinimumMinutes = (fundConfs + sweepConfs) * minutesPerBlock;
-        const swapTimeoutMinutes = getLimits.max_cltv_delta * minutesPerBlock;
-
-        const fastestSwapTime = moment().add(swapMinimumMinutes, 'minutes');
-        const swapTimeout = moment().add(swapTimeoutMinutes, 'minutes');
-
-        args.logger.info({
-          estimated_time: {
-            start_at: moment().calendar(),
-            earliest_completion: fastestSwapTime.add(swapDelayMin).fromNow(),
-            forfeit_funds_deadline_at: swapTimeout.fromNow(),
-          },
-        });
-
-        return cbk(null, {deposit: getQuote.deposit, service_fee: allFees});
+        return cbk();
       }],
 
-      // Get the ultimate timeout height to request for the swap
-      getTimeout: [
-        'getLimits',
-        'startHeight',
-        ({getLimits, startHeight}, cbk) =>
-      {
-        // Exit early when the swap is already started
+      // Start the swap request
+      startSwap: ['checkQuote', ({}, cbk) => {
+        // Exit early when the swap is already initiated
         if (!!args.recovery) {
           return cbk();
         }
 
-        if (getLimits.max_cltv_delta < minCltvDelta) {
-          return cbk([503, 'ServerMaxCltvDeltaTooLow']);
-        }
-
-        return cbk(null, startHeight + getLimits.max_cltv_delta);
+        return startOffToOnSwap({lnd: args.lnd, tokens: args.tokens}, cbk);
       }],
 
-      // Request a new swap out
-      initiateSwap: [
-        'checkQuote',
+      // Request a new swap out from the swap service
+      requestSwap: [
+        'deadline',
         'getService',
-        'getTimeout',
-        'network',
-        'recover',
-        'recoverAddress',
-        ({getService, getTimeout, network, recover, recoverAddress}, cbk) =>
+        'startSwap',
+        ({deadline, getService, startSwap}, cbk) =>
       {
         // Exit early when the swap is already initiated
         if (!!args.recovery) {
-          return cbk(null, {
-            address: recoverAddress,
-            private_key: recover.claim_private_key,
-            script: recover.script,
-            secret: recover.secret,
-            start_height: recover.start_height,
-            timeout: recover.timeout,
-            version: recover.version,
-          });
+          return cbk();
         }
 
         if (!!getService.paid && !!getService.token) {
@@ -542,134 +522,43 @@ module.exports = (args, cbk) => {
           });
         }
 
-        const fundAt = moment().add(swapDelayMinutes(args.is_fast), 'minutes');
-
-        return createSwapOut({
-          network,
-          fund_at: fundAt.toISOString(),
-          metadata: getService.metadata,
-          service: getService.service,
-          timeout: getTimeout,
-          tokens: args.tokens,
+        return requestLoopOut({
+          before: deadline,
+          lnd: args.lnd,
+          macaroon: getService.macaroon,
+          preimage: getService.preimage,
+          recovery: startSwap.recovery,
+          socket: args.socket,
         },
         cbk);
       }],
 
       // Decode swap execution request
-      decodeExecutionRequest: ['initiateSwap', ({initiateSwap}, cbk) => {
+      decodeExecutionRequest: ['requestSwap', ({requestSwap}, cbk) => {
+        // Exit early when the swap is already initiated
         if (!!args.recovery) {
           return cbk();
         }
 
         return decodePaymentRequest({
           lnd: args.lnd,
-          request: initiateSwap.swap_execute_request,
+          request: requestSwap.deposit_request,
         },
         cbk);
-      }],
-
-      // Check swap
-      checkSwap: [
-        'createAddress',
-        'decodeExecutionRequest',
-        'initiateSwap',
-        'startHeight',
-        ({
-          createAddress,
-          decodeExecutionRequest,
-          initiateSwap,
-          startHeight,
-        },
-        cbk) =>
-      {
-        // Exit early when the swap is already started or is just a test run
-        if (!!args.is_dry_run || !!args.recovery) {
-          return cbk();
-        }
-
-        // Output a recovery blob that can be used to restart the swap
-        try {
-          const {recovery} = encodeSwapRecovery({
-            claim_private_key: initiateSwap.private_key,
-            execution_id: decodeExecutionRequest.id,
-            refund_public_key: initiateSwap.service_public_key,
-            secret: initiateSwap.secret,
-            start_height: startHeight,
-            sweep_address: createAddress.address,
-            timeout: initiateSwap.timeout,
-            tokens: args.tokens,
-            version: initiateSwap.version,
-          });
-
-          args.logger.info({
-            restart_recovery_secret: recovery.toString('hex'),
-          });
-        } catch (err) {
-          return cbk([500, 'UnexpectedErrorGeneratingRecoveryState', {err}]);
-        }
-
-        try {
-          checkSwapTiming({
-            current_block_height: startHeight,
-            required_buffer_blocks: requiredBufferBlocks,
-            required_funding_confirmations: args.confs,
-            required_sweep_confirmations: args.confs,
-            timeout_height: initiateSwap.timeout,
-          });
-        } catch (err) {
-          return cbk([503, 'InsufficientTimeAvailableToCompleteSwap', {err}]);
-        }
-
-        return cbk();
       }],
 
       // Decode funding request
-      decodeFundingRequest: ['initiateSwap', ({initiateSwap}, cbk) => {
+      decodeFundingRequest: ['requestSwap', ({requestSwap}, cbk) => {
+        // Exit early when the swap is already initiated
         if (!!args.recovery) {
           return cbk();
         }
 
         return decodePaymentRequest({
           lnd: args.lnd,
-          request: initiateSwap.swap_fund_request,
+          request: requestSwap.fund_request,
         },
         cbk);
-      }],
-
-      // Track server swap status
-      trackStatus: [
-        'decodeFundingRequest',
-        'getService',
-        ({decodeFundingRequest, getService}, cbk) =>
-      {
-        if (!!args.recovery) {
-          return cbk();
-        }
-
-        const sub = subscribeToSwapOutStatus({
-          id: decodeFundingRequest.id,
-          metadata: getService.metadata,
-          service: getService.service,
-        });
-
-        const swap = {};
-
-        sub.on('status_update', update => {
-          // Server reports swap broadcast
-          if (!swap.is_broadcast && !!update.is_broadcast) {
-            swap.is_broadcast = true;
-
-            args.logger.info({
-              server_update: 'On-chain transaction published',
-            });
-          }
-
-          if (!!update.is_claimed) {
-            sub.removeAllListeners();
-
-            return cbk();
-          }
-        });
       }],
 
       // Check that the payment requests match the validated quote
@@ -679,6 +568,7 @@ module.exports = (args, cbk) => {
         'getQuote',
         ({decodeExecutionRequest, decodeFundingRequest, getQuote}, cbk) =>
       {
+        // Exit early when the swap is already initiated
         if (!!args.recovery) {
           return cbk();
         }
@@ -688,9 +578,63 @@ module.exports = (args, cbk) => {
           return cbk([503, 'UnexpectedUnilateralDepositTokensAmount']);
         }
 
-        if (decodeFundingRequest.tokens > getQuote.fee + args.tokens) {
+        const deposit = decodeExecutionRequest.tokens;
+        const funding = decodeFundingRequest.tokens;
+
+        // The deposit and the funding together pay the swap amount and the fee
+        if (deposit + funding > getQuote.fee + args.tokens) {
           return cbk([503, 'UnexpectedServiceCostForSwap']);
         }
+
+        return cbk();
+      }],
+
+      // Output a recovery blob that can be used to restart the swap
+      restart: [
+        'checkRequestAmounts',
+        'getHeight',
+        'requestSwap',
+        'startSwap',
+        ({getHeight, requestSwap, startSwap}, cbk) =>
+      {
+        // Exit early when the swap is already initiated or just a dry run
+        if (!!args.recovery || !!args.is_dry_run) {
+          return cbk();
+        }
+
+        const {restart} = encodeOffToOnRestart({
+          is_external_funding: true,
+          is_loop_service: true,
+          max_deposit_fee: maxExecutionFeeTokens,
+          min_confirmations: args.confs,
+          recovery: startSwap.recovery,
+          request: startSwap.request,
+          response: requestSwap.response,
+          sweep_address: args.out_address,
+        });
+
+        const fundConfs = (args.confs || minConfs);
+        const height = getHeight.current_block_height;
+        const swapDelayMin = swapDelayMinutes(args.is_fast);
+        const sweepConfs = (args.confs || minConfs);
+
+        const confsMinutes = (fundConfs + sweepConfs) * minutesPerBlock;
+        const timeoutBlocks = requestSwap.timeout - height;
+
+        const swapMinimumMinutes = confsMinutes + swapDelayMin;
+        const swapTimeoutMinutes = timeoutBlocks * minutesPerBlock;
+
+        const fastestSwapTime = moment().add(swapMinimumMinutes, 'minutes');
+        const swapTimeout = moment().add(swapTimeoutMinutes, 'minutes');
+
+        args.logger.info({
+          restart_recovery_secret: restart,
+          estimated_time: {
+            start_at: moment().calendar(),
+            earliest_completion: fastestSwapTime.fromNow(),
+            forfeit_funds_deadline_at: swapTimeout.fromNow(),
+          },
+        });
 
         return cbk();
       }],
@@ -703,6 +647,7 @@ module.exports = (args, cbk) => {
         'getIcons',
         'getIgnores',
         'getService',
+        'restart',
         ({
           channel,
           decodeExecutionRequest,
@@ -745,7 +690,7 @@ module.exports = (args, cbk) => {
             },
             () => {
               if (!!err) {
-                return cbk([503, 'UnexpectedErrorFindingExecutionRoute', {err}]);
+                return cbk([503, 'UnexpectedErrorFindingExecuteRoute', {err}]);
               }
 
               if (!res.route) {
@@ -759,7 +704,11 @@ module.exports = (args, cbk) => {
       }],
 
       // Get peers of the destination node
-      getGateways: ['decodeFundingRequest', ({decodeFundingRequest}, cbk) => {
+      getGateways: [
+        'decodeFundingRequest',
+        'restart',
+        ({decodeFundingRequest}, cbk) =>
+      {
         if (!!args.recovery) {
           return cbk();
         }
@@ -799,7 +748,7 @@ module.exports = (args, cbk) => {
         }
 
         // Exit early when not doing multipath funding
-        if (args.max_paths < 2) {
+        if ((args.max_paths || defaultMaxPaths) < 2) {
           return cbk();
         }
 
@@ -814,7 +763,7 @@ module.exports = (args, cbk) => {
           ignore: getIgnores.ignore,
           lnd: args.lnd,
           logger: args.logger,
-          max_paths: args.max_paths || undefined,
+          max_paths: args.max_paths || defaultMaxPaths,
           routes: decodeFundingRequest.routes,
         });
 
@@ -889,14 +838,14 @@ module.exports = (args, cbk) => {
         'getFundingRoutes',
         'getIgnores',
         'getService',
-        'initiateSwap',
+        'requestSwap',
         ({
           channel,
           decodeFundingRequest,
           findPeer,
           getIgnores,
           getService,
-          initiateSwap,
+          requestSwap,
         },
         cbk) =>
       {
@@ -905,7 +854,7 @@ module.exports = (args, cbk) => {
         }
 
         // Exit early when doing multiple paths
-        if (args.max_paths > 1) {
+        if ((args.max_paths || defaultMaxPaths) > 1) {
           return cbk();
         }
 
@@ -920,12 +869,12 @@ module.exports = (args, cbk) => {
           lnd: args.lnd,
           logger: args.logger,
           max_fee: round(tokens / maxRoutingFeeDenominator),
-          max_paths: args.max_paths || undefined,
+          max_paths: args.max_paths || defaultMaxPaths,
           mtokens: decodeFundingRequest.mtokens,
           out_through: findPeer.public_key || undefined,
           outgoing_channel: !!channel ? channel.id : undefined,
           payment: decodeFundingRequest.payment,
-          request: initiateSwap.swap_fund_request,
+          request: requestSwap.fund_request,
           routes: decodeFundingRequest.routes,
           tokens: decodeFundingRequest.tokens,
         },
@@ -1031,14 +980,12 @@ module.exports = (args, cbk) => {
         'getLimits',
         'getService',
         'getSwapPeers',
-        'getQuote',
         ({
           currency,
           decodeExecutionRequest,
           decodeFundingRequest,
           findRouteForExecution,
           findRoutesForFunding,
-          getFundingRoutes,
           getLimits,
           getService,
           getSwapPeers,
@@ -1047,11 +994,7 @@ module.exports = (args, cbk) => {
       {
         // Exit early when this is a recovery
         if (!!args.recovery) {
-          return getChainFeeRate({
-            confirmation_target: maxCltvDelta,
-            lnd: args.lnd,
-          },
-          cbk);
+          return cbk();
         }
 
         const executionRoutingFee = findRouteForExecution.fee || Number();
@@ -1060,7 +1003,6 @@ module.exports = (args, cbk) => {
         const fundingSend = decodeFundingRequest.tokens;
         const increase = `${tokensAsBigUnit(args.tokens)} ${currency}`;
         const peerChannels = flatten(getSwapPeers.map(n => n.peer_channels));
-        const sumOf = tokens => tokens.reduce((sum, n) => sum + n, Number());
 
         const peerIn = peerChannels.map(n => n.remote_balance);
         const peerOut = peerChannels.map(n => n.local_balance);
@@ -1080,7 +1022,7 @@ module.exports = (args, cbk) => {
 
           const allFees = ceil(serviceFee + sweepFee + routingFees);
 
-          if (!!args.max_fee && allFees > args.max_fee) {
+          if (allFees > args.max_fee) {
             return cbk([400, 'MaxFeeTooLowToExecuteSwap', {needed: allFees}]);
           }
 
@@ -1105,22 +1047,80 @@ module.exports = (args, cbk) => {
             });
           }
 
-          return cbk(null, {
-            non_funding_routing_fees: allFees,
-            tokens_per_vbyte: res.tokens_per_vbyte
-          });
+          return cbk(null, {non_funding_routing_fees: allFees});
         });
+      }],
+
+      // Details of the swap to complete
+      swap: [
+        'getMinSweepFee',
+        'recover',
+        'requestSwap',
+        'startSwap',
+        ({recover, requestSwap, startSwap}, cbk) =>
+      {
+        // Exit early when recovering an in-progress swap
+        if (!!args.recovery) {
+          return cbk(null, {
+            is_external_funding: recover.is_external_funding,
+            is_loop_service: recover.is_loop_service,
+            max_fee_deposit: recover.max_deposit_fee,
+            min_confirmations: recover.min_confirmations,
+            recovery: recover.recovery,
+            response: recover.response,
+            sweep_address: recover.sweep_address,
+          });
+        }
+
+        // Funding payments are made here with the chosen routes
+        return cbk(null, {
+          is_external_funding: true,
+          is_loop_service: true,
+          max_fee_deposit: maxExecutionFeeTokens,
+          min_confirmations: args.confs,
+          recovery: startSwap.recovery,
+          response: requestSwap.response,
+          sweep_address: args.out_address,
+        });
+      }],
+
+      // Complete the swap on chain once the swap service funds the swap
+      complete: ['checkPayments', 'swap', ({swap}, cbk) => {
+        const emitter = new EventEmitter();
+
+        emitter.on('update', update => {
+          // Exit early when the update is a payment that is being made here
+          if (!args.recovery && isPayUpdate(update)) {
+            return;
+          }
+
+          return args.logger.info(update);
+        });
+
+        return completeOffToOnSwap({
+          emitter,
+          is_external_funding: swap.is_external_funding,
+          is_loop_service: swap.is_loop_service,
+          lnd: args.lnd,
+          max_fee_deposit: swap.max_fee_deposit,
+          max_fee_funding: args.max_fee,
+          min_confirmations: swap.min_confirmations,
+          recovery: swap.recovery,
+          response: swap.response,
+          socket: args.socket,
+          sweep_address: swap.sweep_address,
+        },
+        cbk);
       }],
 
       // Multi pay to swap fund
       multiPayToFund: [
-        'checkRequestAmounts',
-        'checkSwap',
+        'decodeFundingRequest',
         'getFundingRoutes',
         'getMinSweepFee',
-        'decodeFundingRequest',
         ({decodeFundingRequest, getFundingRoutes, getMinSweepFee}, cbk) =>
       {
+        // Exit early when there are no multiple funding paths
         if (!getFundingRoutes) {
           return cbk();
         }
@@ -1178,19 +1178,12 @@ module.exports = (args, cbk) => {
 
       // Pay to swap funding
       payToFund: [
-        'checkRequestAmounts',
-        'checkSwap',
         'decodeFundingRequest',
-        'findRouteForExecution',
         'findRoutesForFunding',
         'getMinSweepFee',
-        'multiPayToFund',
         ({decodeFundingRequest, findRoutesForFunding}, cbk) =>
       {
-        if (!!args.recovery) {
-          return cbk();
-        }
-
+        // Exit early when there is no single path funding
         if (!findRoutesForFunding) {
           return cbk();
         }
@@ -1217,31 +1210,20 @@ module.exports = (args, cbk) => {
       // Pay to swap execution
       payToExecute: [
         'channel',
-        'checkRequestAmounts',
-        'checkSwap',
+        'deadline',
         'decodeExecutionRequest',
-        'findRouteForExecution',
-        'findRoutesForFunding',
         'getMinSweepFee',
-        'getQuote',
-        'initiateSwap',
-        ({channel, decodeExecutionRequest, initiateSwap}, cbk) =>
+        'requestSwap',
+        ({channel, deadline, decodeExecutionRequest, requestSwap}, cbk) =>
       {
         // Exit early when the swap is in a recovery mode already
         if (!!args.recovery) {
           return cbk();
         }
 
-        // Exit early when the swap is a dry run, do not pay execution request
-        if (!!args.is_dry_run) {
-          return cbk();
-        }
-
-        const fundAt = moment().add(swapDelayMinutes(args.is_fast), 'minutes');
-
         args.logger.info({
           paying_execution_request: decodeExecutionRequest.id,
-          estimated_swap_start_time: fundAt.calendar(),
+          estimated_swap_start_time: moment(deadline).calendar(),
         });
 
         const sub = subscribeToPayViaRequest({
@@ -1249,7 +1231,7 @@ module.exports = (args, cbk) => {
           max_fee: maxExecutionFeeTokens,
           outgoing_channel: !!channel ? channel.id : undefined,
           pathfinding_timeout: maxPathfindingMs,
-          request: initiateSwap.swap_execute_request,
+          request: requestSwap.deposit_request,
         });
 
         const finished = (err, res) => {
@@ -1275,418 +1257,37 @@ module.exports = (args, cbk) => {
         });
       }],
 
-      // Look for deposit in mempool
-      findInMempool: [
-        'initiateSwap',
-        'network',
-        'recover',
-        'startHeight',
-        ({initiateSwap, network, recover, startHeight}, cbk) =>
-      {
-        args.logger.info({waiting_for_swap_deposit_to: initiateSwap.address});
-
-        return findDeposit({
-          network,
-          address: initiateSwap.address,
-          after: startHeight - fuzzBlocks,
-          confirmations: [].length,
-          request: args.request,
-          timeout: maxPathfindingMs,
-          tokens: !!recover ? recover.tokens : args.tokens,
-        },
-        (err, res) => {
-          if (!!err) {
-            return cbk();
-          }
-
-          args.logger.info({swap_tx_confirming: res.transaction_id});
-
-          return cbk();
-        });
-      }],
-
-      // Look for deposit
-      findDeposit: [
-        'initiateSwap',
-        'network',
-        'recover',
-        'startHeight',
-        ({initiateSwap, network, recover, startHeight}, cbk) =>
-      {
-        const sub = subscribeToBlocks({lnd: args.lnd});
-        const tokens = !recover ? args.tokens : recover.tokens;
-
-        sub.on('block', ({height}, cbk) => {
-          if (height <= startHeight) {
-            return;
-          }
-
-          return args.logger.info({blocks_waited: height - startHeight});
-        });
-
-        sub.on('error', err => args.logger.error({block_subscription: err}));
-
-        return findDeposit({
-          network,
-          tokens,
-          address: initiateSwap.address,
-          after: startHeight - fuzzBlocks,
-          confirmations: args.confs,
-          lnd: args.lnd,
-          timeout: args.timeout,
-        },
-        (err, res) => {
-          sub.removeAllListeners();
-
-          return cbk(err, res);
-        });
-      }],
-
-      // Check deposit
-      checkDeposit: ['findDeposit', ({findDeposit}, cbk) => {
-        if (!!args.recovery) {
-          return cbk();
-        }
-
-        if (findDeposit.output_tokens < args.tokens) {
-          return cbk([503, 'ExpectedLargerDepositForSwapFundingDeposit']);
-        }
-
-        return cbk();
-      }],
-
-      // Register deposit height
-      depositHeight: ['findDeposit', ({findDeposit}, cbk) => {
-        if (!!args.recovery) {
-          return cbk();
-        }
-
-        return getHeight({lnd: args.lnd}, (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          return cbk(null, res.current_block_height);
-        });
-      }],
-
-      // Claim details
-      claim: [
-        'findDeposit',
-        'initiateSwap',
-        ({findDeposit, initiateSwap}, cbk) =>
-      {
-        return cbk(null, {
-          private_key: initiateSwap.private_key,
-          script: initiateSwap.script,
-          secret: initiateSwap.secret,
-          timeout: initiateSwap.timeout,
-          transaction_id: findDeposit.transaction_id,
-          transaction_vout: findDeposit.transaction_vout,
-        });
-      }],
-
-      // Raw recovery
-      rawRecovery: [
-        'claim',
-        'createAddress',
-        'depositHeight',
-        'initiateSwap',
-        'network',
-        'recover',
-        'sends',
-        'startHeight',
-        ({
-          claim,
-          createAddress,
-          depositHeight,
-          initiateSwap,
-          network,
-          recover,
-          sends,
-          startHeight,
-        },
-        cbk) =>
-      {
-        // Exit early when the raw recovery option is not toggled
-        if (!args.is_raw_recovery_shown) {
-          return cbk();
-        }
-
-        return getRawRecoveries({
-          network,
-          sends,
-          confs: args.confs,
-          deposit_height: depositHeight,
-          lnd: args.lnd,
-          max_wait_blocks: args.max_wait_blocks,
-          private_key: claim.private_key,
-          script: claim.script,
-          secret: claim.secret,
-          start_height: startHeight,
-          sweep_address: createAddress.address,
-          timeout: initiateSwap.timeout,
-          tokens: !recover ? args.tokens : recover.tokens,
-          transaction_id: claim.transaction_id,
-          transaction_vout: claim.transaction_vout,
-        },
-        (err, res) => {
-          if (!!err) {
-            return cbk(err);
-          }
-
-          res.recoveries.forEach(recovery => args.logger.info(recovery));
-
-          return cbk();
-        });
-      }],
-
-      // Execute the sweep
-      sweep: [
-        'claim',
-        'createAddress',
-        'depositHeight',
-        'getMinSweepFee',
-        'getService',
-        'initiateSwap',
-        'network',
-        'rawRecovery',
-        'recover',
-        'sends',
-        'startHeight',
-        ({
-          claim,
-          createAddress,
-          depositHeight,
-          getMinSweepFee,
-          getService,
-          initiateSwap,
-          network,
-          recover,
-          sends,
-          startHeight,
-        },
-        cbk) =>
-      {
-        const blocksUntilTimeout = initiateSwap.timeout - startHeight;
-
-        if (blocksUntilTimeout < args.confs) {
-          return cbk([503, 'FailedToReceiveSwapFundingConfirmationInTime']);
-        }
-
-        args.logger.info({swap_deposit_confirmed: claim.transaction_id});
-
-        const blocksSubscription = subscribeToBlocks({lnd: args.lnd});
-        const tokens = !recover ? args.tokens : recover.tokens;
-
-        blocksSubscription.on('end', () => {});
-        blocksSubscription.on('error', () => {});
-        blocksSubscription.on('status', () => {});
-
-        const startingHeight = depositHeight || initiateSwap.start_height;
-
-        // On every block, attempt a sweep
-        blocksSubscription.on('block', ({height}) => {
-          return attemptSweep({
-            network,
-            sends,
-            tokens,
-            current_height: height,
-            deadline_height: initiateSwap.timeout - args.confs,
-            lnd: args.lnd,
-            max_fee_multiplier: maxFeeMultiplier,
-            min_fee_rate: getMinSweepFee.tokens_per_vbyte,
-            private_key: claim.private_key,
-            request: args.request,
-            secret: claim.secret,
-            start_height: startingHeight - fuzzBlocks,
-            sweep_address: createAddress.address,
-            transaction_id: claim.transaction_id,
-            transaction_vout: claim.transaction_vout,
-            witness_script: claim.script,
-          },
-          (err, res) => {
-            return setTimeout(() => {
-              // Exit early when the listener count is low
-              if (!blocksSubscription.listenerCount('block')) {
-                return;
-              }
-
-              if (!!err) {
-                return args.logger.error({
-                  message: 'AttemptedSweep',
-                  spending: !!args.recovery ? claim.transaction_id : undefined,
-                });
-              }
-
-              args.logger.info({
-                attempting_sweep_fee_rate: res.fee_rate,
-                attempt_tx_id: idForTransaction({transaction: res.transaction}).id,
-              });
-
-              createInvoice({
-                description: hexAsBase64(res.transaction),
-                expires_at: farFutureDate(),
-                lnd: args.lnd,
-              },
-              err => {
-                // Suppress errors creating backup invoice
-                return;
-              });
-
-              // Exit early when the swap service is not available
-              if (!getService) {
-                return;
-              }
-
-              return releaseSwapOutSecret({
-                metadata: getService.metadata,
-                secret: claim.secret,
-                service: getService.service,
-              },
-              err => {
-                // Suppress errors releasing secret
-                return;
-              });
-            },
-            sweepProgressLogDelayMs);
-          });
-        });
-
-        return findDeposit({
-          network,
-          address: createAddress.address,
-          after: startHeight,
-          confirmations: max(args.confs, minSweepConfs),
-          lnd: args.lnd,
-          timeout: args.timeout,
-          transaction_id: claim.transaction_id,
-          transaction_vout: claim.transaction_vout,
-        },
-        (err, res) => {
-          blocksSubscription.removeAllListeners();
-
-          if (!!err) {
-            return cbk(err);
-          }
-
-          return cbk(null, {output_tokens: res.output_tokens});
-        });
-      }],
-
-      // Get funding payment
-      getFundingPayment: [
-        'decodeFundingRequest',
-        'multiPayToFund',
-        'payToFund',
-        'recover',
-        'sweep',
-        ({decodeFundingRequest, recover}, cbk) =>
-      {
-        const fundingRequest = decodeFundingRequest || {};
-
-        const id = fundingRequest.id || sha256(recover.secret).digest('hex');
-
-        const sub = subscribeToPastPayment({id, lnd: args.lnd});
-
-        const finished = (err, res) => {
-          sub.removeAllListeners();
-
-          return cbk(err, res);
-        };
-
-        sub.once('confirmed', payment => {
-          if (!!fundingRequest.id) {
-            args.logger.info({
-              inbound_liquidity_increase: tokensAsBigUnit(payment.safe_tokens),
-            });
-          }
-
-          return finished(null, {payment});
-        });
-
-        sub.once('failed', failed => {
-          if (!!failed.is_pathfinding_timeout) {
-            return cbk([503, 'TimedOutTryingToFindPathToSwapService']);
-          }
-
-          return cbk([503, 'UnableToFindAnyPathToSwapService']);
-        });
-
-        return;
-      }],
-
-      // Get execution payment
-      getExecutionPayment: [
-        'decodeExecutionRequest',
-        'payToExecute',
-        'recover',
-        ({decodeExecutionRequest, recover}, cbk) =>
-      {
-        const executionRequest = decodeExecutionRequest || {};
-
-        const id = executionRequest.id || recover.execution_id;
-
-        return getPayment({id, lnd: args.lnd}, cbk);
-      }],
-
-      // Spent offchain
-      spentOffchain: [
-        'getExecutionPayment',
-        'getFundingPayment',
-        ({getExecutionPayment, getFundingPayment}, cbk) =>
-      {
-        const executionPayment = getExecutionPayment.payment || {};
-        const fundingPayment = getFundingPayment.payment || {};
-
-        const spentOnPrepay = BigInt(executionPayment.mtokens || '0');
-        const spentOnFunding = BigInt(fundingPayment.mtokens || '0');
-
-        const spentOffchain = spentOnPrepay + spentOnFunding;
-
-        const executionFee = BigInt(executionPayment.fee_mtokens);
-        const fundingFee = BigInt(fundingPayment.fee_mtokens);
-
-        return cbk(null, {
-          fee: (BigInt(executionFee) + BigInt(fundingFee)).toString(),
-          spent: spentOffchain.toString(),
-        });
-      }],
-
       // Finished
       summary: [
+        'complete',
         'currency',
-        'getFundingPayment',
-        'sweep',
-        'recover',
-        'spentOffchain',
-        ({currency, sweep, recover, spentOffchain}, cbk) =>
+        'multiPayToFund',
+        'payToExecute',
+        'payToFund',
+        ({complete, currency}, cbk) =>
       {
-        const amountReceived = BigInt(sweep.output_tokens) * mtokPerTok;
-        const offchainFee = (BigInt(spentOffchain.fee) / mtokPerTok);
-        const spentOffchainMtokens = BigInt(spentOffchain.spent);
-        const tokens = !recover ? args.tokens : recover.tokens;
+        const chainFee = complete.paid_chain_fee;
+        const serviceFee = complete.paid_swap_fee || Number();
+        const totalFee = complete.total_fee;
 
-        const chainFee = tokens - sweep.output_tokens;
-        const liquidityIncrease = (spentOffchainMtokens / mtokPerTok);
-        const routingFeeTokens = Number(offchainFee);
-        const swapFeeMtokens = BigInt(spentOffchain.spent) - amountReceived;
+        const routingFees = [
+          complete.paid_execution_routing_fee,
+          complete.paid_funding_routing_fee,
+        ];
 
-        const increase = tokensAsBigUnit(Number(liquidityIncrease));
-        const swapFee = Number(swapFeeMtokens / mtokPerTok);
+        const routingFee = sumOf(routingFees.filter(n => !!n));
 
-        const serviceFee = swapFee - routingFeeTokens - chainFee;
+        // The off-chain spend is the swap amount plus the off-chain fees
+        const increase = complete.tokens + totalFee - chainFee;
 
-        const resolution = {
+        args.logger.info({
           completed: moment().calendar(),
-          inbound_increased: `${increase} ${currency}`,
+          inbound_increased: `${tokensAsBigUnit(increase)} ${currency}`,
           chain_fee_paid: `${tokensAsBigUnit(chainFee)} ${currency}`,
-          routing_fee_paid: `${tokensAsBigUnit(routingFeeTokens)} ${currency}`,
+          routing_fee_paid: `${tokensAsBigUnit(routingFee)} ${currency}`,
           service_fee_paid: `${tokensAsBigUnit(serviceFee)} ${currency}`,
-          total_fee_paid: `${tokensAsBigUnit(swapFee)} ${currency}`,
-        };
-
-        args.logger.info(resolution);
+          total_fee_paid: `${tokensAsBigUnit(totalFee)} ${currency}`,
+        });
 
         return cbk();
       }],

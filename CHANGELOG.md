@@ -1,5 +1,32 @@
 # Versions
 
+## 26.0.0
+
+- `swap-api-key`: Add `--max-fee` to limit what is paid for an API key
+- `swap-in`: Use the shared address swap in protocol of the swap service,
+    swapping in a deposit of the exact amount once it has 3 confirmations
+- `swap-in`: Add `--max-fee-rate` to limit the swap fee in parts per million
+- `swap-in`, `swap-out`: Add `--max-api-key-fee` to limit what is paid for a
+    swap service API key
+- `swap-out`: Use the Taproot MuSig2 swap out protocol of the swap service,
+    like `swap` does
+- `swap-out`: Add `--out` to select the peer or tag to increase inbound
+    liquidity from, with `--out-filter` formulas like `rebalance`
+
+### Breaking Changes
+
+- `increase-inbound-liquidity`: Rename command to `swap-out`
+- `swap-in`: `--recovery` takes a shared address secret, not old recovery codes
+- `swap-in`: `--refund-address` with `--recovery` refunds expired deposits
+    and unpaid swaps that timed out
+- `swap-in`: Remove `--test-refund`
+- `swap-in`: Use 25.7.0 to refund swaps in started with earlier versions
+- `swap-out`: `--recovery` takes the restart code of the new swap protocol,
+    which `swap` also accepts, not the previous recovery code
+- `swap-out`: Remove `--max-hours`, `--show-raw-recovery`, `--spend-address`
+    and `--spend-amount`
+- `swap-out`: Rename `--with` to `--out`
+
 ## 25.7.0
 
 - `accounting`: Add `lightning-fees` category to report the routing fees paid

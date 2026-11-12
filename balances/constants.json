@@ -8,6 +8,7 @@
   },
   "chainPricesFile": "chain_prices.json",
   "coinbaseProvider": "coinbase",
+  "dayFormat": "YYYY-MM-DD",
   "defaultCurrency": "BTC",
   "defaultFiat": "USD",
   "failedRequestErrors": ["UnexpectedErrorGettingCoinbaseCandles"],
@@ -45,5 +46,14 @@
     "FailedToReplacePricesFile",
     "FailedToWritePricesFile",
     "UnsupportedPricesFileVersion"
+  ],
+  "summaryHeadings": [
+    "Total",
+    "Asset",
+    "Report Date",
+    "Total Fiat",
+    "Category",
+    "Start Date",
+    "End Date"
   ]
 }

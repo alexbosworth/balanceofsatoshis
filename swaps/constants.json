@@ -1,23 +1,36 @@
 {
   "cltvDeltaBuffer": 3,
   "estimatedSweepVbytes": 153,
+  "externalPayUpdates": [
+    "external_funding_pay_to_fund_swap_offchain",
+    "external_pay_deposit_request"
+  ],
   "fastDelayMinutes": 1,
-  "feeRateDenominator": 1000000,
-  "fuzzBlocks": 5,
-  "maxCltvExpiration": 2016,
+  "invoiceNetworks": {
+    "btc": "bitcoin",
+    "btcregtest": "regtest",
+    "btcsignet": "signet",
+    "btctestnet": "testnet",
+    "btctestnet4": "testnet"
+  },
   "maxDepositTokens": 50000,
   "maxExecutionFeeTokens": 1000,
-  "maxFeeMultiplier": 1000,
   "maxFeeRate": 0.06,
   "maxPathfindingMs": 1200000,
-  "maxRouteFailProbability": 1000000,
   "maxRoutingFeeDenominator": 100,
-  "minCltvDelta": 16,
   "minConfs": 1,
-  "minSweepConfs": 1,
   "minutesPerBlock": 10,
-  "requiredBufferBlocks": 36,
+  "sharedAddressKeyFamily": 42060,
   "slowDelayMinutes": 30,
-  "swapTypes": ["inbound", "outbound"],
-  "sweepProgressLogDelayMs": 2000
+  "swapInCosignQuietMs": 30000,
+  "swapInDepositConfs": 3,
+  "swapInEventsMinAliveMs": 60000,
+  "swapInEventsRetryMs": 10000,
+  "swapInEventsRetryStepMs": 1000,
+  "swapInMaxTimeoutBlocks": 2016,
+  "swapInPaymentTimeoutSeconds": 60,
+  "swapInRefundConfTarget": 6,
+  "swapInSweepRequestsWaitMs": 180000,
+  "swapInUtxosCount": 1,
+  "swapTypes": ["inbound", "outbound"]
 }

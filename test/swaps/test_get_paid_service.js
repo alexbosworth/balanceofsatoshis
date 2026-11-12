@@ -6,6 +6,7 @@ const {encodeAsCbor} = require('./../../encryption');
 const {getInfoResponse} = require('./../fixtures');
 const getPaidService = require('./../../swaps/get_paid_service');
 
+const bufferAsHex = buffer => buffer.toString('hex');
 const macaroon = 'AgEEbHNhdAJCAADXNkGQ+faRDM3Ey4M6YGALyTwqnLqDTNVgCBckgnpSZ4vd9z8+Ndr1+zLD6i/AmJIbDVuEAvBwgZBezq2hcys5AAIPc2VydmljZXM9bG9vcDowAAISbG9vcF9jYXBhYmlsaXRpZXM9AAAGIDPTqKe/hckryPR6hINTa7Dg8/bbxqVqq02/eBMpmt7Z';
 const preimage = Buffer.alloc(1, 1);
 
@@ -38,11 +39,18 @@ const tests = [
     error: [400, 'ExpectedLndToGetPaidService'],
   },
   {
+    args: makeArgs({max_fee: 0}),
+    description: 'A max API key fee is expected to be above zero',
+    error: [400, 'ExpectedMaxApiKeyFeeAboveZeroToGetPaidService'],
+  },
+  {
     args: makeArgs({}),
     description: 'A paid service object is returned',
     expected: {
+      macaroon,
       token,
-      metadata: {get: () => [Buffer.alloc(1, 1).toString('hex')]},
+      metadata: {get: () => [bufferAsHex(Buffer.alloc(1, 1))]},
+      preimage: bufferAsHex(preimage),
       service: {},
     },
   },

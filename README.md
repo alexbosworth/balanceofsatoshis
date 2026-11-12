@@ -123,9 +123,6 @@ bos inbound-liquidity
 # Enforce rules on inbound channels
 bos inbound-channel-rules
 
-# Increase inbound liquidity to the node
-bos increase-inbound-liquidity
-
 # Increase the outbound liquidity of the node
 bos increase-outbound-liquidity
 
@@ -170,6 +167,12 @@ bos server
 
 # Stream a payment to a lnurl or lightning address in a series of payments
 bos stream "amount" --lnurl "lnurl/lightning_address"
+
+# Trade on-chain funds for off-chain funds to increase outbound liquidity
+bos swap-in
+
+# Trade off-chain funds for on-chain funds to increase inbound liquidity
+bos swap-out
 
 # Connect up to a Telegram bot
 bos telegram
@@ -617,6 +620,7 @@ Formula amounts are supported in the following commands:
 - `probe`
 - `rebalance`
 - `send`
+- `swap-out`
 
 When passing an amount you can pass a formula expression, and the following variables are
 defined:
@@ -674,6 +678,25 @@ Example:
 ```shell
 // Send node $1
 bos send <key> --amount "1*usd"
+```
+
+#### `swap-out`
+
+Swap out defines variables for `--out-filter`:
+
+- `capacity`: The total capacity with the peer
+- `heights`: The set of heights of the channels with the peer
+- `inbound_base_fee`: The base fee the peer is charging
+- `inbound_fee_rate`: The fee rate the peer is charging
+- `inbound_liquidity`: The inbound liquidity with the peer
+- `outbound_liquidity`: The outbound liquidity with the peer
+- `pending_payments`: The number of pending payments
+
+Example:
+
+```shell
+// Swap out 1,000,000 with a peer of the tag that has under 2,000,000 inbound
+bos swap-out --amount "1*m" --out "tag" --out-filter "inbound_liquidity < 2*m"
 ```
 
 #### `transfer`

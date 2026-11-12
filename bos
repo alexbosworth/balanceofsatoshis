@@ -72,7 +72,7 @@ prog
   .help(`Rate providers: ${rateProviders.join(', ')}`)
   .help('By default fiat rates after 2021-10-19 use chain data derived rates')
   .help('Multiple --node arguments are supported to report on nodes together')
-  .help('Privacy note: this requests tx related data from third parties')
+  .help('Privacy note: other rates are looked up from third parties by time')
   .option('--csv', 'Output a CSV')
   .option('--date <day>', 'Show only records for specific date')
   .option('--disable-fiat', 'Avoid looking up fiat conversions for records')
@@ -331,7 +331,6 @@ prog
   // Show a chart of chain fees paid
   .command('chart-chain-fees', 'Get a chart of chain fee expenses')
   .help('Show chart of mining fee expenditure over time')
-  .help('Privacy note: this requests tx data from third parties')
   .option('--days <days>', 'Chart over the past number of days', INT)
   .option('--end <end_date>', 'End date for chart as YYYY-MM-DD', STRING)
   .option('--no-color', 'Disable colors')
@@ -345,7 +344,6 @@ prog
           end_date: options.end,
           is_monochrome: !!options.noColor,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
-          request: commands.simpleRequest,
           start_date: options.start,
         },
         responses.returnChart({logger, reject, resolve, data: 'data'}));
@@ -1013,66 +1011,6 @@ prog
     });
   })
 
-  // Increase inbound liquidity
-  .command('increase-inbound-liquidity', 'Increase node inbound liquidity')
-  .help('Spend down a channel to get inbound. Fee is an estimate, may be more')
-  .help('If you want to control chain fee increases, use show-raw-recoveries')
-  .help('Formulas supported for --amount like 5*m or 0.05*BTC for 5 million')
-  .option('--address <out_address>', 'Out chain address to send funds out to')
-  .option('--api-key <api_key>', 'Pre-paid API key to use')
-  .option('--amount <amount>', 'Amount to increase inbound', STRING, '500*k')
-  .option('--avoid <pubkey/chan/tag>', 'Avoid forwarding through', REPEATABLE)
-  .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
-  .option('--dryrun', 'Only show cost estimate for increase')
-  .option('--fast', 'Request swap server avoid batching delay')
-  .option('--max-deposit <max_deposit>', 'Maximum deposit amount', INT, 5e4)
-  .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 3e4)
-  .option('--max-hours <max_hours>', 'Maximum hours to wait', INT, 65)
-  .option('--max-paths <max_paths>', 'Maximum paths to attempt', INT, 1)
-  .option('--no-color', 'Mute all colors')
-  .option('--node <node_name>', 'Increase inbound liquidity on saved node')
-  .option('--recovery <recovery>', 'Recover in-progress swap')
-  .option('--service-socket', 'Specify a custom swap service address')
-  .option('--spend-address', 'Send an exact amount to a specific address')
-  .option('--spend-amount', 'Exact amount to send to a specific address')
-  .option('--show-raw-recovery', 'Show raw recovery transactions')
-  .option('--with <peer>', 'Public key of peer to increase liquidity from')
-  .action((args, options, logger) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        return swaps.swapOut({
-          fetch,
-          logger,
-          api_key: options.apiKey || undefined,
-          avoid: flatten([options.avoid].filter(n => !!n)),
-          confs: options.confs,
-          fs: {getFile: readFile},
-          is_fast: options.fast || false,
-          is_raw_recovery_shown: options.showRawRecovery || undefined,
-          is_dry_run: options.dryrun || false,
-          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
-          max_deposit: options.maxDeposit,
-          max_fee: options.maxFee,
-          max_paths: options.maxPaths || undefined,
-          max_wait_blocks: Math.ceil((options.maxHours) * 60 / 10),
-          node: options.node || undefined,
-          out_address: options.address || undefined,
-          peer: options.with || undefined,
-          recovery: options.recovery,
-          request: commands.fetchRequest({fetch}),
-          socket: options.serviceSocket || undefined,
-          spend_address: options.spendAddress || undefined,
-          spend_tokens: options.spendAmount || undefined,
-          timeout: 1000 * 60 * 60 * 10,
-          tokens: accounting.parseAmount({amount: options.amount}).tokens,
-        },
-        responses.returnObject({exit, logger, reject, resolve}));
-      } catch (err) {
-        return logger.error({err}) && reject();
-      }
-    });
-  })
-
   // Increase outbound liquidity
   .command('increase-outbound-liquidity', 'Move on-chain funds off-chain')
   .help('Open a new channel to add more off-chain liquidity')
@@ -1264,7 +1202,7 @@ prog
   .option('--above <tokens>', 'Return amount above watermark', INT)
   .option('--fast', 'Avoid any server batching wait time')
   .option('--node <node_name>', 'Node to get liquidity cost')
-  .option('--service-socket', 'Specify a custom swap service address')
+  .option('--service-socket <socket>', 'Specify a custom swap service address')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -2008,10 +1946,11 @@ prog
   .command('swap-api-key', 'Purchase a swap API key or inspect a swap API key')
   .visible(false)
   .option('--api-key <api_key>', 'Hex encoded full swap API key')
-  .option('--purchase', 'Purchase a new swap API key')
   .option('--macaroon <macaroon>', 'Hex encoded macaroon of swap API key')
+  .option('--max-fee <max_fee>', 'Max tokens to pay for the API key', INT)
   .option('--node <node_name>', 'Node to use to pay for API key')
   .option('--preimage <preimage>', 'Hex encoded preimage of swap API key')
+  .option('--purchase', 'Purchase a new swap API key')
   .option('--service-socket <swap_service_socket>', 'host:port for service')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
@@ -2023,6 +1962,7 @@ prog
           is_purchase: options.purchase,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           macaroon: options.macaroon,
+          max_fee: options.maxFee,
           node: options.node,
           preimage: options.preimage,
           socket: options.serviceSocket,
@@ -2056,15 +1996,17 @@ prog
   // Create submarine swap to convert on-chain funds to off-chain
   .command('swap-in', 'Trade on-chain coins for off-chain via submarine swap')
   .argument('[amount]', 'Amount to receive', INT, 1e6)
+  .help('Use the recovery secret of a swap with --refund-address to refund it')
   .option('--api-key <api_key>', 'Pre-paid API key to use', hexMatch)
   .option('--in <peer>', 'Request receiving through a specific peer')
+  .option('--max-api-key-fee <fee>', 'Max tokens to pay for API key', INT)
   .option('--max-fee <max_fee>', 'Max fee in tokens to pay', INT, 4000)
+  .option('--max-fee-rate <ppm>', 'Max fee rate in parts per million', INT)
   .option('--no-color', 'Mute all colors')
   .option('--node <node_name>', 'Node to receive funds on')
-  .option('--recovery <refund_recovery>', 'Attempt refund of swap', hexMatch)
-  .option('--refund-address <refund_address>', 'Refund address for swap')
+  .option('--recovery <recovery>', 'Reuse the shared address', hexMatch)
+  .option('--refund-address <address>', 'Refund expired deposits/unpaid swaps')
   .option('--service-socket <swap_service_socket>', 'host:port for service')
-  .option('--test-refund', 'Reduce refund timeout height to test refund')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -2072,17 +2014,71 @@ prog
           fetch,
           logger,
           api_key: options.apiKey || undefined,
-          fs: {getFile: readFile},
           in_through: options.in || undefined,
-          is_refund_test: options.testRefund,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          max_api_key_fee: options.maxApiKeyFee,
           max_fee: options.maxFee,
-          node: options.node,
+          max_fee_rate: options.maxFeeRate,
           recovery: options.recovery,
           refund_address: options.refundAddress,
-          request: commands.simpleRequest,
           socket: options.serviceSocket || undefined,
           tokens: args.amount,
+        },
+        responses.returnObject({exit, logger, reject, resolve}));
+      } catch (err) {
+        return logger.error({err}) && reject();
+      }
+    });
+  })
+
+  // Trade off-chain funds for on-chain funds through a swap out
+  .command('swap-out', 'Trade off-chain coins for on-chain with swap service')
+  .help('Spend down a channel to get inbound. Fee is an estimate, may be more')
+  .help('Formulas supported for --amount like 5*m or 0.05*BTC for 5 million')
+  .help('--out can take a tag, --out-filter narrows the peers of the tag')
+  .help('--out-filter vars: CAPACITY/HEIGHTS/INBOUND_LIQUIDITY')
+  .help('--out-filter vars: OUTBOUND_LIQUIDITY/PENDING_PAYMENTS')
+  .help('--out-filter vars: INBOUND_BASE_FEE/INBOUND_FEE_RATE')
+  .option('--address <out_address>', 'Out chain address to send funds out to')
+  .option('--amount <amount>', 'Amount to increase inbound', STRING, '500*k')
+  .option('--api-key <api_key>', 'Pre-paid API key to use')
+  .option('--avoid <pubkey/chan/tag>', 'Avoid forwarding through', REPEATABLE)
+  .option('--confs <confs>', 'Confs to consider reorg safe', INT, 1)
+  .option('--dryrun', 'Only show cost estimate for increase')
+  .option('--fast', 'Request swap server avoid batching delay')
+  .option('--max-api-key-fee <fee>', 'Max tokens to pay for API key', INT)
+  .option('--max-deposit <max_deposit>', 'Maximum deposit amount', INT, 5e4)
+  .option('--max-fee <max_fee>', 'Maximum estimated fee tokens', INT, 3e4)
+  .option('--max-paths <max_paths>', 'Maximum paths to attempt', INT, 1)
+  .option('--no-color', 'Mute all colors')
+  .option('--node <node_name>', 'Increase inbound liquidity on saved node')
+  .option('--out <peer>', 'Peer or tag to increase inbound liquidity from')
+  .option('--out-filter <out_filter>', 'Filter outbound peer/tag', REPEATABLE)
+  .option('--recovery <recovery>', 'Recover in-progress swap')
+  .option('--service-socket <socket>', 'Specify a custom swap service address')
+  .action((args, options, logger) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        return swaps.swapOut({
+          fetch,
+          logger,
+          api_key: options.apiKey || undefined,
+          avoid: flatten([options.avoid].filter(n => !!n)),
+          confs: options.confs,
+          fs: {getFile: readFile},
+          is_dry_run: options.dryrun || false,
+          is_fast: options.fast || false,
+          lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
+          max_api_key_fee: options.maxApiKeyFee,
+          max_deposit: options.maxDeposit,
+          max_fee: options.maxFee,
+          max_paths: options.maxPaths || undefined,
+          out_address: options.address || undefined,
+          out_filters: flatten([options.outFilter].filter(n => !!n)),
+          peer: options.out || undefined,
+          recovery: options.recovery,
+          socket: options.serviceSocket || undefined,
+          tokens: accounting.parseAmount({amount: options.amount}).tokens,
         },
         responses.returnObject({exit, logger, reject, resolve}));
       } catch (err) {

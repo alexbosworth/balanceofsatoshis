@@ -6,6 +6,7 @@ const {chainRates} = require('@alexbosworth/fiat');
 const {getAccountingReport} = require('ln-accounting');
 const {getNetwork} = require('ln-sync');
 const {harmonize} = require('ln-accounting');
+const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const categories = require('./accounting_categories');
@@ -13,6 +14,7 @@ const {chainBlocksFile} = require('./constants');
 const {chainPricesFile} = require('./constants');
 const chainPricesLogger = require('./chain_prices_logger');
 const {coinbaseProvider} = require('./constants');
+const {dayFormat} = require('./constants');
 const {defaultCurrency} = require('./constants');
 const {defaultFiat} = require('./constants');
 const {fsMethods} = require('./constants');
@@ -20,21 +22,20 @@ const getRecordRate = require('./get_record_rate');
 const guardChainRate = require('./guard_chain_rate');
 const {homePath} = require('./../storage');
 const {mainnet} = require('./constants');
-const {monthNumbers} = require('./constants');
-const {monthOffset} = require('./constants');
-const {notFoundIndex} = require('./constants');
 const rangeForDate = require('./range_for_date');
 const {sortBy} = require('./../arrays');
+const {summaryHeadings} = require('./constants');
 const tableRowsFromCsv = require('./table_rows_from_csv');
 
 const assetType = 'BTC';
+const dayOf = n => moment.utc(n).format(dayFormat);
 const empty = '';
 const flatten = arr => [].concat(...arr);
 const {isArray} = Array;
 const {keys} = Object;
+const lastDayBefore = n => moment.utc(n).subtract(1, 'ms').format(dayFormat);
 const round = n => parseFloat(n).toFixed(2);
 const sumOf = arr => arr.reduce((sum, n) => sum + n, 0);
-const summaryHeadings = ['Total', 'Asset', 'Report Date', 'Total Fiat'];
 
 /** Get an accounting report
 
@@ -254,7 +255,12 @@ module.exports = (args, cbk) => {
       }],
 
       // Clean rows for display if necessary
-      report: ['accounting', 'total', ({accounting, total}, cbk) => {
+      report: [
+        'accounting',
+        'dateRange',
+        'total',
+        ({accounting, dateRange, total}, cbk) =>
+      {
         // Exit early when there is no cleaning necessary
         if (!!args.is_csv) {
           return cbk(null, accounting);
@@ -280,7 +286,15 @@ module.exports = (args, cbk) => {
 
         const summary = [
           summaryHeadings,
-          [total.tokens, assetType, new Date().toISOString(), total.fiat],
+          [
+            total.tokens,
+            assetType,
+            new Date().toISOString(),
+            total.fiat,
+            args.category,
+            !dateRange.after ? empty : dayOf(dateRange.after),
+            !dateRange.before ? empty : lastDayBefore(dateRange.before),
+          ],
         ];
 
         return cbk(null, {rows, rows_summary: summary});

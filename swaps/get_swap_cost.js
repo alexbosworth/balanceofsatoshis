@@ -11,6 +11,7 @@ const {balanceFromTokens} = require('./../balances');
 const {cltvDeltaBuffer} = require('./constants');
 const {fastDelayMinutes} = require('./constants');
 const {slowDelayMinutes} = require('./constants');
+const {swapInUtxosCount} = require('./constants');
 
 /** Get the cost of liquidity via swap
 
@@ -103,10 +104,12 @@ module.exports = (args, cbk) => {
           cbk);
 
         case 'outbound':
+          // Swap ins are of a single deposit to a shared address
           return getSwapInQuote({
             metadata: args.metadata,
             service: args.service,
             tokens: args.tokens,
+            utxos_count: swapInUtxosCount,
           },
           cbk);
 

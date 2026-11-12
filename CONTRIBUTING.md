@@ -128,3 +128,8 @@ If you want to help with style, here are some rough guidelines on style ideas:
     goes in the tests array, not in branches of the loop
 - Make test arguments and expected results with `makeArgs` and `makeExpected`
     that start from defaults and take what differs in a test as overrides
+
+## Changelog
+
+- When a change is too small for a line of its own, bump the version in the
+    latest heading instead of adding a line

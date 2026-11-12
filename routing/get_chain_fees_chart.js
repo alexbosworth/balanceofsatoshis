@@ -30,7 +30,6 @@ const parseDate = n => Date.parse(n);
     [end_date]: <End Date YYYY-MM-DD String>
     is_monochrome: <Omit Colors Bool>
     lnds: [<Authenticated LND API Object>]
-    request: <Request Function>
     [start_date]: <Start Date YYYY-MM-DD String>
   }
 
@@ -48,10 +47,6 @@ module.exports = (args, cbk) => {
       validate: cbk => {
         if (!isArray(args.lnds) || !args.lnds.length) {
           return cbk([400, 'ExpectedLndToGetChainFeesChart']);
-        }
-
-        if (!args.request) {
-          return cbk([400, 'ExpectedRequestFunctionToGetChainFees']);
         }
 
         // Exit early when there is no end date and no start date
@@ -154,7 +149,6 @@ module.exports = (args, cbk) => {
               lnd,
               after: start.toISOString(),
               network: res.network,
-              request: args.request,
             },
             cbk);
           });

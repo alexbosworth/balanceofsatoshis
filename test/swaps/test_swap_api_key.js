@@ -45,6 +45,11 @@ const tests = [
     description: 'Purchasing a new token expects no preimage',
     error: [400, 'PurchaseNotNeededWhenPreimageProvided'],
   },
+  {
+    args: {fetch, is_purchase: true, lnd: {}, logger: {}, max_fee: 0},
+    description: 'Purchasing a new token expects a max fee above zero',
+    error: [400, 'ExpectedMaxApiKeyFeeAboveZeroToGetPaidService'],
+  },
 ];
 
 tests.forEach(({args, description, error, expected}) => {

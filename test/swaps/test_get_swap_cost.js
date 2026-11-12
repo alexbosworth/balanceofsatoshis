@@ -120,6 +120,28 @@ const tests = [
     description: 'Amount must be under maximum',
     expected: {cost: 2},
   },
+  {
+    args: {
+      metadata,
+      lnd: makeLnd({}),
+      logger: {},
+      service: {
+        loopInQuote: (request, {}, cbk) => {
+          // The quote is for a single deposit to a shared address
+          if (request.num_static_address_deposits !== 1) {
+            return cbk([400, 'ExpectedQuoteForOneSharedAddressDeposit']);
+          }
+
+          return cbk(null, makeQuote({}));
+        },
+        loopInTerms: ({}, {}, cbk) => cbk(null, makeTerms({max: 1e7})),
+      },
+      tokens: 1e6,
+      type: 'outbound',
+    },
+    description: 'Outbound cost is quoted for one shared address deposit',
+    expected: {cost: 2},
+  },
 ];
 
 tests.forEach(({args, description, error, expected}) => {

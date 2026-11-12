@@ -4,10 +4,8 @@ const {genericSwapAuth} = require('goldengate');
 const {genericSwapService} = require('goldengate');
 const {getNetwork} = require('ln-sync');
 const {getSwapMacaroon} = require('goldengate');
-const {getSwapOutTerms} = require('goldengate');
 const {lightningLabsSwapAuth} = require('goldengate');
 const {lightningLabsSwapService} = require('goldengate');
-const {paidMacaroon} = require('goldengate');
 const {parsePaymentRequest} = require('ln-service');
 const {payViaPaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
@@ -16,23 +14,19 @@ const {swapUserId} = require('goldengate');
 const decodeSwapApiKey = require('./decode_swap_api_key');
 const {encodeAsCbor} = require('./../encryption');
 
-const bitcoinNetwork = 'btc';
-const bitcoinTestnetNetwork = 'btctestnet';
 const bufferFromBase64 = base64 => Buffer.from(base64, 'base64');
 const bufferFromHex = hex => Buffer.from(hex, 'hex');
-const connectError = 'FailedToConnectToService';
 const httpMatch = /^https?:\/\//;
-const {isArray} = Array;
-const mainnetSocket = 'https://balanceofsatoshis.com:11011';
-const maxServiceFee = 1337;
+const isLimit = n => Number.isSafeInteger(n) && n > 0;
 const maxRoutingFee = 100;
-const testnetSocket = 'https://balanceofsatoshis.com:11010';
+const maxServiceFee = 1337;
 
 /** Get a paid swap service object
 
   {
     fetch: <Fetch Function>
     lnd: <Authenticated LND gRPC API Object>
+    [max_fee]: <Maximum Tokens to Pay for a Service Token Number>
     [socket]: <Custom Backing Service Socket String>
     [token]: <Prepaid Service Token CBOR Encoded String>
   }
@@ -40,23 +34,29 @@ const testnetSocket = 'https://balanceofsatoshis.com:11010';
   @returns via cbk or Promise
   {
     id: <Authenticated User Id string>
+    macaroon: <Paid Macaroon Base64 String>
     metadata: <Authenticated Service Metadata Object>
     paid: <Paid Tokens Number>
+    preimage: <Paid Macaroon Payment Preimage Hex String>
     service: <Authenticated Paid Swap Service Object>
     token: <Authentication Token Hex String>
   }
 */
-module.exports = ({fetch, lnd, socket, token}, cbk) => {
+module.exports = (args, cbk) => {
   return new Promise((resolve, reject) => {
     return asyncAuto({
       // Check arguments
       validate: cbk => {
-        if (!fetch) {
+        if (!args.fetch) {
           return cbk([400, 'ExpectedFetchFunctionToGetPaidService']);
         }
 
-        if (!lnd) {
+        if (!args.lnd) {
           return cbk([400, 'ExpectedLndToGetPaidService']);
+        }
+
+        if (args.max_fee !== undefined && !isLimit(args.max_fee)) {
+          return cbk([400, 'ExpectedMaxApiKeyFeeAboveZeroToGetPaidService']);
         }
 
         return cbk();
@@ -65,67 +65,25 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
       // Decode service token when present
       decodeToken: ['validate', ({}, cbk) => {
         // Exit early when there is no token to decode
-        if (!token) {
+        if (!args.token) {
           return cbk();
         }
 
-        return decodeSwapApiKey({key: token}, cbk);
+        return decodeSwapApiKey({key: args.token}, cbk);
       }],
 
       // Get network
-      getNetwork: ['validate', ({}, cbk) => getNetwork({lnd}, cbk)],
-
-      // Determine which endpoint to use for the service
-      endpoint: ['getNetwork', ({getNetwork}, cbk) => {
-        // Exit early when the endpoint is directly specified
-        if (!!socket) {
-          return cbk(null, socket);
-        }
-
-        const {metadata} = lightningLabsSwapAuth({});
-        const {network} = getNetwork;
-
-        const {service} = lightningLabsSwapService({network});
-
-        return getSwapOutTerms({metadata, service}, err => {
-          // Exit early when the standard endpoint is working
-          if (!isArray(err)) {
-            return cbk();
-          }
-
-          const [, message] = err;
-
-          // Exit early when the error is not a connection issue
-          if (message !== connectError) {
-            return cbk();
-          }
-
-          // Try to switch to a backup socket when the main socket fails
-          switch (getNetwork.network) {
-          case bitcoinNetwork:
-            return cbk(null, mainnetSocket);
-
-          case bitcoinTestnetNetwork:
-            return cbk(null, testnetSocket);
-
-          default:
-            return cbk();
-          }
-        });
-
-        return cbk();
-      }],
+      getNetwork: ['validate', ({}, cbk) => getNetwork({lnd: args.lnd}, cbk)],
 
       // Make a service object for the remote swap service
-      remote: [
-        'endpoint',
-        'getNetwork',
-        asyncify(({endpoint, getNetwork}) =>
-      {
+      remote: ['getNetwork', asyncify(({getNetwork}) => {
         // Exit early when using a generic service
-        if (!!endpoint && httpMatch.test(endpoint)) {
+        if (!!args.socket && httpMatch.test(args.socket)) {
           try {
-            return genericSwapService({fetch, socket: endpoint});
+            return genericSwapService({
+              fetch: args.fetch,
+              socket: args.socket,
+            });
           } catch (err) {
             throw [500, 'UnexpectedErrorInitiatingSwapService', {err}];
           }
@@ -134,7 +92,7 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
         try {
           return lightningLabsSwapService({
             network: getNetwork.network,
-            socket: endpoint,
+            socket: args.socket,
           });
         } catch (err) {
           throw [500, 'UnexpectedErrorInitiatingSwapService', {err}];
@@ -193,15 +151,17 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
         const {request} = getUnpaidMacaroon;
         const {tokens} = parseRequest;
 
+        const maxFee = args.max_fee || maxServiceFee;
+
         // Exit early when the service token costs too much
-        if (tokens > maxServiceFee) {
+        if (tokens > maxFee) {
           return cbk([503, 'UnexpectedlyHighServiceFee', {fee: tokens}]);
         }
 
         // Pay the service token payment request to purchase the macaroon
         return payViaPaymentRequest({
-          lnd,
           request,
+          lnd: args.lnd,
           max_fee: maxRoutingFee,
         },
         cbk);
@@ -210,10 +170,9 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
       // Create authentication metadata object
       metadata: [
         'decodeToken',
-        'endpoint',
         'getUnpaidMacaroon',
         'payForMacaroon',
-        ({decodeToken, endpoint, getUnpaidMacaroon, payForMacaroon}, cbk) =>
+        ({decodeToken, getUnpaidMacaroon, payForMacaroon}, cbk) =>
       {
         if (!decodeToken && !payForMacaroon.secret) {
           return cbk([400, 'FailedToPurchasePaidServiceToken']);
@@ -223,7 +182,7 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
         const preimage = payForMacaroon.secret;
 
         // Exit early when using a generic service
-        if (!!endpoint && httpMatch.test(endpoint)) {
+        if (!!args.socket && httpMatch.test(args.socket)) {
           return cbk(null, genericSwapAuth({macaroon, preimage}).metadata);
         }
 
@@ -239,18 +198,28 @@ module.exports = ({fetch, lnd, socket, token}, cbk) => {
         ({getUnpaidMacaroon, metadata, payForMacaroon, remote}, cbk) =>
       {
         const {id} = getUnpaidMacaroon;
+        const {macaroon} = getUnpaidMacaroon;
         const paid = payForMacaroon.tokens;
+        const preimage = payForMacaroon.secret;
         const {service} = remote;
 
         const token = encodeAsCbor({
           value: {
-            macaroon: bufferFromBase64(getUnpaidMacaroon.macaroon),
-            preimage: bufferFromHex(payForMacaroon.secret),
+            macaroon: bufferFromBase64(macaroon),
+            preimage: bufferFromHex(preimage),
           },
         })
         .cbor;
 
-        return cbk(null, {id, metadata, paid, service, token});
+        return cbk(null, {
+          id,
+          macaroon,
+          metadata,
+          paid,
+          preimage,
+          service,
+          token,
+        });
       }],
     },
     returnResult({reject, resolve, of: 'paidService'}, cbk));

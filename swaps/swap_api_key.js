@@ -2,7 +2,6 @@ const asyncAuto = require('async/auto');
 const {returnResult} = require('asyncjs-util');
 const {swapUserId} = require('goldengate');
 
-const decodeSwapApiKey = require('./decode_swap_api_key');
 const {encodeAsCbor} = require('./../encryption');
 const getPaidService = require('./get_paid_service');
 
@@ -12,10 +11,12 @@ const getPaidService = require('./get_paid_service');
     [api_key]: <Swap CBOR Encoded API Key Hex String>
     [fetch]: <Fetch Function>
     [is_purchase]: <Purchase a New API Key Bool>
-    [macaroon]: <Macaroon Hex Encoded String>
     [lnd]: <Authenticated LND API gRPC API Object>
     [logger]: <Winston Logger Object>
+    [macaroon]: <Macaroon Hex Encoded String>
+    [max_fee]: <Maximum Tokens to Pay for a Service API Key Number>
     [preimage]: <Preimage Hex String>
+    [socket]: <Custom Backing Service Socket String>
   }
 
   @returns via cbk or Promise
@@ -91,6 +92,7 @@ module.exports = (args, cbk) => {
           fetch: args.fetch,
           lnd: args.lnd,
           logger: args.logger,
+          max_fee: args.max_fee,
           socket: args.socket,
           token: args.api_key,
         },
