@@ -3,114 +3,44 @@ const EventEmitter = require('node:events');
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
-const {createSignedRequest} = require('invoices');
-const {createUnsignedRequest} = require('invoices');
-const secp256k1 = require('tiny-secp256k1');
+const {parsePaymentRequest} = require('ln-service');
 
+const {balancedOpenInvoice} = require('./../fixtures');
 const getBalancedOpens = require('./../../services/get_balanced_opens');
 
-const sign = (h, k) => Buffer.from(secp256k1.sign(h, k));
+const bufferAsHex = buffer => buffer.toString('hex');
+const dayMs = 1000 * 60 * 60 * 24;
+const epoch = time => Math.floor(time / 1000).toString();
+const hourMs = 1000 * 60 * 60;
+const now = Date.parse('2026-11-12T18:00:00.000Z');
+const request = balancedOpenInvoice.request;
 
-const createRequest = () => {
-  const {hash, hrp, tags} = createUnsignedRequest({
-    created_at: '2017-06-01T10:57:38.000Z',
-    description: 'coffee beans',
-    features: [
-      {
-        bit: 15,
-        is_required: false,
-        type: 'payment_identifier',
-      },
-      {
-        bit: 99,
-        is_required: false,
-        type: undefined,
-      },
-    ],
-    id: '0001020304050607080900010203040506070809000102030405060708090102',
-    network: 'bitcoin',
-    payment: '1111111111111111111111111111111111111111111111111111111111111111',
-    tokens: 1,
-  });
+const makePage = overrides => {
+  const page = {
+    first_index_offset: '1',
+    invoices: [{
+      ...balancedOpenInvoice.invoice,
+      creation_date: epoch(now - hourMs),
+      settle_date: epoch(now - hourMs),
+    }],
+    last_index_offset: '1',
+  };
 
-  const bufFromHex = hex => Buffer.from(hex, 'hex');
-  const privateKey = 'e126f68f7eafcc8b74f54d269fe206be715000f94dac067d1c04a8ca3b2db734';
+  Object.keys(overrides).forEach(k => page[k] = overrides[k]);
 
-  const signature = sign(bufFromHex(hash), bufFromHex(privateKey));
-
-  const {request} = createSignedRequest({
-    hrp,
-    tags,
-    destination: '03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad',
-    signature: Buffer.from(signature).toString('hex'),
-  });
-
-  return request;
+  return page;
 };
-
-const recordKey = number => {
-  const buf = Buffer.alloc(32);
-
-  buf.writeBigUInt64LE(BigInt(number));
-
-  return buf.toString('ascii');
-};
-
-const testRequest = createRequest();
 
 const makeArgs = overrides => {
   const args = {
+    invoice_pages: {0: makePage({})},
     lnd: {
       default: {
-        listInvoices: ({}, cbk) => {
-          return cbk(null, {
-            first_index_offset: '0',
-            invoices: [{
-              add_index: '1',
-              amt_paid_msat: '10000',
-              amt_paid_sat: '10',
-              cltv_expiry: '1',
-              creation_date: '1',
-              description_hash: Buffer.alloc(0),
-              expiry: '1',
-              fallback_addr: '',
-              features: {},
-              htlcs: [{
-                accept_height: 1,
-                accept_time: '1',
-                amt_msat: '1000',
-                chan_id: '1',
-                custom_records: {
-                  [recordKey(80501)]: Buffer.from(testRequest),
-                  [recordKey(80502)]: (2e6).toString(16),
-                  [recordKey(80504)]: (255).toString(16),
-                  [recordKey(80505)]: Buffer.alloc(33, 2).toString('hex'),
-                  [recordKey(80507)]: Buffer.alloc(32).toString('hex'),
-                  [recordKey(80508)]: (255).toString(16),
-                },
-                expiry_height: 1,
-                htlc_index: '1',
-                mpp_total_amt_msat: '1000',
-                resolve_time: '1',
-                state: 'SETTLED',
-              }],
-              is_keysend: true,
-              memo: '',
-              payment_addr: Buffer.alloc(0),
-              payment_request: '',
-              private: false,
-              r_hash: Buffer.alloc(32),
-              r_preimage: Buffer.alloc(32),
-              route_hints: [],
-              settle_date: '1',
-              settle_index: '1',
-              settled: true,
-              state: 'SETTLED',
-              value: '1',
-              value_msat: '1000',
-            }],
-            last_index_offset: '1',
-          });
+        listInvoices: (query, cbk) => {
+          args.state.creation_starts.push(query.creation_date_start);
+          args.state.offsets.push(query.index_offset);
+
+          return cbk(null, args.invoice_pages[query.index_offset]);
         },
       },
       router: {
@@ -119,15 +49,23 @@ const makeArgs = overrides => {
 
           emitter.cancel = () => {};
 
-          process.nextTick(() => emitter.emit('data', {
-            payment_hash: Buffer.alloc(32).toString('hex'),
-            status: 'FAILED',
-          }));
+          process.nextTick(() => {
+            if (!!args.payment_error) {
+              return emitter.emit('error', args.payment_error);
+            }
+
+            return emitter.emit('data', {
+              payment_hash: bufferAsHex(Buffer.alloc(32)),
+              status: 'FAILED',
+            });
+          });
 
           return emitter;
         },
       },
     },
+    payment_error: undefined,
+    state: {creation_starts: [], offsets: []},
   };
 
   Object.keys(overrides).forEach(k => args[k] = overrides[k]);
@@ -135,40 +73,159 @@ const makeArgs = overrides => {
   return args;
 };
 
+const makeProposal = overrides => {
+  const proposal = {
+    accept_request: request,
+    capacity: 2e6,
+    fee_rate: 255,
+    partner_public_key: parsePaymentRequest({request}).destination,
+    proposed_at: new Date(now - hourMs).toISOString(),
+    remote_multisig_key: bufferAsHex(Buffer.alloc(33, 2)),
+    remote_tx_id: bufferAsHex(Buffer.alloc(32)),
+    remote_tx_vout: 255,
+  };
+
+  Object.keys(overrides).forEach(k => proposal[k] = overrides[k]);
+
+  return proposal;
+};
+
+const makeExpected = overrides => {
+  const expected = {
+    creation_starts: [undefined],
+    incoming: [makeProposal({})],
+    offsets: [0],
+  };
+
+  Object.keys(overrides).forEach(k => expected[k] = overrides[k]);
+
+  return expected;
+};
+
 const tests = [
   {
     args: makeArgs({}),
     description: 'Get balanced opens',
-    expected: {
-      incoming: [{
-        accept_request: testRequest,
-        capacity: 2e6,
-        fee_rate: 255,
-        partner_public_key: '03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad',
-        proposed_at: '1970-01-01T00:00:01.000Z',
-        remote_multisig_key: '020202020202020202020202020202020202020202020202020202020202020202',
-        remote_tx_id: '0000000000000000000000000000000000000000000000000000000000000000',
-        remote_tx_vout: 255,
-      }],
-    },
+    expected: makeExpected({}),
   },
   {
     args: makeArgs({lnd: undefined}),
     description: 'Authenticated LND is expected',
     error: [400, 'ExpectedAuthenticatedLndToGetBalancedOpens'],
   },
+  {
+    args: makeArgs({
+      invoice_pages: {
+        0: makePage({
+          first_index_offset: '2',
+          invoices: Array.from({length: 100}, (_, i) => ({
+            ...balancedOpenInvoice.invoice,
+            add_index: (i + 2).toString(),
+            creation_date: epoch(now - (i + 2) * 1000),
+            htlcs: [],
+          })),
+          last_index_offset: '101',
+        }),
+        2: makePage({}),
+      },
+    }),
+    description: 'Find proposals beyond the first invoice page',
+    expected: makeExpected({
+      creation_starts: [undefined, undefined],
+      offsets: [0, 2],
+    }),
+  },
+  {
+    args: makeArgs({
+      invoice_pages: {
+        0: makePage({first_index_offset: '2', last_index_offset: '2'}),
+        2: {},
+      },
+    }),
+    description: 'Return errors when a later invoice page cannot be read',
+    error: [503, 'ExpectedInvoicesListForInvoicesQuery'],
+  },
+  {
+    args: makeArgs({
+      payment_error: {details: 'payment isn\'t initiated'},
+    }),
+    description: 'An unknown accept payment still offers the proposal',
+    expected: makeExpected({}),
+  },
+  {
+    args: makeArgs({
+      invoice_pages: {
+        0: makePage({
+          invoices: [{
+            ...balancedOpenInvoice.invoice,
+            creation_date: epoch(now - dayMs - 1000),
+            settle_date: epoch(now - hourMs),
+          }],
+        }),
+      },
+    }),
+    description: 'Invoices created over 24 hours ago are not inspected',
+    expected: makeExpected({incoming: []}),
+  },
+  {
+    args: makeArgs({
+      invoice_pages: {
+        0: makePage({
+          invoices: [{
+            ...balancedOpenInvoice.invoice,
+            creation_date: epoch(now - dayMs),
+            settle_date: epoch(now - dayMs),
+          }],
+        }),
+      },
+    }),
+    description: 'Invoices created exactly 24 hours ago are inspected',
+    expected: makeExpected({
+      incoming: [makeProposal({
+        proposed_at: new Date(now - dayMs).toISOString(),
+      })],
+    }),
+  },
+  {
+    args: makeArgs({
+      invoice_pages: {
+        0: makePage({
+          first_index_offset: '2',
+          invoices: [
+            {
+              ...balancedOpenInvoice.invoice,
+              creation_date: epoch(now - hourMs),
+              settle_date: epoch(now - hourMs),
+            },
+            {
+              ...balancedOpenInvoice.invoice,
+              creation_date: epoch(now - dayMs - 1000),
+              htlcs: [],
+            },
+          ],
+        }),
+        2: {},
+      },
+    }),
+    description: 'Paging stops at invoices created over 24 hours ago',
+    expected: makeExpected({}),
+  },
 ];
 
 tests.forEach(({args, description, error, expected}) => {
-  return test(description, async () => {
+  return test(description, async t => {
+    t.mock.method(Date, 'now', () => now);
+
     if (!!error) {
-      await rejects(getBalancedOpens(args), error, 'Got error');
+      await rejects(getBalancedOpens(args), error, 'Got expected error');
     } else {
-      const {incoming} = await getBalancedOpens(args);
+      const opens = await getBalancedOpens(args);
 
-      deepEqual(incoming, expected.incoming, 'Got expected balanced opens');
+      deepEqual({
+        ...opens,
+        creation_starts: args.state.creation_starts,
+        offsets: args.state.offsets,
+      }, expected, 'Got expected balanced opens and paging offsets');
     }
-
-    return;
   });
 });

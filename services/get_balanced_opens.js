@@ -1,5 +1,6 @@
 const asyncAuto = require('async/auto');
 const asyncFilter = require('async/filter');
+const asyncUntil = require('async/until');
 const {balancedOpenRequest} = require('paid-services');
 const {getInvoices} = require('ln-service');
 const {getPayment} = require('ln-service');
@@ -7,6 +8,8 @@ const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const {balancedChannelKeyTypes} = require('./service_key_types');
+
+const lookbackMs = 1000 * 60 * 60 * 24;
 
 /** Get balanced open requests received
 
@@ -42,7 +45,42 @@ module.exports = ({lnd}, cbk) => {
 
       // Get invoices to see if there are any outstanding requests
       getInvoices: ['validate', ({}, cbk) => {
-        return getInvoices({lnd}, cbk);
+        const after = new Date(Date.now() - lookbackMs).toISOString();
+        const invoices = [];
+        let token;
+
+        // Page back through invoices created within the lookback
+        return asyncUntil(
+          cbk => cbk(null, token === false),
+          cbk => {
+            // No created_after, LND would walk all older invoices to apply it
+            return getInvoices({lnd, token}, (err, res) => {
+              if (!!err) {
+                return cbk(err);
+              }
+
+              token = res.next || false;
+
+              // Stop paging once invoices were created before the lookback
+              if (!!res.invoices.find(n => n.created_at < after)) {
+                token = false;
+              }
+
+              const recent = res.invoices.filter(n => n.created_at >= after);
+
+              invoices.push(...recent);
+
+              return cbk();
+            });
+          },
+          err => {
+            if (!!err) {
+              return cbk(err);
+            }
+
+            return cbk(null, {invoices});
+          }
+        );
       }],
 
       // Filter out incoming opens that are still active
@@ -78,13 +116,13 @@ module.exports = ({lnd}, cbk) => {
         return cbk(null, requests);
       }],
 
-      // Filter out incoming opens that were already accepted
+      // Exclude requests with a pending or confirmed accept payment
       unacceptedOpens: ['incomingOpens', ({incomingOpens}, cbk) => {
         return asyncFilter(incomingOpens, (incoming, cbk) => {
           const {id} = parsePaymentRequest({request: incoming.accept_request});
 
           return getPayment({id, lnd}, (err, res) => {
-            // An unknown payment means the open was not ack'ed
+            // Keep the proposal when there is no outgoing accept payment
             if (!!err && err.slice().shift() === 404) {
               return cbk(null, true);
             }
@@ -93,7 +131,7 @@ module.exports = ({lnd}, cbk) => {
               return cbk(err);
             }
 
-            // If an accept request was not paid nothing happened yet
+            // Keep proposals whose accept payment failed
             return cbk(null, !!res.is_failed);
           });
         },

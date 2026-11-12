@@ -1,3 +1,4 @@
+const balancedOpenInvoice = require('./balanced_open_invoice');
 const chanInfoResponse = require('./chan_info_response');
 const describeGraphResponse = require('./describe_graph_response');
 const getInfoResponse = require('./get_info_response');
@@ -10,6 +11,7 @@ const queryRoutesResponse = require('./query_routes_response');
 const versionInfoResponse = require('./version_info_response');
 
 module.exports = {
+  balancedOpenInvoice,
   chanInfoResponse,
   describeGraphResponse,
   getInfoResponse,

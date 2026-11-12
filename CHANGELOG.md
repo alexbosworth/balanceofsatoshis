@@ -1,6 +1,6 @@
 # Versions
 
-## 26.0.0
+## 26.0.1
 
 - `swap-api-key`: Add `--max-fee` to limit what is paid for an API key
 - `swap-in`: Use the shared address swap in protocol of the swap service,

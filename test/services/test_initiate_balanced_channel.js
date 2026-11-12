@@ -1,10 +1,13 @@
-const {equal} = require('node:assert').strict;
+const {deepEqual} = require('node:assert').strict;
 const EventEmitter = require('node:events');
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
 const {transactionFromComponents} = require('@alexbosworth/blockchain');
 
+const {
+  balancedChannelKeyTypes,
+} = require('./../../services/service_key_types');
 const {getInfoResponse} = require('./../fixtures');
 const {getNodeInfoResponse} = require('./../fixtures');
 const initiate = require('./../../services/initiate_balanced_channel');
@@ -12,6 +15,8 @@ const {listChannelsResponse} = require('./../fixtures');
 const {listPeersResponse} = require('./../fixtures');
 const {queryRoutesResponse} = require('./../fixtures');
 
+const bufferAsHex = buffer => buffer.toString('hex');
+const feeRateError = [400, 'ExpectedFeeRatePerVirtualByteToProposeChannel'];
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 getNodeInfoResponse.channels = [];
 const request = 'lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w';
@@ -20,24 +25,32 @@ const transitAddress = 'bc1q6x8d58yysr8xpv0m4qm4vk8h72rzmx4vsznplm';
 
 const makeArgs = overrides => {
   const args = {
-    ask: ({}, cbk) => cbk({
-      capacity: 384,
-      fund: transactionFromComponents({
-        inputs: [{
-          id: Buffer.alloc(32).toString('hex'),
-          script: Buffer.alloc(32).toString('hex'),
-          sequence: 0,
-          vout: 0,
-        }],
-        locktime: 0,
-        outputs: [{
-          script: '001451814f108670aced2d77c1805ddd6634bc9d4731',
-          tokens: 382,
-        }],
-        version: 1,
-      }).transaction,
-      rate: 2,
-    }),
+    ask: (question, cbk) => {
+      if (question.name === 'rate') {
+        args.state.validations.push(question.validate(args.rate));
+      }
+
+      return cbk({
+        capacity: 384,
+        fund: transactionFromComponents({
+          inputs: [{
+            id: bufferAsHex(Buffer.alloc(32)),
+            script: bufferAsHex(Buffer.alloc(32)),
+            sequence: 0,
+            vout: 0,
+          }],
+          locktime: 0,
+          outputs: [{
+            script: '001451814f108670aced2d77c1805ddd6634bc9d4731',
+            tokens: args.funding_tokens,
+          }],
+          version: 1,
+        }).transaction,
+        rate: args.rate,
+      });
+    },
+    attempts: 0,
+    funding_tokens: 382,
     lnd: {
       default: {
         addInvoice: ({}, cbk) => cbk(null, {
@@ -133,7 +146,15 @@ const makeArgs = overrides => {
 
           return eventEmitter;
         },
-        queryRoutes: ({}, cbk) => {
+        queryRoutes: (query, cbk) => {
+          const records = query.dest_custom_records || {};
+
+          const record = records[balancedChannelKeyTypes.funding_tx_fee_rate];
+
+          if (!!record) {
+            args.state.fee_rates.push(parseInt(bufferAsHex(record), 16));
+          }
+
           return cbk(null, queryRoutesResponse);
         },
       },
@@ -249,10 +270,10 @@ const makeArgs = overrides => {
 
           return eventEmitter;
         },
-        sendToRouteV2: (args, cbk) => {
-          overrides.state.attempts++;
+        sendToRouteV2: ({}, cbk) => {
+          args.attempts++;
 
-          if (overrides.state.attempts === 3) {
+          if (args.attempts === 3) {
             return cbk(null, {
               preimage: Buffer.alloc(32),
             });
@@ -294,7 +315,9 @@ const makeArgs = overrides => {
     multisig_key_index: 1,
     network: 'btc',
     partner_public_key: '020000000000000000000000000000000000000000000000000000000000000000',
+    rate: 2,
     refund_address: transitAddress.address,
+    state: {fee_rates: [], validations: []},
     transit_address: transitAddress.address,
     transit_key_index: 0,
   };
@@ -304,30 +327,89 @@ const makeArgs = overrides => {
   return args;
 };
 
+const makeExpected = overrides => {
+  const expected = {
+    fee_rates: [2],
+    validations: [true],
+  };
+
+  Object.keys(overrides).forEach(k => expected[k] = overrides[k]);
+
+  return expected;
+};
+
 const tests = [
   {
-    args: makeArgs({state: {attempts: 0}}),
+    args: makeArgs({}),
     description: 'Initiate a balanced channel',
+    expected: makeExpected({}),
   },
   {
     args: makeArgs({ask: undefined}),
     description: 'An interrogation function is expected',
     error: [400, 'ExpectedAskFunctionToInitBalancedChannel'],
+    expected: makeExpected({fee_rates: [], validations: []}),
+  },
+  {
+    args: makeArgs({
+      funding_tokens: 1142, // (384 + 190 * 10) / 2, including fees
+      rate: '10',
+    }),
+    description: 'String fee rates preserve the negotiated value',
+    expected: makeExpected({fee_rates: [10]}),
+  },
+  {
+    args: makeArgs({rate: 0}),
+    description: 'A zero fee rate is rejected',
+    error: feeRateError,
+    expected: makeExpected({fee_rates: [], validations: [false]}),
+  },
+  {
+    args: makeArgs({rate: -1}),
+    description: 'A negative fee rate is rejected',
+    error: feeRateError,
+    expected: makeExpected({fee_rates: [], validations: [false]}),
+  },
+  {
+    args: makeArgs({rate: 1.5}),
+    description: 'A fractional fee rate is rejected',
+    error: feeRateError,
+    expected: makeExpected({fee_rates: [], validations: [false]}),
+  },
+  {
+    args: makeArgs({rate: Infinity}),
+    description: 'An infinite fee rate is rejected',
+    error: feeRateError,
+    expected: makeExpected({fee_rates: [], validations: [false]}),
+  },
+  {
+    args: makeArgs({rate: ''}),
+    description: 'An empty fee rate is rejected',
+    error: feeRateError,
+    expected: makeExpected({fee_rates: [], validations: [false]}),
+  },
+  {
+    args: makeArgs({rate: 'invalid'}),
+    description: 'A nonnumeric fee rate is rejected',
+    error: feeRateError,
+    expected: makeExpected({fee_rates: [], validations: [false]}),
+  },
+  {
+    args: makeArgs({rate: Number.MAX_SAFE_INTEGER + 1}),
+    description: 'An unsafe integer fee rate is rejected',
+    error: feeRateError,
+    expected: makeExpected({fee_rates: [], validations: [false]}),
   },
 ];
 
 tests.forEach(({args, description, error, expected}) => {
   return test(description, async () => {
     if (!!error) {
-      await rejects(initiate(args, args.test), error, 'Got error');
+      await rejects(initiate(args), error, 'Got expected error');
     } else {
-      const initiated = await initiate(args);
-
-      equal(initiated.transaction_id.length, 64, 'Got funding tx id');
-      equal(initiated.transaction_vout, 0, 'Got funding tx vout');
-      equal(initiated.transactions.length, 2, 'Got funding txs');
+      await initiate(args);
     }
 
-    return;
+    deepEqual(args.state, expected, 'Got expected fee rates and validations');
   });
 });

@@ -1,42 +1,52 @@
-const {equal} = require('node:assert').strict;
+const {deepEqual} = require('node:assert').strict;
 const EventEmitter = require('node:events');
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
+const {servicePeerRequests} = require('paid-services');
 const {transactionFromComponents} = require('@alexbosworth/blockchain');
 
 const accept = require('./../../services/accept_balanced_channel');
+const {
+  balancedChannelKeyTypes,
+} = require('./../../services/service_key_types');
 const {getInfoResponse} = require('./../fixtures');
 const {listPeersResponse} = require('./../fixtures');
 
+const bufferAsHex = buffer => buffer.toString('hex');
+const fundingTxId = 'ff095fe27463f36ac1985df287f87da93073f9b903b77aec81b7ff314f8f193d';
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
+const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const maxSequence = 4294967295;
 const request = 'lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w';
 const transitAddress = 'bc1q6x8d58yysr8xpv0m4qm4vk8h72rzmx4vsznplm';
 
+const makeTransitTx = () => {
+  const {transaction} = transactionFromComponents({
+    inputs: [{
+      id: bufferAsHex(Buffer.alloc(32)),
+      script: String(),
+      sequence: maxSequence,
+      vout: 0,
+    }],
+    locktime: 0,
+    outputs: [{
+      script: '001451814f108670aced2d77c1805ddd6634bc9d4731',
+      tokens: 10095,
+    }],
+    version: 1,
+  });
+
+  return transaction;
+};
+
 const makeArgs = overrides => {
   const args = {
     accept_request: request,
-    ask: ({}, cbk) => {
-      const {transaction} = transactionFromComponents({
-        inputs: [{
-          id: Buffer.alloc(32).toString('hex'),
-          script: String(),
-          sequence: maxSequence,
-          vout: 0,
-        }],
-        locktime: 0,
-        outputs: [{
-          script: '001451814f108670aced2d77c1805ddd6634bc9d4731',
-          tokens: 10095,
-        }],
-        version: 1,
-      });
-
-      return cbk({fund: transaction});
-    },
+    ask: ({}, cbk) => cbk({fund: makeTransitTx()}),
     capacity: 20000,
     fee_rate: 1,
+    is_p2p: false,
     lnd: {
       default: {
         fundingStateStep: ({}, cbk) => cbk(),
@@ -156,33 +166,92 @@ const makeArgs = overrides => {
 
   Object.keys(overrides).forEach(k => args[k] = overrides[k]);
 
+  // Exit early when testing the payment fallback
+  if (!args.is_p2p) {
+    return args;
+  }
+
+  const localMessages = new EventEmitter();
+  const peerMessages = new EventEmitter();
+
+  localMessages.cancel = () => {};
+  peerMessages.cancel = () => {};
+
+  const peer = servicePeerRequests({
+    lnd: {
+      default: {
+        SubscribeCustomMessages: () => peerMessages,
+        sendCustomMessage: ({data, type}, cbk) => {
+          process.nextTick(() => localMessages.emit('data', {
+            data,
+            type,
+            peer: hexAsBuffer(args.partner_public_key),
+          }));
+
+          return cbk();
+        },
+      },
+    },
+  });
+
+  peer.request({type: balancedChannelKeyTypes.accept_request}, (req, res) => {
+    return res.success({});
+  });
+
+  args.lnd.default.SubscribeCustomMessages = () => localMessages;
+  args.lnd.default.sendCustomMessage = ({data, type}, cbk) => {
+    process.nextTick(() => peerMessages.emit('data', {
+      data,
+      type,
+      peer: Buffer.alloc(33, 2),
+    }));
+
+    return cbk();
+  };
+
+  args.lnd.router.sendPaymentV2 = () => {
+    throw new Error('ExpectedNoAcceptPaymentAfterP2pSuccess');
+  };
+
   return args;
+};
+
+const makeExpected = overrides => {
+  const expected = {
+    transaction_id: fundingTxId,
+    transaction_vout: 0,
+    transactions: [makeTransitTx()],
+  };
+
+  Object.keys(overrides).forEach(k => expected[k] = overrides[k]);
+
+  return expected;
 };
 
 const tests = [
   {
     args: makeArgs({}),
     description: 'Accept a balanced channel',
+    expected: makeExpected({}),
   },
   {
     args: makeArgs({ask: undefined}),
     description: 'An interrogation function is expected',
     error: [400, 'ExpectedAskFunctionToAcceptBalancedChannel'],
   },
+  {
+    args: makeArgs({is_p2p: true}),
+    description: 'Accept over P2P without paying the accept request',
+    expected: makeExpected({}),
+  },
 ];
 
 tests.forEach(({args, description, error, expected}) => {
   return test(description, async () => {
     if (!!error) {
-      await rejects(accept(args, args.test), error, 'Got error');
+      await rejects(accept(args), error, 'Got expected error');
     } else {
-      const accepted = await accept(args);
-
-      equal(accepted.transaction_id.length, 64, 'Got funding tx id');
-      equal(accepted.transaction_vout, 0, 'Got funding tx vout');
-      equal(accepted.transactions.length, 1, 'Got funding txs');
+      deepEqual(await accept(args), expected, 'Got expected acceptance');
     }
-
-    return;
   });
 });
