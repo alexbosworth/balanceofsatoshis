@@ -7,8 +7,6 @@ const {getPayment} = require('ln-service');
 const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
-const {balancedChannelKeyTypes} = require('./service_key_types');
-
 const lookbackMs = 1000 * 60 * 60 * 24;
 
 /** Get balanced open requests received

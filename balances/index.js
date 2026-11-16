@@ -2,6 +2,7 @@ const balanceFromTokens = require('./balance_from_tokens');
 const getAccountingReport = require('./get_accounting_report');
 const getBalance = require('./get_balance');
 const getDetailedBalance = require('./get_detailed_balance');
+const getFiatRates = require('./get_fiat_rates');
 const getLiquidity = require('./get_liquidity');
 
 module.exports = {
@@ -9,5 +10,6 @@ module.exports = {
   getAccountingReport,
   getBalance,
   getDetailedBalance,
+  getFiatRates,
   getLiquidity,
 };

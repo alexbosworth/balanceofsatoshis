@@ -16,11 +16,9 @@ const getBalancedOpens = require('./get_balanced_opens');
 const initiateBalancedChannel = require('./initiate_balanced_channel');
 const recoverTransitFunds = require('./recover_transit_funds');
 
-const bufferAsHex = buffer => buffer.toString('hex');
 const description = 'bos open-balanced-channel';
 const familyMultiSig = 0;
 const interval = 1000 * 15;
-const isOldNodeVersion = () => !Buffer.alloc(0).writeBigUInt64BE;
 const keyFrom = n => n.substring(0, 66);
 const minErrorCount = 4;
 const times = 60;
@@ -53,10 +51,6 @@ module.exports = ({address, after, ask, lnd, logger, recover}, cbk) => {
 
         if (!logger) {
           return cbk([400, 'ExpectedWinstonLoggerToOpenBalancedChannel']);
-        }
-
-        if (isOldNodeVersion()) {
-          return cbk([400, 'ExpectedLaterNodeJsVersionToOpenBalancedChan']);
         }
 
         return cbk();
@@ -222,7 +216,7 @@ module.exports = ({address, after, ask, lnd, logger, recover}, cbk) => {
         cbk);
       }],
 
-      // Broadcast channel transactions until the channel confirms
+      // Broadcast each channel transaction, retrying when a broadcast fails
       broadcastTransactions: [
         'accept',
         'initiate',

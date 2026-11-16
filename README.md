@@ -309,13 +309,14 @@ You can also add a JSON file to your .bos directory: config.json, add
 `bos` keeps its files in `~/.bos`, or in `BOS_DATA_PATH` when that is set:
 
 - `chain_blocks.json`: the payments in the last few days of blocks that
-    `bos accounting` derives prices from, kept so that later runs only fetch
-    the blocks that are new. The file can be deleted
-- `chain_prices.json`: USD prices of BTC that `bos accounting` derived from
-    chain data, kept so that a day is only derived once. Prices are derived
-    this way when no `--rate-provider` is given, and the prices of the days
-    up to the release of `bos` come with it rather than being written here.
-    The file can be deleted, prices are then derived again when needed
+    `bos accounting` and `--fiat` charts derive prices from, kept so that
+    later runs only fetch the blocks that are new. The file can be deleted
+- `chain_prices.json`: USD prices of BTC that `bos accounting` and `--fiat`
+    charts derived from chain data, kept so that a day is only derived once.
+    Accounting derives prices this way when no `--rate-provider` is given,
+    and the prices of the days up to the release of `bos` come with it rather
+    than being written here. The file can be deleted, prices are then derived
+    again when needed
 - `config.json`: settings you add, like a default saved node
 - `tags.json`: the tags made with `bos tags`
 - `telegram_bot_api_key`: the bot API key that `bos telegram` asked for

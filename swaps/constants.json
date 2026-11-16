@@ -1,11 +1,21 @@
 {
   "cltvDeltaBuffer": 3,
+  "depositRefundFeeRates": {
+    "delay_blocks": 144,
+    "max_multiple": 64,
+    "near": 2
+  },
   "estimatedSweepVbytes": 153,
   "externalPayUpdates": [
     "external_funding_pay_to_fund_swap_offchain",
     "external_pay_deposit_request"
   ],
   "fastDelayMinutes": 1,
+  "htlcRefundFeeRates": {
+    "delay_blocks": 144,
+    "max_multiple": 8,
+    "near": 0
+  },
   "invoiceNetworks": {
     "btc": "bitcoin",
     "btcregtest": "regtest",
@@ -20,17 +30,43 @@
   "maxRoutingFeeDenominator": 100,
   "minConfs": 1,
   "minutesPerBlock": 10,
+  "recoveryAddressFormat": "p2tr",
+  "recoveryFeeRateMultiple": 2,
+  "recoveryNearFeeRate": 2,
+  "refundDustErrors": [
+    "ExpectedMoreTokensForSharedUtxosRefund",
+    "ExpectedMoreTokensToRefundSwapInFallback"
+  ],
   "sharedAddressKeyFamily": 42060,
+  "signedClaimsConfTarget": 6,
   "slowDelayMinutes": 30,
   "swapInCosignQuietMs": 30000,
   "swapInDepositConfs": 3,
   "swapInEventsMinAliveMs": 60000,
   "swapInEventsRetryMs": 10000,
   "swapInEventsRetryStepMs": 1000,
+  "swapInKeepRunningNote": "Cooperative signing reduces blockchain space use and improves privacy",
   "swapInMaxTimeoutBlocks": 2016,
   "swapInPaymentTimeoutSeconds": 60,
   "swapInRefundConfTarget": 6,
+  "swapInSafetyNotes": {
+    "deposit_refund": "This node's key alone can spend a deposit after the refund delay",
+    "deposit_refund_needs": "The recovery secret and this node, or a node restored from its seed",
+    "deposit_refunds": "A deposit that is not swapped can be refunded with any of these once its height is reached, higher fees unlock later",
+    "htlc_checked": "The HTLC was derived here, it locks to the hash of your invoice and refunds to this node",
+    "htlc_refunds": "A swap that is not paid can be refunded with any of these once its height is reached, higher fees unlock later",
+    "service_claim": "The service can only claim the HTLC with the preimage it gets by paying your invoice",
+    "signing": "Signing only lets the service move the deposit into the HTLC"
+  },
   "swapInSweepRequestsWaitMs": 180000,
   "swapInUtxosCount": 1,
+  "swapOutSafetyNotes": {
+    "claims": "If this stops, broadcast the latest of these whose height is reached until one confirms",
+    "claims_shown": "near the current fee rate, then at each doubling of the fee rate",
+    "locked_payment": "The locked payment only settles with a secret made on this node, which it gives out once the swap is funded on chain",
+    "not_funded": "If the service does not fund the swap on chain, the locked payment times out back to this node",
+    "prepay": "The prepay is not refundable",
+    "restart": "If this stops, use the restart secret with swap-out --recovery to finish the swap"
+  },
   "swapTypes": ["inbound", "outbound"]
 }

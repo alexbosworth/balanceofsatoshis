@@ -8,6 +8,9 @@ const {getInfoResponse} = require('./../fixtures');
 const bufferAsHex = buffer => buffer.toString('hex');
 const now = '2025-01-01T00:00:00.000Z';
 
+// A time on a day with a known chain price
+const pricedAt = Date.parse('2024-01-01T12:00:00.000Z') / 1000;
+
 // Coinbase Exchange has an hourly candle at the start of the day
 const candles = [[0, 12.34, 12.34, 12.34, 12.34, 1]];
 
@@ -210,7 +213,7 @@ const tests = [
     error: [400, 'ExpectedFileSystemMethodsToGetAccountingReport'],
   },
   {
-    args: makeArgs({}),
+    args: makeArgs({fs: makeFs(), lnds: [makeLnd({at: pricedAt})]}),
     description: 'Get accounting report',
     expected: {
       rows: [
@@ -229,7 +232,7 @@ const tests = [
         [
           '1',
           'BTC',
-          '1970-01-01T00:00:01.000Z',
+          '2024-01-01T12:00:00.000Z',
           '0.00',
           '0x0x1',
           '',
@@ -255,8 +258,8 @@ const tests = [
   },
   {
     args: makeArgs({is_csv: true}),
-    description: 'Get accounting report CSV',
-    expected: `"Amount","Asset","Date & Time","Fiat Amount","From ID","Network ID","Notes","To ID","Transaction ID","Type"\n1,"BTC","1970-01-01T00:00:01.000Z",1.234e-7,"0x0x1","","2","0x0x2","","income"`,
+    description: 'Without chain prices or a rate provider there is no fiat',
+    expected: `"Amount","Asset","Date & Time","Fiat Amount","From ID","Network ID","Notes","To ID","Transaction ID","Type"\n1,"BTC","1970-01-01T00:00:01.000Z",,"0x0x1","","2","0x0x2","","income"`,
   },
   {
     args: makeArgs({
@@ -275,17 +278,65 @@ const tests = [
   },
   {
     args: makeArgs({fs: makeFs(), is_csv: true}),
-    description: 'A record chain prices cannot value is valued on Coinbase',
-    expected: `"Amount","Asset","Date & Time","Fiat Amount","From ID","Network ID","Notes","To ID","Transaction ID","Type"\n1,"BTC","1970-01-01T00:00:01.000Z",1.234e-7,"0x0x1","","2","0x0x2","","income"`,
+    description: 'A record chain prices cannot value is not looked up',
+    error: [
+      400,
+      'DateBeforeSupportedRangeToGetChainRate',
+      {earliest_day: '2013-03-31'},
+    ],
   },
   {
     args: makeArgs({
       fs: makeFs(),
       is_csv: true,
-      lnds: [makeLnd({at: Date.parse('2024-01-01T12:00:00.000Z') / 1000})],
+      lnds: [makeLnd({at: pricedAt})],
     }),
     description: 'A record on a day with a chain price is valued with it',
     expected: `"Amount","Asset","Date & Time","Fiat Amount","From ID","Network ID","Notes","To ID","Transaction ID","Type"\n1,"BTC","2024-01-01T12:00:00.000Z",0.0004266048,"0x0x1","","2","0x0x2","","income"`,
+  },
+  {
+    args: makeArgs({fs: makeFs(), lnds: [makeLnd({info: testnetInfo})]}),
+    description: 'Testnet records have no fiat value without a rate provider',
+    expected: {
+      rows: [
+        [
+          'Amount',
+          'Asset',
+          'Date & Time',
+          'Fiat Amount',
+          'From ID',
+          'Network ID',
+          'Notes',
+          'To ID',
+          'Transaction ID',
+          'Type',
+        ],
+        [
+          '1',
+          'BTC',
+          '1970-01-01T00:00:01.000Z',
+          '',
+          '0x0x1',
+          '',
+          '2',
+          '0x0x2',
+          '',
+          'income',
+        ],
+      ],
+      rows_summary: [
+        [
+          'Total',
+          'Asset',
+          'Report Date',
+          'Total Fiat',
+          'Category',
+          'Start Date',
+          'End Date',
+        ],
+        [1, 'BTC', now, '', 'forwards', '', ''],
+      ],
+    },
   },
   {
     args: makeArgs({is_fiat_disabled: true}),

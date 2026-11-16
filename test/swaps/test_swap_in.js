@@ -59,6 +59,15 @@ const tests = [
     error: [400, 'ExpectedRecoveryOfAddressToRefundDeposits'],
   },
   {
+    args: makeArgs({
+      is_verbose_recovery: true,
+      recovery: 'recovery',
+      refund_address: 'address',
+    }),
+    description: 'Verbose recovery is for swaps, not refunds',
+    error: [400, 'ExpectedVerboseRecoveryForSwapNotForRefund'],
+  },
+  {
     args: makeArgs({socket: 'https://localhost:11010'}),
     description: 'A swap service socket is expected to be a host and port',
     error: [400, 'ExpectedHostAndPortSocketToReceiveOnChain'],

@@ -12,13 +12,14 @@ const {getInfoResponse} = require('./../fixtures');
 const {getNodeInfoResponse} = require('./../fixtures');
 const initiate = require('./../../services/initiate_balanced_channel');
 const {listChannelsResponse} = require('./../fixtures');
-const {listPeersResponse} = require('./../fixtures');
 const {queryRoutesResponse} = require('./../fixtures');
 
+const acceptRequestType = balancedChannelKeyTypes.accept_request;
 const bufferAsHex = buffer => buffer.toString('hex');
 const feeRateError = [400, 'ExpectedFeeRatePerVirtualByteToProposeChannel'];
 const getInfoRes = () => JSON.parse(JSON.stringify(getInfoResponse));
 getNodeInfoResponse.channels = [];
+const pushError = {details: 'PushError'};
 const request = 'lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w';
 
 const transitAddress = 'bc1q6x8d58yysr8xpv0m4qm4vk8h72rzmx4vsznplm';
@@ -153,6 +154,11 @@ const makeArgs = overrides => {
 
           if (!!record) {
             args.state.fee_rates.push(parseInt(bufferAsHex(record), 16));
+          }
+
+          // Only the push of the request carries the accept request record
+          if (!!args.push_error && !!records[acceptRequestType]) {
+            return cbk(args.push_error);
           }
 
           return cbk(null, queryRoutesResponse);
@@ -349,6 +355,14 @@ const tests = [
     description: 'An interrogation function is expected',
     error: [400, 'ExpectedAskFunctionToInitBalancedChannel'],
     expected: makeExpected({fee_rates: [], validations: []}),
+  },
+  {
+    args: makeArgs({push_error: pushError}),
+    description: 'A failure to push the request is returned',
+    error: [503, 'MessageDeliveryFailedToNode', {
+      err: [503, 'UnexpectedErrInGetRouteToDestination', {err: pushError}],
+    }],
+    expected: makeExpected({}),
   },
   {
     args: makeArgs({

@@ -11,6 +11,7 @@ const {returnResult} = require('asyncjs-util');
 
 const {chartAliasForPeer} = require('./../display');
 const feesForSegment = require('./fees_for_segment');
+const {getFiatRates} = require('./../balances');
 const {getIcons} = require('./../display');
 const {sortBy} = require('./../arrays');
 
@@ -18,8 +19,10 @@ const by = 'confirmed_at';
 const daysBetween = (a, b) => moment(a).diff(b, 'days') + 1;
 const daysPerWeek = 7;
 const defaultDays = 60;
+const fiatOfMtokens = (cents, mtokens) => Number(mtokens) / 1e11 * cents / 100;
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
+const formatFiat = (amount, fiat) => `${amount.toFixed(2)} ${fiat}`;
 const heading = [['Node', 'Public Key', 'Fees Paid', 'Forwarded']];
 const hoursCount = (a, b) => moment(a).diff(b, 'hours') + 1;
 const hoursPerDay = 24;
@@ -35,7 +38,6 @@ const niceAlias = n => `${(n.alias || n.id).trim()} ${n.id.substring(0, 8)}`;
 const {now} = Date;
 const parseDate = n => Date.parse(n);
 const title = 'Routing fees paid';
-const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const uniq = arr => Array.from(new Set(arr));
 
 /** Get routing fees paid
@@ -45,20 +47,25 @@ const uniq = arr => Array.from(new Set(arr));
     [end_date]: <End Date YYYY-MM-DD String>
     fs: {
       getFile: <Read File Contents Function> (path, cbk) => {}
+      [makeDirectory]: <Make Directory Function> (path, cbk) => {}
+      [renameFile]: <Rename File Function> (from, to, cbk) => {}
+      [writeFile]: <Write File Contents Function> (path, contents, cbk) => {}
     }
     [in]: <In Node Public Key or Alias String>
+    [is_fiat]: <Value Fees in Fiat Bool>
     [is_most_fees_table]: <Is Most Fees Table Bool>
     [is_most_forwarded_table]: <Is Most Forwarded Bool>
     [is_network]: <Show Only Non-Peers In Table Bool>
     [is_peer]: <Show Only Peers In Table Bool>
     lnds: [<Authenticated LND API Object>]
+    [logger]: <Winston Logger Object>
     [out]: <Out Node Public Key or Alias String>
     [start_date]: <Start Date YYYY-MM-DD String>
   }
 
   @returns via cbk or Promise
   {
-    data: [<Earned Fee Tokens Number>]
+    data: [<Paid Fee Tokens or Fiat Amount Number>]
     description: <Chart Description String>
     title: <Chart Title String>
   }
@@ -74,6 +81,14 @@ module.exports = (args, cbk) => {
 
         if (!!args.is_network && !!args.is_peer) {
           return cbk([400, 'ExpectedEitherNetworkOrPeersNotBoth']);
+        }
+
+        if (!!args.is_fiat && !!args.is_most_fees_table) {
+          return cbk([400, 'ExpectedChartNotFeesTableForFiatFeesPaid']);
+        }
+
+        if (!!args.is_fiat && !!args.is_most_forwarded_table) {
+          return cbk([400, 'ExpectedChartNotForwardedTableForFiatFeesPaid']);
         }
 
         if (!isArray(args.lnds) || !args.lnds.length) {
@@ -520,30 +535,75 @@ module.exports = (args, cbk) => {
         }
       }],
 
-      // Total paid
-      total: ['forwards', ({forwards}, cbk) => {
+      // Get the fiat rates at the times the payments confirmed
+      getRates: ['forwards', ({forwards}, cbk) => {
+        // Exit early when fees are not valued in fiat
+        if (!args.is_fiat) {
+          return cbk();
+        }
+
+        return getFiatRates({
+          dates: forwards.map(n => n[by]),
+          fs: args.fs,
+          lnds: args.lnds,
+          logger: args.logger,
+        },
+        cbk);
+      }],
+
+      // Payments with fees in fiat when valued in fiat
+      valued: ['forwards', 'getRates', ({forwards, getRates}, cbk) => {
+        // Exit early when fees are not valued in fiat
+        if (!getRates) {
+          return cbk(null, forwards);
+        }
+
+        return cbk(null, forwards.map((forward, i) => {
+          const {cents} = getRates.rates[i];
+
+          return {
+            confirmed_at: forward.confirmed_at,
+            fee: fiatOfMtokens(cents, forward.fee_mtokens),
+          };
+        }));
+      }],
+
+      // Total paid for display
+      total: [
+        'forwards',
+        'getRates',
+        'valued',
+        ({forwards, getRates, valued}, cbk) =>
+      {
+        // Exit early when the total is a fiat amount
+        if (!!getRates) {
+          const total = valued.reduce((sum, {fee}) => sum + fee, Number());
+
+          return cbk(null, formatFiat(total, getRates.fiat));
+        }
+
         const paid = forwards.reduce((sum, payment) => {
           return sum + BigInt(payment.fee_mtokens);
         },
         BigInt(Number()));
 
-        return cbk(null, mtokensAsTokens(paid));
+        return cbk(null, mtokensAsBigUnit(paid));
       }],
 
       // Payments activity aggregated
       sum: [
         'end',
-        'forwards',
         'measure',
         'segments',
-        ({end, forwards, measure, segments}, cbk) =>
+        'valued',
+        ({end, measure, segments, valued}, cbk) =>
       {
         return cbk(null, feesForSegment({
           by,
-          forwards,
           measure,
           segments,
           end: !!end ? end.toISOString() : undefined,
+          forwards: valued,
         }));
       }],
 
@@ -558,11 +618,10 @@ module.exports = (args, cbk) => {
         ({end, forwards, measure, start, sum, total}, cbk) =>
       {
         const duration = `Fees paid in ${sum.fees.length} ${measure}s`;
-        const paid = tokensAsBigUnit(total);
         const since = `from ${start.calendar().toLowerCase()}`;
         const to = !!end ? ` to ${end.calendar().toLowerCase()}` : '';
 
-        return cbk(null, `${duration} ${since}${to}. Total: ${paid}`);
+        return cbk(null, `${duration} ${since}${to}. Total: ${total}`);
       }],
 
       // Get the alias of the inbound peer
@@ -593,12 +652,16 @@ module.exports = (args, cbk) => {
       title: [
         'getInAlias',
         'getOutAlias',
-        ({getInAlias, getOutAlias}, cbk) =>
+        'getRates',
+        ({getInAlias, getOutAlias, getRates}, cbk) =>
       {
+        const fiat = !!getRates ? `(${getRates.fiat})` : '';
         const inPeer = !!args.in ? `in ${niceAlias(getInAlias)}` : '';
         const outPeer = !!args.out ? `out ${niceAlias(getOutAlias)}` : '';
 
-        return cbk(null, [title, outPeer, inPeer].filter(n => !!n).join(' '));
+        const parts = [title, fiat, outPeer, inPeer];
+
+        return cbk(null, parts.filter(n => !!n).join(' '));
       }],
 
       // Fees paid

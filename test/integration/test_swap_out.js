@@ -1,3 +1,4 @@
+const {equal} = require('node:assert').strict;
 const {join} = require('node:path');
 const {ok} = require('node:assert').strict;
 const test = require('node:test');
@@ -20,10 +21,12 @@ const {pay} = require('ln-service');
 const {setupChannel} = require('ln-docker-daemons');
 const {spawnLightningCluster} = require('ln-docker-daemons');
 
+const {formatFeeRate} = require('./../../display');
 const {quoteSwapOut} = require('./../macros');
 const {spawnSwapServer} = require('./../macros');
 const {swapOut} = require('./../../swaps');
 
+const asTokens = big => Math.round(parseFloat(big) * 1e8);
 const capacity = 1e6;
 const confs = 1;
 const interval = 1000;
@@ -34,6 +37,7 @@ const maxFee = 1e5;
 const maxSweepFee = 2e4;
 const miningIntervalMs = 2000;
 const outFilters = ['OUTBOUND_LIQUIDITY > 0'];
+const ppm = (fee, tokens) => Math.ceil(fee * 1e6 / tokens);
 const probeTokens = 1;
 const size = 2;
 const taprootDerivationPath = `m/86'/0'/0'`;
@@ -110,7 +114,18 @@ test(`Swap out through a swap server`, async () => {
       swapServer.kill({});
     }
 
-    ok(!!messages.find(n => !!n.total_fee_paid), 'Swap out is summarized');
+    const estimate = messages.find(n => !!n.estimated_total_fee);
+    const summary = messages.find(n => !!n.total_fee_paid);
+
+    ok(!!summary, 'Swap out is summarized');
+    ok(!!estimate.estimated_total_fee_rate, 'Swap fee rate is estimated');
+
+    // The fee rate paid is the total fee over the swapped tokens
+    const paidRate = ppm(asTokens(summary.total_fee_paid), tokens);
+
+    const {display} = formatFeeRate({rate: paidRate});
+
+    equal(summary.total_fee_rate, display, 'Swap fee rate paid is summarized');
 
     // The swap server took the deposit and the funding payments of the swap
     const {deposit, fee} = quoteSwapOut({tokens, public_key: swapNode.id});

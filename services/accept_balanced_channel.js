@@ -30,7 +30,6 @@ const hexAsBuffer = hex => Buffer.from(hex, 'hex');
 const idAsHash = id => Buffer.from(id, 'hex').reverse();
 const inputsOf = tx => componentsOfTransaction({transaction: tx}).inputs;
 const interval = 1000 * 15;
-const {isArray} = Array;
 const isSameId = (a, b) => a.toLowerCase() === b.toLowerCase();
 const multiSigKeyFamily = 0;
 const networkBitcoin = 'btc';

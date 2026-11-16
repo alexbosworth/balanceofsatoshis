@@ -34,6 +34,7 @@ const {quoteSwapIn} = require('./../macros');
 const {sharedAddressKeyFamily} = require('./../../swaps/constants');
 const {spawnSwapServer} = require('./../macros');
 const {swapIn} = require('./../../swaps');
+const {swapInKeepRunningNote} = require('./../../swaps/constants');
 
 const capacity = 1e6;
 const depositsCount = 1;
@@ -111,7 +112,7 @@ const expectedProgress = [
   {swap_id: '<swap id>'},
   {
     swap_funds_received: '0.00248650',
-    keep_running: 'Cooperative signing reduces blockchain space use',
+    keep_running: swapInKeepRunningNote,
   },
   {cosigning_sweeps: 'Waiting for cooperative signing request'},
   {

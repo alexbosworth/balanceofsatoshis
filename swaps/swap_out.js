@@ -3,6 +3,7 @@ const EventEmitter = require('events');
 const asyncAuto = require('async/auto');
 const asyncify = require('async/asyncify');
 const asyncMap = require('async/map');
+const asyncReflect = require('async/reflect');
 const {cancelSwapOut} = require('goldengate');
 const {completeOffToOnSwap} = require('paid-services');
 const {decodeLoopResponse} = require('paid-services');
@@ -32,6 +33,7 @@ const {subscribeToPayViaRequest} = require('ln-service');
 
 const channelForSend = require('./channel_for_send');
 const {cltvDeltaBuffer} = require('./constants');
+const continueWhenClaiming = require('./continue_when_claiming');
 const {currencySymbols} = require('./../network/networks');
 const {describeRoute} = require('./../display');
 const {describeRoutingFailure} = require('./../display');
@@ -40,6 +42,7 @@ const {executeProbe} = require('./../network');
 const {externalPayUpdates} = require('./constants');
 const {fastDelayMinutes} = require('./constants');
 const findRebalancePeer = require('./find_rebalance_peer');
+const {formatFeeRate} = require('./../display');
 const {getIcons} = require('./../display');
 const {getIgnores} = require('./../routing');
 const getPaidService = require('./get_paid_service');
@@ -53,7 +56,10 @@ const {maxPathfindingMs} = require('./constants');
 const {maxRoutingFeeDenominator} = require('./constants');
 const {minConfs} = require('./constants');
 const {minutesPerBlock} = require('./constants');
+const showSignedClaims = require('./show_signed_claims');
+const {signedClaimsConfTarget} = require('./constants');
 const {slowDelayMinutes} = require('./constants');
+const {swapOutSafetyNotes} = require('./constants');
 
 const addressMatch = /\b((bc|tb)(0([ac-hj-np-z02-9]{39}|[ac-hj-np-z02-9]{59})|1[ac-hj-np-z02-9]{8,87})|([13]|[mn2])[a-km-zA-HJ-NP-Z1-9]{25,39})\b/i;
 const {ceil} = Math;
@@ -64,6 +70,7 @@ const httpMatch = /^https?:\/\//;
 const {isArray} = Array;
 const isLimit = n => Number.isSafeInteger(n) && n > 0;
 const isPayUpdate = update => !!externalPayUpdates.find(n => !!update[n]);
+const ppm = (fee, tokens) => Math.ceil(fee * 1e6 / tokens);
 const {round} = Math;
 const sumOf = tokens => tokens.reduce((sum, n) => sum + n, Number());
 const swapDelayMinutes = fast => !!fast ? fastDelayMinutes : slowDelayMinutes;
@@ -82,6 +89,7 @@ const uniq = arr => Array.from(new Set(arr));
     }
     [is_dry_run]: <Avoid Actually Executing Operation Bool>
     [is_fast]: <Execute Swap Immediately Bool>
+    [is_verbose_recovery]: <Show Swap Safety and Signed Claims Bool>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Winston Logger Object>
     [max_api_key_fee]: <Maximum Tokens to Pay for a Service API Key Number>
@@ -426,7 +434,23 @@ module.exports = (args, cbk) => {
       }],
 
       // Get swap out limits
-      getLimits: ['getService', ({getService}, cbk) => {
+      // Show a purchased API key, so it is not lost when the swap stops
+      purchase: ['getService', ({getService}, cbk) => {
+        // Exit early when no API key was purchased
+        if (!getService || !getService.paid || !getService.token) {
+          return cbk();
+        }
+
+        args.logger.info({
+          amount_paid_for_api_key: tokensAsBigUnit(getService.paid),
+          service_api_key: getService.token,
+          service_user_id: getService.id,
+        });
+
+        return cbk();
+      }],
+
+      getLimits: ['getService', 'purchase', ({getService}, cbk) => {
         // Exit early when in recovery
         if (!!args.recovery) {
           return cbk();
@@ -512,14 +536,6 @@ module.exports = (args, cbk) => {
         // Exit early when the swap is already initiated
         if (!!args.recovery) {
           return cbk();
-        }
-
-        if (!!getService.paid && !!getService.token) {
-          args.logger.info({
-            amount_paid_for_api_key: tokensAsBigUnit(getService.paid),
-            service_api_key: getService.token,
-            service_user_id: getService.id,
-          });
         }
 
         return requestLoopOut({
@@ -1022,6 +1038,8 @@ module.exports = (args, cbk) => {
 
           const allFees = ceil(serviceFee + sweepFee + routingFees);
 
+          const rate = ppm(allFees, args.tokens);
+
           if (allFees > args.max_fee) {
             return cbk([400, 'MaxFeeTooLowToExecuteSwap', {needed: allFees}]);
           }
@@ -1031,6 +1049,7 @@ module.exports = (args, cbk) => {
             with_peers: getSwapPeers.map(n => `${n.alias} ${n.public_key}`),
             swap_service_fee: `${tokensAsBigUnit(serviceFee)} ${currency}`,
             estimated_total_fee: `${tokensAsBigUnit(allFees)} ${currency}`,
+            estimated_total_fee_rate: formatFeeRate({rate}).display,
             peers_inbound: `${tokensAsBigUnit(sumOf(peerIn))} ${currency}`,
             peers_outbound: `${tokensAsBigUnit(sumOf(peerOut))} ${currency}`,
           });
@@ -1051,11 +1070,51 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Show what is at stake before paying to start the swap
+      showSwapSafety: [
+        'currency',
+        'decodeExecutionRequest',
+        'decodeFundingRequest',
+        'getMinSweepFee',
+        'requestSwap',
+        ({
+          currency,
+          decodeExecutionRequest,
+          decodeFundingRequest,
+          requestSwap,
+        },
+        cbk) =>
+      {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery || !!args.recovery) {
+          return cbk();
+        }
+
+        const locked = tokensAsBigUnit(decodeFundingRequest.tokens);
+        const prepay = tokensAsBigUnit(decodeExecutionRequest.tokens);
+
+        args.logger.info({
+          swap_safety: {
+            prepay: `${prepay} ${currency}`,
+            prepay_refund: swapOutSafetyNotes.prepay,
+            locked_payment: `${locked} ${currency}`,
+            locked_to_hash: decodeFundingRequest.id,
+            lock: swapOutSafetyNotes.locked_payment,
+            if_not_funded: swapOutSafetyNotes.not_funded,
+            claim_must_confirm_before_block: requestSwap.timeout,
+            restart: swapOutSafetyNotes.restart,
+          },
+        });
+
+        return cbk();
+      }],
+
       // Details of the swap to complete
       swap: [
         'getMinSweepFee',
         'recover',
         'requestSwap',
+        'showSwapSafety',
         'startSwap',
         ({recover, requestSwap, startSwap}, cbk) =>
       {
@@ -1084,9 +1143,56 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Once claiming, the secret can be given out so payments cannot stop it
+      claiming: ['validate', ({}, cbk) => cbk(null, {is_claiming: false})],
+
+      // Get the chain fee rate to show signed claims around
+      getClaimsFeeRate: [
+        'checkPayments',
+        'swap',
+        asyncReflect(({}, cbk) =>
+      {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery) {
+          return cbk();
+        }
+
+        return getChainFeeRate({
+          confirmation_target: signedClaimsConfTarget,
+          lnd: args.lnd,
+        },
+        cbk);
+      })],
+
+      // The fee rate to show claims around, without it they show from lowest
+      claimsFeeRate: ['getClaimsFeeRate', ({getClaimsFeeRate}, cbk) => {
+        // Exit early when the fee rate could not be found
+        if (!!getClaimsFeeRate.error) {
+          args.logger.error({
+            signed_claims_fee_rate_error: getClaimsFeeRate.error,
+          });
+
+          return cbk();
+        }
+
+        // Exit early when there is no fee rate to show claims around
+        if (!getClaimsFeeRate.value) {
+          return cbk();
+        }
+
+        return cbk(null, getClaimsFeeRate.value.tokens_per_vbyte);
+      }],
+
       // Complete the swap on chain once the swap service funds the swap
-      complete: ['checkPayments', 'swap', ({swap}, cbk) => {
+      complete: [
+        'checkPayments',
+        'claiming',
+        'claimsFeeRate',
+        'swap',
+        ({claiming, claimsFeeRate, swap}, cbk) =>
+      {
         const emitter = new EventEmitter();
+        const shown = {};
 
         emitter.on('update', update => {
           // Exit early when the update is a payment that is being made here
@@ -1094,7 +1200,39 @@ module.exports = (args, cbk) => {
             return;
           }
 
+          // Exit early when the claim already came with the signed claims
+          if (!!shown.claims && !!update.unilateral_claim_tx) {
+            return;
+          }
+
           return args.logger.info(update);
+        });
+
+        emitter.on('unilateral_claims', ({claims}) => {
+          // The claims come right before the secret can be given out
+          claiming.is_claiming = true;
+
+          // Exit early when not showing verbose recovery details
+          if (!args.is_verbose_recovery) {
+            return;
+          }
+
+          // Claims show before the swap goes on to give out its secret
+          try {
+            showSignedClaims({
+              claims,
+              fee_rate: claimsFeeRate,
+              logger: args.logger,
+            });
+          } catch (err) {
+            // Exit early without the claims, the single claim still shows
+            return args.logger.error({show_signed_claims_error: err.message});
+          }
+
+          // The single claim is only left out once the claims are shown
+          shown.claims = true;
+
+          return;
         });
 
         return completeOffToOnSwap({
@@ -1115,15 +1253,29 @@ module.exports = (args, cbk) => {
 
       // Multi pay to swap fund
       multiPayToFund: [
+        'claiming',
         'decodeFundingRequest',
         'getFundingRoutes',
         'getMinSweepFee',
-        ({decodeFundingRequest, getFundingRoutes, getMinSweepFee}, cbk) =>
+        'showSwapSafety',
+        ({
+          claiming,
+          decodeFundingRequest,
+          getFundingRoutes,
+          getMinSweepFee,
+        },
+        cbk) =>
       {
         // Exit early when there are no multiple funding paths
         if (!getFundingRoutes) {
           return cbk();
         }
+
+        const {finished} = continueWhenClaiming({
+          cbk,
+          claiming,
+          logger: args.logger,
+        });
 
         const sub = subscribeToMultiPathPay({
           cltv_delta: decodeFundingRequest.cltv_delta + cltvDeltaBuffer,
@@ -1138,11 +1290,15 @@ module.exports = (args, cbk) => {
         });
 
         sub.on('error', err => {
-          return cbk([503, 'UnexpectedErrorPayingSwapFundingRequest', {err}]);
+          return finished([
+            503,
+            'UnexpectedErrorPayingSwapFundingRequest',
+            {err},
+          ]);
         });
 
         sub.on('failure', () => {
-          return cbk([503, 'FailedToPayFundingPaymentRequest']);
+          return finished([503, 'FailedToPayFundingPaymentRequest']);
         });
 
         sub.on('paid', ({secret}) => args.logger.info({proof: secret}));
@@ -1171,22 +1327,30 @@ module.exports = (args, cbk) => {
           return args.logger.info({failure: description});
         });
 
-        sub.on('success', ({}) => cbk());
+        sub.on('success', ({}) => finished());
 
         return;
       }],
 
       // Pay to swap funding
       payToFund: [
+        'claiming',
         'decodeFundingRequest',
         'findRoutesForFunding',
         'getMinSweepFee',
-        ({decodeFundingRequest, findRoutesForFunding}, cbk) =>
+        'showSwapSafety',
+        ({claiming, decodeFundingRequest, findRoutesForFunding}, cbk) =>
       {
         // Exit early when there is no single path funding
         if (!findRoutesForFunding) {
           return cbk();
         }
+
+        const {finished} = continueWhenClaiming({
+          cbk,
+          claiming,
+          logger: args.logger,
+        });
 
         args.logger.info({funding_swap: decodeFundingRequest.id});
 
@@ -1200,21 +1364,30 @@ module.exports = (args, cbk) => {
         },
         (err, res) => {
           if (!!err) {
-            return cbk([503, 'UnexpectedErrorFundingSwap', {err}]);
+            return finished([503, 'UnexpectedErrorFundingSwap', {err}]);
           }
 
-          return cbk();
+          return finished();
         });
       }],
 
       // Pay to swap execution
       payToExecute: [
         'channel',
+        'claiming',
         'deadline',
         'decodeExecutionRequest',
         'getMinSweepFee',
         'requestSwap',
-        ({channel, deadline, decodeExecutionRequest, requestSwap}, cbk) =>
+        'showSwapSafety',
+        ({
+          channel,
+          claiming,
+          deadline,
+          decodeExecutionRequest,
+          requestSwap,
+        },
+        cbk) =>
       {
         // Exit early when the swap is in a recovery mode already
         if (!!args.recovery) {
@@ -1234,10 +1407,16 @@ module.exports = (args, cbk) => {
           request: requestSwap.deposit_request,
         });
 
+        const paid = continueWhenClaiming({
+          cbk,
+          claiming,
+          logger: args.logger,
+        });
+
         const finished = (err, res) => {
           sub.removeAllListeners();
 
-          return cbk(err, res);
+          return paid.finished(err, res);
         };
 
         sub.once('confirmed', ({mtokens}) => finished(null, {mtokens}));
@@ -1275,6 +1454,7 @@ module.exports = (args, cbk) => {
           complete.paid_funding_routing_fee,
         ];
 
+        const rate = ppm(totalFee, complete.tokens);
         const routingFee = sumOf(routingFees.filter(n => !!n));
 
         // The off-chain spend is the swap amount plus the off-chain fees
@@ -1287,6 +1467,7 @@ module.exports = (args, cbk) => {
           routing_fee_paid: `${tokensAsBigUnit(routingFee)} ${currency}`,
           service_fee_paid: `${tokensAsBigUnit(serviceFee)} ${currency}`,
           total_fee_paid: `${tokensAsBigUnit(totalFee)} ${currency}`,
+          total_fee_rate: formatFeeRate({rate}).display,
         });
 
         return cbk();

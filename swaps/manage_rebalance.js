@@ -6,6 +6,7 @@ const {returnResult} = require('asyncjs-util');
 const executeRebalance = require('./execute_rebalance');
 const {formatDuration} = require('./../display');
 const parseIntervalFormula = require('./parse_interval_formula');
+const waitForInterval = require('./wait_for_interval');
 
 const calendarFormats = {sameElse: 'L [at] LT'};
 const {isArray} = Array;
@@ -155,7 +156,7 @@ module.exports = (args, cbk) => {
               repeating_rebalance_at: next.calendar(null, calendarFormats),
             });
 
-            return setTimeout(cbk, ms);
+            return waitForInterval({ms}, cbk);
           });
         },
         cbk);

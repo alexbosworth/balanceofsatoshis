@@ -8,6 +8,7 @@ const {returnResult} = require('asyncjs-util');
 const adjustFees = require('./adjust_fees');
 const {formatDuration} = require('./../display');
 const parseIntervalFormula = require('./../swaps/parse_interval_formula');
+const waitForInterval = require('./../swaps/wait_for_interval');
 
 const border = getBorderCharacters('norc');
 const calendarFormats = {sameElse: 'L [at] LT'};
@@ -118,7 +119,7 @@ module.exports = (args, cbk) => {
               repeating_fees_at: next.calendar(null, calendarFormats),
             });
 
-            return setTimeout(cbk, ms);
+            return waitForInterval({ms}, cbk);
           });
         },
         cbk);

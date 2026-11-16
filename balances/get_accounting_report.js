@@ -2,7 +2,6 @@ const asyncAuto = require('async/auto');
 const asyncify = require('async/asyncify');
 const asyncMap = require('async/map');
 const asyncMapSeries = require('async/mapSeries');
-const {chainRates} = require('@alexbosworth/fiat');
 const {getAccountingReport} = require('ln-accounting');
 const {getNetwork} = require('ln-sync');
 const {harmonize} = require('ln-accounting');
@@ -10,17 +9,13 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const categories = require('./accounting_categories');
-const {chainBlocksFile} = require('./constants');
-const {chainPricesFile} = require('./constants');
-const chainPricesLogger = require('./chain_prices_logger');
+const chainRateMethod = require('./chain_rate_method');
 const {coinbaseProvider} = require('./constants');
 const {dayFormat} = require('./constants');
 const {defaultCurrency} = require('./constants');
 const {defaultFiat} = require('./constants');
 const {fsMethods} = require('./constants');
-const getRecordRate = require('./get_record_rate');
-const guardChainRate = require('./guard_chain_rate');
-const {homePath} = require('./../storage');
+const getHistoricRate = require('./get_historic_rate');
 const {mainnet} = require('./constants');
 const rangeForDate = require('./range_for_date');
 const {sortBy} = require('./../arrays');
@@ -142,43 +137,43 @@ module.exports = (args, cbk) => {
         }
 
         // Progress is only logged when it cannot end up in CSV output
-        const {logger} = chainPricesLogger({
-          logger: !args.is_csv ? args.logger : undefined,
-        });
+        const logger = !args.is_csv ? args.logger : undefined;
 
         // Chain prices are derived through the first node
         const [lnd] = args.lnds;
 
-        const {getChainRate} = chainRates({
-          lnd,
-          logger,
-          blocks_path: homePath({file: chainBlocksFile}).path,
-          fs: args.fs,
-          path: homePath({file: chainPricesFile}).path,
-        });
-
-        return cbk(null, guardChainRate({getChainRate}));
+        return cbk(null, chainRateMethod({lnd, logger, fs: args.fs}));
       }],
 
-      // Without a rate provider, records are valued with chain prices, and
-      // at their hour on Coinbase Exchange when chain prices cannot value them
-      rate: ['chain', ({chain}, cbk) => {
+      // How records are valued in fiat, if they are valued at all
+      valuation: ['chain', ({chain}, cbk) => {
         // Exit early when fiat is disabled
         if (!!args.is_fiat_disabled) {
           return cbk();
         }
 
-        // Exit early when a rate provider other than Coinbase is specified
-        if (!!args.rate_provider && args.rate_provider !== coinbaseProvider) {
+        // Exit early when records are valued with chain and bundled prices
+        if (!!chain) {
+          return cbk(null, {rate: chain.getChainRate});
+        }
+
+        // Exit early when there is no rate provider, as there are no lookups
+        if (!args.rate_provider) {
           return cbk();
         }
 
+        // Exit early when the rate provider is not Coinbase
+        if (args.rate_provider !== coinbaseProvider) {
+          return cbk(null, {rate_provider: args.rate_provider});
+        }
+
+        // Coinbase Exchange has the rate at the hour of a record
         return cbk(null, {
-          rate: (record, cbk) => getRecordRate({
+          rate: (record, cbk) => getHistoricRate({
             currency: record.currency,
             date: record.date,
             fiat: record.fiat,
-            get_chain_rate: !!chain ? chain.getChainRate : undefined,
+            from: coinbaseProvider,
             request: args.request,
           },
           cbk),
@@ -189,8 +184,8 @@ module.exports = (args, cbk) => {
       getAccounting: [
         'dateRange',
         'network',
-        'rate',
-        ({dateRange, network, rate}, cbk) =>
+        'valuation',
+        ({dateRange, network, valuation}, cbk) =>
       {
         return asyncMapSeries(args.lnds, (lnd, cbk) => {
           return getAccountingReport({
@@ -200,9 +195,9 @@ module.exports = (args, cbk) => {
             before: dateRange.before,
             category: categories[args.category],
             currency: args.currency || defaultCurrency,
-            fiat: !args.is_fiat_disabled ? (args.fiat || defaultFiat) : null,
-            rate: !!rate ? rate.rate : undefined,
-            rate_provider: !rate ? args.rate_provider : undefined,
+            fiat: !!valuation ? (args.fiat || defaultFiat) : null,
+            rate: !!valuation ? valuation.rate : undefined,
+            rate_provider: !!valuation ? valuation.rate_provider : undefined,
             request: args.request,
           },
           cbk);
@@ -234,7 +229,7 @@ module.exports = (args, cbk) => {
       }],
 
       // Calculate total amounts
-      total: ['records', ({records}, cbk) => {
+      total: ['records', 'valuation', ({records, valuation}, cbk) => {
         // Exit early when a CSV dump is requested
         if (!!args.is_csv) {
           return cbk();
@@ -244,7 +239,7 @@ module.exports = (args, cbk) => {
         const tokens = sumOf(records.map(n => n.amount));
 
         // Exit early when there is no fiat data
-        if (!!args.is_fiat_disabled) {
+        if (!valuation) {
           return cbk(null, {tokens, fiat: empty});
         }
 

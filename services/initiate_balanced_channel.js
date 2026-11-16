@@ -2,9 +2,7 @@ const {createHash} = require('crypto');
 const {randomBytes} = require('crypto');
 
 const {acceptsChannelOpen} = require('ln-sync');
-const {addPeer} = require('ln-service');
 const asyncAuto = require('async/auto');
-const asyncDetectSeries = require('async/detectSeries');
 const {cancelHodlInvoice} = require('ln-service');
 const {componentsOfTransaction} = require('@alexbosworth/blockchain');
 const {connectPeer} = require('ln-sync');
@@ -35,7 +33,6 @@ const {describeRoutingFailure} = require('./../display');
 const acceptTokens = 1;
 const bufferAsHex = buffer => buffer.toString('hex');
 const defaultChannelDescription = 'bos open-balanced-channel';
-const defaultMaxFeeMtokens = '9000';
 const fundingAmount = (capacity, rate) => (capacity + (190 * rate)) / 2;
 const fundingFee = rate => Math.ceil(190 / 2 * rate);
 const giveTokens = capacity => Math.ceil(capacity / 2);
@@ -50,7 +47,6 @@ const isSameId = (a, b) => a.toLowerCase() === b.toLowerCase();
 const keySendPreimageType = '5482373484';
 const largeNumberByteCount = 8;
 const makeHtlcPreimage = () => randomBytes(32).toString('hex');
-const maxSignatureLen = 150;
 const multiSigKeyFamily = 0;
 const multiSigType = balancedChannelKeyTypes.multisig_public_key;
 const numAsHex = num => num.toString(16);
@@ -62,7 +58,6 @@ const sendChannelRequestMtokens = '10000';
 const sha256 = n => createHash('sha256').update(n).digest().toString('hex');
 const sighashAll = 1;
 const testMessage = '00';
-const tokAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 const transitKeyFamily = 805;
 const txLocktime = 0;
 const txVersion = 1;
@@ -394,6 +389,9 @@ module.exports = (args, cbk) => {
         });
 
         sub.on('error', err => {
+          // The probe ends after an error, so stop listening for the end
+          sub.removeAllListeners();
+
           return cbk([503, 'MessageDeliveryFailedToNode', {err}]);
         });
 

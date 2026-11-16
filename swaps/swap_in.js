@@ -5,11 +5,13 @@ const asyncAuto = require('async/auto');
 const asyncify = require('async/asyncify');
 const asyncReflect = require('async/reflect');
 const {broadcastChainTransaction} = require('ln-service');
+const {createChainAddress} = require('ln-service');
 const {createInvoice} = require('ln-service');
 const {createSharedAddress} = require('goldengate');
 const {createSwapIn} = require('goldengate');
 const {getChainFeeRate} = require('ln-service');
 const {getHeight} = require('ln-service');
+const {getInvoice} = require('ln-service');
 const {getNetwork} = require('ln-sync');
 const {getPublicKey} = require('ln-service');
 const {getSharedUtxos} = require('goldengate');
@@ -29,17 +31,25 @@ const {swapScriptV2} = require('goldengate');
 
 const cancelUnsignedSwapIn = require('./cancel_unsigned_swap_in');
 const decodeSwapInRecovery = require('./decode_swap_in_recovery');
+const {depositRefundFeeRates} = require('./constants');
 const {encodeAsCbor} = require('./../encryption');
 const encodeSwapInRecovery = require('./encode_swap_in_recovery');
 const {formatFeeRate} = require('./../display');
 const getPaidService = require('./get_paid_service');
+const {htlcRefundFeeRates} = require('./constants');
+const {recoveryAddressFormat} = require('./constants');
+const refundFeeRates = require('./refund_fee_rates');
 const {sharedAddressKeyFamily} = require('./constants');
+const signDepositRefunds = require('./sign_deposit_refunds');
+const signHtlcRefunds = require('./sign_htlc_refunds');
 const subscribeToSwapIn = require('./subscribe_to_swap_in');
 const {swapInCosignQuietMs} = require('./constants');
 const {swapInDepositConfs} = require('./constants');
+const {swapInKeepRunningNote} = require('./constants');
 const {swapInMaxTimeoutBlocks} = require('./constants');
 const {swapInPaymentTimeoutSeconds} = require('./constants');
 const {swapInRefundConfTarget} = require('./constants');
+const {swapInSafetyNotes} = require('./constants');
 const {swapInSweepRequestsWaitMs} = require('./constants');
 const {swapInUtxosCount} = require('./constants');
 const waitForSwapInPayment = require('./wait_for_swap_in_payment');
@@ -67,6 +77,7 @@ const sumOf = arr => arr.reduce((sum, n) => sum + n, Number());
     [api_key]: <API Key CBOR Hex String>
     fetch: <Fetch Function>
     [in_through]: <Request Inbound Payment Public Key Hex String>
+    [is_verbose_recovery]: <Show Signed Refunds and Safety Checks Bool>
     lnd: <Authenticated LND gRPC API Object>
     logger: <Logger Object>
     [max_api_key_fee]: <Maximum Tokens to Pay for a Service API Key Number>
@@ -111,6 +122,10 @@ module.exports = (args, cbk) => {
 
         if (!!args.refund_address && !args.recovery) {
           return cbk([400, 'ExpectedRecoveryOfAddressToRefundDeposits']);
+        }
+
+        if (!!args.refund_address && !!args.is_verbose_recovery) {
+          return cbk([400, 'ExpectedVerboseRecoveryForSwapNotForRefund']);
         }
 
         // A web service socket is for services without shared addresses
@@ -275,7 +290,7 @@ module.exports = (args, cbk) => {
       })],
 
       // Get the limits for a swap
-      getLimits: ['getService', ({getService}, cbk) => {
+      getLimits: ['getService', 'purchase', ({getService}, cbk) => {
         // Exit early when refunding
         if (!!args.refund_address) {
           return cbk();
@@ -360,6 +375,23 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Describe how a deposit to the address can be refunded
+      showDepositSafety: ['showAddress', ({}, cbk) => {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery) {
+          return cbk();
+        }
+
+        args.logger.info({
+          deposit_safety: {
+            refund: swapInSafetyNotes.deposit_refund,
+            refund_needs: swapInSafetyNotes.deposit_refund_needs,
+          },
+        });
+
+        return cbk();
+      }],
+
       // Subscribe to swap status notifications from the service
       subscribe: ['getService', 'showAddress', ({getService}, cbk) => {
         // Exit early when refunding
@@ -407,6 +439,7 @@ module.exports = (args, cbk) => {
         'getNetwork',
         'recover',
         'showAddress',
+        'showDepositSafety',
         ({address, createAddress, getHeight, getNetwork, recover}, cbk) =>
       {
         const scan = {noted: []};
@@ -582,8 +615,8 @@ module.exports = (args, cbk) => {
 
       // Get the chain fee rate to refund at
       getRefundFeeRate: ['validate', ({}, cbk) => {
-        // Exit early when not refunding
-        if (!args.refund_address) {
+        // Exit early when not refunding or signing refunds ahead of time
+        if (!args.refund_address && !args.is_verbose_recovery) {
           return cbk();
         }
 
@@ -741,10 +774,125 @@ module.exports = (args, cbk) => {
         });
       }],
 
+      // Fee rates to sign deposit refunds at, near the fee rate and doublings
+      depositRates: ['getRefundFeeRate', ({getRefundFeeRate}, cbk) => {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery) {
+          return cbk();
+        }
+
+        const {rates} = refundFeeRates({
+          delay_blocks: depositRefundFeeRates.delay_blocks,
+          fee_rate: getRefundFeeRate.tokens_per_vbyte,
+          max_multiple: depositRefundFeeRates.max_multiple,
+          near: depositRefundFeeRates.near,
+        });
+
+        return cbk(null, rates);
+      }],
+
+      // Fewer fee rates to sign HTLC refunds at, there are HTLCs per fallback
+      htlcRates: ['getRefundFeeRate', ({getRefundFeeRate}, cbk) => {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery) {
+          return cbk();
+        }
+
+        const {rates} = refundFeeRates({
+          delay_blocks: htlcRefundFeeRates.delay_blocks,
+          fee_rate: getRefundFeeRate.tokens_per_vbyte,
+          max_multiple: htlcRefundFeeRates.max_multiple,
+          near: htlcRefundFeeRates.near,
+        });
+
+        return cbk(null, rates);
+      }],
+
+      // Get an address of this node to sign refunds to
+      getRecoveryAddress: ['findDeposits', ({}, cbk) => {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery) {
+          return cbk();
+        }
+
+        return createChainAddress({
+          format: recoveryAddressFormat,
+          lnd: args.lnd,
+        },
+        cbk);
+      }],
+
+      // Sign refunds of the deposit that can be broadcast without the service
+      depositRefunds: [
+        'createAddress',
+        'depositRates',
+        'findDeposits',
+        'getKey',
+        'getNetwork',
+        'getRecoveryAddress',
+        ({
+          createAddress,
+          depositRates,
+          findDeposits,
+          getKey,
+          getNetwork,
+          getRecoveryAddress,
+        },
+        cbk) =>
+      {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery) {
+          return cbk();
+        }
+
+        const [deposit] = findDeposits.utxos;
+
+        // Refunds unlock once the deposit is past the refund delay
+        const unlock = refundHeight(createAddress.expiry, deposit);
+
+        return signDepositRefunds({
+          expiry: createAddress.expiry,
+          key_index: getKey.index,
+          lnd: args.lnd,
+          network: getNetwork.network,
+          rates: depositRates.map(rate => ({
+            fee_rate: rate.fee_rate,
+            height: unlock + rate.delay,
+          })),
+          service_public_key: createAddress.service_public_key,
+          sweep_address: getRecoveryAddress.address,
+          utxos: findDeposits.utxos,
+        },
+        cbk);
+      }],
+
+      // Show the signed refunds of the deposit before the swap is made
+      showDepositRefunds: [
+        'depositRefunds',
+        'getRecoveryAddress',
+        ({depositRefunds, getRecoveryAddress}, cbk) =>
+      {
+        // Exit early when not showing verbose recovery details
+        if (!depositRefunds) {
+          return cbk();
+        }
+
+        args.logger.info({
+          deposit_refunds: {
+            note: swapInSafetyNotes.deposit_refunds,
+            refund_to_address: getRecoveryAddress.address,
+            transactions: depositRefunds.refunds,
+          },
+        });
+
+        return cbk();
+      }],
+
       // Get the quote for swapping in the deposits
       getQuote: [
         'findDeposits',
         'getService',
+        'showDepositRefunds',
         ({findDeposits, getService}, cbk) =>
       {
         // Exit early when refunding
@@ -818,6 +966,7 @@ module.exports = (args, cbk) => {
         'getHtlcKey',
         'getQuote',
         'getService',
+        'showDepositRefunds',
         'subscribe',
         ({
           createInvoice,
@@ -937,9 +1086,84 @@ module.exports = (args, cbk) => {
         return cbk();
       }],
 
+      // Derive the swap HTLC here, locked to the hash of the swap invoice
+      deriveHtlc: [
+        'createInvoice',
+        'createSwap',
+        'getHtlcKey',
+        asyncReflect(asyncify(({createInvoice, createSwap, getHtlcKey}) =>
+      {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery) {
+          return;
+        }
+
+        try {
+          return swapScriptV2({
+            claim_public_key: createSwap.service_public_key,
+            hash: createInvoice.id,
+            refund_public_key: getHtlcKey.public_key,
+            timeout: createSwap.timeout,
+          });
+        } catch (err) {
+          throw [503, 'FailedToDeriveSwapInHtlcToCheckSwap', {err}];
+        }
+      }))],
+
+      // Check that the swap HTLC is the HTLC derived here
+      checkSwap: [
+        'createSwap',
+        'deriveHtlc',
+        asyncReflect(({createSwap, deriveHtlc}, cbk) =>
+      {
+        // Exit early when the HTLC could not be derived here
+        if (!!deriveHtlc.error) {
+          return cbk(deriveHtlc.error);
+        }
+
+        // Exit early when not showing verbose recovery details
+        if (!deriveHtlc.value) {
+          return cbk();
+        }
+
+        if (deriveHtlc.value.script !== createSwap.script) {
+          return cbk([503, 'UnexpectedSwapInHtlcScriptForSwap']);
+        }
+
+        return cbk();
+      })],
+
+      // Show what signing the fallback HTLC transactions allows
+      showSwapSafety: [
+        'checkSwap',
+        'createInvoice',
+        'createSwap',
+        'showSwapRecovery',
+        ({checkSwap, createInvoice, createSwap}, cbk) =>
+      {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery || !!checkSwap.error) {
+          return cbk();
+        }
+
+        args.logger.info({
+          swap_safety: {
+            invoice_amount: bigFormat(createInvoice.tokens),
+            htlc_address: createSwap.address,
+            htlc_checked: swapInSafetyNotes.htlc_checked,
+            service_claim: swapInSafetyNotes.service_claim,
+            signing: swapInSafetyNotes.signing,
+            refund_htlc_from_block: createSwap.timeout,
+          },
+        });
+
+        return cbk();
+      }],
+
       // Sign the fallback HTLC transactions the service can publish
       signFallback: [
         'address',
+        'checkSwap',
         'createAddress',
         'createSwap',
         'findDeposits',
@@ -947,9 +1171,11 @@ module.exports = (args, cbk) => {
         'getNetwork',
         'getService',
         'showSwapRecovery',
+        'showSwapSafety',
         'swapRecovery',
         asyncReflect(({
           address,
+          checkSwap,
           createAddress,
           createSwap,
           findDeposits,
@@ -967,6 +1193,11 @@ module.exports = (args, cbk) => {
 
         // Exit early when the swap recovery failed, the swap gets canceled
         if (!!swapRecovery.error) {
+          return cbk();
+        }
+
+        // Exit early when the swap HTLC is not as expected, it gets canceled
+        if (!!checkSwap.error) {
           return cbk();
         }
 
@@ -992,17 +1223,18 @@ module.exports = (args, cbk) => {
 
           args.logger.info({swap_id: createSwap.id});
 
-          return cbk();
+          return cbk(null, res);
         });
       })],
 
       // The swap is canceled when its fallback could not be signed
       signed: [
+        'checkSwap',
         'interrupt',
         'signFallback',
         'subscribe',
         'swapRecovery',
-        ({interrupt, signFallback, subscribe, swapRecovery}, cbk) =>
+        ({checkSwap, interrupt, signFallback, subscribe, swapRecovery}, cbk) =>
       {
         // Exit early when refunding
         if (!interrupt) {
@@ -1012,10 +1244,12 @@ module.exports = (args, cbk) => {
         // Ctrl-C no longer cancels the swap once it is signed or failed
         process.removeListener(interruptSignal, interrupt.exit);
 
-        const error = swapRecovery.error || signFallback.error;
+        const steps = [swapRecovery, checkSwap, signFallback];
+
+        const failed = steps.find(step => !!step.error);
 
         // Exit early when the fallback of the swap is signed
-        if (!error) {
+        if (!failed) {
           return cbk();
         }
 
@@ -1023,7 +1257,100 @@ module.exports = (args, cbk) => {
         subscribe.sub.removeAllListeners();
 
         // Cancel the swap, then pass back the error that stopped it
-        return interrupt.cancel(() => cbk(error));
+        return interrupt.cancel(() => cbk(failed.error));
+      }],
+
+      // Sign refunds of the fallback HTLCs the service can publish
+      htlcRefunds: [
+        'createSwap',
+        'getHtlcKey',
+        'getNetwork',
+        'getRecoveryAddress',
+        'htlcRates',
+        'signFallback',
+        asyncReflect(({
+          createSwap,
+          getHtlcKey,
+          getNetwork,
+          getRecoveryAddress,
+          htlcRates,
+          signFallback,
+        },
+        cbk) =>
+      {
+        // Exit early when not showing verbose recovery details
+        if (!args.is_verbose_recovery || !signFallback.value) {
+          return cbk();
+        }
+
+        return signHtlcRefunds({
+          fallbacks: signFallback.value.transactions,
+          hash: createSwap.id,
+          key_index: getHtlcKey.index,
+          lnd: args.lnd,
+          network: getNetwork.network,
+          rates: htlcRates.map(rate => ({
+            fee_rate: rate.fee_rate,
+            height: createSwap.timeout + rate.delay,
+          })),
+          script: createSwap.script,
+          service_public_key: createSwap.service_public_key,
+          sweep_address: getRecoveryAddress.address,
+          timeout: createSwap.timeout,
+        },
+        cbk);
+      })],
+
+      // Get the swap invoice to see if the swap was paid before refunds show
+      getSwapInvoice: [
+        'createSwap',
+        'htlcRefunds',
+        asyncReflect(({createSwap, htlcRefunds}, cbk) =>
+      {
+        // Exit early when there are no HTLC refunds to show
+        if (!htlcRefunds.value) {
+          return cbk();
+        }
+
+        return getInvoice({id: createSwap.id, lnd: args.lnd}, cbk);
+      })],
+
+      // Show the signed refunds of the fallback HTLCs
+      showHtlcRefunds: [
+        'getRecoveryAddress',
+        'getSwapInvoice',
+        'htlcRefunds',
+        ({getRecoveryAddress, getSwapInvoice, htlcRefunds}, cbk) =>
+      {
+        // Exit early when the refunds could not be signed, the swap goes on
+        if (!!htlcRefunds.error) {
+          args.logger.error({htlc_refunds_error: htlcRefunds.error});
+
+          return cbk();
+        }
+
+        // Exit early when not showing verbose recovery details
+        if (!htlcRefunds.value) {
+          return cbk();
+        }
+
+        // When the invoice cannot be checked the refunds are shown
+        const invoice = getSwapInvoice.value;
+
+        // Exit early when the swap is already paid, the refunds are not needed
+        if (!!invoice && !!invoice.is_confirmed) {
+          return cbk();
+        }
+
+        args.logger.info({
+          htlc_refunds: {
+            note: swapInSafetyNotes.htlc_refunds,
+            refund_to_address: getRecoveryAddress.address,
+            transactions: htlcRefunds.value.refunds,
+          },
+        });
+
+        return cbk();
       }],
 
       // Wait for the service to pay for the swap
@@ -1032,7 +1359,7 @@ module.exports = (args, cbk) => {
         'getService',
         'signed',
         'subscribe',
-        ({createSwap, getService, subscribe}, cbk) =>
+        asyncReflect(({createSwap, getService, subscribe}, cbk) =>
       {
         // Exit early when refunding
         if (!!args.refund_address) {
@@ -1060,11 +1387,25 @@ module.exports = (args, cbk) => {
 
           args.logger.info({
             swap_funds_received: bigFormat(res.received),
-            keep_running: 'Cooperative signing reduces blockchain space use',
+            keep_running: swapInKeepRunningNote,
           });
 
           return cbk(null, res);
         });
+      })],
+
+      // The payment, or the swap failure once any refunds of it are shown
+      payment: [
+        'showHtlcRefunds',
+        'waitForPayment',
+        ({waitForPayment}, cbk) =>
+      {
+        // Exit early when the swap failed, after showing the HTLC refunds
+        if (!!waitForPayment.error) {
+          return cbk(waitForPayment.error);
+        }
+
+        return cbk(null, waitForPayment.value);
       }],
 
       // Cosign the sweeps of the deposit until the service stops asking
@@ -1076,8 +1417,8 @@ module.exports = (args, cbk) => {
         'getKey',
         'getNetwork',
         'getService',
+        'payment',
         'subscribe',
-        'waitForPayment',
         ({
           address,
           createAddress,
@@ -1086,8 +1427,8 @@ module.exports = (args, cbk) => {
           getKey,
           getNetwork,
           getService,
+          payment,
           subscribe,
-          waitForPayment,
         },
         cbk) =>
       {
@@ -1096,7 +1437,7 @@ module.exports = (args, cbk) => {
           return cbk();
         }
 
-        const {deferred} = waitForPayment;
+        const {deferred} = payment;
         const [utxo] = findDeposits.utxos;
         const signing = {pending: Number(), requests: []};
         const timers = {};
@@ -1214,22 +1555,22 @@ module.exports = (args, cbk) => {
         'broadcastRefund',
         'cosignSweeps',
         'createSwap',
-        'waitForPayment',
-        ({createSwap, waitForPayment}, cbk) =>
+        'payment',
+        ({createSwap, payment}, cbk) =>
       {
         // Exit early when refunding
         if (!!args.refund_address) {
           return cbk();
         }
 
-        const fee = createSwap.tokens - waitForPayment.received;
+        const fee = createSwap.tokens - payment.received;
 
         const rate = ppm(fee, createSwap.tokens);
 
         args.logger.info({
           swap_successful: {
             completed: moment().calendar(),
-            received_offchain: bigFormat(waitForPayment.received),
+            received_offchain: bigFormat(payment.received),
             swap_fee_paid: bigFormat(fee),
             swap_fee_rate: formatFeeRate({rate}).display,
           },

@@ -70,9 +70,7 @@ prog
   .argument('<category>', 'Report category')
   .help(`Categories: ${keys(accountingCategories).join(', ')}`)
   .help(`Rate providers: ${rateProviders.join(', ')}`)
-  .help('By default fiat rates after 2021-10-19 use chain data derived rates')
   .help('Multiple --node arguments are supported to report on nodes together')
-  .help('Privacy note: other rates are looked up from third parties by time')
   .option('--csv', 'Output a CSV')
   .option('--date <day>', 'Show only records for specific date')
   .option('--disable-fiat', 'Avoid looking up fiat conversions for records')
@@ -360,6 +358,7 @@ prog
   .option('--count', 'Show count of forwards instead of fees earned')
   .option('--days <days>', 'Chart fees over the past number of days', INT)
   .option('--end <end_date>', 'End date for chart as YYYY-MM-DD', STRING)
+  .option('--fiat', 'Show amounts in USD, valued like accounting')
   .option('--forwarded', 'Show amount forwarded instead of fees earned')
   .option('--node <node_name>', 'Get saved node fees earned', REPEATABLE)
   .option('--start <start_date>', 'Start date for chart as YYYY-MM-DD', STRING)
@@ -367,10 +366,17 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return routing.getFeesChart({
+          logger,
           days: options.days,
           end_date: options.end,
-          fs: {getFile: readFile},
+          fs: {
+            writeFile,
+            getFile: readFile,
+            makeDirectory: mkdir,
+            renameFile: rename,
+          },
           is_count: options.count,
+          is_fiat: options.fiat,
           is_forwarded: options.forwarded,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
           start_date: options.start,
@@ -389,6 +395,7 @@ prog
   .help('--rebalances can return results much more quickly')
   .option('--days <days>', 'Chart fees over the past number of days', INT)
   .option('--end <end_date>', 'End date for chart as YYYY-MM-DD', STRING)
+  .option('--fiat', 'Show fees in USD, valued like accounting')
   .option('--in <key_or_alias>', 'Fees paid on routes in node with peer')
   .option('--most-fees', 'View table of fees paid per node')
   .option('--most-forwarded', 'View table of forwarded per node')
@@ -408,10 +415,17 @@ prog
 
       try {
         return routing.getFeesPaid({
+          logger,
           days: options.days,
           end_date: options.end,
-          fs: {getFile: readFile},
+          fs: {
+            writeFile,
+            getFile: readFile,
+            makeDirectory: mkdir,
+            renameFile: rename,
+          },
           in: options.in,
+          is_fiat: options.fiat,
           is_most_fees_table: options.mostFees,
           is_most_forwarded_table: options.mostForwarded,
           is_network: options.network,
@@ -2007,6 +2021,7 @@ prog
   .option('--recovery <recovery>', 'Reuse the shared address', hexMatch)
   .option('--refund-address <address>', 'Refund expired deposits/unpaid swaps')
   .option('--service-socket <swap_service_socket>', 'host:port for service')
+  .option('--verbose-recovery', 'Show signed refunds and swap safety checks')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -2015,6 +2030,7 @@ prog
           logger,
           api_key: options.apiKey || undefined,
           in_through: options.in || undefined,
+          is_verbose_recovery: options.verboseRecovery || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           max_api_key_fee: options.maxApiKeyFee,
           max_fee: options.maxFee,
@@ -2056,6 +2072,7 @@ prog
   .option('--out-filter <out_filter>', 'Filter outbound peer/tag', REPEATABLE)
   .option('--recovery <recovery>', 'Recover in-progress swap')
   .option('--service-socket <socket>', 'Specify a custom swap service address')
+  .option('--verbose-recovery', 'Show swap safety details and signed claims')
   .action((args, options, logger) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -2068,6 +2085,7 @@ prog
           fs: {getFile: readFile},
           is_dry_run: options.dryrun || false,
           is_fast: options.fast || false,
+          is_verbose_recovery: options.verboseRecovery || undefined,
           lnd: (await lnd.authenticatedLnd({logger, node: options.node})).lnd,
           max_api_key_fee: options.maxApiKeyFee,
           max_deposit: options.maxDeposit,

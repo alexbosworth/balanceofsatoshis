@@ -6,6 +6,7 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
+const {getFiatRates} = require('./../balances');
 const {getTags} = require('./../tags');
 const getForwards = require('./get_forwards');
 
@@ -13,7 +14,10 @@ const asDate = n => !!n ? n.toISOString() : undefined;
 const daysBetween = (a, b) => moment(a).diff(b, 'days') + 1;
 const daysPerWeek = 7;
 const defaultDays = 60;
+const fiatOfMtokens = (cents, mtokens) => Number(mtokens) / 1e11 * cents / 100;
+const fiatOfTokens = (cents, tokens) => tokens / 1e8 * cents / 100;
 const {floor} = Math;
+const formatFiat = (amount, fiat) => `${amount.toFixed(2)} ${fiat}`;
 const hoursCount = (a, b) => moment(a).diff(b, 'hours') + 1;
 const hoursPerDay = 24;
 const {isArray} = Array;
@@ -22,6 +26,7 @@ const minChartDays = 4;
 const maxChartDays = 90;
 const {now} = Date;
 const parseDate = n => Date.parse(n);
+const tokensAsBigUnit = tokens => (tokens / 1e8).toFixed(8);
 
 /** Get data for fees chart
 
@@ -30,16 +35,22 @@ const parseDate = n => Date.parse(n);
     [end_date]: <End Date YYYY-MM-DD String>
     fs: {
       getFile: <Get File Function>
+      [makeDirectory]: <Make Directory Function> (path, cbk) => {}
+      [renameFile]: <Rename File Function> (from, to, cbk) => {}
+      [writeFile]: <Write File Contents Function> (path, contents, cbk) => {}
     }
     is_count: <Return Only Count of Forwards Bool>
+    [is_fiat]: <Value Amounts in Fiat Bool>
+    [is_forwarded]: <Return Amount Forwarded Bool>
     lnds: [<Authenticated LND API Object>]
+    [logger]: <Winston Logger Object>
     [start_date]: <Start Date YYYY-MM-DD String>
     [via]: <Via Public Key Hex or Tag Id or Alias String>
   }
 
   @returns via cbk or Promise
   {
-    data: [<Earned Fee Tokens Number>]
+    data: [<Earned Fee Tokens or Fiat Amount Number>]
     description: <Chart Description String>
     title: <Chart Title String>
   }
@@ -59,6 +70,10 @@ module.exports = (args, cbk) => {
 
         if (!args.lnds.length) {
           return cbk([400, 'ExpectedAnLndToGetFeesChart']);
+        }
+
+        if (!!args.is_count && !!args.is_fiat) {
+          return cbk([400, 'ExpectedEitherCountOrFiatForFeesChart']);
         }
 
         // Exit early when there is no end date and no start date
@@ -231,16 +246,72 @@ module.exports = (args, cbk) => {
         return cbk(null, forwards.reduce((sum, n) => sum.concat(n), []));
       }],
 
+      // Get the fiat rates at the times of the forwards
+      getRates: ['forwards', ({forwards}, cbk) => {
+        // Exit early when amounts are not valued in fiat
+        if (!args.is_fiat) {
+          return cbk();
+        }
+
+        return getFiatRates({
+          dates: forwards.map(n => n.created_at),
+          fs: args.fs,
+          lnds: args.lnds,
+          logger: args.logger,
+        },
+        cbk);
+      }],
+
+      // Forwards with fees and amounts in fiat when valued in fiat
+      valued: ['forwards', 'getRates', ({forwards, getRates}, cbk) => {
+        // Exit early when amounts are not valued in fiat
+        if (!getRates) {
+          return cbk(null, forwards);
+        }
+
+        return cbk(null, forwards.map((forward, i) => {
+          const {cents} = getRates.rates[i];
+
+          return {
+            created_at: forward.created_at,
+            fee: fiatOfMtokens(cents, forward.fee_mtokens),
+            tokens: fiatOfTokens(cents, forward.tokens),
+          };
+        }));
+      }],
+
       // Total earnings
-      totalEarned: ['forwards', ({forwards}, cbk) => {
-        return cbk(null, forwards.reduce((sum, {fee}) => sum + fee, Number()));
+      totalEarned: ['valued', ({valued}, cbk) => {
+        return cbk(null, valued.reduce((sum, {fee}) => sum + fee, Number()));
       }],
 
       // Total forwarded
-      totalForwarded: ['forwards', ({forwards}, cbk) => {
-        const total = forwards.reduce((sum, n) => sum + n.tokens, Number());
+      totalForwarded: ['valued', ({valued}, cbk) => {
+        const total = valued.reduce((sum, n) => sum + n.tokens, Number());
 
         return cbk(null, total);
+      }],
+
+      // Total of the charted amounts for display
+      total: [
+        'getRates',
+        'totalEarned',
+        'totalForwarded',
+        ({getRates, totalEarned, totalForwarded}, cbk) =>
+      {
+        const total = !!args.is_forwarded ? totalForwarded : totalEarned;
+
+        // Exit early when the total is a fiat amount
+        if (!!getRates) {
+          return cbk(null, formatFiat(total, getRates.fiat));
+        }
+
+        // Exit early when the total is an amount forwarded
+        if (!!args.is_forwarded) {
+          return cbk(null, formatTokens({tokens: total}).display);
+        }
+
+        return cbk(null, tokensAsBigUnit(total));
       }],
 
       // Total number of segments
@@ -265,16 +336,16 @@ module.exports = (args, cbk) => {
       // Forwarding activity aggregated
       sum: [
         'end',
-        'forwards',
         'measure',
         'segments',
-        ({end, forwards, measure, segments}, cbk) =>
+        'valued',
+        ({end, measure, segments, valued}, cbk) =>
       {
         return cbk(null, feesForSegment({
-          forwards,
           measure,
           segments,
           end: !!end ? end.toISOString() : undefined,
+          forwards: valued,
         }));
       }],
 
@@ -285,9 +356,8 @@ module.exports = (args, cbk) => {
         'measure',
         'start',
         'sum',
-        'totalEarned',
-        'totalForwarded',
-        ({end, forwards, measure, start, totalEarned, totalForwarded, sum}, cbk) =>
+        'total',
+        ({end, forwards, measure, start, sum, total}, cbk) =>
       {
         const since = `from ${start.calendar().toLowerCase()}`;
         const to = !!end ? ` to ${end.calendar().toLowerCase()}` : '';
@@ -300,28 +370,28 @@ module.exports = (args, cbk) => {
         } else if (!!args.is_forwarded) {
           const duration = `Forwarded in ${sum.count.length} ${measure}s`;
 
-          const {display} = formatTokens({tokens: totalForwarded});
-
-          return cbk(null, `${duration} ${since}${to}. Total: ${display}`);
+          return cbk(null, `${duration} ${since}${to}. Total: ${total}`);
         } else {
           const duration = `Earned in ${sum.fees.length} ${measure}s`;
-          const earned = (totalEarned / 1e8).toFixed(8);
 
-          return cbk(null, `${duration} ${since}${to}. Total: ${earned}`);
+          return cbk(null, `${duration} ${since}${to}. Total: ${total}`);
         }
       }],
 
       // Heading
-      head: ['validate', ({}, cbk) => {
+      head: ['getRates', ({getRates}, cbk) => {
         if (!!args.is_count) {
           return cbk(null, 'Forwards count');
         }
 
+        // Fiat amounts are labeled with their fiat
+        const fiat = !!getRates ? ` (${getRates.fiat})` : '';
+
         if (!!args.is_forwarded) {
-          return cbk(null, 'Forwarded amount');
+          return cbk(null, `Forwarded amount${fiat}`);
         }
 
-        return cbk(null, 'Routing fees earned');
+        return cbk(null, `Routing fees earned${fiat}`);
       }],
 
       // Summary title of the fees earned

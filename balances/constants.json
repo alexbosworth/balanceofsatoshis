@@ -39,14 +39,6 @@
     "12"
   ],
   "monthOffset": 1,
-  "pricesFileErrors": [
-    "ExpectedPricesObjectInPricesFile",
-    "FailedToParsePricesFile",
-    "FailedToReadPricesFile",
-    "FailedToReplacePricesFile",
-    "FailedToWritePricesFile",
-    "UnsupportedPricesFileVersion"
-  ],
   "summaryHeadings": [
     "Total",
     "Asset",

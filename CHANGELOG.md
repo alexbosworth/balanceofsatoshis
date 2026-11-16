@@ -1,5 +1,13 @@
 # Versions
 
+## 26.1.0
+
+- `accounting`: Price records without external lookups
+- `chart-fees-earned`, `chart-fees-paid`: Add `--fiat` to chart fees in USD
+- `fees`, `rebalance`: Keep `--repeat-interval-ms` on time after sleep
+- `swap-in`, `swap-out`: Add `--verbose-recovery` to recover funds yourself
+- `swap-out`: Show swap costs in PPM
+
 ## 26.0.1
 
 - `swap-api-key`: Add `--max-fee` to limit what is paid for an API key
