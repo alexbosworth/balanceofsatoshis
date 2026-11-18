@@ -32,6 +32,7 @@ const {max} = Math;
 const maxUnusedRoutes = 3;
 const {min} = Math;
 const mtokensAsTokens = n => Number(BigInt(n) / BigInt(1e3));
+const noInvoiceError = 'NoInvoiceFound';
 const safeTokens = n => Number((BigInt(n) + BigInt(999)) / BigInt(1e3));
 const tokensAsMtokens = tokens => (BigInt(tokens) * BigInt(1e3)).toString();
 
@@ -567,7 +568,7 @@ module.exports = (args, cbk) => {
           remaining: !remaining ? undefined : left.display,
           total_fee_rate: !fees ? undefined : String(rate),
           total_fees: !fees ? undefined : formatTokens({tokens: fees}).display,
-          total_paid: formatTokens({tokens: paid}).display,
+          total_paid: asBtc(paid),
         });
       }],
 
@@ -575,6 +576,13 @@ module.exports = (args, cbk) => {
       result: ['stream', 'summary', ({stream, summary}, cbk) => {
         // Exit early when the stream paid everything that it could
         if (!stream.err) {
+          return cbk(null, summary);
+        }
+
+        const [, message] = stream.err;
+
+        // Exit early when the service declined to make any more invoices
+        if (message === noInvoiceError) {
           return cbk(null, summary);
         }
 

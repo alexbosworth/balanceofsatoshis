@@ -2,6 +2,9 @@ const {deepEqual} = require('node:assert').strict;
 const {rejects} = require('node:assert').strict;
 const test = require('node:test');
 
+// Charts segment by local days, so the fixture days are checked in UTC
+process.env.TZ = 'UTC';
+
 const {getFeesPaid} = require('./../../routing');
 const {getInfoResponse} = require('./../fixtures');
 

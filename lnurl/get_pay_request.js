@@ -3,6 +3,8 @@ const {parsePaymentRequest} = require('ln-service');
 const {returnResult} = require('asyncjs-util');
 
 const errorStatus = 'ERROR';
+const isRateLimited = res => !!res && res.statusCode === 429;
+const isServerFailure = res => !!res && res.statusCode >= 500;
 const timeoutMs = 1000 * 60;
 
 /** Get a payment request for a LNURL
@@ -61,6 +63,22 @@ module.exports = ({hash, mtokens, request, url}, cbk) => {
             return cbk([503, 'ServiceFailedToReturnPayReqJson']);
           }
 
+          // A rate limit is a temporary failure, not a refusal of the request
+          if (json.status === errorStatus && isRateLimited(r)) {
+            return cbk([503, 'ServiceRateLimitedPaymentRequest', {
+              err: json.reason,
+            }]);
+          }
+
+          // A server failure is an outage, not a refusal of the request
+          if (json.status === errorStatus && isServerFailure(r)) {
+            return cbk([503, 'ServiceFailedToMakePaymentRequest', {
+              err: json.reason,
+            }]);
+          }
+
+          // LNURL errors carry no codes and services turn down requests with
+          // any other status, like 200 or 400, so those are taken as refusals
           if (json.status === errorStatus) {
             return cbk([503, 'ServiceReturnedError', {err: json.reason}]);
           }

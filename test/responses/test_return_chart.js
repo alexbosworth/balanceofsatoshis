@@ -29,6 +29,16 @@ const tests = [
     ],
     res: {description: 'description', elements: [1,2,3], title: 'title'},
   },
+  {
+    args: {data: 'elements'},
+    description: 'A flat chart is labeled with its amount, not a rounded one',
+    expected: [
+      '',
+      '       0.43 ┼── \n       0.40 ┤   \n       0.37 ┤   \n       0.34 ┤   \n       0.32 ┤   \n       0.29 ┤   \n       0.26 ┤   \n       0.23 ┤   \n       0.20 ┤   \n       0.17 ┤   \n       0.14 ┤   \n       0.11 ┤   \n       0.09 ┤   \n       0.06 ┤   \n       0.03 ┤   \n       0.00 ┤   ',
+      '',
+    ],
+    res: {elements: [0.43, 0.43, 0.43]},
+  },
 ];
 
 tests.forEach(({args, description, error, expected, res}) => {

@@ -331,6 +331,7 @@ prog
   .help('Show chart of mining fee expenditure over time')
   .option('--days <days>', 'Chart over the past number of days', INT)
   .option('--end <end_date>', 'End date for chart as YYYY-MM-DD', STRING)
+  .option('--fiat', 'Show fees in USD, valued like accounting')
   .option('--no-color', 'Disable colors')
   .option('--node <node_name>', 'Chain fees from saved node(s)', REPEATABLE)
   .option('--start <start_date>', 'Start date for chart as YYYY-MM-DD', STRING)
@@ -338,8 +339,16 @@ prog
     return new Promise(async (resolve, reject) => {
       try {
         return routing.getChainFeesChart({
+          logger,
           days: options.days,
           end_date: options.end,
+          fs: {
+            writeFile,
+            getFile: readFile,
+            makeDirectory: mkdir,
+            renameFile: rename,
+          },
+          is_fiat: options.fiat,
           is_monochrome: !!options.noColor,
           lnds: (await lnd.getLnds({logger, nodes: options.node})).lnds,
           start_date: options.start,

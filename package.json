@@ -35,7 +35,7 @@
     "ini": "7.0.0",
     "inquirer": "14.3.0",
     "ln-accounting": "11.0.0",
-    "ln-service": "60.3.0",
+    "ln-service": "61.0.0",
     "ln-sync": "8.1.0",
     "ln-telegram": "8.2.0",
     "moment": "2.31.0",
@@ -52,7 +52,7 @@
   "devDependencies": {
     "@grpc/grpc-js": "1.14.7",
     "@grpc/proto-loader": "0.8.1",
-    "invoices": "6.3.3",
+    "invoices": "6.3.4",
     "ln-docker-daemons": "8.1.4",
     "macaroon": "3.0.4",
     "p2tr": "3.0.0",
@@ -108,5 +108,5 @@
     "reinstall-dependencies": "rm -rf node_modules package-lock.json && npm i",
     "test": "node --experimental-test-coverage --test test/arrays/*.js test/balances/*.js test/chain/*.js test/commands/*.js test/display/*.js test/encryption/*.js test/lnd/*.js test/lnurl/*.js test/network/*.js test/nodes/*.js test/offchain/*.js test/peers/*.js test/responses/*.js test/routing/*.js test/services/*.js test/swaps/*.js test/tags/*.js test/telegram/*.js test/wallets/*.js"
   },
-  "version": "26.1.0"
+  "version": "26.2.0"
 }

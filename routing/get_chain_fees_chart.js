@@ -8,13 +8,16 @@ const moment = require('moment');
 const {returnResult} = require('asyncjs-util');
 
 const feesForSegment = require('./fees_for_segment');
+const {getFiatRates} = require('./../balances');
 
 const daysBetween = (a, b) => moment(a).diff(b, 'days') + 1;
 const daysPerWeek = 7;
 const defaultDays = 60;
+const fiatOfTokens = (cents, tokens) => tokens / 1e8 * cents / 100;
 const isDate = n => /^\d{4}(-(0[1-9]|1[0-2]))?(-(0[1-9]|[12][0-9]|3[01]))?$/.test(n);
 const flatten = arr => [].concat(...arr);
 const {floor} = Math;
+const formatFiat = (amount, fiat) => `${amount.toFixed(2)} ${fiat}`;
 const hoursCount = (a, b) => moment(a).diff(b, 'hours') + 1;
 const hoursPerDay = 24;
 const {isArray} = Array;
@@ -28,14 +31,22 @@ const parseDate = n => Date.parse(n);
   {
     [days]: <Chain Fees Paid Over Days Count Number>
     [end_date]: <End Date YYYY-MM-DD String>
+    [fs]: {
+      getFile: <Read File Contents Function> (path, cbk) => {}
+      makeDirectory: <Make Directory Function> (path, cbk) => {}
+      renameFile: <Rename File Function> (from, to, cbk) => {}
+      writeFile: <Write File Contents Function> (path, contents, cbk) => {}
+    }
+    [is_fiat]: <Value Chain Fees in Fiat Bool>
     is_monochrome: <Omit Colors Bool>
     lnds: [<Authenticated LND API Object>]
+    [logger]: <Winston Logger Object>
     [start_date]: <Start Date YYYY-MM-DD String>
   }
 
   @returns via cbk or Promise
   {
-    data: [<Chain Fee Tokens Number>]
+    data: [<Chain Fee Tokens or Fiat Amount Number>]
     description: <Chart Description String>
     title: <Chart Title String>
   }
@@ -210,9 +221,42 @@ module.exports = (args, cbk) => {
         return cbk(null, transactions);
       }],
 
+      // Get the fiat rates at the times of the transactions
+      getRates: ['transactions', ({transactions}, cbk) => {
+        // Exit early when chain fees are not valued in fiat
+        if (!args.is_fiat) {
+          return cbk();
+        }
+
+        return getFiatRates({
+          dates: transactions.map(n => n.created_at),
+          fs: args.fs,
+          lnds: args.lnds,
+          logger: args.logger,
+        },
+        cbk);
+      }],
+
+      // Transactions with fees in fiat when valued in fiat
+      valued: ['getRates', 'transactions', ({getRates, transactions}, cbk) => {
+        // Exit early when chain fees are not valued in fiat
+        if (!getRates) {
+          return cbk(null, transactions);
+        }
+
+        return cbk(null, transactions.map((transaction, i) => {
+          const {cents} = getRates.rates[i];
+
+          return {
+            created_at: transaction.created_at,
+            fee: fiatOfTokens(cents, transaction.fee),
+          };
+        }));
+      }],
+
       // Total paid
-      total: ['transactions', ({transactions}, cbk) => {
-        const paid = transactions.reduce((sum, {fee}) => sum + fee, Number());
+      total: ['valued', ({valued}, cbk) => {
+        const paid = valued.reduce((sum, {fee}) => sum + fee, Number());
 
         return cbk(null, paid);
       }],
@@ -222,29 +266,37 @@ module.exports = (args, cbk) => {
         'end',
         'measure',
         'segments',
-        'transactions',
-        ({end, measure, segments, transactions}, cbk) =>
+        'valued',
+        ({end, measure, segments, valued}, cbk) =>
       {
         return cbk(null, feesForSegment({
           measure,
           segments,
           end: !!end ? end.toISOString() : undefined,
-          forwards: transactions,
+          forwards: valued,
         }));
       }],
 
       // Summary description of the chain fees paid
       description: [
         'end',
+        'getRates',
         'measure',
         'start',
         'sum',
         'total',
-        asyncify(({end, measure, start, sum, total}) =>
+        asyncify(({end, getRates, measure, start, sum, total}) =>
       {
         const duration = `Chain fees paid in ${sum.fees.length} ${measure}s`;
         const since = `from ${start.calendar().toLowerCase()}`;
         const to = !!end ? ` to ${end.calendar().toLowerCase()}` : '';
+
+        // Exit early when the total is a fiat amount
+        if (!!getRates) {
+          const paid = formatFiat(total, getRates.fiat);
+
+          return `${duration} ${since}${to}. Total: ${paid}`;
+        }
 
         const {display} = formatTokens({
           is_monochrome: args.is_monochrome,
@@ -255,11 +307,18 @@ module.exports = (args, cbk) => {
       })],
 
       // Fees paid
-      data: ['description', 'sum', ({description, sum}, cbk) => {
+      data: [
+        'description',
+        'getRates',
+        'sum',
+        ({description, getRates, sum}, cbk) =>
+      {
         const data = sum.fees;
-        const title = 'Chain fees paid';
 
-        return cbk(null, {data, description, title});
+        // Fiat amounts are labeled with their fiat
+        const fiat = !!getRates ? ` (${getRates.fiat})` : '';
+
+        return cbk(null, {data, description, title: `Chain fees paid${fiat}`});
       }],
     },
     returnResult({reject, resolve, of: 'data'}, cbk));

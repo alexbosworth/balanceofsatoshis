@@ -1,5 +1,10 @@
 # Versions
 
+## 26.2.0
+
+- Add support for LND 0.21.7, LND 0.21.8 and LND 0.20.8
+- `chart-chain-fees`: Add `--fiat` to chart chain fees in USD
+
 ## 26.1.0
 
 - `accounting`: Price records without external lookups

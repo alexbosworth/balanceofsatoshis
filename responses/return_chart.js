@@ -1,6 +1,7 @@
 const {plot} = require('asciichart');
 
 const height = 15;
+const isFlat = data => new Set(data).size === 1;
 const newLine = '\n';
 const padLen = (lineLen, desc) => (Math.max(0, lineLen - desc.length) + 3) / 2;
 
@@ -26,7 +27,10 @@ module.exports = ({data, logger, reject, resolve}) => {
       return reject();
     }
 
-    const chart = plot(res[data], {height});
+    // A flat line has no range to label, so it is drawn against zero instead
+    const range = isFlat(res[data]) ? {max: Number(), min: Number()} : {};
+
+    const chart = plot(res[data], {height, ...range});
 
     const [line] = chart.split(newLine);
 
@@ -37,7 +41,7 @@ module.exports = ({data, logger, reject, resolve}) => {
     }
 
     logger.info(String());
-    logger.info(plot(res[data], {height}));
+    logger.info(chart);
 
     if (!!res.description) {
       const padding = ' '.repeat(padLen(line.length, res.description));

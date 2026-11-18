@@ -43,19 +43,35 @@ const makeRequest = ({}) => {
 
 const request = makeRequest({});
 
-// Make a service that makes the invoice, declines, or cannot be reached
-const makeService = ({err, reason}) => ({}, cbk) => {
+// Answer a request to the service with an invoice, a decline, or a failure
+const answerRequest = ({code, err, reason}, cbk) => {
   // Exit early when the service cannot be reached
   if (!!err) {
     return cbk(err);
   }
 
-  // Exit early when the service declines to make the invoice
+  // Exit early when the service declines or fails to make the invoice
   if (!!reason) {
-    return cbk(null, {}, {reason, status: 'ERROR'});
+    return cbk(null, {statusCode: code || 200}, {reason, status: 'ERROR'});
   }
 
-  return cbk(null, {}, {pr: request});
+  return cbk(null, {statusCode: 200}, {pr: request});
+};
+
+// Make a service that rate limits a number of requests before it answers
+const makeService = ({code, err, limits, reason}) => {
+  const limited = {count: limits || Number()};
+
+  return ({}, cbk) => {
+    // Exit early when the service is rate limiting requests
+    if (!!limited.count) {
+      limited.count--;
+
+      return cbk(null, {statusCode: 429}, {reason: 'wait', status: 'ERROR'});
+    }
+
+    return answerRequest({code, err, reason}, cbk);
+  };
 };
 
 // Make arguments to get an invoice for 150k, the lines logged are noted
@@ -67,6 +83,7 @@ const makeArgs = overrides => {
     noted,
     logger: {info: line => noted.logs.push(line)},
     mtokens: '150000000',
+    rate_limit_delay_ms: 1,
     request: makeService({}),
     url: 'https://example.com/callback',
   };
@@ -134,6 +151,50 @@ const tests = [
         {invoice_declined: '0.00150000', reason: 'amount too large'},
       ],
     }),
+  },
+  {
+    args: makeArgs({request: makeService({code: 400, reason: 'too large'})}),
+    description: 'A service client error status turns down the amount',
+    expected: makeExpected({
+      is_amount_too_high: true,
+      logs: [
+        {requesting_invoice: '0.00150000'},
+        {invoice_declined: '0.00150000', reason: 'too large'},
+      ],
+    }),
+  },
+  {
+    args: makeArgs({request: makeService({limits: 2})}),
+    description: 'A rate limited request is tried again',
+    expected: makeExpected({
+      request,
+      logs: [
+        {requesting_invoice: '0.00150000'},
+        {invoice_rate_limited: '0.00150000'},
+        {invoice_rate_limited: '0.00150000'},
+        {payment_request: request},
+      ],
+    }),
+  },
+  {
+    args: makeArgs({request: makeService({limits: 5})}),
+    description: 'A request that stays rate limited is a failure',
+    error: [503, 'ServiceRateLimitedPaymentRequest', {err: 'wait'}],
+    expected: makeExpected({
+      logs: [
+        {requesting_invoice: '0.00150000'},
+        {invoice_rate_limited: '0.00150000'},
+        {invoice_rate_limited: '0.00150000'},
+        {invoice_rate_limited: '0.00150000'},
+        {invoice_rate_limited: '0.00150000'},
+      ],
+    }),
+  },
+  {
+    args: makeArgs({request: makeService({code: 503, reason: 'down'})}),
+    description: 'A server error status from the service is an outage',
+    error: [503, 'ServiceFailedToMakePaymentRequest', {err: 'down'}],
+    expected: makeExpected({logs: [{requesting_invoice: '0.00150000'}]}),
   },
   {
     args: makeArgs({request: makeService({err: 'err'})}),

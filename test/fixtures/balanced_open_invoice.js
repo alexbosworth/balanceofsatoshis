@@ -60,7 +60,7 @@ const invoice = {
   htlcs: [{
     accept_height: 1,
     accept_time: '1',
-    amt_msat: '1000',
+    amt_msat: '10000',
     chan_id: '1',
     custom_records: {
       [capacityType]: (2e6).toString(16),
@@ -72,7 +72,7 @@ const invoice = {
     },
     expiry_height: 1,
     htlc_index: '1',
-    mpp_total_amt_msat: '1000',
+    mpp_total_amt_msat: '10000',
     resolve_time: '1',
     state: 'SETTLED',
   }],
@@ -88,8 +88,8 @@ const invoice = {
   settle_index: '1',
   settled: true,
   state: 'SETTLED',
-  value: '1',
-  value_msat: '1000',
+  value: '10',
+  value_msat: '10000',
 };
 
 module.exports = {invoice, request};

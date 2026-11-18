@@ -77,7 +77,8 @@ const noteCalls = ({methods, noted}) => Object.keys(methods).forEach(name => {
   };
 });
 
-// Make the LNURL service of alice, it can decline amounts above a limit
+// Make the LNURL service of alice, it can decline amounts above a limit,
+// decline to make more invoices once it made a number of them, or go down
 const makeService = args => {
   return ({qs, url}, cbk) => {
     // The service notes every request made to it
@@ -102,6 +103,16 @@ const makeService = args => {
     // Exit early when the service declines to make the invoice
     if (!!args.limit && BigInt(qs.amount) > BigInt(args.limit)) {
       return cbk(null, {}, {reason: 'amount too large', status: 'ERROR'});
+    }
+
+    // Exit early when the service has an outage after some invoices
+    if (args.invoices.length === args.outage_after) {
+      return cbk(null, {statusCode: 500}, {reason: 'down', status: 'ERROR'});
+    }
+
+    // Exit early when the service made all the invoices it is going to make
+    if (args.invoices.length === args.max_invoices) {
+      return cbk(null, {}, {reason: 'limit reached', status: 'ERROR'});
     }
 
     const id = bufferAsHex(Buffer.alloc(32, args.invoices.length + 1));
@@ -1194,8 +1205,7 @@ const tests = [
   },
   {
     args: makeArgs({service: {limit: '0'}}),
-    description: 'A service that declines every amount ends the stream',
-    error: [503, 'NoInvoiceFound', {fee_mtokens: '0', mtokens: '0'}],
+    description: 'A service that declines every amount ends with a summary',
     expected: makeExpected({
       is_lnd_called: true,
       logs: [
@@ -1205,6 +1215,80 @@ const tests = [
         {requesting_invoice: '0.00100000'},
         {invoice_declined: '0.00100000', reason: 'amount too large'},
       ],
+      requested: [termsUrl, callbackUrl, callbackUrl],
+      // Nothing was paid, so all of the amount is left
+      summary: {
+        payments: [],
+        remaining: '0.00250000',
+        total_paid: '0.00000000',
+      },
+    }),
+  },
+  {
+    args: makeArgs({
+      amount: '200*k',
+      max_payment: '100*k',
+      service: {max_invoices: 1},
+    }),
+    description: 'A service that stops making invoices ends with a summary',
+    expected: makeExpected({
+      is_lnd_called: true,
+      logs: [
+        {...start, max_payment: '0.00100000', streaming: '0.00200000'},
+        {requesting_invoice: '0.00100000'},
+        {payment_request: 'lnbc1m'},
+        {evaluating: direct},
+        {evaluating_amount: '0.00100000'},
+        {amount: '0.00100000', paying: direct},
+        {proof, paid: '0.00100000'},
+        {evaluating: direct},
+        {evaluating_amount: '0.00100000'},
+        // The service declines a second invoice, even for a minimum payment
+        {requesting_invoice: '0.00100000'},
+        {invoice_declined: '0.00100000', reason: 'limit reached'},
+      ],
+      probes: {[payment]: 4},
+      requested: [termsUrl, callbackUrl, callbackUrl],
+      summary: {
+        payments: [{proof, paid: '0.00100000', path: direct}],
+        remaining: '0.00100000',
+        total_paid: '0.00100000',
+      },
+    }),
+  },
+  {
+    args: makeArgs({
+      amount: '200*k',
+      max_payment: '100*k',
+      service: {outage_after: 1},
+    }),
+    description: 'A service outage ends the stream with an error',
+    error: [503, 'WaitingForInvoiceErr', {
+      err: [503, 'ServiceFailedToMakePaymentRequest', {err: 'down'}],
+      fee_mtokens: '0',
+      mtokens: '100000000',
+    }],
+    expected: makeExpected({
+      is_lnd_called: true,
+      logs: [
+        {...start, max_payment: '0.00100000', streaming: '0.00200000'},
+        {requesting_invoice: '0.00100000'},
+        {payment_request: 'lnbc1m'},
+        {evaluating: direct},
+        {evaluating_amount: '0.00100000'},
+        {amount: '0.00100000', paying: direct},
+        {proof, paid: '0.00100000'},
+        {evaluating: direct},
+        {evaluating_amount: '0.00100000'},
+        // The outage is not taken as the service turning down the amount
+        {requesting_invoice: '0.00100000'},
+        {
+          payments: [{proof, paid: '0.00100000', path: direct}],
+          remaining: '0.00100000',
+          total_paid: '0.00100000',
+        },
+      ],
+      probes: {[payment]: 4},
       requested: [termsUrl, callbackUrl, callbackUrl],
     }),
   },
